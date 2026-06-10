@@ -3,25 +3,39 @@
    ═══════════════════════════════════════ */
 
 :root {
-  /* Design system Norton ISM Universal */
-  --c-primary:   #0050FF;   /* Norton Blue — nav, structure, focus */
+  /* ── Norton ISM Universal — tokens officiels ── */
+  --color-primary:      #ad3131;   /* ISM brand primary */
+  --color-cta:          #FF6D68;   /* ISM Coral — boutons primaires UNIQUEMENT */
+  --color-nav:          #0050FF;   /* Norton Blue — navigation + focus */
+  --color-bg:           #f6faff;   /* Fond global */
+  --color-surface:      #FFFFFF;   /* Cards */
+  --color-surface-alt:  #F5F5F7;   /* Sidebar, blocs secondaires */
+  --color-text:         #121d25;
+  --color-text-premium: #0E0D30;   /* Titres hero */
+  --color-border:       #E8E8ED;
+  --color-accent:       #4D9EFF;
+  --color-error:        #FA0000;
+
+  /* ── Aliases internes (rétro-compat) ── */
+  --c-primary:   #0050FF;
   --c-primary-d: #0037b8;
-  --c-cta:       #FF6D68;   /* ISM Coral — CTA, accents critiques */
+  --c-cta:       #FF6D68;
   --c-cta-d:     #e85550;
-  --c-accent:    #4D9EFF;   /* Bleu secondaire interactif */
+  --c-accent:    #4D9EFF;
   --c-accent-soft: #A8C8FF;
   --c-success:   #00b27e;
   --c-warning:   #f59e0b;
   --c-danger:    #FA0000;
-  --c-bg:        #F5F5F7;   /* Surface premium */
+  --c-bg:        #f6faff;          /* fond global */
   --c-surface:   #ffffff;
-  --c-text:      #1A1A2E;
-  --c-title:     #0E0D30;   /* Premium navy titles */
+  --c-surface-alt: #F5F5F7;
+  --c-text:      #121d25;
+  --c-title:     #0E0D30;
   --c-text-2:    #626264;
   --c-border:    #E8E8ED;
-  --radius:      8px;       /* Cartes */
-  --radius-btn:  6px;       /* Boutons */
-  --radius-sm:   4px;       /* Inputs */
+  --radius:      8px;
+  --radius-btn:  6px;
+  --radius-sm:   4px;
   --shadow:      0 2px 8px rgba(14,13,48,.08);
   --shadow-lg:   0 4px 20px rgba(14,13,48,.12);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -223,7 +237,7 @@ body {
 
 @media (min-width: 900px) {
   .nav-principale {
-    top: 0; bottom: 0; right: auto; width: 220px;
+    top: 0; bottom: 0; right: auto; width: 240px;
     flex-direction: column; justify-content: flex-start; gap: 4px;
     background: var(--c-title); border-top: none;
     padding: 20px 12px; box-shadow: none;
@@ -241,10 +255,10 @@ body {
   }
   .nav-item:hover { background: rgba(255,255,255,.08); }
   .nav-item.actif { background: var(--c-cta); color: #fff; }
-  #app:has(.nav-principale) { padding-left: 220px; }
+  #app:has(.nav-principale) { padding-left: 240px; }
   /* Les barres fixes en bas restent à droite de la sidebar */
   body:has(.nav-principale) .barre-actions-fixe,
-  body:has(.nav-principale) .q-nav-fixe { left: 220px; }
+  body:has(.nav-principale) .q-nav-fixe { left: 240px; }
   .avec-nav { padding-bottom: 24px !important; }
 }
 

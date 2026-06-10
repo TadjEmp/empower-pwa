@@ -4,24 +4,25 @@
 
 /* ── Badges priorité ── */
 .badge-priorite {
-  font-size: 11px; font-weight: 700;
-  padding: 2px 8px; border-radius: 99px; white-space: nowrap;
+  font-size: 12px; font-weight: 700;
+  padding: 2px 8px; border-radius: 9999px; white-space: nowrap;
 }
-.badge-rouge  { background: #fee2e2; color: #dc2626; }
-.badge-orange { background: #ffedd5; color: #ea580c; }
-.badge-vert   { background: #dcfce7; color: #16a34a; }
+.badge-rouge  { background: var(--color-error,#FA0000); color: #fff; }
+.badge-orange { background: #f59e0b; color: #fff; }
+.badge-vert   { background: #00b27e; color: #fff; }
 
-/* ── Statut pills ── */
+/* ── Statut pills — Norton ISM Universal ── */
 .statut-pill {
-  font-size: 11px; font-weight: 600;
-  padding: 3px 8px; border-radius: 99px;
+  font-size: 12px; font-weight: 700;
+  padding: 3px 10px; border-radius: 9999px;
+  color: #fff; white-space: nowrap;
 }
-.statut-actif_fy27  { background: #dcfce7; color: #16a34a; }
-.statut-reactiver   { background: #fef9c3; color: #854d0e; }
-.statut-inactif_fy27{ background: #fee2e2; color: #dc2626; }
-.statut-newbiz      { background: #e0e7ff; color: #4f46e5; }
-.statut-churn       { background: #fee2e2; color: #dc2626; }
-.statut-fidelise    { background: #dcfce7; color: #16a34a; }
+.statut-actif_fy27  { background: var(--color-nav,#0050FF); }   /* À traiter */
+.statut-reactiver   { background: var(--color-accent,#4D9EFF); } /* En cours  */
+.statut-inactif_fy27{ background: var(--color-error,#FA0000); }  /* Bloqué    */
+.statut-newbiz      { background: var(--color-cta,#FF6D68); }    /* Intégré   */
+.statut-churn       { background: var(--color-error,#FA0000); }
+.statut-fidelise    { background: var(--color-nav,#0050FF); }
 
 /* ── Barre filtres ── */
 .barre-filtres {
@@ -48,7 +49,7 @@
   font-size: 28px; line-height: 1;
   background: var(--c-primary); color: #fff;
   border: none;
-  box-shadow: 0 4px 16px rgba(99,102,241,.45);
+  box-shadow: 0 4px 16px rgba(0,80,255,.30);
   cursor: pointer; z-index: 101;
   display: flex; align-items: center; justify-content: center;
 }
