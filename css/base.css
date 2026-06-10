@@ -1,0 +1,252 @@
+/* ═══════════════════════════════════════
+   base.css — Design System EMPOWER v4.1
+   ═══════════════════════════════════════ */
+
+:root {
+  /* Design system Norton ISM Universal */
+  --c-primary:   #0050FF;   /* Norton Blue — nav, structure, focus */
+  --c-primary-d: #0037b8;
+  --c-cta:       #FF6D68;   /* ISM Coral — CTA, accents critiques */
+  --c-cta-d:     #e85550;
+  --c-accent:    #4D9EFF;   /* Bleu secondaire interactif */
+  --c-accent-soft: #A8C8FF;
+  --c-success:   #00b27e;
+  --c-warning:   #f59e0b;
+  --c-danger:    #FA0000;
+  --c-bg:        #F5F5F7;   /* Surface premium */
+  --c-surface:   #ffffff;
+  --c-text:      #1A1A2E;
+  --c-title:     #0E0D30;   /* Premium navy titles */
+  --c-text-2:    #626264;
+  --c-border:    #E8E8ED;
+  --radius:      8px;       /* Cartes */
+  --radius-btn:  6px;       /* Boutons */
+  --radius-sm:   4px;       /* Inputs */
+  --shadow:      0 2px 8px rgba(14,13,48,.08);
+  --shadow-lg:   0 4px 20px rgba(14,13,48,.12);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --header-h:    56px;
+  --nav-h:       68px;
+  --font:        'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: var(--font);
+  background: var(--c-bg);
+  color: var(--c-text);
+  min-height: 100dvh;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Splash ── */
+.splash {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 100dvh; gap: 8px;
+}
+.splash-logo  { font-size: 64px; }
+.splash-nom   { font-size: 28px; font-weight: 800; color: var(--c-primary); }
+.splash-sous  { font-size: 14px; color: var(--c-text-2); }
+.splash-spinner {
+  width: 28px; height: 28px; margin-top: 24px;
+  border: 3px solid var(--c-border);
+  border-top-color: var(--c-primary);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Header ── */
+.header-vue {
+  position: sticky; top: 0; z-index: 50;
+  height: var(--header-h);
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 16px;
+  background: var(--c-surface);
+  border-bottom: 1px solid var(--c-border);
+  box-shadow: var(--shadow);
+}
+.header-vue h1 {
+  flex: 1; font-size: 18px; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.btn-retour {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: none; background: var(--c-bg);
+  font-size: 18px; cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ── Boutons ── */
+.btn-primaire {
+  background: var(--c-cta); color: #fff;
+  border: none; border-radius: var(--radius-btn);
+  padding: 12px 20px; font-size: 15px; font-weight: 600;
+  cursor: pointer; width: 100%;
+}
+.btn-secondaire {
+  background: var(--c-bg); color: var(--c-primary);
+  border: 1.5px solid var(--c-primary);
+  border-radius: var(--radius-btn);
+  padding: 11px 20px; font-size: 15px; font-weight: 600;
+  cursor: pointer; width: 100%;
+}
+
+/* ── Login — design login_norton_fy27 :
+   fond navy dégradé, carte blanche centrée, inputs à icônes ── */
+.login-page {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 100dvh; padding: 32px 20px;
+  background: linear-gradient(160deg, #0E0D30 0%, #16233f 55%, #0a1428 100%);
+}
+.login-carte {
+  background: #fff; border-radius: 16px;
+  padding: 36px 24px 28px; width: 100%; max-width: 360px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.35);
+  display: flex; flex-direction: column; gap: 12px;
+}
+.login-logo {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: #FAECE7; color: var(--c-cta);
+  font-size: 30px; display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 4px;
+}
+.login-titre { font-size: 24px; font-weight: 800; color: var(--c-title); text-align: center; letter-spacing: -0.02em; }
+.login-sous  { font-size: 13px; color: var(--c-text-2); text-align: center; margin-bottom: 12px; }
+.login-form  { display: flex; flex-direction: column; gap: 12px; }
+.login-champ {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--c-bg); border: 1.5px solid transparent;
+  border-radius: var(--radius); padding: 0 14px;
+}
+.login-champ:focus-within { border-color: var(--c-primary); box-shadow: 0 0 0 2px var(--c-accent-soft); background: #fff; }
+.login-champ .champ-icone { font-size: 16px; color: var(--c-text-2); flex-shrink: 0; }
+.login-champ input {
+  flex: 1; border: none; outline: none; background: transparent;
+  padding: 14px 0; font-size: 15px; color: var(--c-text); min-width: 0;
+}
+.login-oubli { font-size: 12px; color: var(--c-primary); font-weight: 600; text-align: right; text-decoration: none; }
+.login-erreur { color: var(--c-danger); font-size: 13px; text-align: center; }
+.btn-login {
+  background: var(--c-cta); color: #fff;
+  border: none; border-radius: var(--radius);
+  padding: 14px; font-size: 15px; font-weight: 700;
+  cursor: pointer; margin-top: 4px;
+}
+.btn-login:active { transform: scale(.98); }
+.login-aide { margin-top: 28px; text-align: center; color: #8a96ad; font-size: 12px; line-height: 1.8; }
+
+/* ── Spinner centré ── */
+.spinner-centre {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 60vh; color: var(--c-text-2); gap: 12px;
+}
+
+/* ── Erreur ── */
+.erreur, .erreur-page {
+  padding: 24px; text-align: center; color: var(--c-danger);
+}
+
+/* ── Toast ── */
+#toast-container {
+  position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+  display: flex; flex-direction: column; gap: 8px;
+  z-index: 9999; width: 90%; max-width: 360px;
+  pointer-events: none;
+}
+.toast {
+  padding: 12px 16px; border-radius: var(--radius);
+  font-size: 14px; font-weight: 500; text-align: center;
+  opacity: 0; transform: translateY(12px);
+  transition: all .3s ease; pointer-events: auto;
+}
+.toast-visible { opacity: 1; transform: translateY(0); }
+.toast-info    { background: #1e293b; color: #fff; }
+.toast-succes  { background: var(--c-success); color: #fff; }
+.toast-warning { background: var(--c-warning); color: #fff; }
+.toast-erreur  { background: var(--c-danger);  color: #fff; }
+
+/* ── Modal overlay ── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.5);
+  display: flex; align-items: flex-end; z-index: 200;
+}
+.modal {
+  background: var(--c-surface); border-radius: 20px 20px 0 0;
+  padding: 24px; width: 100%;
+  max-height: 90dvh; overflow-y: auto;
+  padding-bottom: calc(24px + var(--safe-bottom));
+}
+.modal h3 { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+.modal label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 500; margin-bottom: 12px; }
+.modal select, .modal input, .modal textarea {
+  border: 1.5px solid var(--c-border); border-radius: var(--radius-sm);
+  padding: 10px 12px; font-size: 15px; outline: none;
+}
+.modal-btns { display: flex; gap: 10px; margin-top: 16px; }
+.modal-btns button { flex: 1; padding: 12px; border-radius: var(--radius); border: none; font-weight: 600; cursor: pointer; }
+.modal-btns .btn-primaire { background: var(--c-primary); color: #fff; }
+
+/* ── Navigation principale ──
+   Mobile : bottom nav (design dashboard_norton_fy27)
+   Desktop ≥900px : sidebar navy (design web_dashboard_norton_fy27) */
+.nav-principale {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 150;
+  display: flex; justify-content: space-around; align-items: center;
+  background: var(--c-surface); border-top: 1px solid var(--c-border);
+  padding: 6px 4px calc(6px + var(--safe-bottom));
+  box-shadow: 0 -2px 12px rgba(14,13,48,.06);
+}
+.nav-logo { display: none; }
+.nav-item {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  text-decoration: none; color: var(--c-text-2);
+  font-size: 10px; font-weight: 600; padding: 6px 10px; border-radius: 99px;
+  min-width: 56px;
+}
+.nav-icone { font-size: 19px; line-height: 1; }
+.nav-item.actif { background: var(--c-cta); color: #fff; }
+/* Réserve la hauteur de la bottom nav */
+.avec-nav { padding-bottom: calc(76px + var(--safe-bottom)) !important; }
+
+@media (min-width: 900px) {
+  .nav-principale {
+    top: 0; bottom: 0; right: auto; width: 220px;
+    flex-direction: column; justify-content: flex-start; gap: 4px;
+    background: var(--c-title); border-top: none;
+    padding: 20px 12px; box-shadow: none;
+  }
+  .nav-logo {
+    display: flex; align-items: center; gap: 8px;
+    color: #fff; font-size: 20px; font-weight: 800;
+    padding: 4px 12px 20px; width: 100%;
+    border-bottom: 1px solid rgba(255,255,255,.12); margin-bottom: 12px;
+  }
+  .nav-item {
+    flex-direction: row; gap: 10px; width: 100%;
+    padding: 11px 14px; border-radius: var(--radius-btn);
+    color: #A8C8FF; font-size: 14px; justify-content: flex-start;
+  }
+  .nav-item:hover { background: rgba(255,255,255,.08); }
+  .nav-item.actif { background: var(--c-cta); color: #fff; }
+  #app:has(.nav-principale) { padding-left: 220px; }
+  /* Les barres fixes en bas restent à droite de la sidebar */
+  body:has(.nav-principale) .barre-actions-fixe,
+  body:has(.nav-principale) .q-nav-fixe { left: 220px; }
+  .avec-nav { padding-bottom: 24px !important; }
+}
+
+/* ── Badge compteur ── */
+.badge-compteur { font-size: 12px; background: #f1f5f9; color: var(--c-text-2); padding: 4px 10px; border-radius: 99px; white-space: nowrap; }

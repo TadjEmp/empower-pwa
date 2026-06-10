@@ -1,0 +1,32 @@
+/* ═══════════════════════════════════════
+   reactiver.css — Vue Réactiver
+   ═══════════════════════════════════════ */
+
+.liste-reactiver {
+  padding: 8px 12px; padding-bottom: calc(80px + var(--safe-bottom));
+  display: flex; flex-direction: column; gap: 8px;
+}
+
+.carte-reactiver {
+  background: var(--c-surface); border-radius: var(--radius);
+  padding: 14px 16px; box-shadow: var(--shadow);
+  cursor: pointer; border-left: 5px solid var(--c-warning);
+  display: flex; justify-content: space-between; align-items: center;
+  transition: transform .15s;
+}
+.carte-reactiver:active { transform: scale(.98); }
+.carte-reactiver.urgent { border-left-color: var(--c-danger); }
+.carte-reactiver.standard { border-left-color: var(--c-warning); }
+
+.reactiver-gauche { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+.reactiver-nom    { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reactiver-infos  { font-size: 12px; color: var(--c-text-2); }
+.reactiver-ca     { font-size: 15px; font-weight: 700; }
+.reactiver-droite { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; margin-left: 12px; }
+.score-badge      { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 99px; background: #fef9c3; color: #854d0e; }
+.score-badge.haut { background: #fee2e2; color: #dc2626; }
+
+.header-reactiver-stats { padding: 10px 16px; background: var(--c-surface); border-bottom: 1px solid var(--c-border); display: flex; gap: 16px; }
+.stat-reactiver { text-align: center; flex: 1; }
+.stat-reactiver-val { font-size: 22px; font-weight: 800; color: var(--c-danger); }
+.stat-reactiver-lbl { font-size: 11px; color: var(--c-text-2); }

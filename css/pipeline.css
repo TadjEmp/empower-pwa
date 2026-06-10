@@ -1,0 +1,86 @@
+/* ═══════════════════════════════════════
+   pipeline.css — Kanban + Vue équipe + Print COPIL
+   ═══════════════════════════════════════ */
+
+/* Kanban horizontal */
+.kanban {
+  display: flex; gap: 12px; overflow-x: auto;
+  padding: 4px 16px calc(96px + var(--safe-bottom));
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+.kanban-col {
+  flex: 0 0 280px; scroll-snap-align: start;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.kanban-col-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; background: var(--c-surface);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  position: sticky; top: 0;
+}
+.kanban-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.kanban-col-titre { font-size: 14px; font-weight: 700; flex: 1; }
+.kanban-vide { text-align: center; color: var(--c-text-2); padding: 16px; font-size: 13px; }
+
+.kanban-carte {
+  background: var(--c-surface); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 6px;
+  cursor: pointer; border: 1.5px solid transparent;
+}
+.kanban-carte:active { border-color: var(--c-primary); }
+.kanban-carte.kanban-alerte { border-left: 4px solid var(--c-danger); }
+.kanban-carte-nom  { font-size: 14px; font-weight: 700; color: var(--c-title); }
+.kanban-carte-meta { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--c-text-2); flex-wrap: wrap; }
+.kanban-carte-note { font-size: 12px; color: var(--c-text-2); line-height: 1.4; }
+.kanban-carte-pied { font-size: 11px; color: var(--c-text-2); border-top: 1px solid var(--c-border); padding-top: 6px; }
+
+/* Pills potentiel pastel — design pipeline_norton_fy27 */
+.pot-pill { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 99px; }
+.pot-fort   { background: #FAECE7; color: #C0392B; }
+.pot-moyen  { background: #E6F1FB; color: #0050FF; }
+.pot-faible { background: #F1EFE8; color: #5F5E5A; }
+.kanban-voir {
+  font-size: 12px; font-weight: 700; color: var(--c-primary);
+  margin-left: auto;
+}
+
+/* Tableau équipe (manager) */
+.tableau-equipe { display: flex; flex-direction: column; }
+.te-ligne {
+  display: grid; grid-template-columns: 1.4fr 1.6fr 0.8fr 0.5fr 0.5fr 0.5fr;
+  gap: 4px; align-items: center;
+  padding: 9px 0; border-bottom: 1px solid var(--c-border);
+  font-size: 12.5px;
+}
+.te-ligne:last-child { border-bottom: none; }
+.te-head { font-size: 11px; color: var(--c-text-2); font-weight: 600; text-transform: uppercase; }
+.te-ligne .pace-badge { text-align: center; }
+
+/* Print COPIL */
+@media print {
+  .no-print, .header-vue, .fab, .barre-filtres, .nav-principale, #toast-container { display: none !important; }
+  #app { padding-left: 0 !important; }
+  .print-only { display: block !important; }
+  body { background: #fff; }
+  .bloc-fiche { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
+  .dash-body { max-width: 100%; }
+  .print-only h1 { font-size: 22px; color: #0E0D30; }
+  .print-only p  { color: #626264; font-size: 12px; margin-bottom: 16px; }
+}
+
+/* Bouton "voir tous" en bas de colonne */
+.kanban-voir-plus {
+  text-align: center;
+  padding: 10px 12px;
+  font-size: 12px; font-weight: 700;
+  color: var(--c-primary);
+  background: var(--c-surface);
+  border: 1.5px dashed var(--c-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background .15s;
+}
+.kanban-voir-plus:hover { background: #E6F1FB; }
+.kanban-voir-plus:active { transform: scale(.98); }

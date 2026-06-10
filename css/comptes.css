@@ -1,0 +1,91 @@
+/* ═══════════════════════════════════════
+   comptes.css — Vues Comptes & Fiche
+   ═══════════════════════════════════════ */
+
+.liste-comptes {
+  padding: 8px 12px;
+  padding-bottom: calc(80px + var(--safe-bottom));
+  display: flex; flex-direction: column; gap: 6px;
+}
+
+/* Carte compte */
+.carte-compte {
+  display: flex; justify-content: space-between;
+  align-items: center; padding: 14px 16px;
+  background: var(--c-surface); border-radius: var(--radius);
+  box-shadow: var(--shadow); cursor: pointer;
+  transition: transform .15s;
+  border-left: 4px solid transparent;
+}
+.carte-compte:active { transform: scale(.98); }
+
+.carte-gauche { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+.compte-nom   { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.compte-ville { font-size: 12px; color: var(--c-text-2); }
+
+.carte-droite { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; margin-left: 12px; }
+.flag-icon    { font-size: 18px; }
+.ca-label     { font-size: 15px; font-weight: 700; color: var(--c-text); }
+.ca-sous-label{ font-size: 10px; color: var(--c-text-2); }
+.prochaine-action { font-size: 11px; color: var(--c-text-2); }
+.prochaine-action.alerte { color: var(--c-danger); font-weight: 600; }
+
+/* Fiche compte */
+.fiche-body {
+  padding: 12px 12px calc(100px + var(--safe-bottom));
+  display: flex; flex-direction: column; gap: 12px;
+}
+.bloc-fiche {
+  background: var(--c-surface); border-radius: var(--radius);
+  padding: 16px; box-shadow: var(--shadow);
+}
+.bloc-titre { font-size: 14px; font-weight: 700; margin-bottom: 12px; color: var(--c-text); }
+.grille-identite { display: flex; flex-direction: column; gap: 8px; }
+.id-ligne { display: flex; justify-content: space-between; align-items: center; font-size: 14px; border-bottom: 1px solid var(--c-border); padding-bottom: 8px; }
+.id-ligne:last-child { border-bottom: none; padding-bottom: 0; }
+.id-ligne span  { color: var(--c-text-2); }
+.id-ligne strong{ color: var(--c-text); text-align: right; max-width: 200px; }
+.lien-tel, .lien-email { color: var(--c-primary); text-decoration: none; }
+
+.statut-fy27 { margin-top: 10px; font-size: 14px; font-weight: 600; padding: 8px 12px; border-radius: var(--radius-sm); background: var(--c-bg); }
+.pas-de-donnees, .pas-de-v17, .vide-liste { font-size: 13px; color: var(--c-text-2); text-align: center; padding: 8px; }
+
+.prochaine-action-detail { display: flex; flex-direction: column; gap: 4px; }
+.pa-type  { font-size: 15px; font-weight: 600; }
+.pa-date  { font-size: 13px; color: var(--c-text-2); }
+.pa-date.date-depassee { color: var(--c-danger); font-weight: 600; }
+.pa-note  { font-size: 13px; color: var(--c-text-2); margin-top: 4px; }
+
+.carte-visite, .carte-appel {
+  padding: 10px 0; border-bottom: 1px solid var(--c-border); font-size: 13px;
+}
+.carte-visite:last-child, .carte-appel:last-child { border-bottom: none; }
+.visite-date, .appel-date { font-weight: 600; color: var(--c-text-2); }
+.visite-resultat, .appel-resultat { font-weight: 600; margin-top: 2px; }
+.visite-score, .appel-frein { color: var(--c-text-2); }
+
+.vide { text-align: center; padding: 32px; color: var(--c-text-2); }
+.header-titre-tronque { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: calc(100vw - 120px); }
+
+/* Carte compte enrichie — design interface_cds_norton_fy27 */
+.carte-compte-v2 {
+  background: var(--c-surface); border-radius: 12px;
+  box-shadow: var(--shadow); padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.cc-pills { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.cc-nom   { font-size: 16px; font-weight: 700; color: var(--c-title); }
+.cc-infos { font-size: 12px; color: var(--c-text-2); display: flex; gap: 10px; flex-wrap: wrap; }
+.cc-actions { display: flex; gap: 8px; margin-top: 4px; }
+.btn-visiter {
+  flex: 1; background: var(--c-cta); color: #fff;
+  border: none; border-radius: var(--radius-btn);
+  padding: 10px; font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.btn-tel-outline {
+  width: 42px; border: 1.5px solid var(--c-primary); border-radius: var(--radius-btn);
+  background: transparent; color: var(--c-primary);
+  font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  text-decoration: none;
+}
+.pill-statut-v2 { font-size: 11px; font-weight: 700; color: #fff; padding: 3px 10px; border-radius: 99px; }
