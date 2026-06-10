@@ -3,7 +3,7 @@
 //  Objectifs CDS · Clé Groq · Paramètres ⚙️_PARAMS
 // ═══════════════════════════════════════
 
-const VueAdmin = {
+window.VueAdmin = {
 
   state: null,
 

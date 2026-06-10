@@ -4,7 +4,7 @@
 //            🗺️_VISITES + 📞_PHONING (historique)
 // ═══════════════════════════════════════
 
-const VueFicheCompte = {
+window.VueFicheCompte = {
 
   state: { compte: null, v17: null, visites: [], appels: [], chargement: true },
 

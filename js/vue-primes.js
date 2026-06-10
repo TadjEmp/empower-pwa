@@ -9,7 +9,7 @@
 //  Déclaration NSB par le CDS → validation Tadjidine
 // ═══════════════════════════════════════
 
-const VuePrimes = {
+window.VuePrimes = {
 
   // Bornes quarters FY27 (année fiscale Norton : avril → mars)
   QUARTERS: {

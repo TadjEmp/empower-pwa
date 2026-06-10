@@ -2,7 +2,7 @@
 //  vue-login.js — Connexion email + mot de passe
 // ═══════════════════════════════════════
 
-const VueLogin = {
+window.VueLogin = {
 
   state: { erreur: null, chargement: false },
 

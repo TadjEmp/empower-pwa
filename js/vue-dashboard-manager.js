@@ -5,7 +5,7 @@
 //  + Export COPIL (impression / PDF)
 // ═══════════════════════════════════════
 
-const VueDashboardManager = {
+window.VueDashboardManager = {
 
   state: null,
 

@@ -6,7 +6,7 @@
 //  Écriture : 🗺️_VISITES (+ maj compte + log 📊_ACTIONS)
 // ═══════════════════════════════════════
 
-const VueQuestionnaire = {
+window.VueQuestionnaire = {
 
   ETAPES: ['Identification', 'Historique', 'Portefeuille', 'Concurrence', 'Engagement', 'Validation'],
 

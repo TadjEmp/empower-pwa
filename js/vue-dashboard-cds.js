@@ -4,7 +4,7 @@
 //            🎯_OBJECTIFS_PRIMES · 📋_PROSPECTS · ⚙️_PARAMS
 // ═══════════════════════════════════════
 
-const VueDashboardCDS = {
+window.VueDashboardCDS = {
 
   state: { chargement: true, donnees: null, erreur: null },
 

@@ -3,7 +3,7 @@
 //  Source : 🏢_COMPTES (filtré par PIN CDS)
 // ═══════════════════════════════════════
 
-const VueComptes = {
+window.VueComptes = {
 
   state: {
     comptes: [], recherche: '', filtreStatut: 'TOUS',

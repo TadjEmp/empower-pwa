@@ -6,7 +6,7 @@
 //  Source : 📋_PROSPECTS (+ colonnes pipeline via initPipelineColonnes)
 // ═══════════════════════════════════════
 
-const VuePipeline = {
+window.VuePipeline = {
 
   STATUTS: [
     { id: 'SAISIE',      lbl: 'À traiter',    coul: 'var(--c-primary)' },

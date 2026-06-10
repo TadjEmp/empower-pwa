@@ -4,7 +4,7 @@
 //  Scoring : CA FY26 × facteur statut
 // ═══════════════════════════════════════
 
-const VueReactiver = {
+window.VueReactiver = {
   SCORE: { REACTIVERURGENT: 2.0, REACTIVER: 1.0, CHURN: 0.5, INACTIF: 0.3 },
 
   state: {

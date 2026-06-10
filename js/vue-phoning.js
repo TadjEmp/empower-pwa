@@ -5,7 +5,7 @@
 //  Cible : 🏢_COMPTES ou 📋_PROSPECTS
 // ═══════════════════════════════════════
 
-const VuePhoning = {
+window.VuePhoning = {
 
   state: null,
 
