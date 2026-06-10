@@ -41,36 +41,51 @@ function estDepassee(isoStr) {
 
 function slugify(str = '') {
   return str.toLowerCase().trim()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '-');
 }
 
-// Debounce pour les champs de recherche
 function debounce(fn, ms = 300) {
   let t;
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
 }
 
-// Parse sécurisé JSON
 function safeJSON(str, fallback = null) {
   try { return JSON.parse(str); } catch { return fallback; }
 }
 
+// ── Norton mark SVG (currentColor — s'adapte au contexte) ──
+const NORTON_SVG = `<svg class="norton-mark" viewBox="0 0 112 112" xmlns="http://www.w3.org/2000/svg" fill="none" aria-hidden="true"><path d="M 96 33 A 46 46 0 1 1 79 16" stroke="currentColor" stroke-width="10.5" stroke-linecap="round"/><polyline points="28,59 46,77 82,35" stroke="currentColor" stroke-width="10.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
 // Barre de navigation principale (bottom nav mobile / sidebar desktop)
-// Design : dashboard_norton_fy27 + web_dashboard_norton_fy27
 function NavBar(actif) {
   const items = [
     { id: 'home',     hash: '#/dashboard', icone: '⌂',  lbl: 'Home' },
     { id: 'pipeline', hash: '#/pipeline',  icone: '▤',  lbl: 'Pipeline' },
-    { id: 'comptes',  hash: '#/comptes',   icone: '🏢', lbl: 'Mes Comptes' },
+    { id: 'comptes',  hash: '#/comptes',   icone: '🏢', lbl: 'Comptes' },
     { id: 'phoning',  hash: '#/phoning',   icone: '📞', lbl: 'Phoning' },
     { id: 'primes',   hash: '#/primes',    icone: '🏆', lbl: 'Primes' },
   ];
-  return `<nav class="nav-principale">
-    <div class="nav-logo">🛡️ <span>ESI</span></div>
-    ${items.map(i => `
-      <a class="nav-item ${actif === i.id ? 'actif' : ''}" href="${i.hash}">
-        <span class="nav-icone">${i.icone}</span><span class="nav-lbl">${i.lbl}</span>
-      </a>`).join('')}
-  </nav>`;
+  return `
+    <div class="app-brand-bar">
+      <div class="app-brand-logo">
+        ${NORTON_SVG}
+        <span class="brand-norton-txt">norton</span><sup class="brand-tm">™</sup>
+      </div>
+      <span class="app-brand-sep">|</span>
+      <span class="app-brand-esi">EMPOWER SALES INTELLIGENCE</span>
+    </div>
+    <nav class="nav-principale">
+      <div class="nav-logo">
+        ${NORTON_SVG}
+        <div class="nav-logo-textes">
+          <span class="nav-logo-norton">norton<sup>™</sup></span>
+          <span class="nav-logo-esi">EMPOWER SALES INTELLIGENCE</span>
+        </div>
+      </div>
+      ${items.map(i => `
+        <a class="nav-item ${actif === i.id ? 'actif' : ''}" href="${i.hash}">
+          <span class="nav-icone">${i.icone}</span><span class="nav-lbl">${i.lbl}</span>
+        </a>`).join('')}
+    </nav>`;
 }

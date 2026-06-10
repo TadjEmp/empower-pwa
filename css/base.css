@@ -67,13 +67,28 @@ body {
 .splash {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  min-height: 100dvh; gap: 8px;
+  min-height: 100dvh; gap: 6px;
 }
-.splash-logo  { font-size: 64px; }
-.splash-nom   { font-size: 28px; font-weight: 800; color: var(--c-primary); }
-.splash-sous  { font-size: 14px; color: var(--c-text-2); }
+.splash-norton {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 8px; color: var(--c-primary);
+}
+.splash-norton-mark { width: 52px; height: 52px; }
+.splash-norton-mark svg { width: 100%; height: 100%; }
+.splash-norton-word {
+  font-size: 42px; font-weight: 900; letter-spacing: -1px;
+  color: var(--c-primary); line-height: 1;
+  font-family: var(--font);
+}
+.splash-tm { font-size: 13px; font-weight: 400; vertical-align: super; }
+.splash-nom {
+  font-size: 13px; font-weight: 800; letter-spacing: 0.12em;
+  color: var(--c-title); text-transform: uppercase; text-align: center;
+  max-width: 260px; line-height: 1.35;
+}
+.splash-sous  { font-size: 13px; color: var(--c-text-2); }
 .splash-spinner {
-  width: 28px; height: 28px; margin-top: 24px;
+  width: 26px; height: 26px; margin-top: 20px;
   border: 3px solid var(--c-border);
   border-top-color: var(--c-primary);
   border-radius: 50%;
@@ -117,8 +132,7 @@ body {
   cursor: pointer; width: 100%;
 }
 
-/* ── Login — design login_norton_fy27 :
-   fond navy dégradé, carte blanche centrée, inputs à icônes ── */
+/* ── Login — design login_norton_fy27 ── */
 .login-page {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
@@ -127,18 +141,29 @@ body {
 }
 .login-carte {
   background: #fff; border-radius: 16px;
-  padding: 36px 24px 28px; width: 100%; max-width: 360px;
-  box-shadow: 0 8px 32px rgba(0,0,0,.35);
-  display: flex; flex-direction: column; gap: 12px;
+  padding: 32px 24px 24px; width: 100%; max-width: 360px;
+  box-shadow: 0 8px 40px rgba(0,0,0,.40);
+  display: flex; flex-direction: column; gap: 0;
 }
-.login-logo {
-  width: 64px; height: 64px; border-radius: 50%;
-  background: #FAECE7; color: var(--c-cta);
-  font-size: 30px; display: flex; align-items: center; justify-content: center;
-  margin: 0 auto 4px;
+/* Norton hero */
+.login-norton-hero {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 14px;
 }
-.login-titre { font-size: 24px; font-weight: 800; color: var(--c-title); text-align: center; letter-spacing: -0.02em; }
-.login-sous  { font-size: 13px; color: var(--c-text-2); text-align: center; margin-bottom: 12px; }
+.login-norton-mark { width: 46px; height: 46px; flex-shrink: 0; color: #272727; }
+.login-norton-mark .norton-mark { width: 100%; height: 100%; }
+.login-norton-word {
+  font-size: 38px; font-weight: 900; color: #272727;
+  letter-spacing: -1px; line-height: 1;
+  font-family: var(--font);
+}
+.login-tm { font-size: 11px; font-weight: 400; vertical-align: super; }
+.login-titre {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.13em;
+  color: var(--c-title); text-transform: uppercase;
+  margin-bottom: 4px; line-height: 1.4;
+}
+.login-sous  { font-size: 12px; color: var(--c-text-2); margin-bottom: 20px; }
 .login-form  { display: flex; flex-direction: column; gap: 12px; }
 .login-champ {
   display: flex; align-items: center; gap: 10px;
@@ -151,6 +176,12 @@ body {
   flex: 1; border: none; outline: none; background: transparent;
   padding: 14px 0; font-size: 15px; color: var(--c-text); min-width: 0;
 }
+.btn-oeil {
+  background: none; border: none; cursor: pointer; padding: 0 2px;
+  color: var(--c-text-2); flex-shrink: 0; display: flex; align-items: center;
+}
+.btn-oeil svg { opacity: .45; transition: opacity .2s; }
+.btn-oeil:hover svg { opacity: .9; }
 .login-oubli { font-size: 12px; color: var(--c-primary); font-weight: 600; text-align: right; text-decoration: none; }
 .login-erreur { color: var(--c-danger); font-size: 13px; text-align: center; }
 .btn-login {
@@ -160,7 +191,8 @@ body {
   cursor: pointer; margin-top: 4px;
 }
 .btn-login:active { transform: scale(.98); }
-.login-aide { margin-top: 28px; text-align: center; color: #8a96ad; font-size: 12px; line-height: 1.8; }
+.login-marvesting { height: 16px; width: auto; margin: 18px auto 0; display: block; opacity: .55; }
+.login-aide { margin-top: 20px; text-align: center; color: #8a96ad; font-size: 12px; line-height: 1.8; }
 
 /* ── Spinner centré ── */
 .spinner-centre {
@@ -213,6 +245,39 @@ body {
 .modal-btns button { flex: 1; padding: 12px; border-radius: var(--radius); border: none; font-weight: 600; cursor: pointer; }
 .modal-btns .btn-primaire { background: var(--c-primary); color: #fff; }
 
+/* ── App brand bar — mobile top header (hidden on desktop) ── */
+.app-brand-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  height: 44px;
+  background: #fff;
+  border-bottom: 1px solid var(--c-border);
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 14px;
+  box-shadow: 0 1px 6px rgba(14,13,48,.07);
+}
+.app-brand-logo {
+  display: flex; align-items: center; gap: 5px;
+  color: #272727; flex-shrink: 0;
+}
+.app-brand-logo .norton-mark { width: 22px; height: 22px; }
+.brand-norton-txt {
+  font-size: 17px; font-weight: 900; letter-spacing: -0.5px;
+  color: #272727; line-height: 1;
+}
+.brand-tm { font-size: 8px; font-weight: 400; vertical-align: super; color: #272727; margin-left: 1px; }
+.app-brand-sep { color: var(--c-border); font-size: 14px; margin: 0 4px; }
+.app-brand-esi {
+  font-size: 8.5px; font-weight: 800; letter-spacing: 0.1em;
+  color: var(--c-text-2); text-transform: uppercase; line-height: 1;
+  flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+@media (min-width: 900px) { .app-brand-bar { display: none; } }
+
+/* Décale le contenu sous la brand bar sur mobile */
+@media (max-width: 899px) {
+  #app:has(.app-brand-bar) { padding-top: 44px; }
+}
+
 /* ── Navigation principale ──
    Mobile : bottom nav (design dashboard_norton_fy27)
    Desktop ≥900px : sidebar navy (design web_dashboard_norton_fy27) */
@@ -243,10 +308,20 @@ body {
     padding: 20px 12px; box-shadow: none;
   }
   .nav-logo {
-    display: flex; align-items: center; gap: 8px;
-    color: #fff; font-size: 20px; font-weight: 800;
-    padding: 4px 12px 20px; width: 100%;
+    display: flex; align-items: center; gap: 10px;
+    color: #fff; padding: 4px 12px 20px; width: 100%;
     border-bottom: 1px solid rgba(255,255,255,.12); margin-bottom: 12px;
+  }
+  .nav-logo .norton-mark { width: 30px; height: 30px; flex-shrink: 0; }
+  .nav-logo-textes { display: flex; flex-direction: column; gap: 3px; }
+  .nav-logo-norton {
+    font-size: 18px; font-weight: 900; letter-spacing: -0.5px;
+    color: #fff; line-height: 1;
+  }
+  .nav-logo-norton sup { font-size: 9px; font-weight: 400; vertical-align: super; }
+  .nav-logo-esi {
+    font-size: 8px; font-weight: 700; letter-spacing: 0.1em;
+    color: rgba(255,255,255,.6); text-transform: uppercase;
   }
   .nav-item {
     flex-direction: row; gap: 10px; width: 100%;
@@ -256,7 +331,6 @@ body {
   .nav-item:hover { background: rgba(255,255,255,.08); }
   .nav-item.actif { background: var(--c-cta); color: #fff; }
   #app:has(.nav-principale) { padding-left: 240px; }
-  /* Les barres fixes en bas restent à droite de la sidebar */
   body:has(.nav-principale) .barre-actions-fixe,
   body:has(.nav-principale) .q-nav-fixe { left: 240px; }
   .avec-nav { padding-bottom: 24px !important; }

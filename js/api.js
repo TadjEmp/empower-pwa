@@ -128,7 +128,7 @@ const SheetsAPI = {
     for (let i = 0; i < maxRetry; i++) {
       if (i > 0) await new Promise(r => setTimeout(r, this.RETRY_BASE_MS * 2 ** (i - 1)));
       try {
-        const opts = { method, redirect: 'follow', headers: { 'Content-Type': 'application/json' } };
+        const opts = { method, redirect: 'follow' };
         if (body) opts.body = JSON.stringify(body);
         const resp = await fetch(url, opts);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
