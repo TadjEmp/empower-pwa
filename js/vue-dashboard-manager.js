@@ -330,6 +330,35 @@ window.VueDashboardManager = {
                       border-radius:var(--radius-sm);border:1px solid var(--c-border)"></div>
         </div>
 
+        <!-- EX-5 : EXTRACTION & REPORTING -->
+        <div class="bloc-fiche no-print">
+          <div class="bloc-titre">📤 Extraction & Reporting</div>
+          <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">Sélectionnez une période et lancez l'export filtré.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn-secondaire" style="flex:1;min-width:120px;padding:14px 10px;text-align:center"
+                    onclick="Router.aller('#/visites')">
+              <div style="font-size:20px;margin-bottom:4px">📋</div>
+              <div style="font-size:12px;font-weight:700">Visites</div>
+              <div style="font-size:11px;color:var(--c-text-2)">Export CSV filtré</div>
+            </button>
+            <button class="btn-secondaire" style="flex:1;min-width:120px;padding:14px 10px;text-align:center"
+                    onclick="Router.aller('#/phoning')">
+              <div style="font-size:20px;margin-bottom:4px">📞</div>
+              <div style="font-size:12px;font-weight:700">Phoning</div>
+              <div style="font-size:11px;color:var(--c-text-2)">Journal des appels</div>
+            </button>
+            <button class="btn-secondaire" style="flex:1;min-width:120px;padding:14px 10px;text-align:center"
+                    onclick="Router.aller('#/admin')">
+              <div style="font-size:20px;margin-bottom:4px">📦</div>
+              <div style="font-size:12px;font-weight:700">Exports CSV</div>
+              <div style="font-size:11px;color:var(--c-text-2)">7 exports thématiques</div>
+            </button>
+          </div>
+          <p style="font-size:11px;color:var(--c-text-2);margin-top:10px">
+            💡 Dans Visites / Phoning, utilisez le bouton 📤 en haut à droite pour filtrer par période.
+          </p>
+        </div>
+
         <!-- RACCOURCIS MANAGER -->
         <div class="dash-raccourcis no-print">
           <button class="raccourci" onclick="Router.aller('#/empower-tracker')">📊<span>Pipeline</span></button>

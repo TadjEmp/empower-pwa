@@ -9,7 +9,12 @@ window.VueAdmin = {
 
   async init() {
     if (!Session.voitTout()) { Router.aller('#/dashboard'); return; }
-    this.state = { chargement: true, objectifs: [], params: [], envoiEnCours: false };
+    this.state = {
+      chargement: true, objectifs: [], params: [], envoiEnCours: false,
+      alexTab: 'exports',   // 'exports' | 'leads'
+      leadEnvoi: false,
+      formLead: this._initFormLead(),
+    };
     this.render();
     try {
       const [objectifs, params] = await Promise.all([
@@ -24,6 +29,202 @@ window.VueAdmin = {
       this.state.chargement = false;
       document.getElementById('app').innerHTML = `<div class="erreur">Erreur : ${e.message}</div>`;
     }
+  },
+
+  _initFormLead() {
+    return {
+      nom: '', ville: '', cp: '', departement: '',
+      canal: 'EMPOWER', type: 'Revendeur IT',
+      interlocuteur: '', telephone: '', email: '',
+      potentiel: '3', source: 'prospection terrain',
+      origine: Session.nom || 'Alexandra',
+      produits: [], notes: '',
+      cdsAssigne: '',
+    };
+  },
+
+  setAlexTab(tab) { this.state.alexTab = tab; this.render(); },
+
+  setLeadProduits(produit) {
+    const arr = this.state.formLead.produits;
+    const idx = arr.indexOf(produit);
+    if (idx >= 0) arr.splice(idx, 1); else arr.push(produit);
+    this.render();
+  },
+
+  // R3 : Créer un lead EMPOWER (Alexandra / Flavie)
+  async sauverLead(e) {
+    e.preventDefault();
+    if (this.state.leadEnvoi) return;
+    const f = this.state.formLead;
+    if (!f.nom.trim()) { Toast.afficher('Nom du prospect requis', 'warning'); return; }
+    if (!f.cdsAssigne)  { Toast.afficher('Assignez un CDS', 'warning'); return; }
+
+    this.state.leadEnvoi = true;
+    this.render();
+
+    try {
+      // Vérification doublon
+      const existants = await SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS');
+      const nomNorm = normaliserNom(f.nom);
+      const doublons = existants.filter(p =>
+        normaliserNom(p.Nom_Compte).includes(nomNorm.slice(0, 5)) &&
+        (!f.ville || normaliserNom(p.Ville || '').includes(normaliserNom(f.ville).slice(0, 4)))
+      );
+      if (doublons.length > 0) {
+        const ok = confirm(`⚠️ Ce compte ressemble à "${doublons[0].Nom_Compte}" déjà dans la base.\n\nContinuer quand même ?`);
+        if (!ok) { this.state.leadEnvoi = false; this.render(); return; }
+      }
+
+      const lead = {
+        ID_Prospect:       genId('LEAD'),
+        Nom_Compte:        f.nom.trim(),
+        Ville:             f.ville,
+        Code_Postal:       f.cp,
+        Departement:       f.departement,
+        CANAL:             f.canal,
+        Type_Revendeur:    f.type,
+        Interlocuteur:     f.interlocuteur,
+        Tel:               f.telephone,
+        Email:             f.email,
+        POTENTIEL:         ['1','2'].includes(f.potentiel) ? 'Faible' : f.potentiel === '3' ? 'Moyen' : 'Fort',
+        Source:            f.source,
+        ORIGINE:           `Lead_${f.origine}`,
+        Produits_Potentiels: f.produits.join(', '),
+        Note_initiale:     f.notes,
+        PIN_CDS_Assigne:   f.cdsAssigne,
+        STATUT_EMPOWER:    'ASSIGNE',
+        FLAG_ACTION:       'ASSIGNE',
+        Flag_traite:       'FALSE',
+        Date_Import:       new Date().toISOString().slice(0, 10),
+        Timestamp:         new Date().toISOString(),
+        created_by:        Session.nom,
+      };
+
+      await SheetsAPI.ecrire('EMPOWER_MDB', '📋_PROSPECTS', lead);
+      await this._logExport(`LEAD_CREE:${f.nom}`, 1);
+      Toast.afficher(`✅ Lead créé — ${f.nom} → assigné à PIN ${f.cdsAssigne}`, 'succes', 5000);
+      this.state.formLead = this._initFormLead();
+    } catch(err) {
+      Toast.afficher('❌ ' + err.message, 'erreur');
+    }
+    this.state.leadEnvoi = false;
+    this.render();
+  },
+
+  _renderFormLead() {
+    const f = this.state.formLead;
+    const PRODUITS = ['Norton 360','Norton Small Business','Norton Family','LifeLock','Norton VPN','Autre'];
+    // CDS depuis objectifs
+    const cdsList = this.state.objectifs.filter(o => {
+      const p = Number(o.PIN_CDS);
+      return p !== 1000; // exclure manager
+    });
+
+    return `
+      <div class="bloc-fiche">
+        <div class="bloc-titre">➕ Créer un lead EMPOWER</div>
+        <p style="font-size:12px;color:var(--c-text-2);margin-bottom:14px">
+          Les leads créés ici apparaissent immédiatement dans l'EMPOWER TRACKER du CDS assigné.
+        </p>
+        <form onsubmit="VueAdmin.sauverLead(event)">
+
+          <div style="display:flex;gap:10px">
+            <label style="flex:3">Nom du prospect / revendeur *
+              <input class="q-input" required value="${f.nom}"
+                     oninput="VueAdmin.state.formLead.nom=this.value" placeholder="ex : BUREAU VALLÉE LYON"/></label>
+            <label style="flex:2">Ville
+              <input class="q-input" value="${f.ville}"
+                     oninput="VueAdmin.state.formLead.ville=this.value" placeholder="Lyon"/></label>
+          </div>
+
+          <div style="display:flex;gap:10px">
+            <label style="flex:1">CP
+              <input class="q-input" value="${f.cp}"
+                     oninput="VueAdmin.state.formLead.cp=this.value" placeholder="69000"/></label>
+            <label style="flex:2">Département
+              <input class="q-input" value="${f.departement}"
+                     oninput="VueAdmin.state.formLead.departement=this.value" placeholder="Rhône"/></label>
+          </div>
+
+          <div style="display:flex;gap:10px">
+            <label style="flex:1">Canal probable
+              <select onchange="VueAdmin.state.formLead.canal=this.value">
+                ${['EMPOWER','TD SYNNEX','INGRAM','LECLERC','Autre'].map(c =>
+                  `<option value="${c}" ${f.canal === c ? 'selected' : ''}>${c}</option>`
+                ).join('')}
+              </select>
+            </label>
+            <label style="flex:2">Type de revendeur
+              <select onchange="VueAdmin.state.formLead.type=this.value">
+                ${['Revendeur IT','Leclerc','Bureau Vallée','Grande Surface','Autre'].map(t =>
+                  `<option value="${t}" ${f.type === t ? 'selected' : ''}>${t}</option>`
+                ).join('')}
+              </select>
+            </label>
+          </div>
+
+          <div style="display:flex;gap:10px">
+            <label style="flex:2">Interlocuteur
+              <input class="q-input" value="${f.interlocuteur}"
+                     oninput="VueAdmin.state.formLead.interlocuteur=this.value" placeholder="Prénom Nom"/></label>
+            <label style="flex:2">Téléphone
+              <input type="tel" class="q-input" value="${f.telephone}"
+                     oninput="VueAdmin.state.formLead.telephone=this.value" placeholder="06 XX XX XX XX"/></label>
+          </div>
+
+          <label>Email
+            <input type="email" class="q-input" value="${f.email}"
+                   oninput="VueAdmin.state.formLead.email=this.value" placeholder="contact@…"/></label>
+
+          <div style="display:flex;gap:10px">
+            <label style="flex:1">Potentiel estimé
+              <select onchange="VueAdmin.state.formLead.potentiel=this.value">
+                <option value="1" ${f.potentiel==='1'?'selected':''}>1 — Faible</option>
+                <option value="2" ${f.potentiel==='2'?'selected':''}>2 — Faible+</option>
+                <option value="3" ${f.potentiel==='3'?'selected':''}>3 — Moyen</option>
+                <option value="4" ${f.potentiel==='4'?'selected':''}>4 — Fort</option>
+                <option value="5" ${f.potentiel==='5'?'selected':''}>5 — Fort+</option>
+              </select>
+            </label>
+            <label style="flex:2">Source
+              <select onchange="VueAdmin.state.formLead.source=this.value">
+                ${['prospection terrain','événement','recommandation','fichier partenaire','autre'].map(s =>
+                  `<option value="${s}" ${f.source === s ? 'selected' : ''}>${s}</option>`
+                ).join('')}
+              </select>
+            </label>
+          </div>
+
+          <label>Produits Norton potentiels
+            <div class="q-chips">
+              ${PRODUITS.map(p => `
+                <button type="button" class="q-chip ${f.produits.includes(p) ? 'active' : ''}"
+                        onclick="VueAdmin.setLeadProduits('${p}')">${p}</button>`).join('')}
+            </div>
+          </label>
+
+          <label>Notes de contexte (pour le CDS)
+            <textarea class="q-textarea" rows="3"
+                      oninput="VueAdmin.state.formLead.notes=this.value"
+                      placeholder="Contexte, historique, point de vigilance…">${f.notes}</textarea></label>
+
+          <label style="border:2px solid var(--c-primary);padding:10px;border-radius:var(--radius-sm);background:var(--c-bg)">
+            <span style="font-weight:700;color:var(--c-primary)">CDS à assigner *</span>
+            <select required onchange="VueAdmin.state.formLead.cdsAssigne=this.value;VueAdmin.render()" style="margin-top:6px">
+              <option value="">— choisir un commercial —</option>
+              ${cdsList.map(o =>
+                `<option value="${o.PIN_CDS}" ${f.cdsAssigne == o.PIN_CDS ? 'selected' : ''}>${o.Nom_CDS}</option>`
+              ).join('')}
+            </select>
+          </label>
+
+          <button type="submit" class="btn-primaire" style="margin-top:16px"
+                  ${this.state.leadEnvoi ? 'disabled' : ''}>
+            ${this.state.leadEnvoi ? '⏳ Création en cours…' : '✅ Créer et assigner le lead'}
+          </button>
+        </form>
+      </div>`;
   },
 
   async sauverObjectif(idObjectif) {
@@ -205,21 +406,31 @@ window.VueAdmin = {
       return;
     }
 
-    // Alexandra (CHANNEL_MANAGER) : exports uniquement
+    // Alexandra (CHANNEL_MANAGER) : exports + création de leads
     if (Session.estChannel()) {
+      const tab = this.state.alexTab || 'exports';
       app.innerHTML = `
         <header class="header-vue">
           <button onclick="Router.aller('#/empower-tracker')" class="btn-retour">←</button>
-          <h1>📥 Exports & Reporting</h1>
+          <h1>📥 Espace Alexandra</h1>
         </header>
+        <!-- Onglets -->
+        <div style="display:flex;border-bottom:2px solid var(--c-border);background:var(--c-surface)">
+          ${[['exports','📥 Exports'],['leads','➕ Créer un lead']].map(([t, l]) => `
+            <button onclick="VueAdmin.setAlexTab('${t}')"
+                    style="flex:1;padding:12px 8px;border:none;border-bottom:${tab===t?'3px solid var(--c-primary)':'3px solid transparent'};
+                           background:transparent;font-weight:${tab===t?'700':'400'};font-size:13px;
+                           color:${tab===t?'var(--c-primary)':'var(--c-text-2)'};cursor:pointer">${l}</button>`).join('')}
+        </div>
         <div class="dash-body avec-nav">
-          <div class="bloc-fiche">
-            <div class="bloc-titre">📥 Exports CSV — Reporting thématique</div>
-            <p style="font-size:12px;color:var(--c-text-2);margin-bottom:14px">
-              Données en temps réel. Chaque export est tracé dans 📊_ACTIONS.
-            </p>
-            ${this._renderExports()}
-          </div>
+          ${tab === 'exports' ? `
+            <div class="bloc-fiche">
+              <div class="bloc-titre">📥 Exports CSV — Reporting thématique</div>
+              <p style="font-size:12px;color:var(--c-text-2);margin-bottom:14px">
+                Données en temps réel. Chaque export est tracé dans 📊_ACTIONS.
+              </p>
+              ${this._renderExports()}
+            </div>` : this._renderFormLead()}
         </div>
         ${NavBar('home')}`;
       return;

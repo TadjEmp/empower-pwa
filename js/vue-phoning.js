@@ -16,16 +16,24 @@ window.VuePhoning = {
       chargement: true, envoiEnCours: false,
       comptes: [], prospects: [],
       typeSource: 'EXISTANT', cible: null,
-      mode: 'APPEL',        // APPEL | LISTE
-      filtreListe: 'TOUS',  // TOUS | A_APPELER | RAPPEL | NON_JOIGNABLE
+      mode: 'APPEL',           // APPEL | LISTE | HISTORIQUE
+      filtreListe: 'TOUS',     // TOUS | A_APPELER | RAPPEL | NON_JOIGNABLE
       recherche: '', script: '', scriptEnCours: false,
       enregistre: false, transcription: '', qualif: null,
       d: {
         objectif: '', accroche: '',
         statutAppel: '', interetEmpower: '', frein: '',
         prochaineAction: '', dateRappel: '', note: '',
-        resultatProspect: '',  // INTERESSE | NON_INTERESSE | RAPPELER | NON_JOIGNABLE
+        resultatProspect: '',
       },
+      // R5 — historique appels + edit/delete
+      journal: [],
+      journalChargement: false,
+      modalEditAppel: null,
+      confirmDeleteAppelId: null,
+      // EX-2 — extraction
+      extractOuvert: false,
+      extractFiltres: { debut: '', fin: '', cds: 'TOUS', resultat: 'TOUS' },
     };
   },
 
@@ -99,7 +107,12 @@ window.VuePhoning = {
   },
 
   setSource(s)  { this.state.typeSource = s; this.state.cible = null; this.state.recherche = ''; this.render(); },
-  setMode(m)    { this.state.mode = m; if (m === 'LISTE') this.state.typeSource = 'PROSPECT'; this.render(); },
+  setMode(m)    {
+    this.state.mode = m;
+    if (m === 'LISTE') this.state.typeSource = 'PROSPECT';
+    if (m === 'HISTORIQUE') this._chargerJournal();
+    this.render();
+  },
   setFiltreListe(f) { this.state.filtreListe = f; this.render(); },
 
   setRecherche(v) {
@@ -343,6 +356,295 @@ window.VuePhoning = {
     }
   },
 
+  // ── R5 : Journal des appels (chargement) ──
+  async _chargerJournal() {
+    this.state.journalChargement = true;
+    this.render();
+    try {
+      const data = await SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING');
+      this.state.journal = data
+        .filter(a => String(a.deleted || '').toUpperCase() !== 'TRUE')
+        .filter(a => Session.voitTout() || Number(a.PIN_CDS) === Session.pin)
+        .sort((a, b) => (b.Date || '').localeCompare(a.Date || ''))
+        .slice(0, 100);
+    } catch(e) { Toast.afficher('❌ Chargement journal : ' + e.message, 'erreur'); }
+    this.state.journalChargement = false;
+    this.render();
+  },
+
+  // ── R5 : Édition appel ──
+  ouvrirEditAppel(id) {
+    const a = this.state.journal.find(x => x.ID_Appel === id);
+    if (!a) return;
+    if (!Session.voitTout() && Number(a.PIN_CDS) !== Session.pin) {
+      Toast.afficher('Vous ne pouvez modifier que vos propres appels', 'warning'); return;
+    }
+    this.state.modalEditAppel = {
+      id,
+      date:           (a.Date || '').slice(0, 10),
+      compte:         a.Reseller || '',
+      statut:         a.Statut_Appel || '',
+      interet:        a.Interet_EMPOWER || '',
+      frein:          a.Frein_Principal || '',
+      prochaineAction: a.Prochaine_Action || '',
+      dateRappel:     a.Date_Rappel || '',
+      note:           a.Note || '',
+    };
+    this.render();
+  },
+
+  fermerEditAppel() { this.state.modalEditAppel = null; this.render(); },
+
+  async sauvegarderEditAppel(e) {
+    e.preventDefault();
+    const m = this.state.modalEditAppel;
+    try {
+      const maj = {
+        Statut_Appel:     m.statut,
+        Interet_EMPOWER:  m.interet,
+        Frein_Principal:  m.frein,
+        Prochaine_Action: m.prochaineAction,
+        Date_Rappel:      m.dateRappel,
+        Note:             m.note,
+      };
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', '📞_PHONING', m.id, maj);
+      const local = this.state.journal.find(a => a.ID_Appel === m.id);
+      if (local) Object.assign(local, maj);
+      this.state.modalEditAppel = null;
+      Toast.afficher('✅ Appel modifié', 'succes');
+      this.render();
+    } catch(err) { Toast.afficher('❌ ' + err.message, 'erreur'); }
+  },
+
+  // ── R5 : Suppression appel (soft delete) ──
+  demanderSuppressionAppel(id) {
+    const a = this.state.journal.find(x => x.ID_Appel === id);
+    if (!a) return;
+    if (!Session.voitTout() && Number(a.PIN_CDS) !== Session.pin) {
+      Toast.afficher('Vous ne pouvez supprimer que vos propres appels', 'warning'); return;
+    }
+    this.state.confirmDeleteAppelId = id;
+    this.render();
+  },
+
+  async confirmerSuppressionAppel() {
+    const id = this.state.confirmDeleteAppelId;
+    if (!id) return;
+    try {
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', '📞_PHONING', id, {
+        deleted:    'TRUE',
+        deleted_at: new Date().toISOString(),
+        deleted_by: Session.nom,
+      });
+      this.state.journal = this.state.journal.filter(a => a.ID_Appel !== id);
+      this.state.confirmDeleteAppelId = null;
+      Toast.afficher('🗑️ Appel supprimé (soft delete)', 'succes');
+      this.render();
+    } catch(err) { Toast.afficher('❌ ' + err.message, 'erreur'); }
+  },
+
+  annulerSuppressionAppel() { this.state.confirmDeleteAppelId = null; this.render(); },
+
+  // ── EX-2 : Extraction phoning ──
+  ouvrirExtraction()  { this.state.extractOuvert = true; this._chargerJournal(); },
+  fermerExtraction()  { this.state.extractOuvert = false; this.render(); },
+
+  exporterPhoning() {
+    const f    = this.state.extractFiltres;
+    const data = this.state.journal.filter(a => {
+      const date = (a.Date || '').slice(0, 10);
+      if (f.debut && date < f.debut) return false;
+      if (f.fin   && date > f.fin)   return false;
+      if (f.cds !== 'TOUS' && String(a.PIN_CDS) !== f.cds) return false;
+      if (f.resultat !== 'TOUS' && a.Statut_Appel !== f.resultat) return false;
+      return true;
+    });
+    if (!data.length) { Toast.afficher('Aucun appel pour ces filtres', 'warning'); return; }
+
+    const ts = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const fn = `PHONING_${f.debut || 'debut'}_${f.fin || 'fin'}_${ts}.csv`;
+
+    const rows = data.map(a => ({
+      ID_Appel:          a.ID_Appel || '',
+      Date:              (a.Date || '').slice(0, 10),
+      Semaine_ISO:       a.Semaine_ISO || '',
+      CDS:               a.Nom_CDS || '',
+      PIN_CDS:           a.PIN_CDS || '',
+      Compte:            a.Reseller || '',
+      Canal:             a.Canal || '',
+      Statut_Appel:      a.Statut_Appel || '',
+      Interet_EMPOWER:   a.Interet_EMPOWER || '',
+      Frein_Principal:   a.Frein_Principal || '',
+      Prochaine_Action:  a.Prochaine_Action || '',
+      Date_Rappel:       a.Date_Rappel || '',
+      Transcription:     a.Transcription || '',
+      Note:              a.Note || '',
+    }));
+
+    generateCSV(rows, fn);
+    this.state.extractOuvert = false;
+    this.render();
+  },
+
+  // ── R5 : Vue journal des appels ──
+  _renderJournal() {
+    const s = this.state;
+    if (s.journalChargement) {
+      return '<div style="padding:32px;text-align:center;color:var(--c-text-2)">Chargement du journal…</div>';
+    }
+    if (!s.journal.length) {
+      return '<div style="padding:32px;text-align:center;color:var(--c-text-2)">Aucun appel enregistré.</div>';
+    }
+    const COUL = { Répondu: 'var(--c-success)', Répondeur: 'var(--c-warning)', Occupé: 'var(--c-warning)', 'Faux numéro': 'var(--c-danger)', Refus: 'var(--c-danger)' };
+    return `<div class="q-champs">
+      ${s.journal.map(a => {
+        const peutModif = Session.voitTout() || Number(a.PIN_CDS) === Session.pin;
+        const coul = COUL[a.Statut_Appel] || 'var(--c-text-2)';
+        return `
+        <div style="background:var(--c-surface);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:11px;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+            <span style="font-size:11px;color:var(--c-text-2)">${(a.Date || '').slice(0, 10)}</span>
+            <strong style="font-size:14px;flex:1">${a.Reseller || '—'}</strong>
+            <span style="font-size:11px;font-weight:700;color:${coul}">${a.Statut_Appel || '—'}</span>
+          </div>
+          ${a.Interet_EMPOWER ? `<div style="font-size:12px;color:var(--c-text-2)">Intérêt : ${a.Interet_EMPOWER}</div>` : ''}
+          ${a.Frein_Principal ? `<div style="font-size:12px;color:var(--c-text-2)">Frein : ${a.Frein_Principal}</div>` : ''}
+          ${a.Note ? `<div style="font-size:12px;font-style:italic;color:var(--c-text-2);margin-top:4px">${String(a.Note).slice(0, 80)}${a.Note.length > 80 ? '…' : ''}</div>` : ''}
+          ${peutModif ? `
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <button class="btn-secondaire" style="padding:5px 10px;font-size:12px;width:auto"
+                    onclick="VuePhoning.ouvrirEditAppel('${a.ID_Appel}')">✏️ Modifier</button>
+            <button class="btn-secondaire" style="padding:5px 10px;font-size:12px;width:auto;color:var(--c-danger);border-color:var(--c-danger)"
+                    onclick="VuePhoning.demanderSuppressionAppel('${a.ID_Appel}')">🗑️</button>
+          </div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>`;
+  },
+
+  // ── Modal édition appel ──
+  _renderModalEditAppel() {
+    const m = this.state.modalEditAppel;
+    if (!m) return '';
+    return `
+    <div class="modal-overlay" onclick="if(event.target===this)VuePhoning.fermerEditAppel()">
+      <div class="modal">
+        <h3>✏️ Modifier l'appel — ${m.compte}</h3>
+        <form onsubmit="VuePhoning.sauvegarderEditAppel(event)">
+          <label>Statut appel
+            <div class="q-chips">
+              ${['Répondu','Répondeur','Occupé','Faux numéro','Refus'].map(o =>
+                `<button type="button" class="q-chip ${m.statut === o ? 'active' : ''}"
+                  onclick="VuePhoning.state.modalEditAppel.statut='${o}';VuePhoning.render()">${o}</button>`
+              ).join('')}
+            </div>
+          </label>
+          <label>Intérêt EMPOWER
+            <div class="q-chips">
+              ${['Fort','Moyen','Faible','Aucun','Déjà inscrit'].map(o =>
+                `<button type="button" class="q-chip ${m.interet === o ? 'active' : ''}"
+                  onclick="VuePhoning.state.modalEditAppel.interet='${o}';VuePhoning.render()">${o}</button>`
+              ).join('')}
+            </div>
+          </label>
+          <label>Frein principal
+            <input class="q-input" value="${m.frein}"
+                   oninput="VuePhoning.state.modalEditAppel.frein=this.value"/></label>
+          <label>Prochaine action
+            <input class="q-input" value="${m.prochaineAction}"
+                   oninput="VuePhoning.state.modalEditAppel.prochaineAction=this.value"/></label>
+          <label>Date rappel
+            <input type="date" class="q-input" value="${m.dateRappel}"
+                   onchange="VuePhoning.state.modalEditAppel.dateRappel=this.value"/></label>
+          <label>Note
+            <textarea class="q-textarea" rows="3"
+                      oninput="VuePhoning.state.modalEditAppel.note=this.value">${m.note}</textarea></label>
+          <div class="modal-btns">
+            <button type="button" onclick="VuePhoning.fermerEditAppel()">Annuler</button>
+            <button type="submit" class="btn-primaire">💾 Enregistrer</button>
+          </div>
+        </form>
+      </div>
+    </div>`;
+  },
+
+  // ── Confirmation suppression appel ──
+  _renderConfirmDeleteAppel() {
+    if (!this.state.confirmDeleteAppelId) return '';
+    const a = this.state.journal.find(x => x.ID_Appel === this.state.confirmDeleteAppelId);
+    return `
+    <div class="modal-overlay" onclick="if(event.target===this)VuePhoning.annulerSuppressionAppel()">
+      <div class="modal" style="max-width:360px">
+        <h3 style="color:var(--c-danger)">🗑️ Supprimer cet appel ?</h3>
+        <p style="font-size:14px;margin:12px 0"><strong>${a ? a.Reseller : ''}</strong> — ${a ? (a.Date || '').slice(0, 10) : ''}</p>
+        <p style="font-size:12px;color:var(--c-text-2)">Suppression logique uniquement — la ligne est conservée en base.</p>
+        <div class="modal-btns">
+          <button onclick="VuePhoning.annulerSuppressionAppel()">Annuler</button>
+          <button class="btn-primaire" style="background:var(--c-danger)"
+                  onclick="VuePhoning.confirmerSuppressionAppel()">🗑️ Confirmer</button>
+        </div>
+      </div>
+    </div>`;
+  },
+
+  // ── EX-2 : Panneau extraction CSV ──
+  _renderExtraction() {
+    if (!this.state.extractOuvert) return '';
+    const f   = this.state.extractFiltres;
+    const cnt = this.state.journal.filter(a => {
+      const date = (a.Date || '').slice(0, 10);
+      if (f.debut && date < f.debut) return false;
+      if (f.fin   && date > f.fin)   return false;
+      if (f.cds !== 'TOUS' && String(a.PIN_CDS) !== f.cds) return false;
+      if (f.resultat !== 'TOUS' && a.Statut_Appel !== f.resultat) return false;
+      return true;
+    }).length;
+
+    const cdsUniq = [...new Set(this.state.journal.map(a => a.PIN_CDS).filter(Boolean))];
+    const cdsList = cdsUniq.map(pin => {
+      const a = this.state.journal.find(x => String(x.PIN_CDS) === String(pin));
+      return { pin: String(pin), nom: a?.Nom_CDS || `PIN ${pin}` };
+    });
+
+    return `
+    <div class="modal-overlay" onclick="if(event.target===this)VuePhoning.fermerExtraction()">
+      <div class="modal" style="max-width:420px">
+        <h3>📤 Extraction — Suivi phoning</h3>
+        <div style="display:flex;gap:10px;margin-bottom:10px">
+          <label style="flex:1">Date début
+            <input type="date" value="${f.debut}"
+                   onchange="VuePhoning.state.extractFiltres.debut=this.value;VuePhoning.render()"/></label>
+          <label style="flex:1">Date fin
+            <input type="date" value="${f.fin}"
+                   onchange="VuePhoning.state.extractFiltres.fin=this.value;VuePhoning.render()"/></label>
+        </div>
+        <label>Commercial
+          <select onchange="VuePhoning.state.extractFiltres.cds=this.value;VuePhoning.render()">
+            <option value="TOUS" ${f.cds === 'TOUS' ? 'selected' : ''}>Tous</option>
+            ${cdsList.map(c => `<option value="${c.pin}" ${f.cds === c.pin ? 'selected' : ''}>${c.nom}</option>`).join('')}
+          </select>
+        </label>
+        <label>Résultat
+          <select onchange="VuePhoning.state.extractFiltres.resultat=this.value;VuePhoning.render()">
+            <option value="TOUS" ${f.resultat === 'TOUS' ? 'selected' : ''}>Tous</option>
+            ${['Répondu','Répondeur','Occupé','Faux numéro','Refus'].map(r =>
+              `<option value="${r}" ${f.resultat === r ? 'selected' : ''}>${r}</option>`
+            ).join('')}
+          </select>
+        </label>
+        <div style="background:var(--c-bg);border-radius:var(--radius-sm);padding:12px;text-align:center;margin:12px 0;border:1px solid var(--c-border)">
+          <span style="font-size:22px;font-weight:800;color:var(--c-primary)">${cnt}</span>
+          <span style="font-size:13px;color:var(--c-text-2);margin-left:6px">appel(s) trouvé(s)</span>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-secondaire" style="flex:1" onclick="VuePhoning.fermerExtraction()">Fermer</button>
+          <button class="btn-primaire" style="flex:2" onclick="VuePhoning.exporterPhoning()"
+                  ${cnt === 0 ? 'disabled' : ''}>📥 Exporter CSV</button>
+        </div>
+      </div>
+    </div>`;
+  },
+
   // ── RENDER ──
   render() {
     const app = document.getElementById('app');
@@ -352,17 +654,26 @@ window.VuePhoning = {
     }
     const s = this.state;
     const TITRES = { PRE: 'Phoning', CALL: 'Appel en cours', POST: 'Post-appel' };
+    const peutExtraire = Session.voitTout();
 
     app.innerHTML = `
       <header class="header-vue">
         <button onclick="${s.phase === 'PRE' ? 'history.back()' : 'VuePhoning.init()'}" class="btn-retour">←</button>
-        <h1>📞 ${TITRES[s.phase]}</h1>
-        ${s.cible ? `<span class="badge-compteur">${s.cible.Nom_Compte.slice(0, 16)}</span>` : ''}
+        <h1>📞 ${s.mode === 'HISTORIQUE' ? 'Journal appels' : TITRES[s.phase]}</h1>
+        <div style="display:flex;gap:6px">
+          ${peutExtraire ? `<button class="btn-retour" title="Extraction CSV" onclick="VuePhoning.ouvrirExtraction()">📤</button>` : ''}
+          ${s.cible ? `<span class="badge-compteur">${s.cible.Nom_Compte.slice(0, 14)}</span>` : ''}
+        </div>
       </header>
-      <div class="q-contenu avec-nav">${this['_phase' + s.phase]()}</div>
+      <div class="q-contenu avec-nav">
+        ${s.mode === 'HISTORIQUE' ? this._renderJournal() : this['_phase' + s.phase]()}
+      </div>
       ${NavBar('phoning')}
+      ${this._renderModalEditAppel()}
+      ${this._renderConfirmDeleteAppel()}
+      ${this._renderExtraction()}
     `;
-    this._renderSuggestions();
+    if (s.mode !== 'HISTORIQUE') this._renderSuggestions();
   },
 
   _phasePRE() {
@@ -371,8 +682,8 @@ window.VuePhoning = {
 
     const modeTabs = `
       <div style="display:flex;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:4px;background:var(--c-surface);margin-bottom:16px">
-        ${[['APPEL','☎️ Appel individuel'],['LISTE','📋 Liste prospects']].map(([v, l]) => `
-          <button type="button" style="flex:1;padding:9px;border:none;border-radius:4px;font-weight:600;font-size:13px;cursor:pointer;
+        ${[['APPEL','☎️ Appel'],['LISTE','📋 Liste'],['HISTORIQUE','📖 Journal']].map(([v, l]) => `
+          <button type="button" style="flex:1;padding:9px;border:none;border-radius:4px;font-weight:600;font-size:12px;cursor:pointer;
             ${s.mode === v ? 'background:var(--c-title);color:#fff' : 'background:transparent;color:var(--c-text-2)'}"
             onclick="VuePhoning.setMode('${v}')">${l}</button>`).join('')}
       </div>`;
