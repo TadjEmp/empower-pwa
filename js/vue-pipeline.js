@@ -1,9 +1,9 @@
 // ═══════════════════════════════════════
-//  vue-pipeline.js — Pipeline EMPOWER (Kanban)
+//  vue-pipeline.js — EMPOWER TRACKER V2.1 (B3)
 //  Workflow : SAISIE → ASSIGNE → EN_COURS → COMPTE_CREE → INTEGRE / ARCHIVE
-//  Alexandra + Tadjidine : saisie, attribution, avancement
+//  CHANNEL_MANAGER (Alexandra, Flavie) + ADMIN : saisie, attribution, avancement
 //  CDS : lecture + avancement de ses propres leads
-//  Source : 📋_PROSPECTS (+ colonnes pipeline via initPipelineColonnes)
+//  Source : 📋_PROSPECTS · ⚙️_PARAMS (liste CDS dynamique)
 // ═══════════════════════════════════════
 
 window.VuePipeline = {
@@ -17,28 +17,54 @@ window.VuePipeline = {
     { id: 'ARCHIVE',     lbl: 'Archivé',      coul: 'var(--c-text-2)' },
   ],
 
-  CDS: [ { pin: 4001, nom: 'Lyes' }, { pin: 4002, nom: 'Mehdi' }, { pin: 4003, nom: 'Johanne' }, { pin: 1000, nom: 'Tadjidine' } ],
+  // Fallback si ⚙️_PARAMS ne contient pas les CDS
+  CDS_FALLBACK: [ { pin: 4001, nom: 'Lyes' }, { pin: 4002, nom: 'Mehdi' }, { pin: 4003, nom: 'Johanne' }, { pin: 1000, nom: 'Tadjidine' } ],
+  CDS: [],
 
   LIMITE_COL: 20,
 
   state: null,
 
+  _chargerCDS(params, objectifs) {
+    // ⚙️_PARAMS réel : PINS_CDS='4001,4002,4003' + PIN_MANAGER='1000'
+    // Les noms viennent de 🎯_OBJECTIFS_PRIMES.Nom_CDS
+    const paramMap = Object.fromEntries(params.map(p => [p.Parametre, p.Valeur]));
+    const pinsCDS   = String(paramMap.PINS_CDS || '').split(',').map(p => Number(p.trim())).filter(Boolean);
+    const pinMgr    = Number(paramMap.PIN_MANAGER || 1000);
+    const allPins   = [pinMgr, ...pinsCDS].filter((v, i, a) => a.indexOf(v) === i);
+    // Noms depuis objectifs (Nom_CDS/PIN_CDS)
+    const nomMap = {};
+    (objectifs || []).forEach(o => { if (o.PIN_CDS) nomMap[Number(o.PIN_CDS)] = o.Nom_CDS; });
+    const fallbackNoms = {1000:'Tadjidine',4001:'Lyes',4002:'Mehdi',4003:'Johanne'};
+    const cds = allPins.map(pin => ({ pin, nom: nomMap[pin] || fallbackNoms[pin] || `PIN ${pin}` }));
+    this.CDS = cds.length > 0 ? cds : this.CDS_FALLBACK;
+  },
+
+  // CHANNEL_MANAGER (Alexandra, Flavie) et ADMIN peuvent gérer les leads
+  _peutGerer() { return Session.voitTout() || Session.estChannel(); },
+
   async init() {
     this.state = {
       leads: [], chargement: true, envoiEnCours: false,
       recherche: '', filtreCDS: 'TOUS', filtrePotentiel: 'TOUS',
-      colonnesEtendues: {},  // { 'ASSIGNE': true } → colonne déverrouillée
+      colonnesEtendues: {},
       modal: null,
     };
     this.render();
     try {
-      const raw = await SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS');
+      const [raw, params, objectifs] = await Promise.all([
+        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS'),
+        SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
+        SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
+      ]);
+      this._chargerCDS(params, objectifs);
       this.state.leads = raw
         .map(p => ({ ...p, _statut: this._statutDe(p) }))
-        .filter(p => Session.voitTout() || Number(p.PIN_CDS_Assigne) === Session.pin);
+        .filter(p => this._peutGerer() || Session.voitTout() || Number(p.PIN_CDS_Assigne) === Session.pin);
       this.state.chargement = false;
       this.render();
     } catch(e) {
+      if (!this.CDS.length) this.CDS = this.CDS_FALLBACK;
       this.state.chargement = false;
       document.getElementById('app').innerHTML = `<div class="erreur">Erreur : ${e.message}</div>`;
     }
@@ -64,7 +90,7 @@ window.VuePipeline = {
     return l;
   },
 
-  _nomCDS(pin) { return this.CDS.find(c => c.pin === Number(pin))?.nom || (pin ? `PIN ${pin}` : '—'); },
+  _nomCDS(pin) { return (this.CDS.length ? this.CDS : this.CDS_FALLBACK).find(c => c.pin === Number(pin))?.nom || (pin ? `PIN ${pin}` : '—'); },
 
   _retardWelcomePack(p) {
     if (p._statut !== 'COMPTE_CREE' || p.WELCOME_PACK_DATE) return false;
@@ -79,6 +105,29 @@ window.VuePipeline = {
   },
   ouvrirSaisie() { this.state.modal = { type: 'saisie' }; this.render(); },
   fermerModal()  { this.state.modal = null; this.render(); },
+
+  async iaAppeler(slot, leadId) {
+    const lead = this.state.leads.find(l => String(l.ID_Prospect) === String(leadId));
+    if (!lead) return;
+    const zone = document.getElementById('ia-zone');
+    if (!zone) return;
+    const LABELS = { T01: '🔍 Analyse', T02: '📋 Préparation visite', T04: '✉️ Email', T05: '📝 Résumé CR' };
+    zone.style.display = 'block';
+    zone.style.color = 'var(--c-text-2)';
+    zone.textContent = `⏳ ${LABELS[slot] || slot} en cours…`;
+    try {
+      let texte;
+      if (slot === 'T01') texte = await GeminiAPI.t01_analyser(lead);
+      else if (slot === 'T02') texte = await GeminiAPI.t02_preparerVisite(lead);
+      else if (slot === 'T04') texte = await GeminiAPI.t04_email(lead);
+      else if (slot === 'T05') texte = await GeminiAPI.t05_resumeCR(lead);
+      zone.style.color = 'var(--c-text)';
+      zone.textContent = texte || '(réponse vide)';
+    } catch (e) {
+      zone.style.color = 'var(--c-danger)';
+      zone.textContent = '❌ ' + e.message;
+    }
+  },
 
   async deplacer(id, statut) {
     const lead = this.state.leads.find(l => String(l.ID_Prospect) === String(id));
@@ -122,9 +171,30 @@ window.VuePipeline = {
     const v = id => document.getElementById(id)?.value?.trim() || '';
     if (!v('nl-nom')) { Toast.afficher('Nom du prospect requis', 'warning'); return; }
     this.state.envoiEnCours = true;
+    this.render();
+
+    const nomSaisi = v('nl-nom').toUpperCase();
+
+    // GEM-T02 — Détection doublon avant création
+    try {
+      const existants = [...this.state.leads, ...[]];
+      const rawRes = await GeminiAPI.gemT02_detectionDoublon(nomSaisi, existants);
+      const res = safeJSON(rawRes);
+      if (res?.doublon_probable && res.score > 70) {
+        const confirmer = confirm(
+          `⚠️ Doublon probable détecté !\n\nCompte similaire existant : "${res.nom_similaire}"\nSimilarité : ${res.score}%\n${res.explication||''}\n\nContinuer quand même la création ?`
+        );
+        if (!confirmer) {
+          this.state.envoiEnCours = false;
+          this.render();
+          return;
+        }
+      }
+    } catch { /* GEM-T02 optionnel — on continue si erreur */ }
+
     const lead = {
       ID_Prospect: genId('PROS'),
-      Nom_Compte: v('nl-nom').toUpperCase(), Ville: v('nl-ville'), Code_Postal: v('nl-cp'),
+      Nom_Compte: nomSaisi, Ville: v('nl-ville'), Code_Postal: v('nl-cp'),
       Tel: v('nl-tel'), Email: v('nl-email'),
       PIN_CDS_Assigne: '', Source_Import: 'ESI_PIPELINE',
       FLAG_ACTION: 'SAISIE', CANAL: v('nl-canal'),
@@ -140,6 +210,26 @@ window.VuePipeline = {
       this.state.leads.unshift({ ...lead, _statut: 'SAISIE' });
       this.state.modal = null;
       Toast.afficher('✅ Lead créé : ' + lead.Nom_Compte, 'succes');
+
+      // GEM-T01 — Enrichissement automatique post-création (asynchrone, non bloquant)
+      GeminiAPI.gemT01_enrichirLead(lead).then(raw => {
+        const enrichi = safeJSON(raw);
+        if (!enrichi) return;
+        const maj = {};
+        if (enrichi.potentiel && !lead.POTENTIEL)       maj.POTENTIEL = enrichi.potentiel;
+        if (enrichi.canal_probable && !lead.CANAL)       maj.CANAL = enrichi.canal_probable;
+        if (enrichi.type_revendeur_probable)             maj.Type_Revendeur = enrichi.type_revendeur_probable;
+        if (enrichi.angle_approche)                      maj.Note_initiale = (lead.Note_initiale ? lead.Note_initiale + '\n' : '') + '[IA] ' + enrichi.angle_approche;
+        if (Object.keys(maj).length) {
+          SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', lead.ID_Prospect, maj).then(() => {
+            Object.assign(lead, maj);
+            const local = this.state.leads.find(l => l.ID_Prospect === lead.ID_Prospect);
+            if (local) Object.assign(local, maj);
+            Toast.afficher(`✨ Lead enrichi par Gemini (potentiel : ${maj.POTENTIEL||lead.POTENTIEL})`, 'info', 3000);
+            this.render();
+          }).catch(() => {});
+        }
+      }).catch(() => {});
     } catch(err) { Toast.afficher('❌ ' + err.message, 'erreur'); }
     this.state.envoiEnCours = false;
     this.render();
@@ -166,12 +256,13 @@ window.VuePipeline = {
       return;
     }
     const leads = this.leadsFiltres;
-    const peutGerer = Session.voitTout();
+    const peutGerer = this._peutGerer();
+    const cdsList = this.CDS.length ? this.CDS : this.CDS_FALLBACK;
 
     app.innerHTML = `
       <header class="header-vue">
         <button onclick="Router.aller('#/dashboard')" class="btn-retour">←</button>
-        <h1>Pipeline EMPOWER</h1>
+        <h1>EMPOWER TRACKER</h1>
         <span class="badge-compteur">${leads.length} leads</span>
       </header>
 
@@ -183,7 +274,7 @@ window.VuePipeline = {
           ${peutGerer ? `
           <select onchange="VuePipeline.state.filtreCDS=this.value;VuePipeline.render()">
             <option value="TOUS">Tous CDS</option>
-            ${this.CDS.map(c => `<option value="${c.pin}" ${this.state.filtreCDS == c.pin ? 'selected' : ''}>${c.nom}</option>`).join('')}
+            ${cdsList.map(c => `<option value="${c.pin}" ${this.state.filtreCDS == c.pin ? 'selected' : ''}>${c.nom}</option>`).join('')}
           </select>` : ''}
           <select onchange="VuePipeline.state.filtrePotentiel=this.value;VuePipeline.render()">
             <option value="TOUS">Tout potentiel</option>
@@ -237,7 +328,7 @@ window.VuePipeline = {
       </div>
 
       ${peutGerer ? '<button class="fab" onclick="VuePipeline.ouvrirSaisie()" title="Nouveau lead" style="bottom:140px">＋</button>' : ''}
-      ${NavBar('pipeline')}
+      ${NavBar('tracker')}
       ${this._renderModal()}
     `;
   },
@@ -273,10 +364,11 @@ window.VuePipeline = {
         </div>
       </div>`;
     }
-    // Fiche lead : attribution + déplacement
+    // Fiche lead : attribution + déplacement + IA Gemini
     const l = m.lead;
     if (!l) return '';
-    const peutGerer = Session.voitTout();
+    const peutGerer = this._peutGerer();
+    const cdsList = this.CDS.length ? this.CDS : this.CDS_FALLBACK;
     return `
     <div class="modal-overlay" onclick="if(event.target===this)VuePipeline.fermerModal()">
       <div class="modal">
@@ -296,7 +388,7 @@ window.VuePipeline = {
         <label>Attribuer à un CDS
           <select id="attr-cds" onchange="VuePipeline.attribuer('${l.ID_Prospect}', this.value)">
             <option value="">— choisir —</option>
-            ${this.CDS.map(c => `<option value="${c.pin}" ${Number(l.PIN_CDS_Assigne) === c.pin ? 'selected' : ''}>${c.nom}</option>`).join('')}
+            ${cdsList.map(c => `<option value="${c.pin}" ${Number(l.PIN_CDS_Assigne) === c.pin ? 'selected' : ''}>${c.nom}</option>`).join('')}
           </select>
         </label>` : ''}
 
@@ -304,6 +396,25 @@ window.VuePipeline = {
         <div class="q-chips">
           ${this.STATUTS.filter(s => s.id !== l._statut).map(s => `
             <button type="button" class="q-chip" onclick="VuePipeline.deplacer('${l.ID_Prospect}','${s.id}')">${s.lbl}</button>`).join('')}
+        </div>
+
+        <!-- IA Gemini — slots T01/T02/T04/T05 (B10) -->
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--c-border)">
+          <div style="font-size:11px;color:var(--c-text-2);margin-bottom:6px;font-weight:700;letter-spacing:.04em">✨ ASSISTANT IA GEMINI</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+            <button class="btn-secondaire" style="font-size:12px;padding:8px;text-align:left"
+                    onclick="VuePipeline.iaAppeler('T01','${l.ID_Prospect}')">🔍 Analyser</button>
+            <button class="btn-secondaire" style="font-size:12px;padding:8px;text-align:left"
+                    onclick="VuePipeline.iaAppeler('T02','${l.ID_Prospect}')">📋 Préparer visite</button>
+            <button class="btn-secondaire" style="font-size:12px;padding:8px;text-align:left"
+                    onclick="VuePipeline.iaAppeler('T04','${l.ID_Prospect}')">✉️ Email prospect</button>
+            <button class="btn-secondaire" style="font-size:12px;padding:8px;text-align:left"
+                    onclick="VuePipeline.iaAppeler('T05','${l.ID_Prospect}')">📝 Résumé CR</button>
+          </div>
+          <div id="ia-zone"
+               style="display:none;margin-top:10px;font-size:12px;line-height:1.6;
+                      padding:10px 12px;background:var(--c-bg);border-radius:var(--radius-sm);
+                      white-space:pre-wrap;border:1px solid var(--c-border);color:var(--c-text)"></div>
         </div>
 
         <div class="modal-btns">

@@ -91,11 +91,6 @@ window.VuePhoning = {
   // ── Script d'accroche IA ──
   async genererScript() {
     if (!this.state.cible) { Toast.afficher('Sélectionnez un compte d\'abord', 'warning'); return; }
-    if (!GroqAPI.estConfigure()) {
-      const k = prompt('Clé API Groq (gsk_…) :');
-      if (!k) return;
-      GroqAPI.setKey(k);
-    }
     this.state.scriptEnCours = true;
     this.render();
     try {
@@ -119,10 +114,12 @@ window.VuePhoning = {
   // ── Enregistrement + qualification ──
   async toggleEnregistrement() {
     if (this.state.enregistre) { GroqAPI.arreterEnregistrement(); return; }
-    if (!GroqAPI.estConfigure()) {
-      const k = prompt('Clé API Groq (gsk_…) :');
-      if (!k) return;
-      GroqAPI.setKey(k);
+    // Information RGPD avant 1er enregistrement (Section 10 V2.1)
+    const key = 'esi_rgpd_phoning_ok';
+    if (!localStorage.getItem(key)) {
+      const ok = confirm('ℹ️ Information RGPD\n\nConformément au RGPD :\n• Aucun fichier audio ne sera stocké côté serveur\n• Seule la transcription textuelle sera conservée dans les notes d\'appel\n• L\'audio est traité en mémoire et immédiatement effacé\n\nEn continuant, vous acceptez cette condition.');
+      if (!ok) return;
+      localStorage.setItem(key, '1');
     }
     try {
       this.state.enregistre = true;

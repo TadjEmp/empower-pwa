@@ -76,6 +76,26 @@ window.VueDashboardManager = {
 
   exporterCOPIL() { window.print(); },
 
+  async syntheseHebdo() {
+    const btn = document.getElementById('btn-gem07');
+    const zone = document.getElementById('gem07-zone');
+    if (!btn || !zone) return;
+    btn.disabled = true; btn.textContent = '⏳ Gemini génère…';
+    zone.style.display = 'block';
+    zone.textContent = '⏳ Analyse de la semaine en cours…';
+    try {
+      const texte = await GeminiAPI.gem07_syntheseHebdo(this.state.d);
+      zone.style.color = 'var(--c-text)';
+      zone.textContent = texte || '(réponse vide)';
+      Toast.afficher('✅ Synthèse hebdo générée', 'succes');
+    } catch(e) {
+      zone.style.color = 'var(--c-danger)';
+      zone.textContent = '❌ ' + e.message;
+    } finally {
+      btn.disabled = false; btn.textContent = '✨ Synthèse hebdo IA';
+    }
+  },
+
   render() {
     const app = document.getElementById('app');
     if (!this.state || this.state.chargement) {
@@ -158,7 +178,7 @@ window.VueDashboardManager = {
           <div class="dash-alertes">
             ${d.equipe.filter(e => e.pace !== 'ON_TRACK').map(e => `
               <div class="alerte-ligne">${PACE[e.pace].lbl} <strong>${e.nom}</strong> — ${e.pct}% de l'objectif ${d.quarter}</div>`).join('')}
-            ${d.leadsBloques.length ? `<div class="alerte-ligne no-print" onclick="Router.aller('#/pipeline')">⏳ <strong>${d.leadsBloques.length}</strong> lead(s) sans action > 7 jours</div>` : ''}
+            ${d.leadsBloques.length ? `<div class="alerte-ligne no-print" onclick="Router.aller('#/empower-tracker')">⏳ <strong>${d.leadsBloques.length}</strong> lead(s) sans action > 7 jours</div>` : ''}
             ${d.comptesRouges.length ? `<div class="alerte-ligne no-print" onclick="Router.aller('#/comptes')">🔴 <strong>${d.comptesRouges.length}</strong> compte(s) en retard d'action</div>` : ''}
             ${!d.leadsBloques.length && !d.comptesRouges.length && d.equipe.every(e => e.pace === 'ON_TRACK') ? '<div class="pas-de-donnees">Aucune alerte 🎉</div>' : ''}
           </div>
@@ -177,9 +197,22 @@ window.VueDashboardManager = {
           </div>
         </div>
 
+        <!-- GEM-07 Synthèse hebdo équipe -->
+        <div class="bloc-fiche no-print">
+          <div class="bloc-titre">✨ Assistant IA — Synthèse hebdo équipe</div>
+          <p style="font-size:12px;color:var(--c-text-2);margin-bottom:10px">Gemini analyse les KPIs de la semaine et génère un bilan, alertes, tendances et recommandations.</p>
+          <button id="btn-gem07" class="btn-secondaire" onclick="VueDashboardManager.syntheseHebdo()">
+            ✨ Synthèse hebdo IA
+          </button>
+          <div id="gem07-zone"
+               style="display:none;margin-top:12px;font-size:13px;line-height:1.7;
+                      white-space:pre-wrap;padding:12px;background:var(--c-bg);
+                      border-radius:var(--radius-sm);border:1px solid var(--c-border)"></div>
+        </div>
+
         <!-- RACCOURCIS -->
         <div class="dash-raccourcis no-print">
-          <button class="raccourci" onclick="Router.aller('#/pipeline')">📊<span>Pipeline</span></button>
+          <button class="raccourci" onclick="Router.aller('#/empower-tracker')">📊<span>Pipeline</span></button>
           <button class="raccourci" onclick="Router.aller('#/comptes')">🏢<span>Tous les comptes</span></button>
           <button class="raccourci" onclick="Router.aller('#/reactiver')">🔄<span>À réactiver</span></button>
           <button class="raccourci" onclick="Router.aller('#/admin')">⚙️<span>Administration</span></button>
