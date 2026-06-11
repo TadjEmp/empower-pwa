@@ -239,7 +239,7 @@ window.VueAdmin = {
           ${this.state.objectifs.map(o => `
             <div style="border-bottom:1px solid var(--c-border);padding:10px 0">
               <strong style="font-size:14px">${o.Nom_CDS}
-                <span style="color:var(--c-text-2);font-weight:400"> · PIN ${o.PIN_CDS} · FY27 : ${formatEuro(o.FY27_Obj)}</span>
+                <span style="color:var(--c-text-2);font-weight:400"> · PIN ${o.PIN_CDS} · FY27 : ${formatEuro(['Q1','Q2','Q3','Q4'].reduce((s,q) => s + parseAmount(o[`${q}_Obj_Revise`]||o[`${q}_Obj_Initial`]||0), 0))}</span>
               </strong>
               <div style="display:flex;gap:6px;margin-top:8px">
                 ${['Q1', 'Q2', 'Q3', 'Q4'].map(q => `

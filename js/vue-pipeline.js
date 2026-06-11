@@ -142,7 +142,7 @@ window.VuePipeline = {
       await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', id, champs);
       Object.assign(lead, champs, { _statut: statut });
       this.state.modal = null;
-      Toast.afficher(`✅ ${lead.Nom_Compte} → ${this.STATUTS.find(s => s.id === statut).lbl}`, 'succes');
+      Toast.afficher(`✅ ${lead.Nom_Compte} → ${this.STATUTS.find(s => s.id === statut)?.lbl || statut}`, 'succes');
       this.render();
     } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
   },
