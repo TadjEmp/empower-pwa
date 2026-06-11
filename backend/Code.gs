@@ -50,12 +50,18 @@ function _router(params, body) {
     if (!user) return _json({ ok: false, erreur: 'AUTH', detail: 'Session invalide ou expirée — reconnectez-vous' });
 
     switch (action) {
-      case 'lire':          return _lire(params);
-      case 'ecrire':        return _ecrire(body);
-      case 'mettreAJour':   return _mettreAJour(body);
-      case 'attribuerLead': return _attribuerLead({ ...body, pin: user.pin });
-      case 'uploadPhoto':   return _uploadPhoto(body, user);
-      default:              return _json({ ok: false, erreur: 'Action inconnue: ' + action });
+      case 'lire':           return _lire(params);
+      case 'ecrire':         return _ecrire(body);
+      case 'mettreAJour':    return _mettreAJour(body);
+      case 'attribuerLead':  return _attribuerLead({ ...body, pin: user.pin });
+      case 'uploadPhoto':    return _uploadPhoto(body, user);
+      case 'gemini':         return _gemini(body, user);
+      case 'setGeminiKey':   return _setGeminiKey(body, user);
+      case 'groqSTT':        return _groqSTT(body, user);
+      case 'groqLLM':        return _groqLLM(body, user);
+      case 'setGroqKey':     return _setGroqKey(body, user);
+      case 'purgerDonnees':  return _purgerDonnees(body, user);
+      default:               return _json({ ok: false, erreur: 'Action inconnue: ' + action });
     }
   } catch(e) {
     _logErreur(user?.pin || '', action, e);
@@ -337,7 +343,7 @@ const IMPORT_IDS = {
 const HEADERS_MDB = {
   '🏢_COMPTES': ['ID_Compte','Nom_Compte','Ville','Code_Postal','Tel','Email','PIN_CDS_Assigne','Nom_CDS','CANAL','SECTEUR','HAS_EMPOWER','FLAG_ACTION','Priorite','STATUT_COMPTE','CA_FY25','CA_FY26','CA_Q1FY27','Date_Derniere_Action','Type_Derniere_Action','Prochaine_action','Date_prochaine_action','Slider_Receptivite','Note_initiale','Flag_traite','Flag_converti','Latitude','Longitude','Source_Import','Date_Import','Timestamp'],
   '📋_PROSPECTS': ['ID_Prospect','Nom_Compte','Ville','Code_Postal','Tel','Email','PIN_CDS_Assigne','Source_Import','FLAG_ACTION','CANAL','Note_initiale','Date_prochaine_action','Flag_traite','Flag_converti','Date_Import','Timestamp','STATUT_EMPOWER','POTENTIEL','ORIGINE','CONTACT_NOM','CONTACT_FONCTION','WELCOME_PACK_DATE','PREMIERE_COMMANDE_DATE'],
-  '🗺️_VISITES': ['ID_Visite','Date','Heure','Semaine_ISO','PIN_CDS','Nom_CDS','ID_Cible','Nom_Compte','Type_Visite','Source_Visite','Type_Revendeur','Nb_Employes','Interlocuteur_Nom','Interlocuteur_Fonction','Contact_Direct','Contact_Data','Concurrent_Actuel','Satisf_Concurrent','Produits_Norton','Canal_Appro','Part_Lineaire','Arbre_EMPOWER_Statut','Freins_JSON','Grossistes_JSON','Marketing_Present','Marketing_Supports','PLV_Installe','Photo_URL','Resultat_Visite','Slider_Receptivite','Note_Privee','Prochaine_Action_Texte','Prochaine_Action_Date','GPS_Lat','GPS_Lng','Duree_Minutes','Timestamp'],
+  '🗺️_VISITES': ['ID_Visite','Date','Heure','Semaine_ISO','PIN_CDS','Nom_CDS','ID_Cible','Nom_Compte','Type_Visite','Statut_Visite','Source_Visite','Type_Revendeur','Nb_Employes','Interlocuteur_Nom','Interlocuteur_Fonction','Contact_Direct','Contact_Data','Concurrent_Actuel','Satisf_Concurrent','Produits_Norton','Canal_Appro','Part_Lineaire','Arbre_EMPOWER_Statut','Freins_JSON','Grossistes_JSON','Marketing_Present','Marketing_Supports','PLV_Installe','Photo_URL','Resultat_Visite','Slider_Receptivite','Note_Privee','Prochaine_Action_Texte','Prochaine_Action_Date','GPS_Lat','GPS_Lng','Duree_Minutes','Timestamp'],
   '📞_PHONING': ['ID_Appel','Date','Semaine_ISO','PIN_CDS','Nom_CDS','ID_Cible','Reseller','Statut_Appel','Interet_EMPOWER','Frein_Principal','Prochaine_Action','Date_Rappel','Note','Timestamp'],
   '📊_ACTIONS': ['ID_Action','Date_Action','Type_Action','Source','PIN_CDS','Nom_Compte','Statut_Avant','Statut_Apres','Resum_IA','GPS_Lat','GPS_Lng','Timestamp'],
   '🎯_OBJECTIFS_PRIMES': ['ID_Objectif','Nom_CDS','PIN_CDS','Q1_Obj_Initial','Q2_Obj_Initial','Q3_Obj_Initial','Q4_Obj_Initial','FY27_Obj','Q1_Obj_Revise','Q2_Obj_Revise','Q3_Obj_Revise','Q4_Obj_Revise','Q1_CA_Realise','Q2_CA_Realise','Q3_CA_Realise','Q4_CA_Realise','Prime_Q1','Prime_Q2','Prime_Q3','Prime_Q4','Bonus_Manager_Eligible'],
@@ -478,4 +484,190 @@ function fixUtilisateurs() {
     sh.appendRow([u[0], _sha256(u[1] + salt), salt, u[2], u[3], u[4], 'OUI', '', '']);
   });
   Logger.log('OK: ' + USERS.length + ' users in ' + CONFIG.SHEET_USERS);
+}
+
+// ⚙️ Migration B5 — ajoute Statut_Visite à 🗺️_VISITES (après Type_Visite).
+// À exécuter UNE FOIS depuis Apps Script si la MDB existe déjà.
+function migrerAjouterStatutVisite() {
+  var sh = _getSpreadsheet('EMPOWER_MDB').getSheetByName('🗺️_VISITES');
+  if (!sh) throw new Error('Onglet 🗺️_VISITES introuvable');
+  var lastCol   = sh.getLastColumn();
+  var headers   = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  if (headers.indexOf('Statut_Visite') >= 0) {
+    Logger.log('Statut_Visite déjà présente — rien à faire');
+    return;
+  }
+  // Insérer juste après Type_Visite
+  var tvIdx    = headers.indexOf('Type_Visite');
+  var insertAt = tvIdx >= 0 ? tvIdx + 2 : lastCol + 1;
+  sh.insertColumnAfter(insertAt - 1);
+  sh.getRange(1, insertAt).setValue('Statut_Visite').setFontWeight('bold');
+  // Initialiser les lignes existantes à 'planifiée'
+  var lastRow = sh.getLastRow();
+  if (lastRow > 1) sh.getRange(2, insertAt, lastRow - 1, 1).setValue('planifiée');
+  SpreadsheetApp.flush();
+  Logger.log('✅ Migration OK — Statut_Visite ajoutée en col ' + insertAt + ' (' + (lastRow - 1) + ' lignes mises à jour)');
+}
+
+// ── Groq proxy (B11) ───────────────────────────────────────
+// Clé stockée dans ScriptProperties sous 'GROQ_API_KEY'.
+// Audio jamais stocké — traité en mémoire et discardé immédiatement.
+
+function _groqSTT(body, user) {
+  var key = PropertiesService.getScriptProperties().getProperty('GROQ_API_KEY');
+  if (!key) return _json({ ok: false, erreur: 'Clé Groq non configurée (Admin → setGroqKey)' });
+  if (!body.audio) return _json({ ok: false, erreur: 'Paramètre audio manquant' });
+
+  var mimeType = String(body.mimeType || 'audio/webm');
+  var audioBytes = Utilities.base64Decode(body.audio);
+
+  // Construire multipart/form-data manuellement
+  var boundary = 'ESI' + Utilities.getUuid().replace(/-/g, '');
+  var CRLF = '\r\n';
+  var partHead =
+    '--' + boundary + CRLF +
+    'Content-Disposition: form-data; name="model"' + CRLF + CRLF +
+    'whisper-large-v3' + CRLF +
+    '--' + boundary + CRLF +
+    'Content-Disposition: form-data; name="language"' + CRLF + CRLF +
+    'fr' + CRLF +
+    '--' + boundary + CRLF +
+    'Content-Disposition: form-data; name="response_format"' + CRLF + CRLF +
+    'json' + CRLF +
+    '--' + boundary + CRLF +
+    'Content-Disposition: form-data; name="file"; filename="audio.webm"' + CRLF +
+    'Content-Type: ' + mimeType + CRLF + CRLF;
+  var partTail = CRLF + '--' + boundary + '--';
+
+  var headBytes  = Utilities.newBlob(partHead).getBytes();
+  var tailBytes  = Utilities.newBlob(partTail).getBytes();
+  var allBytes   = headBytes.concat(audioBytes).concat(tailBytes);
+
+  var resp = UrlFetchApp.fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + key,
+      'Content-Type':  'multipart/form-data; boundary=' + boundary,
+    },
+    payload: allBytes,
+    muteHttpExceptions: true,
+  });
+
+  var data = JSON.parse(resp.getContentText());
+  if (data.error) return _json({ ok: false, erreur: data.error.message || 'Erreur Groq STT' });
+  return _json({ ok: true, texte: data.text || '' });
+}
+
+function _groqLLM(body, user) {
+  var key = PropertiesService.getScriptProperties().getProperty('GROQ_API_KEY');
+  if (!key) return _json({ ok: false, erreur: 'Clé Groq non configurée' });
+  if (!body.messages || !body.messages.length) return _json({ ok: false, erreur: 'Paramètre messages manquant' });
+
+  var payload = {
+    model:       String(body.model || 'llama3-70b-8192'),
+    temperature: Number(body.temperature !== undefined ? body.temperature : 0.3),
+    messages:    body.messages,
+  };
+  if (body.jsonMode) payload.response_format = { type: 'json_object' };
+
+  var resp = UrlFetchApp.fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + key,
+      'Content-Type':  'application/json',
+    },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true,
+  });
+
+  var data = JSON.parse(resp.getContentText());
+  if (data.error) return _json({ ok: false, erreur: data.error.message || 'Erreur Groq LLM' });
+  var texte = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+  return _json({ ok: true, texte: texte });
+}
+
+function _setGroqKey(body, user) {
+  if (!user || user.role !== 'ADMIN') return _json({ ok: false, erreur: 'Accès réservé à l\'administrateur' });
+  var cle = String(body.cle || '').trim();
+  if (!cle) return _json({ ok: false, erreur: 'Clé vide' });
+  PropertiesService.getScriptProperties().setProperty('GROQ_API_KEY', cle);
+  return _json({ ok: true });
+}
+
+// ── RGPD — purge données CDS (B11) ─────────────────────────
+// Un CDS peut purger ses propres appels/visites.
+// Un ADMIN peut purger pour n'importe quel PIN.
+function _purgerDonnees(body, user) {
+  var pinCible = body.pinCDS ? Number(body.pinCDS) : user.pin;
+  if (pinCible !== user.pin && user.role !== 'ADMIN') {
+    return _json({ ok: false, erreur: 'Non autorisé — vous ne pouvez purger que vos propres données' });
+  }
+  var onglets = ['📞_PHONING', '🗺️_VISITES'];
+  var total = 0;
+  var ss = _getSpreadsheet('EMPOWER_MDB');
+  onglets.forEach(function(nom) {
+    var sh = ss.getSheetByName(nom);
+    if (!sh || sh.getLastRow() < 2) return;
+    var vals = sh.getDataRange().getValues();
+    var headers = vals[0];
+    var pinCol = headers.indexOf('PIN_CDS');
+    if (pinCol < 0) return;
+    for (var r = vals.length - 1; r >= 1; r--) {
+      if (Number(vals[r][pinCol]) === pinCible) {
+        sh.deleteRow(r + 1);
+        total++;
+      }
+    }
+  });
+  SpreadsheetApp.flush();
+  return _json({ ok: true, lignesSupprimees: total });
+}
+
+// ── Gemini proxy (B10) ─────────────────────────────────────
+// La clé est stockée dans ScriptProperties sous 'GEMINI_API_KEY'
+// et n'est JAMAIS exposée côté frontend.
+function _gemini(body, user) {
+  var key = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  if (!key) return _json({ ok: false, erreur: 'Clé Gemini non configurée. Admin : exécuter setGeminiKey depuis la vue Administration.' });
+
+  var prompt   = String(body.prompt   || '');
+  var contexte = String(body.contexte || '');
+  if (!prompt) return _json({ ok: false, erreur: 'Paramètre prompt manquant' });
+
+  var fullPrompt = contexte ? contexte + '\n\n' + prompt : prompt;
+  var payload = {
+    contents: [{ parts: [{ text: fullPrompt }] }],
+    generationConfig: { temperature: 0.4, maxOutputTokens: 600 },
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HARASSMENT',        threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH',        threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',  threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT',  threshold: 'BLOCK_NONE' },
+    ],
+  };
+
+  var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + key;
+  var resp = UrlFetchApp.fetch(url, {
+    method: 'POST',
+    contentType: 'application/json',
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true,
+  });
+
+  var data = JSON.parse(resp.getContentText());
+  if (data.error) return _json({ ok: false, erreur: data.error.message || 'Erreur Gemini API' });
+
+  var texte = (data.candidates && data.candidates[0] &&
+               data.candidates[0].content && data.candidates[0].content.parts &&
+               data.candidates[0].content.parts[0].text) || '';
+  return _json({ ok: true, texte: texte });
+}
+
+// Stockage sécurisé de la clé Gemini — admin uniquement
+function _setGeminiKey(body, user) {
+  if (!user || user.role !== 'ADMIN') return _json({ ok: false, erreur: 'Accès réservé à l\'administrateur' });
+  var cle = String(body.cle || '').trim();
+  if (!cle) return _json({ ok: false, erreur: 'Clé vide' });
+  PropertiesService.getScriptProperties().setProperty('GEMINI_API_KEY', cle);
+  return _json({ ok: true });
 }

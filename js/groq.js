@@ -1,17 +1,17 @@
 // ═══════════════════════════════════════
-//  groq.js — IA Groq : Whisper STT + LLM
-//  Config & system prompt : onglet ⚙️_PARAMS du V17 (phoning_groq V15)
+//  groq.js — IA Groq : Whisper STT + LLM (B11 — proxy Apps Script)
+//  SÉCURITÉ : clé GROQ_API_KEY dans PropertiesService côté Apps Script.
+//  Audio jamais stocké côté serveur — traité en mémoire uniquement.
 // ═══════════════════════════════════════
 
 const GroqAPI = {
-  STT_MODEL:   'whisper-large-v3',
-  LLM_MODEL:   'llama3-70b-8192',
-  TEMPERATURE: 0.3,
+  STT_MODEL:      'whisper-large-v3',
+  LLM_MODEL:      'llama3-70b-8192',
+  TEMPERATURE:    0.3,
   RECORD_SECONDS: 30,
   _mediaRecorder: null,
   _chunks: [],
 
-  // System prompt complet — source : ⚙️_PARAMS V17 (phoning_groq.py V15)
   SYSTEM_PROMPT: `Tu es l'assistant commercial IA de l'équipe Norton France (Impact Sales Marketing).
 Tu aides les CDS terrain (TADJIDINE, LYES, JOHANNE, MEHDI) à qualifier leurs appels revendeurs IT français.
 
@@ -52,10 +52,20 @@ RÉPONSE FORMAT JSON STRICT :
 }
 Réponds UNIQUEMENT avec le JSON, sans texte autour.`,
 
-  // ── Clé API (stockée localement, configurée via Admin) ──
-  getKey()    { return localStorage.getItem('esi_groq_key') || ''; },
-  setKey(k)   { localStorage.setItem('esi_groq_key', (k || '').trim()); },
-  estConfigure() { return !!this.getKey(); },
+  // ── La clé est côté Apps Script — jamais dans le navigateur ──
+  estConfigure() { return Session.estConnecte(); },
+
+  async sauverCle(cle) {
+    const r = await fetch(SheetsAPI.BASE_URL, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'setGroqKey', token: SheetsAPI.TOKEN, cle }),
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.erreur || 'Erreur');
+    return true;
+  },
 
   // ── Enregistrement micro 30s max ──
   async demarrerEnregistrement(onStop) {
@@ -68,7 +78,6 @@ Réponds UNIQUEMENT avec le JSON, sans texte autour.`,
       onStop(new Blob(this._chunks, { type: this._mediaRecorder.mimeType }));
     };
     this._mediaRecorder.start();
-    // Coupure auto à 30s
     setTimeout(() => this.arreterEnregistrement(), this.RECORD_SECONDS * 1000);
   },
 
@@ -78,45 +87,54 @@ Réponds UNIQUEMENT avec le JSON, sans texte autour.`,
     }
   },
 
-  // ── Whisper STT ──
+  // ── STT Whisper via proxy Apps Script ──
+  // Audio converti en base64 côté client → Apps Script appelle Groq
+  // → seule la transcription est retournée, l'audio n'est jamais stocké
   async transcrire(blob) {
-    if (!this.estConfigure()) throw new Error('Clé API Groq non configurée');
-    const fd = new FormData();
-    fd.append('file', blob, 'audio.webm');
-    fd.append('model', this.STT_MODEL);
-    fd.append('language', 'fr');
-    const r = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + this.getKey() },
-      body: fd,
+    if (!this.estConfigure()) throw new Error('Non connecté');
+    const base64 = await new Promise((res, rej) => {
+      const reader = new FileReader();
+      reader.onload  = () => res(reader.result.split(',')[1]);
+      reader.onerror = rej;
+      reader.readAsDataURL(blob);
     });
-    if (!r.ok) throw new Error('Groq STT : HTTP ' + r.status);
-    const data = await r.json();
-    return data.text || '';
-  },
-
-  // ── LLM ──
-  async _chat(messages, jsonMode = true) {
-    if (!this.estConfigure()) throw new Error('Clé API Groq non configurée');
-    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + this.getKey(),
-        'Content-Type': 'application/json',
-      },
+    const r = await fetch(SheetsAPI.BASE_URL, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: this.LLM_MODEL,
-        temperature: this.TEMPERATURE,
-        messages,
-        ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
+        action:   'groqSTT',
+        token:    SheetsAPI.TOKEN,
+        audio:    base64,
+        mimeType: blob.type || 'audio/webm',
       }),
     });
-    if (!r.ok) throw new Error('Groq LLM : HTTP ' + r.status);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
     const data = await r.json();
-    return data.choices?.[0]?.message?.content || '';
+    if (!data.ok) throw new Error(data.erreur || 'Erreur STT');
+    return data.texte || '';
   },
 
-  // Qualification d'un appel / d'une note de visite → JSON structuré
+  // ── LLM via proxy Apps Script ──
+  async _chat(messages, jsonMode = true) {
+    if (!this.estConfigure()) throw new Error('Non connecté');
+    const r = await fetch(SheetsAPI.BASE_URL, {
+      method: 'POST', redirect: 'follow',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action:      'groqLLM',
+        token:       SheetsAPI.TOKEN,
+        model:       this.LLM_MODEL,
+        temperature: this.TEMPERATURE,
+        messages,
+        jsonMode,
+      }),
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    if (!data.ok) throw new Error(data.erreur || 'Erreur LLM');
+    return data.texte || '';
+  },
+
   async qualifier(transcription, contexte = {}) {
     const ctx = Object.entries(contexte).filter(([, v]) => v)
       .map(([k, v]) => `${k}: ${v}`).join(' · ');
@@ -129,7 +147,6 @@ Réponds UNIQUEMENT avec le JSON, sans texte autour.`,
     return parsed;
   },
 
-  // Script d'accroche personnalisé avant appel
   async genererScript(contexte = {}) {
     const ctx = Object.entries(contexte).filter(([, v]) => v)
       .map(([k, v]) => `${k}: ${v}`).join(' · ');

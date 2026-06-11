@@ -84,3 +84,38 @@
 }
 .kanban-voir-plus:hover { background: #E6F1FB; }
 .kanban-voir-plus:active { transform: scale(.98); }
+
+/* ── Cartes visites (vue-visites.js) ── */
+.carte-visite {
+  background: var(--c-surface); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 6px;
+  margin-bottom: 6px; cursor: pointer;
+}
+.cv-head  { display: flex; align-items: center; justify-content: space-between; }
+.cv-heure { font-size: 13px; font-weight: 700; color: var(--c-text-2); }
+.cv-statut{ font-size: 12px; font-weight: 700; text-transform: capitalize; }
+.cv-nom   { font-size: 15px; font-weight: 700; color: var(--c-title); }
+.cv-type  { font-size: 12px; color: var(--c-text-2); }
+.cv-note  { font-size: 12px; color: var(--c-text-2); line-height: 1.4; background: var(--c-bg); border-radius: var(--radius-sm); padding: 6px 10px; }
+.cv-actions { display: flex; gap: 8px; margin-top: 4px; }
+
+/* ── Planning semaine ── */
+.planning-semaine {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  gap: 4px; overflow-x: auto;
+}
+.planning-jour {
+  background: var(--c-surface); border-radius: var(--radius-sm);
+  padding: 6px 4px; cursor: pointer; min-height: 80px;
+  display: flex; flex-direction: column; gap: 3px;
+  border: 1.5px solid transparent; transition: border-color .15s;
+}
+.planning-jour:active { border-color: var(--c-primary); }
+.planning-jour-today  { border-color: var(--c-primary); background: #eff4ff; }
+.pj-label { font-size: 10px; font-weight: 600; color: var(--c-text-2); text-align: center; }
+.pj-count { font-size: 11px; font-weight: 700; color: var(--c-primary); text-align: center; min-height: 14px; }
+.pj-item  { font-size: 10px; border-radius: 3px; padding: 2px 4px; background: var(--c-bg); display: flex; gap: 3px; align-items: center; overflow: hidden; }
+.pj-heure { color: var(--c-text-2); flex-shrink: 0; }
+.pj-nom   { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--c-title); }
+.pj-plus  { font-size: 10px; color: var(--c-primary); text-align: center; font-weight: 700; }
