@@ -270,6 +270,43 @@ window.VueAdmin = {
     finally { if (btn) { btn.disabled = false; btn.textContent = '💾 Enregistrer la clé'; } }
   },
 
+  // ── Test réel des clés IA (appel léger via proxy Apps Script) ──
+  async testerCleGroq() {
+    const btn = document.getElementById('btn-groq-test');
+    const out = document.getElementById('groq-test-res');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Test…'; }
+    if (out) { out.textContent = ''; out.style.color = 'var(--c-text-2)'; }
+    try {
+      const t0 = Date.now();
+      const rep = await GroqAPI._chat(
+        [{ role: 'user', content: 'Réponds exactement: OK' }], false
+      );
+      const ms = Date.now() - t0;
+      if (out) { out.style.color = 'var(--c-success, #1a9e5c)'; out.textContent = `✅ Groq répond (${ms} ms) — « ${String(rep).slice(0, 40)} »`; }
+      Toast.afficher('✅ Clé Groq fonctionnelle', 'succes');
+    } catch(e) {
+      if (out) { out.style.color = 'var(--c-cta, #FF6D68)'; out.textContent = '❌ ' + e.message; }
+      Toast.afficher('❌ Groq : ' + e.message, 'erreur');
+    } finally { if (btn) { btn.disabled = false; btn.textContent = '🧪 Tester la clé Groq'; } }
+  },
+
+  async testerCleGemini() {
+    const btn = document.getElementById('btn-gemini-test');
+    const out = document.getElementById('gemini-test-res');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Test…'; }
+    if (out) { out.textContent = ''; out.style.color = 'var(--c-text-2)'; }
+    try {
+      const t0 = Date.now();
+      const rep = await GeminiAPI._appeler('Réponds exactement: OK', '');
+      const ms = Date.now() - t0;
+      if (out) { out.style.color = 'var(--c-success, #1a9e5c)'; out.textContent = `✅ Gemini répond (${ms} ms) — « ${String(rep).trim().slice(0, 40)} »`; }
+      Toast.afficher('✅ Clé Gemini fonctionnelle', 'succes');
+    } catch(e) {
+      if (out) { out.style.color = 'var(--c-cta, #FF6D68)'; out.textContent = '❌ ' + e.message; }
+      Toast.afficher('❌ Gemini : ' + e.message, 'erreur');
+    } finally { if (btn) { btn.disabled = false; btn.textContent = '🧪 Tester la clé Gemini'; } }
+  },
+
   async viderCache() {
     await SheetsAPI.viderCache();
     Toast.afficher('🗑️ Cache local vidé — données rechargées au prochain écran', 'succes');
@@ -469,8 +506,13 @@ window.VueAdmin = {
         <div class="bloc-fiche">
           <div class="bloc-titre">Clé API Groq (transcription vocale + LLM)</div>
           <input id="admin-groq-key" type="password" class="q-input" placeholder="gsk_…" autocomplete="new-password"/>
-          <button id="btn-groq-save" class="btn-secondaire" style="margin-top:10px"
-                  onclick="VueAdmin.sauverCleGroq()">💾 Enregistrer la clé Groq</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+            <button id="btn-groq-save" class="btn-secondaire"
+                    onclick="VueAdmin.sauverCleGroq()">💾 Enregistrer la clé Groq</button>
+            <button id="btn-groq-test" class="btn-secondaire"
+                    onclick="VueAdmin.testerCleGroq()">🧪 Tester la clé Groq</button>
+          </div>
+          <div id="groq-test-res" style="font-size:12px;margin-top:8px;min-height:16px"></div>
           <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">
             Stockée <strong>côté Apps Script</strong> (PropertiesService) — jamais exposée au navigateur.
           </p>
@@ -479,8 +521,13 @@ window.VueAdmin = {
         <div class="bloc-fiche">
           <div class="bloc-titre">Clé API Gemini (IA assistant)</div>
           <input id="admin-gemini-key" type="password" class="q-input" placeholder="AQ…" autocomplete="new-password"/>
-          <button id="btn-gemini-save" class="btn-secondaire" style="margin-top:10px"
-                  onclick="VueAdmin.sauverCleGemini()">💾 Enregistrer la clé Gemini</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+            <button id="btn-gemini-save" class="btn-secondaire"
+                    onclick="VueAdmin.sauverCleGemini()">💾 Enregistrer la clé Gemini</button>
+            <button id="btn-gemini-test" class="btn-secondaire"
+                    onclick="VueAdmin.testerCleGemini()">🧪 Tester la clé Gemini</button>
+          </div>
+          <div id="gemini-test-res" style="font-size:12px;margin-top:8px;min-height:16px"></div>
           <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">
             Utilisée pour : analyse prospect, préparation visite, email de prospection, résumé CR.
           </p>
