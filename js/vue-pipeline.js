@@ -133,10 +133,10 @@ window.VuePipeline = {
     const lead = this.state.leads.find(l => String(l.ID_Prospect) === String(id));
     if (!lead) return;
     const champs = { STATUT_EMPOWER: statut };
-    if (statut === 'COMPTE_CREE' && !lead.WELCOME_PACK_DATE) champs.WELCOME_PACK_DATE = new Date().toISOString().slice(0, 10);
+    if (statut === 'COMPTE_CREE' && !lead.WELCOME_PACK_DATE) champs.WELCOME_PACK_DATE = dateISOLocale();
     if (statut === 'INTEGRE') {
       champs.Flag_converti = 'TRUE';
-      if (!lead.PREMIERE_COMMANDE_DATE) champs.PREMIERE_COMMANDE_DATE = new Date().toISOString().slice(0, 10);
+      if (!lead.PREMIERE_COMMANDE_DATE) champs.PREMIERE_COMMANDE_DATE = dateISOLocale();
     }
     try {
       await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', id, champs);
@@ -200,7 +200,7 @@ window.VuePipeline = {
       FLAG_ACTION: 'SAISIE', CANAL: v('nl-canal'),
       Note_initiale: v('nl-note'), Date_prochaine_action: '',
       Flag_traite: 'FALSE', Flag_converti: 'FALSE',
-      Date_Import: new Date().toISOString().slice(0, 10),
+      Date_Import: dateISOLocale(),
       Timestamp: new Date().toISOString(),
       STATUT_EMPOWER: 'SAISIE', POTENTIEL: v('nl-potentiel'),
       ORIGINE: v('nl-origine'), CONTACT_NOM: v('nl-contact'), CONTACT_FONCTION: v('nl-fonction'),

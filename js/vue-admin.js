@@ -96,7 +96,7 @@ window.VueAdmin = {
         STATUT_EMPOWER:    'ASSIGNE',
         FLAG_ACTION:       'ASSIGNE',
         Flag_traite:       'FALSE',
-        Date_Import:       new Date().toISOString().slice(0, 10),
+        Date_Import:       dateISOLocale(),
         Timestamp:         new Date().toISOString(),
         created_by:        Session.nom,
       };
@@ -409,7 +409,7 @@ window.VueAdmin = {
     try {
       const data = await SheetsAPI.lire(exp.fichier, exp.onglet);
       const csv  = this._toCSV(data);
-      const date = new Date().toISOString().slice(0, 10);
+      const date = dateISOLocale();
       this._telechargerCSV(csv, `ESI_${exp.id}_${date}.csv`);
       await this._logExport(exp.label, data.length);
       Toast.afficher(`✅ Export ${exp.label} — ${data.length} lignes`, 'succes');
@@ -493,7 +493,7 @@ window.VueAdmin = {
                 ${['Q1', 'Q2', 'Q3', 'Q4'].map(q => `
                   <label style="flex:1;font-size:11px;color:var(--c-text-2)">${q}
                     <input id="obj-${o.ID_Objectif}-${q}" type="number" class="q-input" style="padding:6px 8px;font-size:13px"
-                           placeholder="${o[`${q}_Obj_Initial`]}" value="${o[`${q}_Obj_Revise`] || ''}"/>
+                           placeholder="${o[`${q}_Obj_Initial`] ?? '—'}" value="${o[`${q}_Obj_Revise`] || ''}"/>
                   </label>`).join('')}
               </div>
               <button class="btn-secondaire" style="margin-top:8px;padding:8px"

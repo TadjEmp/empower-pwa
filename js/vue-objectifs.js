@@ -204,7 +204,7 @@ window.VueObjectifs = {
         <h3>📥 Saisir CA Réalisé — ${q} FY27</h3>
         <p style="font-size:12px;color:var(--c-text-2);margin-bottom:14px">
           Saisissez le CA réalisé cumulé (€) par CDS pour le quarter ${q}.
-          Source : SELL IN W${new Date().toISOString().slice(0,10).split('-')[1] || ''}.
+          Source : SELL IN W${dateISOLocale().split('-')[1] || ''}.
         </p>
         <form onsubmit="VueObjectifs.sauvegarderSaisie(event)">
           ${rows}

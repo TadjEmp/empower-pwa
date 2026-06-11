@@ -7,6 +7,13 @@ function genId(prefix = 'ID') {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 }
 
+// Date locale au format YYYY-MM-DD (≠ toISOString qui renvoie l'UTC).
+// Indispensable pour comparer avec les <input type="date"> (toujours locaux) :
+// sinon, entre minuit et l'offset UTC, "aujourd'hui" bascule d'un jour.
+function dateISOLocale(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function normaliserNom(str = '') {
   return (str || '').toUpperCase().trim().replace(/\s+/g, ' ');
 }

@@ -72,7 +72,7 @@ window.VuePhoning = {
 
   // Prospects actifs triés pour la liste de phoning
   get listeProspectsTriee() {
-    const auj = new Date().toISOString().slice(0, 10);
+    const auj = dateISOLocale();
     const potOrdre = { Fort: 0, Moyen: 1, Faible: 2 };
     const EXCLUS = ['ARCHIVE', 'INTEGRE'];
 
@@ -230,7 +230,7 @@ window.VuePhoning = {
           if (!d.frein) d.frein = q.frein_detecte || '';
           if (!d.prochaineAction) d.prochaineAction = q.action_recommandee || '';
           if (q.deadline_action_jours && !d.dateRappel) {
-            d.dateRappel = new Date(Date.now() + q.deadline_action_jours * 86400000).toISOString().slice(0, 10);
+            d.dateRappel = dateISOLocale(new Date(Date.now() + q.deadline_action_jours * 86400000));
           }
           d.note = (d.note ? d.note + '\n' : '') + (q.resume || txt);
           // Auto-suggestion résultat prospect depuis score IA
@@ -267,7 +267,7 @@ window.VuePhoning = {
       // 1. Ligne 📞_PHONING
       await SheetsAPI.ecrire('EMPOWER_MDB', '📞_PHONING', {
         ID_Appel: genId('APPEL'),
-        Date: new Date().toISOString().slice(0, 10),
+        Date: dateISOLocale(),
         Semaine_ISO: getISOWeek(),
         PIN_CDS: Session.pin, Nom_CDS: Session.nom,
         ID_Cible: idCible, Reseller: c.Nom_Compte,
@@ -290,7 +290,7 @@ window.VuePhoning = {
           maj.STATUT_EMPOWER = 'ARCHIVE';
           maj.FLAG_ACTION = 'ARCHIVE';
           maj.Note_initiale = (c.Note_initiale ? c.Note_initiale + '\n' : '')
-            + `[NON_INTERESSE ${new Date().toISOString().slice(0, 10)}]${d.frein ? ' · ' + d.frein : ''}`;
+            + `[NON_INTERESSE ${dateISOLocale()}]${d.frein ? ' · ' + d.frein : ''}`;
         } else if (res === 'INTERESSE') {
           // Avancement pipeline vers EN_COURS
           maj.STATUT_EMPOWER = 'EN_COURS';
@@ -306,7 +306,7 @@ window.VuePhoning = {
         if (local) Object.assign(local, maj);
       } else {
         await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', idCible, {
-          Date_Derniere_Action: new Date().toISOString().slice(0, 10),
+          Date_Derniere_Action: dateISOLocale(),
           Type_Derniere_Action: 'Appel',
           Prochaine_action: d.prochaineAction,
           Date_prochaine_action: d.dateRappel,
@@ -461,7 +461,7 @@ window.VuePhoning = {
     });
     if (!data.length) { Toast.afficher('Aucun appel pour ces filtres', 'warning'); return; }
 
-    const ts = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const ts = dateISOLocale().replace(/-/g, '');
     const fn = `PHONING_${f.debut || 'debut'}_${f.fin || 'fin'}_${ts}.csv`;
 
     const rows = data.map(a => ({
@@ -730,7 +730,7 @@ window.VuePhoning = {
   // ── Liste de phoning prospects ──
   _renderListeProspects() {
     const s = this.state;
-    const auj = new Date().toISOString().slice(0, 10);
+    const auj = dateISOLocale();
     const EXCLUS = ['ARCHIVE', 'INTEGRE'];
     const actifs = s.prospects.filter(p => !EXCLUS.includes(String(p.STATUT_EMPOWER || '').toUpperCase()));
     const liste  = this.listeProspectsTriee;

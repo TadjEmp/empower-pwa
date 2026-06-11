@@ -128,7 +128,7 @@ window.VuePrimes = {
     try {
       const ligne = {
         ID_NSB: genId('NSB'),
-        Date: v('nsb-date') || new Date().toISOString().slice(0, 10),
+        Date: v('nsb-date') || dateISOLocale(),
         PIN_CDS: Session.pin, ID_Compte: '',
         Nom_Compte: v('nsb-compte').toUpperCase(),
         Produit: v('nsb-produit') || 'NSB',
@@ -150,7 +150,7 @@ window.VuePrimes = {
     try {
       await SheetsAPI.mettreAJour('EMPOWER_MDB', '🛒_NSB_COMMANDES', id, {
         Valid_Manager: 'OUI', Statut: 'VALIDE',
-        Date_Validation: new Date().toISOString().slice(0, 10),
+        Date_Validation: dateISOLocale(),
       });
       const n = this.state.nsb.find(x => x.ID_NSB === id);
       if (n) { n.Valid_Manager = 'OUI'; n.Statut = 'VALIDE'; }
@@ -307,7 +307,7 @@ window.VuePrimes = {
         <h3>➕ Déclarer une commande NSB</h3>
         <form onsubmit="VuePrimes.declarerNSB(event)">
           <label>Compte *<input id="nsb-compte" required placeholder="Nom du revendeur"/></label>
-          <label>Date<input id="nsb-date" type="date" value="${new Date().toISOString().slice(0, 10)}"/></label>
+          <label>Date<input id="nsb-date" type="date" value="${dateISOLocale()}"/></label>
           <label>Produit<select id="nsb-produit"><option>NSB</option><option>NSB 5 postes</option><option>NSB 10 postes</option><option>NSB 20 postes</option></select></label>
           <label>Montant (€)<input id="nsb-montant" type="number" inputmode="decimal"/></label>
           <label>Note<textarea id="nsb-note" rows="2" placeholder="N° commande, distributeur…"></textarea></label>

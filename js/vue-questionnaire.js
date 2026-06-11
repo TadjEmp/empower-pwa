@@ -96,7 +96,7 @@ window.VueQuestionnaire = {
       photos: [],
       d: {
         // Étape 0
-        date:  now.toISOString().slice(0, 10),
+        date:  dateISOLocale(now),
         heure: now.toTimeString().slice(0, 5),
         interlocuteurNom: '', interlocuteurFonction: '',
         // Étape 1

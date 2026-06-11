@@ -35,6 +35,7 @@ window.VueDashboardManager = {
     const semaine    = getISOWeek();
     const seuilRouge = Number(paramMap.SEUIL_ROUGE_JOURS || 5);
 
+    // Le manager est aussi commercial terrain : il figure dans la perf équipe.
     const equipe = objectifs.map(o => {
       const pin = Number(o.PIN_CDS);
       const ca  = Number(o[`${quarter}_CA_Realise`] || 0);
@@ -158,12 +159,18 @@ window.VueDashboardManager = {
       const wCA  = e.ca > 0 ? Math.max(4, Math.round(e.ca / maxVal * 210)) : 0;
       const y    = i * ROW + 2;
       const col  = PACE_COL[e.pace];
+      const pctStr = `${e.pct}%`;
+      const xPct = wObj + 6;
+      // CA dans la barre si assez large, sinon APRÈS le label % (évite la superposition quand obj/CA ≈ 0)
+      const caInside = wCA > 40;
+      const caX      = wCA > 20 ? wCA - 4 : xPct + pctStr.length * 6 + 6;
+      const caAnchor = wCA > 20 ? 'end' : 'start';
       return `
         <text x="0" y="${y + 11}" font-size="11" font-weight="700" fill="#0E0D30">${e.nom.toUpperCase()}</text>
         <rect x="0" y="${y + 15}" width="${wObj}" height="14" fill="#E8E8ED" rx="3"/>
         <rect x="0" y="${y + 15}" width="${wCA}"  height="14" fill="${col}"   rx="3" opacity=".88"/>
-        <text x="${wObj + 6}" y="${y + 26}" font-size="10" fill="${col}" font-weight="700">${e.pct}%</text>
-        <text x="${wCA > 20 ? wCA - 4 : wCA + 4}" y="${y + 25}" font-size="9" fill="${wCA > 40 ? '#fff' : col}" text-anchor="${wCA > 20 ? 'end' : 'start'}">${formatEUR(e.ca)}</text>
+        <text x="${xPct}" y="${y + 26}" font-size="10" fill="${col}" font-weight="700">${pctStr}</text>
+        <text x="${caX}" y="${y + 25}" font-size="9" fill="${caInside ? '#fff' : col}" text-anchor="${caAnchor}">${formatEUR(e.ca)}</text>
       `;
     }).join('');
     return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"

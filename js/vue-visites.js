@@ -38,7 +38,7 @@ window.VueVisites = {
     this.state.sousVue = sousVue;
     this.state.visitePlanifiee = param ? this._trouverVisite(param) : null;
     this.state.chargement = true;
-    this.state.dateVue = this.state.dateVue || new Date().toISOString().slice(0, 10);
+    this.state.dateVue = this.state.dateVue || dateISOLocale();
     this._resetFormPlanif();
     this.render();
 
@@ -72,7 +72,7 @@ window.VueVisites = {
   _resetFormPlanif() {
     const now = new Date();
     this.state.formPlanif = {
-      date:  now.toISOString().slice(0, 10),
+      date:  dateISOLocale(now),
       heure: '09:00',
       typeVisite: 'SUIVI_ACTIF',
       idCible: '', nomCible: '',
@@ -94,7 +94,7 @@ window.VueVisites = {
     const jours = Array.from({ length: 7 }, (_, i) => {
       const j = new Date(lundi);
       j.setDate(lundi.getDate() + i);
-      return j.toISOString().slice(0, 10);
+      return dateISOLocale(j);
     });
     return jours.map(iso => ({
       iso,
@@ -106,7 +106,7 @@ window.VueVisites = {
   },
 
   get nbPlanifAujourdHui() {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = dateISOLocale();
     return this.state.visites.filter(v =>
       (v.Date || v.Date_Planif || '').slice(0, 10) === today &&
       (v.Statut_Visite || 'planifiée') === 'planifiée'
@@ -117,17 +117,17 @@ window.VueVisites = {
   jourPrecedent() {
     const d = new Date(this.state.dateVue);
     d.setDate(d.getDate() - (this.state.modeVue === 'semaine' ? 7 : 1));
-    this.state.dateVue = d.toISOString().slice(0, 10);
+    this.state.dateVue = dateISOLocale(d);
     this.render();
   },
   jourSuivant() {
     const d = new Date(this.state.dateVue);
     d.setDate(d.getDate() + (this.state.modeVue === 'semaine' ? 7 : 1));
-    this.state.dateVue = d.toISOString().slice(0, 10);
+    this.state.dateVue = dateISOLocale(d);
     this.render();
   },
   allerAujourdhui() {
-    this.state.dateVue = new Date().toISOString().slice(0, 10);
+    this.state.dateVue = dateISOLocale();
     this.render();
   },
   setModeVue(mode) { this.state.modeVue = mode; this.render(); },
@@ -264,7 +264,7 @@ window.VueVisites = {
     if (!v) return;
     const d7 = new Date();
     d7.setDate(d7.getDate() + 7);
-    const dateDup = d7.toISOString().slice(0, 10);
+    const dateDup = dateISOLocale(d7);
     const dup = {
       ID_Visite:              genId('VIS'),
       Date:                   dateDup,
@@ -330,7 +330,7 @@ window.VueVisites = {
 
     const debut = f.debut || 'debut';
     const fin   = f.fin   || 'fin';
-    const ts    = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const ts    = dateISOLocale().replace(/-/g, '');
     const fn    = `VISITES_${debut}_${fin}_${ts}.csv`;
 
     const rows = data.map(v => ({
@@ -413,7 +413,7 @@ window.VueVisites = {
       return;
     }
 
-    const today      = new Date().toISOString().slice(0, 10);
+    const today      = dateISOLocale();
     const estAujd    = this.state.dateVue === today;
     const dateLbl    = new Date(this.state.dateVue + 'T12:00:00').toLocaleDateString('fr-FR', {
       weekday: 'long', day: 'numeric', month: 'long'

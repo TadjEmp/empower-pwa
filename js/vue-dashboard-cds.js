@@ -69,7 +69,7 @@ window.VueDashboardCDS = {
     );
 
     // ── Visites planifiées aujourd'hui ──
-    const aujourd = new Date().toISOString().slice(0, 10);
+    const aujourd = dateISOLocale();
     const visitesAujourdhui = visites.filter(v => {
       if (!this._estMoi(v.PIN_CDS)) return false;
       const statut = String(v.Statut_Visite || 'planifiée').toLowerCase();
