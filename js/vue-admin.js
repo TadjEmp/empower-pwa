@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════
-//  vue-admin.js — Administration (Tadjidine uniquement)
-//  Objectifs CDS · Clé Groq · Paramètres ⚙️_PARAMS
+//  vue-admin.js — Administration v9
+//  Exports thématiques enrichis + vue équipe
 // ═══════════════════════════════════════
 
 window.VueAdmin = {
@@ -8,7 +8,6 @@ window.VueAdmin = {
   state: null,
 
   async init() {
-    // CHANNEL_MANAGER (Alexandra) peut accéder aux exports uniquement
     if (!Session.voitTout()) { Router.aller('#/dashboard'); return; }
     this.state = { chargement: true, objectifs: [], params: [], envoiEnCours: false };
     this.render();
@@ -18,7 +17,7 @@ window.VueAdmin = {
         SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
       ]);
       this.state.objectifs = objectifs;
-      this.state.params = params;
+      this.state.params    = params;
       this.state.chargement = false;
       this.render();
     } catch(e) {
@@ -53,11 +52,8 @@ window.VueAdmin = {
       await GroqAPI.sauverCle(v);
       document.getElementById('admin-groq-key').value = '';
       Toast.afficher('✅ Clé Groq stockée côté Apps Script (PropertiesService)', 'succes');
-    } catch(e) {
-      Toast.afficher('❌ ' + e.message, 'erreur');
-    } finally {
-      if (btn) { btn.disabled = false; btn.textContent = '💾 Enregistrer la clé'; }
-    }
+    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+    finally { if (btn) { btn.disabled = false; btn.textContent = '💾 Enregistrer la clé'; } }
   },
 
   async sauverCleGemini() {
@@ -69,11 +65,8 @@ window.VueAdmin = {
       await GeminiAPI.sauverCle(v);
       document.getElementById('admin-gemini-key').value = '';
       Toast.afficher('✅ Clé Gemini stockée côté Apps Script (PropertiesService)', 'succes');
-    } catch(e) {
-      Toast.afficher('❌ ' + e.message, 'erreur');
-    } finally {
-      if (btn) { btn.disabled = false; btn.textContent = '💾 Enregistrer la clé'; }
-    }
+    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+    finally { if (btn) { btn.disabled = false; btn.textContent = '💾 Enregistrer la clé'; } }
   },
 
   async viderCache() {
@@ -81,7 +74,6 @@ window.VueAdmin = {
     Toast.afficher('🗑️ Cache local vidé — données rechargées au prochain écran', 'succes');
   },
 
-  // ── RGPD (B11) ────────────────────────────────────────────
   async purgerDonneesCDS(pinCDS) {
     const cible = pinCDS || Session.pin;
     const nomCDS = pinCDS
@@ -100,14 +92,11 @@ window.VueAdmin = {
       Toast.afficher(`✅ ${data.lignesSupprimees} ligne(s) supprimée(s) pour ${nomCDS}`, 'succes');
       await SheetsAPI.viderCache('EMPOWER_MDB', '📞_PHONING');
       await SheetsAPI.viderCache('EMPOWER_MDB', '🗺️_VISITES');
-    } catch(e) {
-      Toast.afficher('❌ ' + e.message, 'erreur');
-    } finally {
-      if (btn) { btn.disabled = false; btn.textContent = '🗑️ Purger'; }
-    }
+    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+    finally { if (btn) { btn.disabled = false; btn.textContent = '🗑️ Purger'; } }
   },
 
-  // ── Exports CSV (B9) ──────────────────────────────────
+  // ── Exports CSV thématiques ──
   _toCSV(rows) {
     if (!rows || !rows.length) return '';
     const headers = Object.keys(rows[0]);
@@ -143,13 +132,36 @@ window.VueAdmin = {
     } catch {}
   },
 
-  EXPORTS: [
-    { id: 'prospects',    label: 'Pipeline complet',    fichier: 'EMPOWER_MDB', onglet: '📋_PROSPECTS' },
-    { id: 'comptes',      label: 'Comptes actifs',       fichier: 'EMPOWER_MDB', onglet: '🏢_COMPTES' },
-    { id: 'sell_in',      label: 'Sell-In historique',   fichier: 'EMPOWER_MDB', onglet: '📉_SELL_IN_HISTORIQUE' },
-    { id: 'visites',      label: 'Visites terrain',      fichier: 'EMPOWER_MDB', onglet: '🗺️_VISITES' },
-    { id: 'objectifs',    label: 'Objectifs & Primes',   fichier: 'EMPOWER_MDB', onglet: '🎯_OBJECTIFS_PRIMES' },
+  // Exports organisés par thème — confirmés pour le reporting manager
+  EXPORT_GROUPES: [
+    {
+      titre: '📋 Prospects & Pipeline',
+      exports: [
+        { id: 'prospects', label: 'Pipeline complet (tous statuts)',    fichier: 'EMPOWER_MDB', onglet: '📋_PROSPECTS',          desc: 'Tous les prospects avec statut EMPOWER, potentiel, assignation CDS' },
+        { id: 'comptes',   label: 'Comptes actifs',                      fichier: 'EMPOWER_MDB', onglet: '🏢_COMPTES',             desc: 'Base clients avec CA FY25/FY26/Q1FY27, statuts, CDS assignés' },
+      ],
+    },
+    {
+      titre: '📞 Activité terrain',
+      exports: [
+        { id: 'visites',   label: 'Visites terrain',                     fichier: 'EMPOWER_MDB', onglet: '🗺️_VISITES',            desc: 'Toutes les visites planifiées et réalisées avec CR, questionnaire, GPS' },
+        { id: 'phoning',   label: 'Activité phoning',                    fichier: 'EMPOWER_MDB', onglet: '📞_PHONING',             desc: 'Historique des appels : statut, intérêt EMPOWER, freins, rappels' },
+        { id: 'actions',   label: 'Journal des actions (📊_ACTIONS)',    fichier: 'EMPOWER_MDB', onglet: '📊_ACTIONS',             desc: 'Toutes les actions logguées : alertes, exports, avancement pipeline' },
+      ],
+    },
+    {
+      titre: '🏆 Financier & Objectifs',
+      exports: [
+        { id: 'objectifs', label: 'Objectifs & Primes FY27',             fichier: 'EMPOWER_MDB', onglet: '🎯_OBJECTIFS_PRIMES',   desc: 'Objectifs Q1-Q4 révisés, CA réalisé, primes par CDS' },
+        { id: 'sell_in',   label: 'Sell-In historique (FY25-FY26-FY27)', fichier: 'EMPOWER_MDB', onglet: '📉_SELL_IN_HISTORIQUE', desc: 'CA trimestriel historique par compte, canal, secteur' },
+      ],
+    },
   ],
+
+  // Accès plat pour compatibilité
+  get EXPORTS() {
+    return this.EXPORT_GROUPES.flatMap(g => g.exports);
+  },
 
   async exporterDonnees(id) {
     const exp = this.EXPORTS.find(e => e.id === id);
@@ -170,6 +182,22 @@ window.VueAdmin = {
     }
   },
 
+  _renderExports() {
+    return this.EXPORT_GROUPES.map(groupe => `
+      <div style="margin-bottom:18px">
+        <div style="font-size:12px;font-weight:700;color:var(--c-title);letter-spacing:.04em;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--c-border)">${groupe.titre}</div>
+        ${groupe.exports.map(e => `
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--c-bg);gap:12px">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600">${e.label}</div>
+              <div style="font-size:11px;color:var(--c-text-2);margin-top:1px">${e.desc}</div>
+            </div>
+            <button id="btn-export-${e.id}" class="btn-secondaire" style="padding:8px 14px;width:auto;flex-shrink:0"
+                    onclick="VueAdmin.exporterDonnees('${e.id}')">📥 CSV</button>
+          </div>`).join('')}
+      </div>`).join('');
+  },
+
   render() {
     const app = document.getElementById('app');
     if (!this.state || this.state.chargement) {
@@ -177,30 +205,23 @@ window.VueAdmin = {
       return;
     }
 
-    // Alexandra (CHANNEL_MANAGER) : vue exports uniquement
+    // Alexandra (CHANNEL_MANAGER) : exports uniquement
     if (Session.estChannel()) {
       app.innerHTML = `
         <header class="header-vue">
           <button onclick="Router.aller('#/empower-tracker')" class="btn-retour">←</button>
           <h1>📥 Exports & Reporting</h1>
         </header>
-        <div class="dash-body">
+        <div class="dash-body avec-nav">
           <div class="bloc-fiche">
-            <div class="bloc-titre">📥 Exports CSV</div>
-            <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">
-              Données en temps réel — un log est enregistré dans 📊_ACTIONS.
+            <div class="bloc-titre">📥 Exports CSV — Reporting thématique</div>
+            <p style="font-size:12px;color:var(--c-text-2);margin-bottom:14px">
+              Données en temps réel. Chaque export est tracé dans 📊_ACTIONS.
             </p>
-            ${this.EXPORTS.map(e => `
-              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--c-border)">
-                <div>
-                  <div style="font-size:14px;font-weight:600">${e.label}</div>
-                  <div style="font-size:11px;color:var(--c-text-2)">${e.onglet}</div>
-                </div>
-                <button id="btn-export-${e.id}" class="btn-secondaire" style="padding:8px 14px;width:auto"
-                        onclick="VueAdmin.exporterDonnees('${e.id}')">📥 Exporter</button>
-              </div>`).join('')}
+            ${this._renderExports()}
           </div>
-        </div>`;
+        </div>
+        ${NavBar('home')}`;
       return;
     }
 
@@ -210,14 +231,16 @@ window.VueAdmin = {
         <h1>⚙️ Administration</h1>
       </header>
 
-      <div class="dash-body">
+      <div class="dash-body avec-nav">
 
         <!-- OBJECTIFS -->
         <div class="bloc-fiche">
           <div class="bloc-titre">Objectifs FY27 par CDS (€ révisés)</div>
           ${this.state.objectifs.map(o => `
             <div style="border-bottom:1px solid var(--c-border);padding:10px 0">
-              <strong style="font-size:14px">${o.Nom_CDS} <span style="color:var(--c-text-2);font-weight:400">· PIN ${o.PIN_CDS} · FY27 : ${formatEuro(o.FY27_Obj)}</span></strong>
+              <strong style="font-size:14px">${o.Nom_CDS}
+                <span style="color:var(--c-text-2);font-weight:400"> · PIN ${o.PIN_CDS} · FY27 : ${formatEuro(o.FY27_Obj)}</span>
+              </strong>
               <div style="display:flex;gap:6px;margin-top:8px">
                 ${['Q1', 'Q2', 'Q3', 'Q4'].map(q => `
                   <label style="flex:1;font-size:11px;color:var(--c-text-2)">${q}
@@ -231,31 +254,28 @@ window.VueAdmin = {
           <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">Vide = objectif initial conservé. Les % pace utilisent le révisé s'il existe.</p>
         </div>
 
-        <!-- GROQ -->
+        <!-- CLÉS API -->
         <div class="bloc-fiche">
           <div class="bloc-titre">Clé API Groq (transcription vocale + LLM)</div>
-          <input id="admin-groq-key" type="password" class="q-input" placeholder="gsk_…"
-                 autocomplete="new-password"/>
+          <input id="admin-groq-key" type="password" class="q-input" placeholder="gsk_…" autocomplete="new-password"/>
           <button id="btn-groq-save" class="btn-secondaire" style="margin-top:10px"
-                  onclick="VueAdmin.sauverCleGroq()">💾 Enregistrer la clé</button>
+                  onclick="VueAdmin.sauverCleGroq()">💾 Enregistrer la clé Groq</button>
           <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">
             Stockée <strong>côté Apps Script</strong> (PropertiesService) — jamais exposée au navigateur.
-            Modèles : whisper-large-v3 (STT) + llama3-70b-8192 (LLM).</p>
+          </p>
         </div>
 
-        <!-- GEMINI (B10) -->
         <div class="bloc-fiche">
           <div class="bloc-titre">Clé API Gemini (IA assistant)</div>
-          <input id="admin-gemini-key" type="password" class="q-input" placeholder="AQ…"
-                 autocomplete="new-password"/>
+          <input id="admin-gemini-key" type="password" class="q-input" placeholder="AQ…" autocomplete="new-password"/>
           <button id="btn-gemini-save" class="btn-secondaire" style="margin-top:10px"
-                  onclick="VueAdmin.sauverCleGemini()">💾 Enregistrer la clé</button>
+                  onclick="VueAdmin.sauverCleGemini()">💾 Enregistrer la clé Gemini</button>
           <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">
-            Stockée <strong>côté Apps Script</strong> (PropertiesService) — jamais exposée au navigateur.
-            Utilisée pour : analyse prospect, préparation visite, email de prospection, résumé CR.</p>
+            Utilisée pour : analyse prospect, préparation visite, email de prospection, résumé CR.
+          </p>
         </div>
 
-        <!-- PARAMS (lecture) -->
+        <!-- PARAMÈTRES SYSTÈME -->
         <div class="bloc-fiche">
           <div class="bloc-titre">Paramètres système (⚙️_PARAMS — lecture)</div>
           <div class="grille-identite">
@@ -265,45 +285,36 @@ window.VueAdmin = {
           <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">Modifiables directement dans le Google Sheet EMPOWER MDB.</p>
         </div>
 
-        <!-- EXPORTS CSV (B9) -->
+        <!-- EXPORTS CSV — REPORTING THÉMATIQUE -->
         <div class="bloc-fiche">
-          <div class="bloc-titre">📥 Exports CSV</div>
-          <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">
-            Tous les exports incluent les données en temps réel. Un log est enregistré dans 📊_ACTIONS.
+          <div class="bloc-titre">📥 Exports CSV — Reporting thématique</div>
+          <p style="font-size:12px;color:var(--c-text-2);margin-bottom:14px">
+            7 exports organisés par thème. Données en temps réel depuis Google Sheets.
+            Chaque export est tracé dans 📊_ACTIONS avec l'identité de l'exporteur.
           </p>
-          ${this.EXPORTS.map(e => `
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--c-border)">
-              <div>
-                <div style="font-size:14px;font-weight:600">${e.label}</div>
-                <div style="font-size:11px;color:var(--c-text-2)">${e.fichier} · ${e.onglet}</div>
-              </div>
-              <button id="btn-export-${e.id}" class="btn-secondaire" style="padding:8px 14px;width:auto"
-                      onclick="VueAdmin.exporterDonnees('${e.id}')">📥 Exporter</button>
-            </div>`).join('')}
+          ${this._renderExports()}
         </div>
 
-        <!-- RGPD (B11) -->
+        <!-- RGPD -->
         <div class="bloc-fiche">
           <div class="bloc-titre">🔒 RGPD — Purge des données personnelles</div>
           <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">
             Supprime définitivement les appels (📞_PHONING) et visites (🗺️_VISITES) d'un CDS.
             Les comptes et prospects ne sont pas affectés.<br>
-            <strong>Audio : jamais stocké côté serveur</strong> — seule la transcription texte est conservée dans les notes d'appel.
+            <strong>Audio : jamais stocké côté serveur</strong> — seule la transcription texte est conservée.
           </p>
-          <div style="display:flex;flex-direction:column;gap:8px">
-            ${this.state.objectifs.map(o => `
-              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--c-border)">
-                <div>
-                  <div style="font-size:14px;font-weight:600">${o.Nom_CDS}</div>
-                  <div style="font-size:11px;color:var(--c-text-2)">PIN ${o.PIN_CDS} · 📞 appels + 🗺️ visites</div>
-                </div>
-                <button id="btn-purge-${o.PIN_CDS}" class="btn-secondaire"
-                        style="padding:8px 14px;width:auto;color:var(--c-danger);border-color:var(--c-danger)"
-                        onclick="if(confirm('Purger TOUTES les données de ${o.Nom_CDS} ?')) VueAdmin.purgerDonneesCDS('${o.PIN_CDS}')">
-                  🗑️ Purger
-                </button>
-              </div>`).join('')}
-          </div>
+          ${this.state.objectifs.map(o => `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--c-border)">
+              <div>
+                <div style="font-size:14px;font-weight:600">${o.Nom_CDS}</div>
+                <div style="font-size:11px;color:var(--c-text-2)">PIN ${o.PIN_CDS} · 📞 appels + 🗺️ visites</div>
+              </div>
+              <button id="btn-purge-${o.PIN_CDS}" class="btn-secondaire"
+                      style="padding:8px 14px;width:auto;color:var(--c-danger);border-color:var(--c-danger)"
+                      onclick="if(confirm('Purger TOUTES les données de ${o.Nom_CDS} ?')) VueAdmin.purgerDonneesCDS('${o.PIN_CDS}')">
+                🗑️ Purger
+              </button>
+            </div>`).join('')}
         </div>
 
         <!-- MAINTENANCE -->
