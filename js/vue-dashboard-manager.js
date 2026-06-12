@@ -57,10 +57,16 @@ window.VueDashboardManager = {
     const norm = v => String(v || '').trim().toUpperCase();
     const now  = Date.now();
 
+    // BUG 1 — seuls les leads ESI_PIPELINE non supprimés comptent (pas la base 📋_PROSPECTS entière)
+    const leads = prospects.filter(p =>
+      norm(p.Source_Import) === 'ESI_PIPELINE' &&
+      norm(p.Flag_traite) !== 'DELETED'
+    );
+
     // ── Compteurs pipeline par STATUT_EMPOWER (vocabulaire réel) ──
     // Traiter = ASSIGNE + SAISIE · En cours = EN_COURS (+ COMPTE_CREE) · Intégré = INTEGRE · Archivé = ARCHIVE
     let cTraiter = 0, cEnCours = 0, cIntegre = 0, cArchive = 0;
-    prospects.forEach(p => {
+    leads.forEach(p => {
       const s = norm(p.STATUT_EMPOWER);
       if (s === 'ASSIGNE' || s === 'SAISIE')       cTraiter++;
       else if (s === 'EN_COURS' || s === 'COMPTE_CREE') cEnCours++;
@@ -77,7 +83,7 @@ window.VueDashboardManager = {
     // ── Taux d'intégration par CDS (%) — assignés vs intégrés ──
     // Regroupement par prénom résolu (jamais de PIN affiché).
     const parCDS = {};
-    prospects.forEach(p => {
+    leads.forEach(p => {
       const pinOuNom = p.PIN_CDS_Assigne || p.Nom_CDS;
       const prenom   = resolveCDS(pinOuNom);
       if (prenom === '—') return;           // lead non assigné → exclu du taux

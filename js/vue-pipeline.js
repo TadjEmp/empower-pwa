@@ -32,7 +32,8 @@ window.VuePipeline = {
     // ⚙️_PARAMS réel : PINS_CDS='4001,4002,4003' + PIN_MANAGER='1000'
     // Les noms viennent de 🎯_OBJECTIFS_PRIMES.Nom_CDS
     const paramMap = Object.fromEntries(params.map(p => [p.Parametre, p.Valeur]));
-    const pinsCDS   = String(paramMap.PINS_CDS || '').split(',').map(p => Number(p.trim())).filter(Boolean);
+    const pinsCDSStr = String(paramMap.PINS_CDS || '').trim() || '4001,4002,4003';
+    const pinsCDS   = pinsCDSStr.split(',').map(p => Number(p.trim())).filter(Boolean);
     const pinMgr    = Number(paramMap.PIN_MANAGER || 1000);
     const allPins   = [pinMgr, ...pinsCDS].filter((v, i, a) => a.indexOf(v) === i);
     // Noms depuis objectifs (Nom_CDS/PIN_CDS)
