@@ -96,6 +96,21 @@ window.VuePipeline = {
 
   _nomCDS(pin) { return resolveCDS(pin); }, // BUG-02 : délègue au helper global
 
+  _labelFlag(flag) {
+    const MAP = {
+      'SAISIE':               '🆕 Nouveau',
+      'A_RELANCER':           '🔔 À relancer',
+      'EN_COURS':             '▶️ En cours',
+      'A_RAPPELER':           '📅 À rappeler',
+      'INTERESSE':            '✅ Intéressé',
+      'WELCOME_PACK_ENVOYE':  '📦 WP envoyé',
+      'COMPTE_CREE':          '🏢 Compte créé',
+      'NON_INTERESSE':        '❌ Non intéressé',
+      'PERDU':                '🗄 Perdu',
+    };
+    return MAP[String(flag || '').toUpperCase()] || flag || '—';
+  },
+
   _retardWelcomePack(p) {
     if (p._statut !== 'COMPTE_CREE' || p.WELCOME_PACK_DATE) return false;
     const ref = p.Timestamp || p.Date_Import;
@@ -202,7 +217,7 @@ window.VuePipeline = {
       Tel: v('nl-tel'), Email: v('nl-email'),
       PIN_CDS_Assigne: '', Source_Import: 'ESI_PIPELINE',
       FLAG_ACTION: 'SAISIE', CANAL: v('nl-canal'),
-      Note_initiale: v('nl-note'), Date_prochaine_action: '',
+      Note_initiale: v('nl-note'), Date_prochaine_action: v('nl-date-action'),
       Flag_traite: 'FALSE', Flag_converti: 'FALSE',
       Date_Import: dateISOLocale(),
       Timestamp: new Date().toISOString(),
@@ -323,11 +338,20 @@ window.VuePipeline = {
                 <div class="kanban-carte-nom">${l.Nom_Compte}</div>
                 <div class="kanban-carte-meta">
                   ${l.POTENTIEL ? `<span class="pot-pill pot-${(l.POTENTIEL||'').toLowerCase()}">${l.POTENTIEL}</span>` : ''}
-                  <span>👤 ${this._nomCDS(l.PIN_CDS_Assigne)}</span>
+                  ${l.CANAL ? `<span style="font-size:10px;padding:1px 6px;border-radius:99px;background:var(--c-bg);border:1px solid var(--c-border);color:var(--c-text-2);white-space:nowrap">${l.CANAL}</span>` : ''}
                 </div>
-                ${l.Note_initiale ? `<div class="kanban-carte-note">${String(l.Note_initiale).slice(0, 80)}</div>` : ''}
+                <div class="kanban-carte-meta" style="margin-top:3px">
+                  <span style="color:var(--c-text-2);font-size:11px">👤 ${this._nomCDS(l.PIN_CDS_Assigne)}</span>
+                  ${l.FLAG_ACTION && l.FLAG_ACTION !== 'SAISIE' ? `<span style="font-size:10px;color:var(--c-primary);font-weight:700">${this._labelFlag(l.FLAG_ACTION)}</span>` : ''}
+                </div>
+                ${l.Note_initiale ? `<div class="kanban-carte-note">${String(l.Note_initiale).slice(0, 60)}</div>` : ''}
                 ${this._retardWelcomePack(l) ? '<div class="kanban-carte-note" style="color:var(--c-danger);font-weight:600">⚠️ Welcome Pack J+14 dépassé</div>' : ''}
-                <div class="kanban-carte-pied" style="display:flex;align-items:center">🕐 ${dateRelative(l.Timestamp || l.Date_Import)} <span class="kanban-voir">Voir détail →</span></div>
+                <div class="kanban-carte-pied" style="display:flex;align-items:center;gap:4px">
+                  ${l.Date_prochaine_action
+                    ? `<span style="color:${estDepassee(l.Date_prochaine_action) ? 'var(--c-danger)' : 'var(--c-text-2)'}">⏰ ${dateRelative(l.Date_prochaine_action)}</span>`
+                    : `<span>🕐 ${dateRelative(l.Timestamp || l.Date_Import)}</span>`}
+                  <span class="kanban-voir" style="margin-left:auto">Voir →</span>
+                </div>
               </div>`).join('')}
             ${masques > 0 ? `
               <div class="kanban-voir-plus" onclick="VuePipeline.etendre('${st.id}')">
@@ -351,65 +375,149 @@ window.VuePipeline = {
       return `
       <div class="modal-overlay" onclick="if(event.target===this)VuePipeline.fermerModal()">
         <div class="modal">
-          <h3>➕ Nouveau lead</h3>
+          <h3>➕ Nouveau lead EMPOWER</h3>
+          <p style="font-size:12px;color:var(--c-text-2);margin:-4px 0 12px">Renseigner les informations du prospect identifié. L'IA enrichira automatiquement la fiche après création.</p>
           <form onsubmit="VuePipeline.saisirLead(event)">
-            <label>Nom du prospect *<input id="nl-nom" required placeholder="ex : MICRO PLUS INFORMATIQUE"/></label>
-            <label>Contact<input id="nl-contact" placeholder="Prénom Nom"/></label>
-            <label>Fonction<input id="nl-fonction" placeholder="Gérant…"/></label>
-            <label>Téléphone<input id="nl-tel" inputmode="tel"/></label>
-            <label>Email<input id="nl-email" type="email"/></label>
+
+            <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.05em;margin-bottom:6px">IDENTIFICATION</div>
+            <label>Enseigne / Raison sociale *
+              <input id="nl-nom" required placeholder="ex : MICRO PLUS INFORMATIQUE — en majuscules"/></label>
             <div style="display:flex;gap:10px">
-              <label style="flex:2">Ville<input id="nl-ville"/></label>
-              <label style="flex:1">CP<input id="nl-cp" inputmode="numeric"/></label>
+              <label style="flex:2">Ville
+                <input id="nl-ville" placeholder="ex : Lyon"/></label>
+              <label style="flex:1">Code postal
+                <input id="nl-cp" inputmode="numeric" placeholder="69000"/></label>
             </div>
-            <label>Canal<select id="nl-canal"><option>IT</option><option>Retail</option><option>Autre</option></select></label>
-            <label>Potentiel<select id="nl-potentiel"><option>Fort</option><option selected>Moyen</option><option>Faible</option></select></label>
-            <label>Origine<select id="nl-origine"><option>Flavie</option><option>Alexandra</option><option>FDV</option><option>Web</option></select></label>
-            <label>Note<textarea id="nl-note" rows="2"></textarea></label>
+            <label>Canal de vente
+              <select id="nl-canal">
+                <option value="IT">IT Revendeur</option>
+                <option value="Grande Surface">Grande Surface (Drive / Leclerc)</option>
+                <option value="Retail">Retail / Boutique</option>
+                <option value="Grossiste">Grossiste / Distributeur</option>
+                <option value="Autre">Autre</option>
+              </select>
+            </label>
+
+            <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.05em;margin:10px 0 6px">CONTACT</div>
+            <div style="display:flex;gap:10px">
+              <label style="flex:2">Nom du contact
+                <input id="nl-contact" placeholder="ex : Jean Martin"/></label>
+              <label style="flex:2">Fonction
+                <input id="nl-fonction" placeholder="ex : Gérant, Acheteur…"/></label>
+            </div>
+            <div style="display:flex;gap:10px">
+              <label style="flex:1">Téléphone
+                <input id="nl-tel" inputmode="tel" placeholder="06 xx xx xx xx"/></label>
+              <label style="flex:1">Email
+                <input id="nl-email" type="email" placeholder="contact@…"/></label>
+            </div>
+
+            <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.05em;margin:10px 0 6px">QUALIFICATION</div>
+            <div style="display:flex;gap:10px">
+              <label style="flex:1">Potentiel estimé
+                <select id="nl-potentiel">
+                  <option value="Fort">🔴 Fort — > 30 000 €/an</option>
+                  <option value="Moyen" selected>🟡 Moyen — 10-30 k€/an</option>
+                  <option value="Faible">⚪ Faible — < 10 000 €/an</option>
+                </select>
+              </label>
+              <label style="flex:1">Prochaine action
+                <input type="date" id="nl-date-action"/></label>
+            </div>
+            <label>Source du lead
+              <select id="nl-origine">
+                <option value="Alexandra">Alexandra — saisie directe</option>
+                <option value="FDV">FDV — force de vente terrain</option>
+                <option value="Web">Web — site / formulaire</option>
+                <option value="Recommandation">Recommandation client</option>
+                <option value="Salon">Salon / Événement</option>
+                <option value="Autre">Autre</option>
+              </select>
+            </label>
+            <label>Notes de qualification
+              <textarea id="nl-note" rows="3"
+                        placeholder="Contexte du lead, historique de contact, informations clés pour le CDS qui prendra en charge ce prospect…"></textarea>
+            </label>
+
             <div class="modal-btns">
               <button type="button" onclick="VuePipeline.fermerModal()">Annuler</button>
               <button type="submit" class="btn-primaire" ${this.state.envoiEnCours ? 'disabled' : ''}>
-                ${this.state.envoiEnCours ? 'Création…' : 'Créer le lead'}</button>
+                ${this.state.envoiEnCours ? '⏳ Création en cours…' : '✅ Créer le lead'}</button>
             </div>
           </form>
         </div>
       </div>`;
     }
-    // Fiche lead : attribution + déplacement + IA Gemini
+    // Fiche lead : info complète + édition inline + IA Gemini
     const l = m.lead;
     if (!l) return '';
     const peutGerer = this._peutGerer();
     const cdsList = this.CDS.length ? this.CDS : this.CDS_FALLBACK;
+    const statut = this.STATUTS.find(s => s.id === l._statut);
+    const FLAGS = ['SAISIE','A_RELANCER','EN_COURS','A_RAPPELER','INTERESSE','WELCOME_PACK_ENVOYE','NON_INTERESSE','PERDU'];
+
     return `
     <div class="modal-overlay" onclick="if(event.target===this)VuePipeline.fermerModal()">
       <div class="modal">
-        <h3>${l.Nom_Compte}</h3>
-        <div class="q-recap" style="margin-bottom:14px">
-          <div class="q-recap-ligne"><span>Statut</span><strong>${this.STATUTS.find(s => s.id === l._statut)?.lbl}</strong></div>
-          <div class="q-recap-ligne"><span>CDS</span><strong>${this._nomCDS(l.PIN_CDS_Assigne)}</strong></div>
-          <div class="q-recap-ligne"><span>Potentiel</span><strong>${l.POTENTIEL || '—'}</strong></div>
-          <div class="q-recap-ligne"><span>Ville</span><strong>${l.Ville || '—'} ${l.Code_Postal || ''}</strong></div>
-          ${l.Tel ? `<div class="q-recap-ligne"><span>Tél</span><strong><a class="lien-tel" href="tel:${String(l.Tel).replace(/\s/g, '')}">${l.Tel}</a></strong></div>` : ''}
-          ${l.CONTACT_NOM ? `<div class="q-recap-ligne"><span>Contact</span><strong>${l.CONTACT_NOM} ${l.CONTACT_FONCTION ? '· ' + l.CONTACT_FONCTION : ''}</strong></div>` : ''}
-          ${l.WELCOME_PACK_DATE ? `<div class="q-recap-ligne"><span>Welcome Pack</span><strong>${l.WELCOME_PACK_DATE}</strong></div>` : ''}
-          ${l.Note_initiale ? `<div style="font-size:13px;padding-top:8px">${l.Note_initiale}</div>` : ''}
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px">
+          <div style="flex:1">
+            <h3 style="margin:0 0 4px">${l.Nom_Compte}</h3>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:${statut?.coul||'#888'};color:#fff">${statut?.lbl||l._statut}</span>
+              ${l.POTENTIEL ? `<span class="pot-pill pot-${(l.POTENTIEL||'').toLowerCase()}">${l.POTENTIEL}</span>` : ''}
+              ${l.CANAL ? `<span style="font-size:11px;padding:2px 8px;border-radius:99px;background:var(--c-bg);border:1px solid var(--c-border);color:var(--c-text-2)">${l.CANAL}</span>` : ''}
+            </div>
+          </div>
         </div>
 
+        <!-- Infos lead complètes -->
+        <div class="q-recap" style="margin-bottom:12px">
+          <div class="q-recap-ligne"><span>CDS assigné</span><strong>${this._nomCDS(l.PIN_CDS_Assigne)}</strong></div>
+          ${l.Ville || l.Code_Postal ? `<div class="q-recap-ligne"><span>Localisation</span><strong>${l.Ville || '—'} ${l.Code_Postal||''}</strong></div>` : ''}
+          ${l.Tel ? `<div class="q-recap-ligne"><span>Téléphone</span><strong><a class="lien-tel" href="tel:${String(l.Tel).replace(/\s/g, '')}">${l.Tel}</a></strong></div>` : ''}
+          ${l.Email ? `<div class="q-recap-ligne"><span>Email</span><strong>${l.Email}</strong></div>` : ''}
+          ${l.CONTACT_NOM ? `<div class="q-recap-ligne"><span>Contact</span><strong>${l.CONTACT_NOM}${l.CONTACT_FONCTION ? ' · ' + l.CONTACT_FONCTION : ''}</strong></div>` : ''}
+          <div class="q-recap-ligne"><span>Dernière relance</span><strong>${l.Date_prochaine_action ? dateRelative(l.Date_prochaine_action) : (l.Date_Import ? dateRelative(l.Date_Import) : '—')}</strong></div>
+          <div class="q-recap-ligne"><span>Action en cours</span><strong>${this._labelFlag(l.FLAG_ACTION)}</strong></div>
+          ${l.ORIGINE ? `<div class="q-recap-ligne"><span>Source</span><strong style="font-size:11px">${l.ORIGINE.replace('Import_','').replace(/_/g,' ')}</strong></div>` : ''}
+          ${l.WELCOME_PACK_DATE ? `<div class="q-recap-ligne"><span>Welcome Pack</span><strong>${l.WELCOME_PACK_DATE}</strong></div>` : ''}
+          ${l.PREMIERE_COMMANDE_DATE ? `<div class="q-recap-ligne"><span>1ère commande</span><strong>${l.PREMIERE_COMMANDE_DATE}</strong></div>` : ''}
+          <div class="q-recap-ligne"><span>Créé le</span><strong>${l.Date_Import ? dateRelative(l.Date_Import) : '—'}</strong></div>
+        </div>
+
+        <!-- Note + édition rapide -->
+        <details style="margin-bottom:12px" ${l.Note_initiale ? 'open' : ''}>
+          <summary style="font-size:12px;font-weight:700;color:var(--c-text-2);cursor:pointer;padding:4px 0">📝 Notes</summary>
+          <textarea id="lead-note" class="q-textarea" rows="3" style="margin-top:6px"
+                    placeholder="Contexte, historique, informations importantes…">${l.Note_initiale || ''}</textarea>
+          <div style="display:flex;gap:8px;margin-top:6px">
+            <input type="date" id="lead-date-action" class="q-input" style="flex:1"
+                   value="${l.Date_prochaine_action ? String(l.Date_prochaine_action).slice(0,10) : ''}"
+                   placeholder="Prochaine action"/>
+            <select id="lead-flag" style="flex:1;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:8px;font-size:13px">
+              ${FLAGS.map(f => `<option value="${f}" ${String(l.FLAG_ACTION||'').toUpperCase() === f ? 'selected' : ''}>${this._labelFlag(f)}</option>`).join('')}
+            </select>
+          </div>
+          <button class="btn-secondaire" style="width:100%;margin-top:6px;font-size:13px"
+                  onclick="VuePipeline.mettreAJourLead('${l.ID_Prospect}')">💾 Enregistrer</button>
+        </details>
+
         ${peutGerer ? `
-        <label>Attribuer à un CDS
+        <label style="margin-bottom:8px">Attribuer à un CDS
           <select id="attr-cds" onchange="VuePipeline.attribuer('${l.ID_Prospect}', this.value)">
             <option value="">— choisir —</option>
             ${cdsList.map(c => `<option value="${c.pin}" ${Number(l.PIN_CDS_Assigne) === c.pin ? 'selected' : ''}>${c.nom}</option>`).join('')}
           </select>
         </label>` : ''}
 
-        <label style="margin-top:8px">Déplacer vers</label>
-        <div class="q-chips">
-          ${this.STATUTS.filter(s => s.id !== l._statut).map(s => `
+        <label style="margin-bottom:6px">Avancer dans le pipeline</label>
+        <div class="q-chips" style="flex-wrap:wrap">
+          ${this.STATUTS.filter(s => s.id !== l._statut && s.id !== 'ARCHIVE').map(s => `
             <button type="button" class="q-chip" onclick="VuePipeline.deplacer('${l.ID_Prospect}','${s.id}')">${s.lbl}</button>`).join('')}
+          <button type="button" class="q-chip" style="background:var(--c-text-2)" onclick="VuePipeline.deplacer('${l.ID_Prospect}','ARCHIVE')">🗄 Archiver</button>
         </div>
 
-        <!-- IA Gemini — slots T01/T02/T04/T05 (B10) -->
+        <!-- IA Gemini — slots T01/T02/T04/T05 -->
         <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--c-border)">
           <div style="font-size:11px;color:var(--c-text-2);margin-bottom:6px;font-weight:700;letter-spacing:.04em">✨ ASSISTANT IA GEMINI</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
@@ -430,9 +538,27 @@ window.VuePipeline = {
 
         <div class="modal-btns">
           <button type="button" onclick="VuePipeline.fermerModal()">Fermer</button>
-          <button type="button" class="btn-primaire" onclick="Router.aller('#/phoning/${l.ID_Prospect}')">📞 Appeler</button>
+          <button type="button" class="btn-primaire" onclick="Router.aller('#/phoning')">📞 Planifier appel</button>
         </div>
       </div>
     </div>`;
+  },
+
+  async mettreAJourLead(id) {
+    const note  = document.getElementById('lead-note')?.value?.trim() || '';
+    const date  = document.getElementById('lead-date-action')?.value || '';
+    const flag  = document.getElementById('lead-flag')?.value || '';
+    const lead  = this.state.leads.find(l => l.ID_Prospect === id);
+    if (!lead) return;
+    try {
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', id, {
+        Note_initiale: note,
+        Date_prochaine_action: date,
+        FLAG_ACTION: flag,
+      });
+      Object.assign(lead, { Note_initiale: note, Date_prochaine_action: date, FLAG_ACTION: flag });
+      Toast.afficher('✅ Lead mis à jour', 'succes');
+      this.render();
+    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
   },
 };

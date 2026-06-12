@@ -64,7 +64,9 @@ window.VueDashboardCDS = {
       return d && (now - d) / 86400000 > seuilJours && String(c.Flag_converti) !== 'TRUE';
     });
     const nextStepsDepasses = mesComptes.filter(c => estDepassee(c.Date_prochaine_action));
+    // Uniquement les leads créés via ESI_PIPELINE (pas les 1674 imports bruts)
     const leadsATraiter     = prospects.filter(p =>
+      String(p.Source_Import || '').trim() === 'ESI_PIPELINE' &&
       this._estMoi(p.PIN_CDS_Assigne) && String(p.Flag_traite) !== 'TRUE'
     );
 
