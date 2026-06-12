@@ -120,7 +120,7 @@ window.VueDashboardManager = {
     // ── 10 derniers leads INTEGRE ──
     const dateRef = p =>
       p.PREMIERE_COMMANDE_DATE || p.Date_prochaine_action || p.Timestamp || p.Date_Import || '';
-    const derniersIntegres = prospects
+    const derniersIntegres = leads
       .filter(p => norm(p.STATUT_EMPOWER) === 'INTEGRE')
       .map(p => ({
         nom:    p.Nom_Compte || '—',
@@ -137,7 +137,7 @@ window.VueDashboardManager = {
       const t = ref ? new Date(ref).getTime() : 0;
       return t ? Math.floor((now - t) / 86400000) : null;
     };
-    const alerteWelcome = prospects
+    const alerteWelcome = leads
       .filter(p => {
         const s = norm(p.STATUT_EMPOWER);
         if (s === 'ARCHIVE') return false;
@@ -154,7 +154,7 @@ window.VueDashboardManager = {
       .sort((a, b) => (b.jours || 0) - (a.jours || 0));
 
     // ── Leads ARCHIVE / blocage ──
-    const leadsArchive = prospects
+    const leadsArchive = leads
       .filter(p => norm(p.STATUT_EMPOWER) === 'ARCHIVE')
       .map(p => ({
         nom:  p.Nom_Compte || '—',

@@ -29,19 +29,17 @@ window.VuePipeline = {
   CHANNELS: [],
 
   _chargerCDS(params, objectifs) {
-    // ⚙️_PARAMS réel : PINS_CDS='4001,4002,4003' + PIN_MANAGER='1000'
-    // Les noms viennent de 🎯_OBJECTIFS_PRIMES.Nom_CDS
-    const paramMap = Object.fromEntries(params.map(p => [p.Parametre, p.Valeur]));
-    const pinsCDSStr = String(paramMap.PINS_CDS || '').trim() || '4001,4002,4003';
-    const pinsCDS   = pinsCDSStr.split(',').map(p => Number(p.trim())).filter(Boolean);
-    const pinMgr    = Number(paramMap.PIN_MANAGER || 1000);
-    const allPins   = [pinMgr, ...pinsCDS].filter((v, i, a) => a.indexOf(v) === i);
-    // Noms depuis objectifs (Nom_CDS/PIN_CDS)
+    // V4.2 — GARANTIE ABSOLUE : les 4 CDS sont toujours présents
+    // Ne dépend plus de ⚙️_PARAMS (évite tout bug de cache IDB ou valeur PINS_CDS erronée)
+    const NOMS = { 1000:'Tadjidine', 4001:'Lyes', 4002:'Mehdi', 4003:'Johanne' };
     const nomMap = {};
-    (objectifs || []).forEach(o => { if (o.PIN_CDS) nomMap[Number(o.PIN_CDS)] = o.Nom_CDS; });
-    const fallbackNoms = {1000:'Tadjidine',4001:'Lyes',4002:'Mehdi',4003:'Johanne'};
-    const cds = allPins.map(pin => ({ pin, nom: nomMap[pin] || fallbackNoms[pin] || `PIN ${pin}` }));
-    this.CDS = cds.length > 0 ? cds : this.CDS_FALLBACK;
+    (objectifs || []).forEach(o => {
+      const pin = Number(o.PIN_CDS), nom = String(o.Nom_CDS || '').trim();
+      if (pin && nom) nomMap[pin] = nom;
+    });
+    this.CDS = [1000, 4001, 4002, 4003].map(pin => ({ pin, nom: nomMap[pin] || NOMS[pin] }));
+    // Synchronise _CDS_REGISTRY pour resolveCDS() dans toute l'app
+    this.CDS.forEach(c => { window._CDS_REGISTRY[String(c.pin)] = c.nom; });
   },
 
   // ── Droits (Bloc 4) ──
@@ -80,6 +78,8 @@ window.VuePipeline = {
 
       // TRACKER : tous les leads attribués au CDS (ou tous pour ADMIN/CHANNEL_MANAGER)
       this.state.leads = raw
+        // V4.2 — Source unique ESI_PIPELINE. Les ~1674 imports base (BASE_PROSPECTS_RELANCER) sont exclus.
+        .filter(p => String(p.Source_Import || '').trim() === 'ESI_PIPELINE')
         // BLOC 4.2 : exclure les leads soft-deleted
         .filter(p => String(p.Flag_traite || '').toUpperCase() !== 'DELETED'
                   && String(p.deleted   || '').toUpperCase() !== 'TRUE')
