@@ -1130,11 +1130,11 @@ function migrerReattribuerBloc1() {
 
 // ══════════════════════════════════════════════════════════════
 //  V4 — BLOC 2 : ONGLET EMPOWER_ONBOARDING
-//  Génère / met à jour l'onglet EMPOWER_ONBOARDING dans EMPOWER_MDB.
-//  Source : 📋_PROSPECTS (leads pipeline) + 🏢_COMPTES (CA historique)
-//           + 📉_SELL_IN_HISTORIQUE si disponible.
+//  SOURCE UNIQUE : fichier SELL IN Drive (ID ci-dessous)
+//  Zéro lien avec 📋_PROSPECTS (base de 1730 prospects exclue).
+//  🏢_COMPTES utilisé uniquement pour la lookup CDS (COMMERCIAL_ATTRIBUÉ).
 //  Idempotent : préserve DATE_DERNIER_APPEL, STATUT_APPEL, NOTES_APPEL, DATE_RELANCE.
-//  Exécuter via bouton "🔄 Actualiser Onboarding" (admin) ou action syncOnboarding.
+//  Déclencher via action syncOnboarding ou manuellement via creerOngletOnboarding().
 // ══════════════════════════════════════════════════════════════
 var ONBOARDING_HEADERS = [
   'NOM_COMPTE','CANAL','COMMERCIAL_ATTRIBUÉ','STATUT_EMPOWER','PRIORITÉ',
@@ -1144,12 +1144,14 @@ var ONBOARDING_HEADERS = [
 
 var STATUT_APPEL_OPTIONS = ['À appeler','Appelé–RDV','Sans suite','Onboardé','Refus'];
 
+var SELL_IN_DRIVE_ID = '1z8j5NISu5uMtIds8qV_oaBLkWUiyE4x54n5uWzD5Q0A';
+
 function _syncOnboarding(body, user) {
   if (!user || (user.role !== 'ADMIN' && user.role !== 'CHANNEL_MANAGER'))
     return _json({ ok: false, erreur: 'Réservé aux profils ADMIN et CHANNEL_MANAGER' });
   try {
     var n = creerOngletOnboarding();
-    return _json({ ok: true, lignes: n, message: n + ' comptes dans EMPOWER_ONBOARDING' });
+    return _json({ ok: true, lignes: n, message: n + ' revendeurs SELL IN dans EMPOWER_ONBOARDING' });
   } catch(e) {
     return _json({ ok: false, erreur: e.toString() });
   }
@@ -1157,84 +1159,83 @@ function _syncOnboarding(body, user) {
 
 function creerOngletOnboarding() {
   var ss = _getSpreadsheet('EMPOWER_MDB');
+  var NOMS_CDS = {1000:'Tadjidine',4001:'Lyes',4002:'Mehdi',4003:'Johanne',5000:'Alexandra'};
 
-  // ── 1. Lire les sources ─────────────────────────────────────
-  var shP = ss.getSheetByName('📋_PROSPECTS');
+  // ── 1. Lire le fichier SELL IN Drive (source unique) ──────────
+  var ssIn = SpreadsheetApp.openById(SELL_IN_DRIVE_ID);
+  var shData = null;
+  ssIn.getSheets().forEach(function(s) {
+    if (!shData && s.getName().toUpperCase().indexOf('DATA') >= 0) shData = s;
+  });
+  if (!shData) throw new Error('Feuille DATA introuvable dans le SELL IN Drive (' + SELL_IN_DRIVE_ID + ')');
+
+  var raw = shData.getDataRange().getValues();
+  if (raw.length < 2) throw new Error('SELL IN Drive : aucune donnée dans la feuille DATA');
+
+  var hd   = raw[0].map(function(x) { return String(x).trim().toUpperCase(); });
+  var iQ   = hd.indexOf('QUARTER');
+  var iRes = hd.indexOf('RESELLER');
+  var iCh  = hd.indexOf('CHANNEL');
+  var iCA  = hd.indexOf('CA_EUR');
+  if (iQ < 0 || iRes < 0 || iCA < 0)
+    throw new Error('Colonnes manquantes dans DATA : QUARTER=' + iQ + ' RESELLER=' + iRes + ' CA_EUR=' + iCA);
+
+  // Pivot par RESELLER : CA par quarter + canal
+  var pivot = {};
+  for (var r = 1; r < raw.length; r++) {
+    var row = raw[r];
+    var res = String(row[iRes] || '').trim();
+    var qtr = String(row[iQ]   || '').trim();
+    var ch  = iCh >= 0 ? String(row[iCh] || '').trim() : '';
+    var ca  = parseFloat(String(row[iCA] || '0').replace(/[€\s]/g,'').replace(',','.')) || 0;
+    if (!res || !qtr) continue;
+    if (!pivot[res]) pivot[res] = { canal: ch || 'REVENDEUR', raw: res };
+    pivot[res][qtr] = (pivot[res][qtr] || 0) + ca;
+    if (ch && ch !== pivot[res].canal) pivot[res].canal = ch; // dernier canal vu
+  }
+
+  // Calculer totaux FY par RESELLER
+  var r2 = function(n) { return Math.round(n * 100) / 100; };
+  var QQ25 = ['Q1FY25','Q2FY25','Q3FY25','Q4FY25'];
+  var QQ26 = ['Q1FY26','Q2FY26','Q3FY26','Q4FY26'];
+  Object.keys(pivot).forEach(function(res) {
+    var p = pivot[res];
+    p.CA_FY25   = r2(QQ25.reduce(function(s,q){ return s + (p[q]||0); }, 0));
+    p.CA_FY26   = r2(QQ26.reduce(function(s,q){ return s + (p[q]||0); }, 0));
+    p.CA_Q1FY27 = r2(p['Q1FY27'] || 0);
+    // Dernier quarter actif (le plus récent avec CA > 0)
+    var ordres = ['Q1FY27','Q4FY26','Q3FY26','Q2FY26','Q1FY26','Q4FY25','Q3FY25','Q2FY25','Q1FY25'];
+    p.dqActif = '';
+    for (var i = 0; i < ordres.length; i++) {
+      if ((p[ordres[i]] || 0) > 0) { p.dqActif = ordres[i]; break; }
+    }
+    // Statut EMPOWER
+    if (p.CA_Q1FY27 > 0)        p.statutEmpower = '✅ ACTIF';
+    else if (p.CA_FY26 > 0)     p.statutEmpower = '⚠️ À VÉRIFIER';
+    else                         p.statutEmpower = '❌ NON ACTIF';
+  });
+
+  // ── 2. Lookup CDS depuis 🏢_COMPTES (UNIQUEMENT pour COMMERCIAL_ATTRIBUÉ) ──
+  var cdsMap = {}; // norm(Nom_Compte) → pin
   var shC = null;
   ss.getSheets().forEach(function(s) {
     if (!shC && s.getName().replace(/[^\w]/g,'').toUpperCase().indexOf('COMPTES') >= 0
         && s.getName().indexOf('HISTORIQUES') < 0) shC = s;
   });
-  var shSI = ss.getSheetByName('📉_SELL_IN_HISTORIQUE');
-
-  // Pivot CA depuis SELL_IN_HISTORIQUE
-  var caMap = {};
-  if (shSI) {
-    var siVals = shSI.getDataRange().getValues();
-    var siH    = siVals[0];
-    var iRes   = siH.indexOf('RESELLER');
-    var iCA25  = siH.indexOf('CA_FY25_TOTAL');
-    var iCA26  = siH.indexOf('CA_FY26_TOTAL');
-    var iQ1FY27 = siH.indexOf('Q1FY27');
-    var iQ2FY26 = siH.indexOf('Q2FY26');
-    var iQ3FY26 = siH.indexOf('Q3FY26');
-    var iQ4FY26 = siH.indexOf('Q4FY26');
-    for (var r = 1; r < siVals.length; r++) {
-      var res = _normNomGs(String(siVals[r][iRes] || ''));
-      if (!res) continue;
-      caMap[res] = {
-        ca25:  Number(siVals[r][iCA25]  || 0),
-        ca26:  Number(siVals[r][iCA26]  || 0),
-        ca27:  Number(siVals[r][iQ1FY27] || 0),
-        dqActif: _dernierQuarterActif(siVals[r], siH),
-      };
-    }
-  }
-
-  // Fallback CA depuis 🏢_COMPTES
   if (shC) {
     var cVals = shC.getDataRange().getValues();
-    var cH = cVals[0];
-    var cNom = cH.indexOf('Nom_Compte');
-    var cCA25 = cH.indexOf('CA_FY25'), cCA26 = cH.indexOf('CA_FY26'), cCAQ1 = cH.indexOf('CA_Q1FY27');
-    for (var cr = 1; cr < cVals.length; cr++) {
-      var cnorm = _normNomGs(String(cVals[cr][cNom] || ''));
-      if (!cnorm || caMap[cnorm]) continue;
-      caMap[cnorm] = {
-        ca25: Number(cVals[cr][cCA25] || 0),
-        ca26: Number(cVals[cr][cCA26] || 0),
-        ca27: Number(cVals[cr][cCAQ1] || 0),
-        dqActif: '',
-      };
-    }
-  }
-
-  // ── 2. Dédupliquer les prospects ───────────────────────────
-  var NOMS_CDS = {1000:'Tadjidine',4001:'Lyes',4002:'Mehdi',4003:'Johanne',5000:'Alexandra'};
-  var prosps = {};
-  if (shP) {
-    var pVals = shP.getDataRange().getValues();
-    var pH = pVals[0];
-    var pNom = pH.indexOf('Nom_Compte'), pPin = pH.indexOf('PIN_CDS_Assigne');
-    var pCanal = pH.indexOf('CANAL'), pStatut = pH.indexOf('STATUT_EMPOWER');
-    var pFlag = pH.indexOf('Flag_traite');
-    for (var pr = 1; pr < pVals.length; pr++) {
-      var deleted = String(pVals[pr][pFlag] || '').toUpperCase();
-      if (deleted === 'DELETED') continue;
-      var pn = _normNomGs(String(pVals[pr][pNom] || ''));
-      if (!pn) continue;
-      if (!prosps[pn]) {
-        prosps[pn] = {
-          nom:    String(pVals[pr][pNom] || '').trim(),
-          pin:    Number(pVals[pr][pPin] || 0),
-          canal:  String(pVals[pr][pCanal] || '').trim() || 'EMPOWER',
-          statut: String(pVals[pr][pStatut] || '').trim(),
-        };
+    var cH    = cVals[0];
+    var cNom  = cH.indexOf('Nom_Compte');
+    var cPin  = cH.indexOf('PIN_CDS_Assigne');
+    if (cNom >= 0 && cPin >= 0) {
+      for (var cr = 1; cr < cVals.length; cr++) {
+        var cnorm = _normNomGs(String(cVals[cr][cNom] || ''));
+        if (cnorm && !cdsMap[cnorm]) cdsMap[cnorm] = Number(cVals[cr][cPin] || 0);
       }
     }
   }
 
-  // ── 3. Lire l'onglet existant (préserver les champs manuels) ─
+  // ── 3. Sauvegarder les champs manuels de l'onglet existant ────
   var MANUAL_FIELDS = ['DATE_DERNIER_APPEL','STATUT_APPEL','NOTES_APPEL','DATE_RELANCE'];
   var existantes = {};
   var shO = ss.getSheetByName('EMPOWER_ONBOARDING');
@@ -1243,13 +1244,13 @@ function creerOngletOnboarding() {
     if (oVals.length > 1) {
       var oH   = oVals[0];
       var oNom = oH.indexOf('NOM_COMPTE');
-      for (var or = 1; or < oVals.length; or++) {
-        var on = _normNomGs(String(oVals[or][oNom] || ''));
+      for (var ro = 1; ro < oVals.length; ro++) {
+        var on = _normNomGs(String(oVals[ro][oNom] || ''));
         if (!on) continue;
         var manual = {};
         MANUAL_FIELDS.forEach(function(f) {
           var idx = oH.indexOf(f);
-          if (idx >= 0) manual[f] = oVals[or][idx];
+          if (idx >= 0) manual[f] = oVals[ro][idx];
         });
         existantes[on] = manual;
       }
@@ -1257,62 +1258,51 @@ function creerOngletOnboarding() {
     ss.deleteSheet(shO);
   }
 
-  // ── 4. Créer l'onglet et écrire ────────────────────────────
-  shO = ss.insertSheet('EMPOWER_ONBOARDING');
-  shO.getRange(1, 1, 1, ONBOARDING_HEADERS.length).setValues([ONBOARDING_HEADERS]).setFontWeight('bold');
-
-  // Construire l'union des noms (prospects + caMap)
-  var tousPNorm = {};
-  Object.keys(prosps).forEach(function(k) { tousPNorm[k] = true; });
-  Object.keys(caMap).forEach(function(k)  { tousPNorm[k] = true; });
-
+  // ── 4. Construire les lignes (source = pivot SELL IN uniquement) ─
   var lignes = [];
-  Object.keys(tousPNorm).forEach(function(norm) {
-    var p   = prosps[norm];
-    var ca  = caMap[norm] || { ca25: 0, ca26: 0, ca27: 0, dqActif: '' };
-    var nom = p ? p.nom : (Object.keys(caMap).find(function(k) { return k === norm; }) || norm);
-    var pin = p ? p.pin : 0;
-    var canal  = p ? p.canal : 'EMPOWER';
-    var statut = p ? p.statut : '';
-
+  Object.keys(pivot).forEach(function(res) {
+    var p    = pivot[res];
+    var norm = _normNomGs(res);
+    var pin  = cdsMap[norm] || 0;
     var comm = NOMS_CDS[pin] || (pin ? 'PIN ' + pin : '—');
-    var prio  = _calculerPriorite(ca, statut);
+    var ca   = { ca25: p.CA_FY25, ca26: p.CA_FY26, ca27: p.CA_Q1FY27, dqActif: p.dqActif };
+    var prio = _calculerPriorite(ca, p.statutEmpower);
     var manual = existantes[norm] || {};
 
     var ligne = new Array(ONBOARDING_HEADERS.length).fill('');
     var set = function(col, val) {
       var i = ONBOARDING_HEADERS.indexOf(col);
-      if (i >= 0) ligne[i] = val;
+      if (i >= 0) ligne[i] = val !== undefined && val !== null ? val : '';
     };
-    set('NOM_COMPTE',          nom);
-    set('CANAL',               canal);
-    set('COMMERCIAL_ATTRIBUÉ', comm);
-    set('STATUT_EMPOWER',      statut || '❌ NON ACTIF');
-    set('PRIORITÉ',            prio);
-    set('CA_FY25',             ca.ca25 || '');
-    set('CA_FY26',             ca.ca26 || '');
-    set('CA_FY27',             ca.ca27 || '');
-    set('DERNIER_QUARTER_ACTIF', ca.dqActif || '');
-    // Champs manuels préservés
+    set('NOM_COMPTE',            res);
+    set('CANAL',                 p.canal);
+    set('COMMERCIAL_ATTRIBUÉ',   comm);
+    set('STATUT_EMPOWER',        p.statutEmpower);
+    set('PRIORITÉ',              prio);
+    set('CA_FY25',               p.CA_FY25 || '');
+    set('CA_FY26',               p.CA_FY26 || '');
+    set('CA_FY27',               p.CA_Q1FY27 || '');
+    set('DERNIER_QUARTER_ACTIF', p.dqActif || '');
     MANUAL_FIELDS.forEach(function(f) { set(f, manual[f] || ''); });
-    set('TRACKER_LINK',        statut ? '→ Pipeline' : '⚠️ Créer');
-
+    set('TRACKER_LINK',          pin ? '→ ' + NOMS_CDS[pin] : '⚠️ À attribuer');
     lignes.push(ligne);
   });
 
-  // Trier : 🔴 HIGH d'abord, puis 🟠 MEDIUM, puis 🟢 LOW
+  // Trier : 🔴 HIGH, 🟠 MEDIUM, 🟢 LOW
   var prioOrd = {'🔴 HIGH': 0, '🟠 MEDIUM': 1, '🟢 LOW': 2};
+  var iPrio   = ONBOARDING_HEADERS.indexOf('PRIORITÉ');
   lignes.sort(function(a, b) {
-    var pa = prioOrd[a[ONBOARDING_HEADERS.indexOf('PRIORITÉ')]] ?? 9;
-    var pb = prioOrd[b[ONBOARDING_HEADERS.indexOf('PRIORITÉ')]] ?? 9;
-    return pa - pb;
+    return (prioOrd[a[iPrio]] ?? 9) - (prioOrd[b[iPrio]] ?? 9);
   });
 
+  // ── 5. Écrire l'onglet ─────────────────────────────────────────
+  shO = ss.insertSheet('EMPOWER_ONBOARDING');
+  shO.getRange(1, 1, 1, ONBOARDING_HEADERS.length).setValues([ONBOARDING_HEADERS]).setFontWeight('bold');
   if (lignes.length > 0) {
     shO.getRange(2, 1, lignes.length, ONBOARDING_HEADERS.length).setValues(lignes);
   }
 
-  // Validation dropdown STATUT_APPEL
+  // Dropdown STATUT_APPEL
   var statutAppelCol = ONBOARDING_HEADERS.indexOf('STATUT_APPEL') + 1;
   if (lignes.length > 0 && statutAppelCol > 0) {
     var rule = SpreadsheetApp.newDataValidation()
