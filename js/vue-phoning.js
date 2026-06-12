@@ -1130,3 +1130,4 @@ window.VuePhoning = {
   },
 
   setFiltrePlanning(f) { this.state.filtrePlanning = f; this.render(); },
+};
