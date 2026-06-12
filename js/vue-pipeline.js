@@ -59,10 +59,10 @@ window.VuePipeline = {
       ]);
       this._chargerCDS(params, objectifs);
       initCDSRegistry(objectifs); // BUG-02 : peuple le registre global
-      // BUG-01 : TRACKER = uniquement leads créés via ESI (pas les 1674 imports bruts)
-      const SOURCE_VALIDES = ['ESI_PIPELINE'];
+      // TRACKER : tous les leads attribués au CDS (ou tous pour ADMIN/CHANNEL_MANAGER)
+      // Le filtre ESI_PIPELINE retiré — les leads importés (BASE_PROSPECTS_RELANCER) sont désormais visibles
       this.state.leads = raw
-        .filter(p => SOURCE_VALIDES.includes(String(p.Source_Import || '').trim()))
+        .filter(p => String(p.deleted || '').toUpperCase() !== 'TRUE')
         .map(p => ({ ...p, _statut: this._statutDe(p) }))
         .filter(p => this._peutGerer() || Session.voitTout() || Number(p.PIN_CDS_Assigne) === Session.pin);
       this.state.chargement = false;
@@ -308,7 +308,7 @@ window.VuePipeline = {
         <div class="vide" style="text-align:center;padding:40px 20px;color:var(--c-text-2)">
           <div style="font-size:32px;margin-bottom:12px">📭</div>
           <div style="font-weight:700;color:var(--c-title);margin-bottom:6px">Aucun lead à traiter</div>
-          <div style="font-size:13px">Les leads sont créés par Alexandra via le formulaire ➕ ci-dessous.</div>
+          <div style="font-size:13px">Aucun lead assigné à votre compte. Les leads importés apparaissent ici une fois attribués.</div>
         </div>` : ''}
 
       <div class="kanban">
@@ -376,7 +376,7 @@ window.VuePipeline = {
       <div class="modal-overlay" onclick="if(event.target===this)VuePipeline.fermerModal()">
         <div class="modal">
           <h3>➕ Nouveau lead EMPOWER</h3>
-          <p style="font-size:12px;color:var(--c-text-2);margin:-4px 0 12px">Renseigner les informations du prospect identifié. L'IA enrichira automatiquement la fiche après création.</p>
+          <p style="font-size:12px;color:var(--c-text-2);margin:-4px 0 12px">Renseigne le prospect identifié — plus tu donnes d'infos, plus l'IA enrichira la fiche automatiquement (potentiel, canal, angle d'approche).</p>
           <form onsubmit="VuePipeline.saisirLead(event)">
 
             <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.05em;margin-bottom:6px">IDENTIFICATION</div>
@@ -435,8 +435,8 @@ window.VuePipeline = {
               </select>
             </label>
             <label>Notes de qualification
-              <textarea id="nl-note" rows="3"
-                        placeholder="Contexte du lead, historique de contact, informations clés pour le CDS qui prendra en charge ce prospect…"></textarea>
+              <textarea id="nl-note" rows="4"
+                        placeholder="Exemple : revendeur IT 5 boutiques — déjà utilisateur Norton Home / rencontré au salon IT Partners en nov. 2024 — intérêt confirmé pour EMPOWER pack revendeur — demande démo avant signature — bloquer sur le prix à date. Contact : Jean Martin (gérant), disponible le matin."></textarea>
             </label>
 
             <div class="modal-btns">

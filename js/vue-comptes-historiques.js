@@ -27,11 +27,16 @@ window.VueComptesHistoriques = {
 
       this.state.comptes = rawV17.map(r => {
         const mdb = mapMDB.get(normaliserNom(r.RESELLER || '')) || null;
+        const canal = (r.CANAL || '').toUpperCase();
+        const reseller = (r.RESELLER || '').toUpperCase();
+        const isLeclerc = canal.includes('LECLERC') || reseller.includes('LECLERC')
+          || canal.includes('GMS') || canal.includes('GSA') || canal.includes('GRANDE SURFACE')
+          || canal.includes('DRIVE');
         return {
           id:       mdb?.ID_Compte || null,
           nom:      r.RESELLER || '—',
           canal:    r.CANAL || '—',
-          type:     (r.CANAL || '').toUpperCase().includes('LECLERC') ? 'LECLERC' : 'REVENDEURS',
+          type:     isLeclerc ? 'LECLERC' : 'REVENDEURS',
           caFy25:   parseAmount(r['CA FY25 €'] || r.CA_FY25 || 0),
           caFy26:   parseAmount(r['CA FY26 €'] || r.CA_FY26 || 0),
           caQ1Fy27: parseAmount(r['CA Q1FY27 €'] || 0),
@@ -60,7 +65,13 @@ window.VueComptesHistoriques = {
     const q = normaliserNom(this.state.recherche);
     if (q) l = l.filter(c => normaliserNom(c.nom).includes(q));
     if (this.state.filtreType !== 'TOUS') l = l.filter(c => c.type === this.state.filtreType);
-    if (this.state.filtreStatut !== 'TOUS') l = l.filter(c => (c.statut || '').toUpperCase().includes(this.state.filtreStatut));
+    if (this.state.filtreStatut !== 'TOUS') l = l.filter(c => {
+      const st = (c.statut   || '').toUpperCase();
+      const pr = (c.priorite || '').toUpperCase();
+      const f  = this.state.filtreStatut;
+      if (f === 'REACTIVER') return st.startsWith('REACTIVER') || pr.startsWith('REACTIVER');
+      return st === f || pr === f;
+    });
     if (this.state.triPar === 'CA')  l.sort((a, b) => b.caFy26 - a.caFy26);
     if (this.state.triPar === 'NOM') l.sort((a, b) => a.nom.localeCompare(b.nom));
     if (this.state.triPar === 'PRIORITE') {

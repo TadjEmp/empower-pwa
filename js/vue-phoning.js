@@ -15,9 +15,9 @@ window.VuePhoning = {
       chargement: true, envoiEnCours: false,
       comptes: [], prospects: [],
       typeSource: 'EXISTANT', cible: null,
-      mode: 'PLANNING',        // PLANNING | APPEL | HISTORIQUE
+      mode: 'PLANNING',        // PLANNING | BASE | APPEL | HISTORIQUE
       filtreListe: 'TOUS',
-      recherche: '', script: '', scriptEnCours: false,
+      recherche: '', rechercheBase: '', script: '', scriptEnCours: false,
       enregistre: false, transcription: '', qualif: null,
       d: {
         objectif: '', accroche: '',
@@ -128,6 +128,28 @@ window.VuePhoning = {
   setMode(m) {
     this.state.mode = m;
     if (m === 'HISTORIQUE') this._chargerJournal();
+    this.render();
+  },
+
+  demarrerAppelDirect() {
+    this.state.cible      = null;
+    this.state.typeSource = 'EXISTANT';
+    this.state.mode       = 'APPEL';
+    this.state.phase      = 'PRE';
+    this.state.recherche  = '';
+    Object.assign(this.state.d, { objectif:'', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'' });
+    this.render();
+  },
+
+  demarrerAppelCompte(idCompte) {
+    const c = this.state.comptes.find(x => String(x.ID_Compte) === String(idCompte));
+    if (!c) { Toast.afficher('Compte introuvable', 'warning'); return; }
+    this.state.cible      = c;
+    this.state.typeSource = 'EXISTANT';
+    this.state.mode       = 'APPEL';
+    this.state.phase      = 'PRE';
+    this.state.recherche  = c.Nom_Compte;
+    Object.assign(this.state.d, { objectif:'', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'' });
     this.render();
   },
   setFiltreListe(f) { this.state.filtreListe = f; this.render(); },
@@ -380,6 +402,58 @@ window.VuePhoning = {
     }
   },
 
+  // ── Mode BASE : liste des comptes à appeler ──
+  _renderBaseComptes() {
+    const s = this.state;
+    const _tabs = () => `
+      <div style="display:flex;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:4px;background:var(--c-surface);margin-bottom:14px">
+        <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:transparent;color:var(--c-text-2)"
+                onclick="VuePhoning.setMode('PLANNING')">📋 Planning</button>
+        <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:var(--c-title);color:#fff">
+          📂 Base (${s.comptes.length})
+        </button>
+        <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:transparent;color:var(--c-text-2)"
+                onclick="VuePhoning.setMode('HISTORIQUE')">📖 Journal</button>
+      </div>`;
+
+    if (!s.comptes.length) {
+      return `<div class="q-champs">${_tabs()}<div style="padding:32px;text-align:center;color:var(--c-text-2)">Aucun compte attribué.</div></div>`;
+    }
+
+    let liste = s.comptes;
+    const q = s.rechercheBase ? normaliserNom(s.rechercheBase) : '';
+    if (q.length >= 2) liste = liste.filter(c => normaliserNom(c.Nom_Compte).includes(q) || normaliserNom(c.Ville || '').includes(q));
+
+    return `<div class="q-champs">
+      ${_tabs()}
+      <input class="q-input" placeholder="🔍 Filtrer mes comptes…" value="${s.rechercheBase || ''}"
+             oninput="VuePhoning.state.rechercheBase=this.value;VuePhoning.render()" style="margin-bottom:12px"/>
+      ${liste.length === 0
+        ? '<div style="padding:24px;text-align:center;color:var(--c-text-2)">Aucun résultat</div>'
+        : liste.map(c => {
+            const statut = c.STATUT_COMPTE || '—';
+            const silence = (() => { const ref = c.Date_Derniere_Action; return ref ? Math.floor((Date.now() - new Date(ref).getTime()) / (7*86400000)) : null; })();
+            return `
+          <div style="background:var(--c-surface);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:11px;margin-bottom:8px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <span style="font-weight:700;font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.Nom_Compte}</span>
+              ${c.CANAL ? `<span style="font-size:10px;padding:1px 6px;border-radius:99px;background:var(--c-bg);border:1px solid var(--c-border);color:var(--c-text-2)">${c.CANAL}</span>` : ''}
+            </div>
+            <div style="font-size:12px;color:var(--c-text-2);margin-bottom:8px">
+              ${c.Ville ? `📍 ${c.Ville}` : ''}
+              ${statut !== '—' ? ` · ${statut}` : ''}
+              ${silence !== null ? ` · <span style="color:${silence > 4 ? 'var(--c-danger)' : 'var(--c-text-2)'}">⏱ ${silence}s silence</span>` : ''}
+            </div>
+            <div style="display:flex;gap:8px">
+              ${c.Tel ? `<a class="btn-secondaire" style="flex:1;font-size:12px;text-decoration:none;text-align:center;padding:8px" href="tel:${String(c.Tel).replace(/\s/g,'')}">📞 ${c.Tel}</a>` : ''}
+              <button class="btn-primaire" style="flex:2;font-size:12px;padding:8px"
+                      onclick="VuePhoning.demarrerAppelCompte('${c.ID_Compte}')">▶ Appeler</button>
+            </div>
+          </div>`;
+          }).join('')}
+    </div>`;
+  },
+
   // ── R5 : Journal des appels (chargement) ──
   async _chargerJournal() {
     this.state.journalChargement = true;
@@ -513,14 +587,24 @@ window.VuePhoning = {
   // ── R5 : Vue journal des appels ──
   _renderJournal() {
     const s = this.state;
+    const tabs = `
+      <div style="display:flex;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:4px;background:var(--c-surface);margin-bottom:14px">
+        <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:transparent;color:var(--c-text-2)"
+                onclick="VuePhoning.setMode('PLANNING')">📋 Planning</button>
+        <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:transparent;color:var(--c-text-2)"
+                onclick="VuePhoning.setMode('BASE')">📂 Base (${s.comptes.length})</button>
+        <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:var(--c-title);color:#fff">
+          📖 Journal
+        </button>
+      </div>`;
     if (s.journalChargement) {
-      return '<div style="padding:32px;text-align:center;color:var(--c-text-2)">Chargement du journal…</div>';
+      return `<div class="q-champs">${tabs}<div style="padding:32px;text-align:center;color:var(--c-text-2)">Chargement du journal…</div></div>`;
     }
     if (!s.journal.length) {
-      return '<div style="padding:32px;text-align:center;color:var(--c-text-2)">Aucun appel enregistré.</div>';
+      return `<div class="q-champs">${tabs}<div style="padding:32px;text-align:center;color:var(--c-text-2)">Aucun appel enregistré.</div></div>`;
     }
     const COUL = { Répondu: 'var(--c-success)', Répondeur: 'var(--c-warning)', Occupé: 'var(--c-warning)', 'Faux numéro': 'var(--c-danger)', Refus: 'var(--c-danger)' };
-    return `<div class="q-champs">
+    return `<div class="q-champs">${tabs}
       ${s.journal.map(a => {
         const peutModif = Session.voitTout() || Number(a.PIN_CDS) === Session.pin;
         const coul = COUL[a.Statut_Appel] || 'var(--c-text-2)';
@@ -697,6 +781,7 @@ window.VuePhoning = {
       </header>
       <div class="q-contenu avec-nav">
         ${s.mode === 'PLANNING'    ? this._renderPlanning()
+        : s.mode === 'BASE'        ? this._renderBaseComptes()
         : s.mode === 'HISTORIQUE'  ? this._renderJournal()
         : this['_phase' + s.phase]()}
       </div>
@@ -928,12 +1013,26 @@ window.VuePhoning = {
 
     return `<div class="q-champs">
       <!-- Tabs navigation -->
-      <div style="display:flex;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:4px;background:var(--c-surface);margin-bottom:16px">
-        <button type="button" style="flex:1;padding:9px;border:none;border-radius:4px;font-weight:600;font-size:12px;cursor:pointer;background:var(--c-title);color:#fff">
+      <div style="display:flex;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:4px;background:var(--c-surface);margin-bottom:14px">
+        <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:var(--c-title);color:#fff">
           📋 Planning
         </button>
-        <button type="button" style="flex:1;padding:9px;border:none;border-radius:4px;font-weight:600;font-size:12px;cursor:pointer;background:transparent;color:var(--c-text-2)"
+        <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:transparent;color:var(--c-text-2)"
+                onclick="VuePhoning.setMode('BASE')">📂 Base (${s.comptes.length})</button>
+        <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:transparent;color:var(--c-text-2)"
                 onclick="VuePhoning.setMode('HISTORIQUE')">📖 Journal</button>
+      </div>
+
+      <!-- Actions rapides -->
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button class="btn-primaire" style="flex:1"
+                onclick="VuePhoning.ouvrirFormPlanif()">
+          📅 Planifier un appel
+        </button>
+        <button class="btn-secondaire" style="flex:1"
+                onclick="VuePhoning.demarrerAppelDirect()">
+          📞 Appel direct
+        </button>
       </div>
 
       <!-- Filtres temporels -->
@@ -942,12 +1041,6 @@ window.VuePhoning = {
           <button class="btn-filtre ${s.filtrePlanning === v ? 'actif' : ''}"
                   onclick="VuePhoning.setFiltrePlanning('${v}')">${l}</button>`).join('')}
       </div>
-
-      <!-- Bouton planifier -->
-      <button class="btn-primaire" style="width:100%;margin-bottom:16px"
-              onclick="VuePhoning.ouvrirFormPlanif()">
-        ＋ Planifier un appel
-      </button>
 
       <!-- Liste des appels planifiés -->
       ${liste.length === 0

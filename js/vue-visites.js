@@ -76,6 +76,7 @@ window.VueVisites = {
       heure: '09:00',
       typeVisite: 'SUIVI_ACTIF',
       idCible: '', nomCible: '',
+      horsBase: false, nomLibre: '',
       commentairePrep: '',
       prochaineEtape: '',
     };
@@ -157,7 +158,8 @@ window.VueVisites = {
   async planifier(e) {
     e.preventDefault();
     const f = this.state.formPlanif;
-    if (!f.nomCible) { Toast.afficher('Sélectionnez un compte', 'warning'); return; }
+    const nomFinal = f.horsBase ? (f.nomLibre || '').trim() : f.nomCible;
+    if (!nomFinal) { Toast.afficher(f.horsBase ? 'Indiquez le nom du compte' : 'Sélectionnez un compte', 'warning'); return; }
     try {
       const visite = {
         ID_Visite:              genId('VIS'),
@@ -166,11 +168,11 @@ window.VueVisites = {
         Semaine_ISO:            getISOWeek(new Date(f.date)),
         PIN_CDS:                Session.pin,
         Nom_CDS:                Session.nom,
-        ID_Cible:               f.idCible,
-        Nom_Compte:             f.nomCible,
+        ID_Cible:               f.horsBase ? 'HORS_BASE' : f.idCible,
+        Nom_Compte:             nomFinal,
+        Source_Visite:          f.horsBase ? 'HORS_BASE' : 'ESI_V21',
         Type_Visite:            f.typeVisite,
         Statut_Visite:          'planifiée',
-        Source_Visite:          'ESI_V21',
         Note_Privee:            f.commentairePrep,
         Prochaine_Action_Texte: f.prochaineEtape,
         Timestamp:              new Date().toISOString(),
@@ -494,14 +496,34 @@ window.VueVisites = {
       <div class="modal">
         <h3>📅 Planifier une visite</h3>
         <form onsubmit="VueVisites.planifier(event)">
-          <label>Compte *
-            <select required onchange="VueVisites.setCible(this.value, this.options[this.selectedIndex].dataset.nom)">
-              <option value="">— sélectionner —</option>
-              ${this.state.comptes.slice(0, 300).map(c =>
-                `<option value="${c.ID_Compte}" data-nom="${c.Nom_Compte}">${c.Nom_Compte}${c.Ville ? ' — ' + c.Ville : ''}</option>`
-              ).join('')}
-            </select>
-          </label>
+          <!-- Toggle compte existant / à froid -->
+          <div style="display:flex;gap:6px;margin-bottom:10px">
+            <button type="button" class="btn-filtre ${!f.horsBase ? 'actif' : ''}"
+                    onclick="VueVisites.state.formPlanif.horsBase=false;VueVisites.render()">
+              🏢 Compte existant
+            </button>
+            <button type="button" class="btn-filtre ${f.horsBase ? 'actif' : ''}"
+                    onclick="VueVisites.state.formPlanif.horsBase=true;VueVisites.render()">
+              ❄️ À froid / Hors base
+            </button>
+          </div>
+          ${f.horsBase
+            ? `<label>Nom du compte *
+                 <input required placeholder="ex : MICRO PLUS INFORMATIQUE" value="${f.nomLibre || ''}"
+                        oninput="VueVisites.state.formPlanif.nomLibre=this.value"/>
+               </label>
+               <div style="font-size:11px;color:var(--c-text-2);margin:-6px 0 10px;padding:6px 10px;background:var(--c-bg);border-radius:var(--radius-sm)">
+                 💡 Ce compte n'est pas dans la base. La visite sera enregistrée — vous pourrez l'ajouter dans le Tracker après si besoin.
+               </div>`
+            : `<label>Compte *
+                 <select required onchange="VueVisites.setCible(this.value, this.options[this.selectedIndex].dataset.nom)">
+                   <option value="">— sélectionner —</option>
+                   ${this.state.comptes.slice(0, 300).map(c =>
+                     `<option value="${c.ID_Compte}" data-nom="${c.Nom_Compte}">${c.Nom_Compte}${c.Ville ? ' — ' + c.Ville : ''}</option>`
+                   ).join('')}
+                 </select>
+               </label>`
+          }
           <div style="display:flex;gap:10px">
             <label style="flex:2">Date *
               <input type="date" required value="${f.date}"
@@ -519,11 +541,11 @@ window.VueVisites = {
             </select>
           </label>
           <label>Préparation / contexte
-            <textarea rows="2" placeholder="Points à aborder, historique…"
-              oninput="VueVisites.state.formPlanif.commentairePrep=this.value">${f.commentairePrep}</textarea>
+            <textarea rows="2" placeholder="Points à aborder, historique, contexte de la visite…"
+              oninput="VueVisites.state.formPlanif.commentairePrep=this.value">${f.commentairePrep || ''}</textarea>
           </label>
           <label>Prochaine étape prévue
-            <input placeholder="ex : présenter offre NSB" value="${f.prochaineEtape}"
+            <input placeholder="ex : présenter offre NSB, démo produit, signature…" value="${f.prochaineEtape || ''}"
                    oninput="VueVisites.state.formPlanif.prochaineEtape=this.value"/></label>
           <div class="modal-btns">
             <button type="button" onclick="VueVisites.fermerModal()">Annuler</button>
