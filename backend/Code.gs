@@ -62,6 +62,7 @@ function _router(params, body) {
       case 'setGroqKey':     return _setGroqKey(body, user);
       case 'purgerDonnees':       return _purgerDonnees(body, user);
       case 'importTrackerDrive':  return _importTrackerDrive(body, user);
+      case 'syncSellInDrive':     return _syncSellInDrive(body, user);
       default:                    return _json({ ok: false, erreur: 'Action inconnue: ' + action });
     }
   } catch(e) {
@@ -710,7 +711,7 @@ function _importTrackerDrive(body, user) {
       }
     }
 
-    var headers_MDB = HEADERS_MDB['📋_PROSPECTS'];
+    var headers_MDB = shP.getRange(1, 1, 1, shP.getLastColumn()).getValues()[0].map(String);
     var nouvelles   = [];
     var skips       = 0;
 
@@ -832,6 +833,138 @@ function _formatDateGs(val) {
     }
   } catch(e) {}
   return s;
+}
+
+// ── SYNC SELL-IN DRIVE → V17 + 🏢_COMPTES ─────────────────────────────────
+// Lit le classeur Drive sell-in, pivote par RESELLER/QUARTER,
+// écrit dans V17/📋 COMPTES HISTORIQUES et met à jour les CA dans 🏢_COMPTES.
+function _syncSellInDrive(body, user) {
+  if (!user || user.role !== 'ADMIN')
+    return _json({ ok: false, erreur: 'Réservé aux administrateurs' });
+  try {
+    var SELL_IN_ID = '1z8j5NISu5uMtIds8qV_oaBLkWUiyE4x54n5uWzD5Q0A';
+    var ssIn  = SpreadsheetApp.openById(SELL_IN_ID);
+    var shData = null;
+    ssIn.getSheets().forEach(function(s) {
+      if (s.getName().toUpperCase().indexOf('DATA') >= 0) shData = s;
+    });
+    if (!shData) return _json({ ok: false, erreur: 'Feuille DATA introuvable dans le classeur sell-in' });
+
+    var raw = shData.getDataRange().getValues();
+    if (raw.length < 2) return _json({ ok: false, erreur: 'Pas de données dans la feuille DATA' });
+
+    var hd  = raw[0].map(function(x){ return String(x).trim().toUpperCase(); });
+    var iQ   = hd.indexOf('QUARTER');
+    var iRes = hd.indexOf('RESELLER');
+    var iCh  = hd.indexOf('CHANNEL');
+    var iCA  = hd.indexOf('CA_EUR');
+    if (iQ < 0 || iRes < 0 || iCA < 0)
+      return _json({ ok: false, erreur: 'Colonnes QUARTER / RESELLER / CA_EUR manquantes dans DATA' });
+
+    // Pivot par RESELLER → somme CA par trimestre
+    var pivot = {};
+    for (var r = 1; r < raw.length; r++) {
+      var row = raw[r];
+      var res = String(row[iRes] || '').trim();
+      var qtr = String(row[iQ]   || '').trim();   // 'Q1FY25', 'Q1FY27' …
+      var ch  = String(row[iCh]  || '').trim().toUpperCase();
+      var ca  = parseFloat(String(row[iCA] || '0').replace(/[€\s]/g,'').replace(',','.')) || 0;
+      if (!res || !qtr) continue;
+      if (!pivot[res]) pivot[res] = { canal: 'REVENDEUR' };
+      pivot[res][qtr] = (pivot[res][qtr] || 0) + ca;
+      if (ch === 'LECLERC') pivot[res].canal = 'LECLERC';
+    }
+
+    var r2 = function(n){ return Math.round(n * 100) / 100; };
+    var QQ25 = ['Q1FY25','Q2FY25','Q3FY25','Q4FY25'];
+    var QQ26 = ['Q1FY26','Q2FY26','Q3FY26','Q4FY26'];
+    Object.keys(pivot).forEach(function(res) {
+      var p = pivot[res];
+      p.CA_FY25    = QQ25.reduce(function(s,q){ return s + (p[q]||0); }, 0);
+      p.CA_FY26    = QQ26.reduce(function(s,q){ return s + (p[q]||0); }, 0);
+      p.CA_Q1FY27  = p['Q1FY27'] || 0;
+      if      (p.CA_Q1FY27 > 0) p.flag = 'ACTIF';
+      else if (p.CA_FY26   > 0) p.flag = 'REACTIVER';
+      else if (p.CA_FY25   > 0) p.flag = 'CHURN';
+      else                       p.flag = 'INACTIF';
+    });
+
+    // ── Écriture dans V17 ────────────────────────────────────────────────────
+    if (!CONFIG.V17_ID || CONFIG.V17_ID === 'EXECUTER_installerBase_DABORD')
+      return _json({ ok: false, erreur: 'V17_ID non configuré — exécutez installerBase()' });
+
+    var ssV17  = SpreadsheetApp.openById(CONFIG.V17_ID);
+    var shV17  = ssV17.getSheetByName('📋 COMPTES HISTORIQUES');
+    if (!shV17) return _json({ ok: false, erreur: 'Onglet "📋 COMPTES HISTORIQUES" introuvable dans V17' });
+
+    var v17Raw = shV17.getRange(1, 1, 1, shV17.getLastColumn()).getValues()[0];
+    var hIdx   = {};
+    v17Raw.forEach(function(h, i){ hIdx[String(h).trim()] = i; });
+    var nCols  = v17Raw.length;
+
+    var lr = shV17.getLastRow();
+    if (lr > 1) shV17.getRange(2, 1, lr - 1, nCols).clearContent();
+
+    var newRows = Object.keys(pivot).map(function(res) {
+      var p   = pivot[res];
+      var row = new Array(nCols).fill('');
+      var set = function(col, val){ if (hIdx[col] !== undefined) row[hIdx[col]] = val; };
+      set('RESELLER',    res);
+      set('CANAL',       p.canal);
+      set('CA FY25 €',   r2(p.CA_FY25));
+      set('CA FY26 €',   r2(p.CA_FY26));
+      set('CA Q1FY27 €', r2(p.CA_Q1FY27));
+      set('Q1FY25 €',    r2(p['Q1FY25']||0));
+      set('Q2FY25 €',    r2(p['Q2FY25']||0));
+      set('Q3FY25 €',    r2(p['Q3FY25']||0));
+      set('Q4FY25 €',    r2(p['Q4FY25']||0));
+      set('Q1FY26 €',    r2(p['Q1FY26']||0));
+      set('Q2FY26 €',    r2(p['Q2FY26']||0));
+      set('Q3FY26 €',    r2(p['Q3FY26']||0));
+      set('Q4FY26 €',    r2(p['Q4FY26']||0));
+      set('FLAG_BRUT',   p.flag);
+      set('STATUT_FY27', p.flag);
+      return row;
+    });
+    if (newRows.length > 0)
+      shV17.getRange(2, 1, newRows.length, nCols).setValues(newRows);
+
+    // ── Mise à jour des CA dans 🏢_COMPTES ───────────────────────────────────
+    var mdb  = _getSpreadsheet('EMPOWER_MDB');
+    var shC  = mdb.getSheetByName('🏢_COMPTES');
+    var cH   = shC.getRange(1,1,1,shC.getLastColumn()).getValues()[0].map(String);
+    var cData = shC.getDataRange().getValues();
+    var iNom  = cH.indexOf('Nom_Compte');
+    var iCA25 = cH.indexOf('CA_FY25');
+    var iCA26 = cH.indexOf('CA_FY26');
+    var iCAQ1 = cH.indexOf('CA_Q1FY27');
+    var iCanal = cH.indexOf('CANAL');
+    var comptesMaj = 0;
+    for (var ri = 1; ri < cData.length; ri++) {
+      var nom  = String(cData[ri][iNom] || '').trim();
+      var norm = nom.toLowerCase().replace(/[^a-z0-9]/g, '');
+      var key  = Object.keys(pivot).find(function(k){
+        return k.toLowerCase().replace(/[^a-z0-9]/g,'') === norm;
+      });
+      if (key) {
+        var p = pivot[key]; var rn = ri + 1;
+        if (iCA25  >= 0) shC.getRange(rn, iCA25+1 ).setValue(r2(p.CA_FY25));
+        if (iCA26  >= 0) shC.getRange(rn, iCA26+1 ).setValue(r2(p.CA_FY26));
+        if (iCAQ1  >= 0) shC.getRange(rn, iCAQ1+1 ).setValue(r2(p.CA_Q1FY27));
+        if (iCanal >= 0) shC.getRange(rn, iCanal+1).setValue(p.canal);
+        comptesMaj++;
+      }
+    }
+    SpreadsheetApp.flush();
+
+    _log(user.pin, 'syncSellInDrive', newRows.length + ' revendeurs · ' + comptesMaj + ' comptes MAJ');
+    return _json({
+      ok: true, revendeurs: newRows.length, comptesMaj: comptesMaj,
+      message: newRows.length + ' revendeurs synchronisés · ' + comptesMaj + ' comptes mis à jour'
+    });
+  } catch(e) {
+    return _json({ ok: false, erreur: e.toString() });
+  }
 }
 
 // Stockage sécurisé de la clé Gemini — admin uniquement

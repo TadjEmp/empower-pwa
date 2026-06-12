@@ -16,6 +16,8 @@ window.VueAdmin = {
       formLead: this._initFormLead(),
       importEnCours: false,
       importResultat: null,
+      syncSellInEnCours: false,
+      syncSellInResultat: null,
       suivi: { chargement: false, leads: [], filtreStatut: 'TOUS', filtreCDS: 'TOUS' },
     };
     this.render();
@@ -391,6 +393,31 @@ window.VueAdmin = {
     this.render();
   },
 
+  async syncSellIn() {
+    if (this.state.syncSellInEnCours) return;
+    const ok = confirm('📊 Synchroniser les données sell-in depuis Drive ?\n\nCela met à jour les CA (FY25, FY26, Q1FY27) et les canaux dans Comptes Historiques et 🏢_COMPTES.');
+    if (!ok) return;
+    this.state.syncSellInEnCours  = true;
+    this.state.syncSellInResultat = null;
+    this.render();
+    try {
+      const data = await SheetsAPI._fetchRetry(SheetsAPI.BASE_URL, 'POST', 2,
+        { action: 'syncSellInDrive', token: SheetsAPI.TOKEN });
+      if (!data.ok) throw new Error(data.erreur || 'Erreur Apps Script');
+      this.state.syncSellInResultat = { ok: true, message: data.message };
+      Toast.afficher(`✅ ${data.revendeurs} revendeurs · ${data.comptesMaj} comptes mis à jour`, 'succes', 6000);
+      await Promise.all([
+        SheetsAPI.viderCache('V17', '📋 COMPTES HISTORIQUES'),
+        SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES'),
+      ]);
+    } catch(e) {
+      this.state.syncSellInResultat = { ok: false, message: e.message };
+      Toast.afficher('❌ Sync sell-in : ' + e.message, 'erreur');
+    }
+    this.state.syncSellInEnCours = false;
+    this.render();
+  },
+
   async sauverObjectif(idObjectif) {
     if (this.state.envoiEnCours) return;
     this.state.envoiEnCours = true;
@@ -743,6 +770,31 @@ window.VueAdmin = {
           </button>
           <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">
             Source : Google Sheet Drive "EMPOWER TRACKER" · Onglet "1 - Saisie" (81 revendeurs actifs).
+          </p>
+        </div>
+
+        <!-- SYNC SELL-IN -->
+        <div class="bloc-fiche">
+          <div class="bloc-titre">📊 Synchroniser données Sell-In</div>
+          <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">
+            Met à jour les CA (FY25, FY26, Q1FY27) et le canal (Leclerc / Revendeur) dans
+            <strong>Comptes Historiques</strong> et <strong>🏢_COMPTES</strong> à partir du classeur
+            sell-in Drive. À relancer chaque semaine après mise à jour du classeur.
+          </p>
+          ${this.state.syncSellInResultat ? `
+            <div style="padding:10px 14px;border-radius:8px;margin-bottom:10px;font-size:13px;
+              background:${this.state.syncSellInResultat.ok ? 'rgba(26,158,92,.1)' : 'rgba(255,109,104,.1)'};
+              border:1px solid ${this.state.syncSellInResultat.ok ? 'var(--c-success,#1a9e5c)' : 'var(--c-cta,#FF6D68)'}">
+                ${this.state.syncSellInResultat.ok ? '✅' : '❌'} ${this.state.syncSellInResultat.message}
+            </div>` : ''}
+          <button class="btn-secondaire"
+                  style="background:#0050FF;color:#fff;border-color:#0050FF;padding:10px 16px"
+                  ${this.state.syncSellInEnCours ? 'disabled' : ''}
+                  onclick="VueAdmin.syncSellIn()">
+            ${this.state.syncSellInEnCours ? '⏳ Synchronisation…' : '📊 Synchroniser depuis Drive'}
+          </button>
+          <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">
+            Source : classeur SELL-IN-Q1FY27-W8-DASHBOARD · Feuille "DATA FY25-FY26-FY27".
           </p>
         </div>
 

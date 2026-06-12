@@ -29,9 +29,10 @@ window.VueComptesHistoriques = {
         const mdb = mapMDB.get(normaliserNom(r.RESELLER || '')) || null;
         const canal = (r.CANAL || '').toUpperCase();
         const reseller = (r.RESELLER || '').toUpperCase();
-        const isLeclerc = canal.includes('LECLERC') || reseller.includes('LECLERC')
+        const isLeclerc = canal === 'LECLERC'
           || canal.includes('GMS') || canal.includes('GSA') || canal.includes('GRANDE SURFACE')
-          || canal.includes('DRIVE');
+          || reseller.includes('LECLERC')
+          || (canal.includes('DRIVE') && reseller.includes('LECLERC'));
         return {
           id:       mdb?.ID_Compte || null,
           nom:      r.RESELLER || '—',
@@ -70,6 +71,8 @@ window.VueComptesHistoriques = {
       const pr = (c.priorite || '').toUpperCase();
       const f  = this.state.filtreStatut;
       if (f === 'REACTIVER') return st.startsWith('REACTIVER') || pr.startsWith('REACTIVER');
+      if (f === 'ACTIF')     return st === 'ACTIF' || pr === 'ACTIF' || c.caQ1Fy27 > 0;
+      if (f === 'INACTIF')   return st === 'INACTIF' || pr === 'INACTIF' || (c.caFy26 === 0 && c.caQ1Fy27 === 0);
       return st === f || pr === f;
     });
     if (this.state.triPar === 'CA')  l.sort((a, b) => b.caFy26 - a.caFy26);
