@@ -27,7 +27,7 @@ window.VuePrimes = {
   state: null,
 
   async init() {
-    this.state = { chargement: true, quarter: null, objectifs: [], nsb: [], prospects: [], envoiEnCours: false, modalNSB: false };
+    this.state = { chargement: true, quarter: null, objectifs: [], nsb: [], prospects: [], envoiEnCours: false, modalNSB: false, modalOnboarding: false };
     this.render();
     try {
       const [objectifs, nsb, prospects, params] = await Promise.all([
@@ -78,19 +78,30 @@ window.VuePrimes = {
     if (nsbValid >= s2)      { axe2 = 150; palier2 = 'P2'; }
     else if (nsbValid >= s1) { axe2 = 75;  palier2 = 'P1'; }
 
-    // AXE 3 — comptes EMPOWER intégrés dans le quarter
-    const integres = this.state.prospects.filter(p =>
+    // AXE 3 — comptes EMPOWER intégrés dans le quarter (pipeline + déclarations NSB type EMPOWER_*)
+    const integresPipeline = this.state.prospects.filter(p =>
       Number(p.PIN_CDS_Assigne) === pin &&
       String(p.Flag_converti).toUpperCase() === 'TRUE' &&
       this._dansQuarter(p.PREMIERE_COMMANDE_DATE || p.Timestamp, q)
     ).length;
+    const integresFlavie = this.state.nsb.filter(n =>
+      Number(n.PIN_CDS) === pin &&
+      String(n.Produit||'').toUpperCase().startsWith('EMPOWER_FLAVIE') &&
+      this._dansQuarter(n.Date, q)
+    ).length;
+    const integresTerrain = this.state.nsb.filter(n =>
+      Number(n.PIN_CDS) === pin &&
+      String(n.Produit||'').toUpperCase().startsWith('EMPOWER_TERRAIN') &&
+      this._dansQuarter(n.Date, q)
+    ).length;
+    const integres = integresPipeline + integresFlavie + integresTerrain;
     let axe3 = 0, palier3 = `${integres}/3`;
     if (integres >= 6)      { axe3 = 75; palier3 = 'P2'; }
     else if (integres >= 3) { axe3 = 50; palier3 = 'P1'; }
 
     const std   = Math.min(this.PLAFOND, axe1 + axe2 + axe3);
     return { ca, obj, pct: Math.round(pct), axe1, palier1, axe2, palier2, nsbValid, nsbAttente, s1, s2,
-             axe3, palier3, integres, p3, total: std + p3 };
+             axe3, palier3, integres, integresFlavie, integresTerrain, integresPipeline, p3, total: std + p3 };
   },
 
   // Bonus manager : objectif collectif équipe du quarter atteint
@@ -123,23 +134,27 @@ window.VuePrimes = {
     e.preventDefault();
     if (this.state.envoiEnCours) return;
     const v = id => document.getElementById(id)?.value?.trim() || '';
-    if (!v('nsb-compte')) { Toast.afficher('Nom du compte requis', 'warning'); return; }
+    const qte = Math.max(1, parseInt(v('nsb-qte') || '1', 10));
     this.state.envoiEnCours = true;
     try {
-      const ligne = {
-        ID_NSB: genId('NSB'),
-        Date: v('nsb-date') || dateISOLocale(),
-        PIN_CDS: Session.pin, ID_Compte: '',
-        Nom_Compte: v('nsb-compte').toUpperCase(),
-        Produit: v('nsb-produit') || 'NSB',
-        Montant_EUR: Number(v('nsb-montant') || 0),
-        Statut: 'DECLARE', Valid_Manager: 'NON',
-        Date_Validation: '', Notes: v('nsb-note'),
-      };
-      await SheetsAPI.ecrire('EMPOWER_MDB', '🛒_NSB_COMMANDES', ligne);
-      this.state.nsb.push(ligne);
+      const promises = [];
+      for (let i = 0; i < qte; i++) {
+        const ligne = {
+          ID_NSB: genId('NSB'),
+          Date: v('nsb-date') || dateISOLocale(),
+          PIN_CDS: Session.pin, ID_Compte: '',
+          Nom_Compte: (v('nsb-compte') || `NSB Q${i+1}`).toUpperCase(),
+          Produit: v('nsb-produit') || 'NSB',
+          Montant_EUR: Number(v('nsb-montant') || 0),
+          Statut: 'DECLARE', Valid_Manager: 'NON',
+          Date_Validation: '', Notes: v('nsb-note'),
+        };
+        promises.push(SheetsAPI.ecrire('EMPOWER_MDB', '🛒_NSB_COMMANDES', ligne)
+          .then(() => this.state.nsb.push(ligne)));
+      }
+      await Promise.all(promises);
       this.state.modalNSB = false;
-      Toast.afficher('✅ Commande NSB déclarée — en attente de validation', 'succes');
+      Toast.afficher(`✅ ${qte} commande(s) NSB déclarée(s) — en attente de validation`, 'succes');
     } catch(err) { Toast.afficher('❌ ' + err.message, 'erreur'); }
     this.state.envoiEnCours = false;
     this.render();
@@ -188,6 +203,7 @@ window.VuePrimes = {
       </div>
       ${NavBar('primes')}
       ${this._renderModalNSB()}
+      ${this._renderModalOnboarding()}
     `;
   },
 
@@ -245,7 +261,15 @@ window.VuePrimes = {
         </div>
         <div class="pace-chiffres"><strong>${c.integres}</strong><span>compte(s) intégré(s) au ${q}</span></div>
         ${barre(c.integres, 3)}
-        <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">≥3 comptes/Q : 50 € · ≥6 comptes/Q : 75 € — comptés au statut INTÉGRÉ du pipeline</p>
+        <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;font-size:12px;color:var(--c-text-2)">
+          <span>🗂 Pipeline : ${c.integresPipeline}</span>
+          <span>🤝 Via Flavie : ${c.integresFlavie}</span>
+          <span>🚗 Terrain : ${c.integresTerrain}</span>
+        </div>
+        <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">≥3 comptes/Q : 50 € · ≥6 comptes/Q : 75 €</p>
+        ${Number(pin) === Session.pin || Session.estCDS() ? `
+        <button class="btn-secondaire" style="margin-top:10px" onclick="VuePrimes.state.modalOnboarding=true;VuePrimes.render()">
+          ➕ Déclarer un onboarding</button>` : ''}
       </div>
     `;
   },
@@ -299,6 +323,38 @@ window.VuePrimes = {
     `;
   },
 
+  // ── Déclaration onboarding Flavie / Terrain ──
+  async declarerOnboarding(e) {
+    e.preventDefault();
+    if (this.state.envoiEnCours) return;
+    const v = id => document.getElementById(id)?.value?.trim() || '';
+    const type = v('ob-type');  // 'EMPOWER_FLAVIE' ou 'EMPOWER_TERRAIN'
+    const qte  = Math.max(1, parseInt(v('ob-qte') || '1', 10));
+    this.state.envoiEnCours = true;
+    try {
+      const promises = [];
+      for (let i = 0; i < qte; i++) {
+        const ligne = {
+          ID_NSB: genId('OB'),
+          Date: v('ob-date') || dateISOLocale(),
+          PIN_CDS: Session.pin, ID_Compte: '',
+          Nom_Compte: v('ob-compte') || `${type === 'EMPOWER_FLAVIE' ? 'Flavie' : 'Terrain'} Q${i+1}`,
+          Produit: type,
+          Montant_EUR: 0,
+          Statut: 'DECLARE', Valid_Manager: 'NON',
+          Date_Validation: '', Notes: v('ob-note'),
+        };
+        promises.push(SheetsAPI.ecrire('EMPOWER_MDB', '🛒_NSB_COMMANDES', ligne)
+          .then(() => this.state.nsb.push(ligne)));
+      }
+      await Promise.all(promises);
+      this.state.modalOnboarding = false;
+      Toast.afficher(`✅ ${qte} onboarding(s) ${type === 'EMPOWER_FLAVIE' ? 'Flavie' : 'terrain'} déclaré(s)`, 'succes');
+    } catch(err) { Toast.afficher('❌ ' + err.message, 'erreur'); }
+    this.state.envoiEnCours = false;
+    this.render();
+  },
+
   _renderModalNSB() {
     if (!this.state?.modalNSB) return '';
     return `
@@ -306,14 +362,43 @@ window.VuePrimes = {
       <div class="modal">
         <h3>➕ Déclarer une commande NSB</h3>
         <form onsubmit="VuePrimes.declarerNSB(event)">
-          <label>Compte *<input id="nsb-compte" required placeholder="Nom du revendeur"/></label>
+          <label>Compte (optionnel)<input id="nsb-compte" placeholder="Nom du revendeur (facultatif)"/></label>
           <label>Date<input id="nsb-date" type="date" value="${dateISOLocale()}"/></label>
           <label>Produit<select id="nsb-produit"><option>NSB</option><option>NSB 5 postes</option><option>NSB 10 postes</option><option>NSB 20 postes</option></select></label>
-          <label>Montant (€)<input id="nsb-montant" type="number" inputmode="decimal"/></label>
+          <label>Quantité<input id="nsb-qte" type="number" min="1" max="50" value="1" style="width:80px"/></label>
+          <label>Montant unitaire (€)<input id="nsb-montant" type="number" inputmode="decimal"/></label>
           <label>Note<textarea id="nsb-note" rows="2" placeholder="N° commande, distributeur…"></textarea></label>
-          <p style="font-size:11px;color:var(--c-text-2)">La commande comptera pour la prime après validation par Tadjidine.</p>
+          <p style="font-size:11px;color:var(--c-text-2)">Chaque unité comptera séparément. Validation par Tadjidine requise.</p>
           <div class="modal-btns">
             <button type="button" onclick="VuePrimes.state.modalNSB=false;VuePrimes.render()">Annuler</button>
+            <button type="submit" class="btn-primaire" ${this.state.envoiEnCours ? 'disabled' : ''}>
+              ${this.state.envoiEnCours ? 'Envoi…' : 'Déclarer'}</button>
+          </div>
+        </form>
+      </div>
+    </div>`;
+  },
+
+  _renderModalOnboarding() {
+    if (!this.state?.modalOnboarding) return '';
+    return `
+    <div class="modal-overlay" onclick="if(event.target===this){VuePrimes.state.modalOnboarding=false;VuePrimes.render()}">
+      <div class="modal">
+        <h3>➕ Déclarer un onboarding EMPOWER</h3>
+        <form onsubmit="VuePrimes.declarerOnboarding(event)">
+          <label>Type *
+            <select id="ob-type">
+              <option value="EMPOWER_FLAVIE">🤝 Via Flavie (conversion Flavie)</option>
+              <option value="EMPOWER_TERRAIN">🚗 Terrain (onboarding direct)</option>
+            </select>
+          </label>
+          <label>Quantité<input id="ob-qte" type="number" min="1" max="20" value="1" style="width:80px"/></label>
+          <label>Compte (optionnel)<input id="ob-compte" placeholder="Nom du revendeur (facultatif)"/></label>
+          <label>Date<input id="ob-date" type="date" value="${dateISOLocale()}"/></label>
+          <label>Note<textarea id="ob-note" rows="2" placeholder="Contexte, distributeur…"></textarea></label>
+          <p style="font-size:11px;color:var(--c-text-2)">Chaque compte onboardé comptera pour l'Axe 3. Validation par Tadjidine requise.</p>
+          <div class="modal-btns">
+            <button type="button" onclick="VuePrimes.state.modalOnboarding=false;VuePrimes.render()">Annuler</button>
             <button type="submit" class="btn-primaire" ${this.state.envoiEnCours ? 'disabled' : ''}>
               ${this.state.envoiEnCours ? 'Envoi…' : 'Déclarer'}</button>
           </div>

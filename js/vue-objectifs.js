@@ -6,12 +6,19 @@
 
 window.VueObjectifs = {
 
+  QUARTERS_DATES: {
+    Q1: { debut: '2026-04-01', fin: '2026-06-30' },
+    Q2: { debut: '2026-07-01', fin: '2026-09-30' },
+    Q3: { debut: '2026-10-01', fin: '2026-12-31' },
+    Q4: { debut: '2027-01-01', fin: '2027-03-31' },
+  },
+
   state: {
     chargement: true, erreur: null,
-    objectifs: [], params: {},
+    objectifs: [], params: {}, nsb: [], prospects: [],
     quarter: null, semaine: null,
     modalSaisie: false,
-    formSaisie: {},   // { [ID_Objectif]: montant_saisi }
+    formSaisie: {},
     saving: false,
   },
 
@@ -20,13 +27,17 @@ window.VueObjectifs = {
     this.state.erreur = null;
     this.render();
     try {
-      const [objectifs, params] = await Promise.all([
+      const [objectifs, params, nsb, prospects] = await Promise.all([
         SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
         SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
+        SheetsAPI.lire('EMPOWER_MDB', '🛒_NSB_COMMANDES').catch(() => []),
+        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS').catch(() => []),
       ]);
       const paramMap = Object.fromEntries(params.map(p => [p.Parametre, p.Valeur]));
       this.state.objectifs  = objectifs;
       this.state.params     = paramMap;
+      this.state.nsb        = nsb;
+      this.state.prospects  = prospects;
       this.state.quarter    = paramMap.QuarterActif || 'Q1';
       this.state.semaine    = getISOWeek();
       this.state.chargement = false;
@@ -36,6 +47,42 @@ window.VueObjectifs = {
       this.state.erreur = e.message;
       this.render();
     }
+  },
+
+  _dansQuarter(dateStr, q) {
+    if (!dateStr) return false;
+    const b = this.QUARTERS_DATES[q] || {};
+    const d = String(dateStr).slice(0, 10);
+    return d >= (b.debut || '') && d <= (b.fin || '');
+  },
+
+  _axe2CDS(pin) {
+    const q = this.state.quarter;
+    const o = this.state.objectifs.find(x => Number(x.PIN_CDS) === pin) || {};
+    const nsbQ = this.state.nsb.filter(n =>
+      Number(n.PIN_CDS) === pin && this._dansQuarter(n.Date, q)
+    );
+    const valide = nsbQ.filter(n => String(n.Valid_Manager||'').toUpperCase() === 'OUI').length;
+    const obj2   = Number(o[`${q}_Obj_NSB`] || 0);
+    return { valide, total: nsbQ.length, obj2 };
+  },
+
+  _axe3CDS(pin) {
+    const q = this.state.quarter;
+    const o = this.state.objectifs.find(x => Number(x.PIN_CDS) === pin) || {};
+    const integres = this.state.prospects.filter(p =>
+      Number(p.PIN_CDS_Assigne) === pin &&
+      String(p.Flag_converti||'').toUpperCase() === 'TRUE' &&
+      this._dansQuarter(p.PREMIERE_COMMANDE_DATE || p.Timestamp, q)
+    ).length;
+    const obj3 = Number(o[`${q}_Obj_Onboarding`] || 0);
+    const flavie = this.state.prospects.filter(p =>
+      Number(p.PIN_CDS_Assigne) === pin &&
+      String(p.Flag_converti||'').toUpperCase() === 'TRUE' &&
+      String(p.ORIGINE||'').toLowerCase().includes('flavie') &&
+      this._dansQuarter(p.PREMIERE_COMMANDE_DATE || p.Timestamp, q)
+    ).length;
+    return { integres, flavie, terrain: integres - flavie, obj3 };
   },
 
   _donneesCDS(pin) {
@@ -59,12 +106,17 @@ window.VueObjectifs = {
     </div>`;
   },
 
-  // ── Ouvrir modal saisie sell-in (Manager uniquement) ──
+  // ── Ouvrir modal saisie (Manager uniquement) ──
   ouvrirModalSaisie() {
     const q   = this.state.quarter;
     const frm = {};
     this.state.objectifs.forEach(o => {
-      frm[o.ID_Objectif] = parseAmount(o[`${q}_CA_Realise`] || 0);
+      frm[o.ID_Objectif] = {
+        ca:          parseAmount(o[`${q}_CA_Realise`] || 0),
+        obj_ca:      parseAmount(o[`${q}_Obj_Revise`] || o[`${q}_Obj_Initial`] || 0),
+        obj_nsb:     Number(o[`${q}_Obj_NSB`]        || 0),
+        obj_onboard: Number(o[`${q}_Obj_Onboarding`] || 0),
+      };
     });
     this.state.formSaisie = frm;
     this.state.modalSaisie = true;
@@ -76,17 +128,22 @@ window.VueObjectifs = {
     e.preventDefault();
     if (this.state.saving) return;
     this.state.saving = true;
-    const q   = this.state.quarter;
-    const champ = `${q}_CA_Realise`;
+    const q = this.state.quarter;
     let ok = 0, err = 0;
     try {
-      for (const [id, montant] of Object.entries(this.state.formSaisie)) {
-        const valeur = parseAmount(montant);
+      for (const [id, vals] of Object.entries(this.state.formSaisie)) {
+        const maj = {
+          [`${q}_CA_Realise`]:    parseAmount(typeof vals === 'object' ? vals.ca      : vals),
+          [`${q}_Obj_Revise`]:    parseAmount(typeof vals === 'object' ? vals.obj_ca  : 0) || undefined,
+          [`${q}_Obj_NSB`]:       Number(typeof vals === 'object' ? vals.obj_nsb      : 0) || undefined,
+          [`${q}_Obj_Onboarding`]:Number(typeof vals === 'object' ? vals.obj_onboard  : 0) || undefined,
+        };
+        // Ne garder que les champs non-undefined
+        Object.keys(maj).forEach(k => maj[k] === undefined && delete maj[k]);
         try {
-          await SheetsAPI.mettreAJour('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES', id, { [champ]: valeur });
-          // Mettre à jour en mémoire
+          await SheetsAPI.mettreAJour('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES', id, maj);
           const ligne = this.state.objectifs.find(o => o.ID_Objectif === id);
-          if (ligne) ligne[champ] = valeur;
+          if (ligne) Object.assign(ligne, maj);
           ok++;
         } catch { err++; }
       }
@@ -95,7 +152,7 @@ window.VueObjectifs = {
         : `⚠️ ${ok} OK · ${err} erreur(s)`,
         err === 0 ? 'succes' : 'warning');
     } finally {
-      this.state.saving    = false;
+      this.state.saving      = false;
       this.state.modalSaisie = false;
       this.render();
     }
@@ -119,11 +176,14 @@ window.VueObjectifs = {
     const renderCDS = (pin, nom) => {
       const d = this._donneesCDS(pin);
       const PACE_LBL = { ON_TRACK: '🟢 ON TRACK', WATCH: '🟡 WATCH', AT_RISK: '🔴 AT RISK' };
+      const a2 = this._axe2CDS(pin);
+      const a3 = this._axe3CDS(pin);
       return `
         <div class="bloc-fiche">
           ${nom ? `<div class="bloc-titre">${nom}
             <span class="pace-badge ${d.pace === 'ON_TRACK' ? 'pace-ok' : d.pace === 'WATCH' ? 'pace-watch' : 'pace-risk'}">${PACE_LBL[d.pace]}</span>
           </div>` : ''}
+          <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;margin-bottom:4px">AXE 1 — CA</div>
           <div class="pace-chiffres">
             <strong>${formatEUR(d.ca)}</strong>
             <span>/ ${formatEUR(d.obj)} — ${q}</span>
@@ -131,11 +191,26 @@ window.VueObjectifs = {
           ${this._barreProgression(d.pct, d.pace)}
           <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
             <div class="stat-mini"><div>${d.pct}%</div><div>Atteinte</div></div>
-            <div class="stat-mini"><div>${formatEUR(d.projection)}</div><div>Projection Q1</div></div>
+            <div class="stat-mini"><div>${formatEUR(d.projection)}</div><div>Projection ${q}</div></div>
             <div class="stat-mini" style="color:${d.ecart > 0 ? 'var(--c-danger)' : 'var(--c-success)'}">
               <div>${d.ecart > 0 ? '-' : '+'}${formatEUR(Math.abs(d.ecart))}</div>
               <div>Écart</div>
             </div>
+          </div>
+          <div style="height:1px;background:var(--c-border);margin:12px 0"></div>
+          <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;margin-bottom:4px">AXE 2 — NSB</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <div class="stat-mini"><div>${a2.valide}</div><div>Validés</div></div>
+            <div class="stat-mini"><div>${a2.total - a2.valide}</div><div>En attente</div></div>
+            ${a2.obj2 > 0 ? `<div class="stat-mini"><div>${a2.obj2}</div><div>Objectif</div></div>` : ''}
+          </div>
+          <div style="height:1px;background:var(--c-border);margin:12px 0"></div>
+          <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;margin-bottom:4px">AXE 3 — ONBOARDING EMPOWER</div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <div class="stat-mini"><div>${a3.integres}</div><div>Total</div></div>
+            <div class="stat-mini"><div>${a3.flavie}</div><div>Via Flavie</div></div>
+            <div class="stat-mini"><div>${a3.terrain}</div><div>Terrain</div></div>
+            ${a3.obj3 > 0 ? `<div class="stat-mini"><div>${a3.obj3}</div><div>Objectif</div></div>` : ''}
           </div>
         </div>`;
     };
@@ -184,27 +259,36 @@ window.VueObjectifs = {
   _renderModal() {
     if (!this.state.modalSaisie) return '';
     const q    = this.state.quarter;
+    const inp  = (id, field, label, unit='€', step='0.01') => {
+      const v = this.state.formSaisie[id]?.[field] ?? 0;
+      return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+        <span style="min-width:110px;font-size:12px;color:var(--c-text-2)">${label}</span>
+        <input type="number" min="0" step="${step}" value="${v}"
+               oninput="VueObjectifs.state.formSaisie['${id}']['${field}']=Number(this.value)"
+               style="flex:1;padding:6px 8px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);font-size:13px"/>
+        <span style="font-size:11px;color:var(--c-text-2);min-width:14px">${unit}</span>
+      </div>`;
+    };
     const rows = this.state.objectifs.map(o => {
-      const id  = o.ID_Objectif;
-      const val = this.state.formSaisie[id] ?? '';
+      const id = o.ID_Objectif;
+      if (!this.state.formSaisie[id] || typeof this.state.formSaisie[id] !== 'object')
+        this.state.formSaisie[id] = { ca: 0, obj_ca: 0, obj_nsb: 0, obj_onboard: 0 };
       return `
-        <label style="flex-direction:row;align-items:center;gap:10px;margin-bottom:10px">
-          <span style="min-width:90px;font-weight:600">${o.Nom_CDS}</span>
-          <input type="number" min="0" step="0.01" placeholder="0.00"
-                 value="${val}"
-                 oninput="VueObjectifs.state.formSaisie['${id}']=this.value"
-                 style="flex:1;padding:8px 10px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);font-size:14px"/>
-          <span style="font-size:11px;color:var(--c-text-2)">€</span>
-        </label>`;
+        <div style="margin-bottom:14px;padding:10px;background:var(--c-bg);border-radius:var(--radius-sm);border:1px solid var(--c-border)">
+          <div style="font-weight:700;font-size:14px;margin-bottom:8px">${o.Nom_CDS}</div>
+          ${inp(id,'ca',      'CA réalisé',       '€')}
+          ${inp(id,'obj_ca',  'Obj. CA révisé',   '€')}
+          ${inp(id,'obj_nsb', 'Obj. NSB/Q',       'cmd','1')}
+          ${inp(id,'obj_onboard','Obj. Onboarding/Q','cpt','1')}
+        </div>`;
     }).join('');
 
     return `
     <div class="modal-overlay" onclick="if(event.target===this)VueObjectifs.fermerModalSaisie()">
       <div class="modal">
-        <h3>📥 Saisir CA Réalisé — ${q} FY27</h3>
+        <h3>📥 Saisir Objectifs & Réalisés — ${q} FY27</h3>
         <p style="font-size:12px;color:var(--c-text-2);margin-bottom:14px">
-          Saisissez le CA réalisé cumulé (€) par CDS pour le quarter ${q}.
-          Source : SELL IN W${dateISOLocale().split('-')[1] || ''}.
+          CA réalisé cumulé · objectifs CA, NSB et onboarding par CDS.
         </p>
         <form onsubmit="VueObjectifs.sauvegarderSaisie(event)">
           ${rows}

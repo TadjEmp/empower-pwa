@@ -47,6 +47,7 @@ window.VuePipeline = {
     this.state = {
       leads: [], chargement: true, envoiEnCours: false,
       recherche: '', filtreCDS: 'TOUS', filtrePotentiel: 'TOUS',
+      filtreStatut: 'TOUS', filtreAlerte: 'TOUS',
       colonnesEtendues: {},
       modal: null,
     };
@@ -88,9 +89,13 @@ window.VuePipeline = {
   get leadsFiltres() {
     let l = this.state.leads;
     const q = normaliserNom(this.state.recherche);
-    if (q) l = l.filter(p => normaliserNom(p.Nom_Compte).includes(q) || normaliserNom(p.Ville).includes(q));
-    if (this.state.filtreCDS !== 'TOUS') l = l.filter(p => String(p.PIN_CDS_Assigne) === this.state.filtreCDS);
+    if (q) l = l.filter(p => normaliserNom(p.Nom_Compte).includes(q) || normaliserNom(p.Ville || '').includes(q));
+    if (this.state.filtreCDS !== 'TOUS') l = l.filter(p => String(p.PIN_CDS_Assigne) === String(this.state.filtreCDS));
     if (this.state.filtrePotentiel !== 'TOUS') l = l.filter(p => (p.POTENTIEL || '') === this.state.filtrePotentiel);
+    if (this.state.filtreStatut !== 'TOUS') l = l.filter(p => p._statut === this.state.filtreStatut);
+    if (this.state.filtreAlerte === 'WP_RETARD') l = l.filter(p => this._retardWelcomePack(p));
+    if (this.state.filtreAlerte === 'WP_ENVOYE') l = l.filter(p => !!p.WELCOME_PACK_DATE);
+    if (this.state.filtreAlerte === 'ACTION_DUE') l = l.filter(p => p.Date_prochaine_action && estDepassee(p.Date_prochaine_action));
     return l;
   },
 
@@ -292,12 +297,22 @@ window.VuePipeline = {
         <div class="filtres-statut">
           ${peutGerer ? `
           <select onchange="VuePipeline.state.filtreCDS=this.value;VuePipeline.render()">
-            <option value="TOUS">Tous CDS</option>
-            ${cdsList.map(c => `<option value="${c.pin}" ${this.state.filtreCDS == c.pin ? 'selected' : ''}>${c.nom}</option>`).join('')}
+            <option value="TOUS">👥 Tous CDS</option>
+            ${cdsList.map(c => `<option value="${c.pin}" ${String(this.state.filtreCDS) == String(c.pin) ? 'selected' : ''}>${c.nom}</option>`).join('')}
           </select>` : ''}
+          <select onchange="VuePipeline.state.filtreStatut=this.value;VuePipeline.render()">
+            <option value="TOUS">Tous statuts</option>
+            ${this.STATUTS.map(s => `<option value="${s.id}" ${this.state.filtreStatut === s.id ? 'selected' : ''}>${s.lbl}</option>`).join('')}
+          </select>
           <select onchange="VuePipeline.state.filtrePotentiel=this.value;VuePipeline.render()">
             <option value="TOUS">Tout potentiel</option>
             ${['Fort', 'Moyen', 'Faible'].map(p => `<option ${this.state.filtrePotentiel === p ? 'selected' : ''}>${p}</option>`).join('')}
+          </select>
+          <select onchange="VuePipeline.state.filtreAlerte=this.value;VuePipeline.render()">
+            <option value="TOUS">Toutes alertes</option>
+            <option value="WP_RETARD" ${this.state.filtreAlerte==='WP_RETARD'?'selected':''}>⚠️ WP J+14 dépassé</option>
+            <option value="WP_ENVOYE" ${this.state.filtreAlerte==='WP_ENVOYE'?'selected':''}>📦 Welcome Pack envoyé</option>
+            <option value="ACTION_DUE" ${this.state.filtreAlerte==='ACTION_DUE'?'selected':''}>⏰ Action en retard</option>
           </select>
         </div>
       </div>
