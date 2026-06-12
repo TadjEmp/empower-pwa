@@ -377,12 +377,8 @@ window.VueAdmin = {
     this.state.importResultat = null;
     this.render();
     try {
-      const r = await fetch(SheetsAPI.BASE_URL, {
-        method: 'POST', redirect: 'follow',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'importTrackerDrive', token: SheetsAPI.TOKEN }),
-      });
-      const data = await r.json();
+      const data = await SheetsAPI._fetchRetry(SheetsAPI.BASE_URL, 'POST', 2,
+        { action: 'importTrackerDrive', token: SheetsAPI.TOKEN });
       if (!data.ok) throw new Error(data.erreur || 'Erreur Apps Script');
       this.state.importResultat = { ok: true, message: data.message };
       Toast.afficher(`✅ ${data.crees} lead(s) importés — ${data.skips} doublon(s) ignorés`, 'succes', 6000);
