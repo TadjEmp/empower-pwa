@@ -358,7 +358,7 @@ window.VuePrimes = {
         ${barre(c.integres, 3)}
         <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;font-size:12px;color:var(--c-text-2)">
           <span>Pipeline : ${c.integresPipeline}</span>
-          <span>Via Flavie (validés) : ${c.integresFlavie}</span>
+          <span>Via Alexandra (validés) : ${c.integresFlavie}</span>
           <span>Terrain (validés) : ${c.integresTerrain}</span>
         </div>
         <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">≥3 comptes/Q : 50 € · ≥6 comptes/Q : 75 € — Seuls les onboardings validés par Tadjidine comptent.</p>
@@ -367,7 +367,7 @@ window.VuePrimes = {
         <details style="margin-top:10px">
           <summary style="font-size:12px;color:var(--c-text-2);cursor:pointer">Mes déclarations onboarding ${q} (${mesEmpowerQ.length})</summary>
           ${mesEmpowerQ.map(n => {
-            const typeLabel = String(n.Produit || '').toUpperCase().startsWith('EMPOWER_FLAVIE') ? 'Via Flavie' : 'Terrain';
+            const typeLabel = String(n.Produit || '').toUpperCase().startsWith('EMPOWER_FLAVIE') ? 'Via Alexandra' : 'Terrain';
             return `
           <div class="relance-ligne" style="align-items:center;padding:6px 0;border-bottom:1px solid var(--c-border,#eee)">
             <div style="flex:1">
@@ -407,7 +407,7 @@ window.VuePrimes = {
     const ligneDeclaration = (n) => {
       const isEmpower = String(n.Produit || '').toUpperCase().startsWith('EMPOWER_');
       const typeLabel = isEmpower
-        ? (String(n.Produit || '').toUpperCase().startsWith('EMPOWER_FLAVIE') ? 'Onboarding via Flavie' : 'Onboarding terrain')
+        ? (String(n.Produit || '').toUpperCase().startsWith('EMPOWER_FLAVIE') ? 'Onboarding via Alexandra' : 'Onboarding terrain')
         : (n.Produit || 'NSB');
       return `
       <div class="relance-ligne">
@@ -489,7 +489,7 @@ window.VuePrimes = {
     try {
       const promises = [];
       for (let i = 0; i < qte; i++) {
-        const typeLabel = type === 'EMPOWER_FLAVIE' ? 'Flavie' : 'Terrain';
+        const typeLabel = type === 'EMPOWER_FLAVIE' ? 'Alexandra' : 'Terrain';
         const ligne = {
           ID_NSB: genId('OB'),
           Date: v('ob-date') || dateISOLocale(),
@@ -508,7 +508,7 @@ window.VuePrimes = {
       }
       await Promise.all(promises);
       this.state.modalOnboarding = false;
-      Toast.afficher(`${qte} onboarding(s) ${type === 'EMPOWER_FLAVIE' ? 'via Flavie' : 'terrain'} déclaré(s) — en attente de validation`, 'succes');
+      Toast.afficher(`${qte} onboarding(s) ${type === 'EMPOWER_FLAVIE' ? 'via Alexandra' : 'terrain'} déclaré(s) — en attente de validation`, 'succes');
     } catch(err) { Toast.afficher('Erreur : ' + (err.message || err), 'erreur'); }
     this.state.envoiEnCours = false;
     this.render();
@@ -547,7 +547,7 @@ window.VuePrimes = {
         <form onsubmit="VuePrimes.declarerOnboarding(event)">
           <label>Type *
             <select id="ob-type">
-              <option value="EMPOWER_FLAVIE">Via Flavie (conversion Flavie + 1ère commande confirmée)</option>
+              <option value="EMPOWER_FLAVIE">Via Alexandra (conversion channel + 1ère commande confirmée)</option>
               <option value="EMPOWER_TERRAIN">Terrain (onboarding direct par le CDS)</option>
             </select>
           </label>

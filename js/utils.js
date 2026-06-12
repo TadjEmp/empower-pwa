@@ -195,7 +195,6 @@ function NavBar(actif) {
     4002: 'MEHDI',
     4003: 'JOHANNE',
     5000: 'ALEXANDRA',
-    3000: 'FLAVIE',
   };
 
   // alias texte (normalisés en MAJUSCULES, sans accents) → prénom canonique
@@ -216,7 +215,6 @@ function NavBar(actif) {
     'ALEXANDRA':         'ALEXANDRA',
     'ALGUAZIL':          'ALEXANDRA',
     'ALEXANDRA ALGUAZIL':'ALEXANDRA',
-    'FLAVIE':            'FLAVIE',
   };
 
   function resolveCDS(pinOuLibelle) {

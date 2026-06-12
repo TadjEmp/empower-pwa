@@ -247,14 +247,12 @@ function _mettreAJour({ fichier, onglet, id, champs }) {
     var nouvStatut = champs && champs.STATUT_EMPOWER;
     if (nouvStatut) {
       if (nouvStatut === 'EN_COURS') {
-        // Passage EN_COURS → Alexandra (5000) + Flavie (3000)
+        // Passage EN_COURS → Alexandra (5000) [Channel Manager / sourcing]
         _notifier(5000, 'STATUT_EN_COURS', 'Prospect en cours: ' + id, id);
-        _notifier(3000, 'STATUT_EN_COURS', 'Prospect en cours: ' + id, id);
       } else if (nouvStatut === 'INTEGRE') {
-        // Passage INTEGRE → Tadjidine (1000) + Alexandra (5000) + Flavie (3000)
+        // Passage INTEGRE → Tadjidine (1000) + Alexandra (5000)
         _notifier(1000, 'STATUT_INTEGRE', 'Prospect intégré: ' + id, id);
         _notifier(5000, 'STATUT_INTEGRE', 'Prospect intégré: ' + id, id);
-        _notifier(3000, 'STATUT_INTEGRE', 'Prospect intégré: ' + id, id);
       } else if (nouvStatut === 'ARCHIVE') {
         // Passage ARCHIVE (ou blocage) → Alexandra (5000) + Tadjidine (1000)
         _notifier(5000, 'STATUT_ARCHIVE', 'Prospect archivé/bloqué: ' + id, id);
@@ -501,9 +499,10 @@ function installerBase() {
 // ⚙️ Recrée l'onglet 👤_UTILISATEURS avec les vrais credentials FY27 (BLOC 1 du spec).
 // ⚠️ FONCTION MANUELLE — NE PAS auto-exécuter / ne pas appeler depuis le router.
 // Tadjidine doit la ré-exécuter manuellement depuis l'éditeur Apps Script
-// (menu Exécuter → fixUtilisateurs) pour APPLIQUER les nouveaux mots de passe +
-// le compte Flavie. Tant qu'elle n'est pas ré-exécutée, les sessions/logins
-// actuels restent inchangés (les hash existants ne sont pas écrasés).
+// (menu Exécuter → fixUtilisateurs) pour APPLIQUER les nouveaux mots de passe.
+// Tant qu'elle n'est pas ré-exécutée, les sessions/logins actuels restent
+// inchangés (les hash existants ne sont pas écrasés).
+// NB : pas de compte Flavie — Alexandra (CHANNEL_MANAGER) assure le sourcing + l'attribution.
 function fixUtilisateurs() {
   var ss = _getSpreadsheet('EMPOWER_MDB');
   var existing = ss.getSheetByName(CONFIG.SHEET_USERS);
@@ -517,7 +516,6 @@ function fixUtilisateurs() {
     ['m.hocine@agence-impact.com',         'NortonCDS27', 4002, 'Mehdi',      'CDS'],
     ['j.lhermitte@agence-impact.com',      'NortonCDS27', 4003, 'Johanne',    'CDS'],
     ['alexandra.alguazil@gendigital.com',  'ChanMgr27',   5000, 'Alexandra',  'CHANNEL_MANAGER'],
-    ['flavie@agence-impact.com',           'ChanMgr27',   3000, 'Flavie',     'EXTERNE'],
   ];
   USERS.forEach(function(u) {
     var salt = Utilities.getUuid();

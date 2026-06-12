@@ -234,7 +234,7 @@ window.VueObjectifs = {
           <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;margin-bottom:4px">AXE 3 — ONBOARDING EMPOWER</div>
           <div style="display:flex;gap:12px;flex-wrap:wrap">
             <div class="stat-mini"><div>${a3.integres ?? '—'}</div><div>Total intégrés</div></div>
-            <div class="stat-mini"><div>${a3.viaCanal ?? '—'}</div><div>Via Flavie/Alexandra</div></div>
+            <div class="stat-mini"><div>${a3.viaCanal ?? '—'}</div><div>Via Alexandra</div></div>
             <div class="stat-mini"><div>${a3.terrain ?? '—'}</div><div>Par le CDS</div></div>
             ${a3.obj3 > 0 ? `<div class="stat-mini"><div>${a3.obj3}</div><div>Objectif</div></div>` : ''}
           </div>

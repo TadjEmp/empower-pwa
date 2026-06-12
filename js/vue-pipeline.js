@@ -44,9 +44,9 @@ window.VuePipeline = {
   // Voir tous les leads : ADMIN + CHANNEL_MANAGER (Alexandra). CDS : ses propres leads. EXTERNE (Flavie) : saisie.
   _voitTous()    { return Session.voitTout(); },
   // Attribuer / avancer / éditer un lead : ADMIN uniquement. Alexandra (CHANNEL_MANAGER) = lecture seule.
-  _peutAssigner(){ return Session.estManager(); },
+  _peutAssigner(){ return Session.estManager() || Session.estChannel(); },
   // Saisir un nouveau lead : ADMIN + CHANNEL_MANAGER (Alexandra) + EXTERNE (Flavie).
-  _peutSaisir()  { return Session.estManager() || Session.estChannel() || Session.estExterne(); },
+  _peutSaisir()  { return Session.estManager() || Session.estChannel(); },
   // Lecture seule (Alexandra) : voit tout mais ne peut rien modifier hormis la saisie.
   _lectureSeule(){ return Session.estChannel(); },
 

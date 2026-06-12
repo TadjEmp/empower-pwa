@@ -359,9 +359,9 @@ window.VuePhoning = {
         const dests = [...new Set([Session.pin, 1000])];
         for (const dest of dests) await _notif(dest, 'SCORE_GROQ', `Score IA ${_score}/5 · ${c.Nom_Compte}`);
       }
-      // Lead sourcé Flavie + score ≥ 2 → Flavie (3000)
-      if (_score >= 2 && estProspect && String(c.ORIGINE || '').toUpperCase().includes('FLAVIE')) {
-        await _notif(3000, 'SCORE_GROQ_FLAVIE', `Score IA ${_score}/5 · lead ${c.Nom_Compte}`);
+      // Lead sourcé par Alexandra (channel) + score ≥ 2 → Alexandra (5000)
+      if (_score >= 2 && estProspect && String(c.ORIGINE || '').toUpperCase().includes('ALEXANDRA')) {
+        await _notif(5000, 'SCORE_GROQ_CHANNEL', `Score IA ${_score}/5 · lead ${c.Nom_Compte}`);
       }
 
       // 2. Mise à jour fiche
