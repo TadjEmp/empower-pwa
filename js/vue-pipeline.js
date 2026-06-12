@@ -485,22 +485,43 @@ window.VuePipeline = {
           <div class="q-recap-ligne"><span>Créé le</span><strong>${l.Date_Import ? dateRelative(l.Date_Import) : '—'}</strong></div>
         </div>
 
-        <!-- Note + édition rapide -->
-        <details style="margin-bottom:12px" ${l.Note_initiale ? 'open' : ''}>
-          <summary style="font-size:12px;font-weight:700;color:var(--c-text-2);cursor:pointer;padding:4px 0">📝 Notes</summary>
-          <textarea id="lead-note" class="q-textarea" rows="3" style="margin-top:6px"
-                    placeholder="Contexte, historique, informations importantes…">${l.Note_initiale || ''}</textarea>
-          <div style="display:flex;gap:8px;margin-top:6px">
-            <input type="date" id="lead-date-action" class="q-input" style="flex:1"
-                   value="${l.Date_prochaine_action ? String(l.Date_prochaine_action).slice(0,10) : ''}"
-                   placeholder="Prochaine action"/>
-            <select id="lead-flag" style="flex:1;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:8px;font-size:13px">
-              ${FLAGS.map(f => `<option value="${f}" ${String(l.FLAG_ACTION||'').toUpperCase() === f ? 'selected' : ''}>${this._labelFlag(f)}</option>`).join('')}
-            </select>
+        <!-- Mise à jour suivi -->
+        <div style="margin-bottom:12px;padding:12px;background:var(--c-bg);border-radius:var(--radius-sm);border:1px solid var(--c-border)">
+          <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.04em;margin-bottom:8px">📝 MISE À JOUR SUIVI</div>
+
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <label style="flex:1;font-size:12px;color:var(--c-text-2)">Statut
+              <select id="lead-statut-select" style="width:100%;margin-top:3px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:7px;font-size:13px">
+                ${this.STATUTS.map(s => `<option value="${s.id}" ${l._statut === s.id ? 'selected' : ''}>${s.lbl}</option>`).join('')}
+              </select>
+            </label>
+            <label style="flex:1;font-size:12px;color:var(--c-text-2)">Action réalisée
+              <select id="lead-flag" style="width:100%;margin-top:3px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:7px;font-size:13px">
+                ${FLAGS.map(f => `<option value="${f}" ${String(l.FLAG_ACTION||'').toUpperCase() === f ? 'selected' : ''}>${this._labelFlag(f)}</option>`).join('')}
+              </select>
+            </label>
           </div>
-          <button class="btn-secondaire" style="width:100%;margin-top:6px;font-size:13px"
-                  onclick="VuePipeline.mettreAJourLead('${l.ID_Prospect}')">💾 Enregistrer</button>
-        </details>
+
+          <label style="font-size:12px;color:var(--c-text-2)">Prochaine action
+            <input type="date" id="lead-date-action" class="q-input" style="margin-top:3px"
+                   value="${l.Date_prochaine_action ? String(l.Date_prochaine_action).slice(0,10) : ''}"/>
+          </label>
+
+          <label style="font-size:12px;color:var(--c-text-2);margin-top:8px;display:block">Compte-rendu / Note
+            <textarea id="lead-note" class="q-textarea" rows="2" style="margin-top:3px"
+                      placeholder="Décris ce qui a été fait ou le résultat de l'échange…"></textarea>
+          </label>
+
+          <button class="btn-primaire" style="width:100%;margin-top:8px;font-size:13px"
+                  onclick="VuePipeline.mettreAJourLead('${l.ID_Prospect}')">✅ Enregistrer la mise à jour</button>
+        </div>
+
+        <!-- Historique complet -->
+        ${l.Note_initiale ? `
+        <details style="margin-bottom:12px">
+          <summary style="font-size:12px;font-weight:600;color:var(--c-text-2);cursor:pointer;padding:4px 0">📋 Historique complet</summary>
+          <div style="margin-top:6px;font-size:12px;line-height:1.6;white-space:pre-wrap;color:var(--c-text-2);padding:8px;background:var(--c-bg);border-radius:var(--radius-sm);border:1px solid var(--c-border)">${String(l.Note_initiale).replace(/</g,'&lt;')}</div>
+        </details>` : ''}
 
         ${peutGerer ? `
         <label style="margin-bottom:8px">Attribuer à un CDS
@@ -545,19 +566,39 @@ window.VuePipeline = {
   },
 
   async mettreAJourLead(id) {
-    const note  = document.getElementById('lead-note')?.value?.trim() || '';
-    const date  = document.getElementById('lead-date-action')?.value || '';
-    const flag  = document.getElementById('lead-flag')?.value || '';
-    const lead  = this.state.leads.find(l => l.ID_Prospect === id);
+    const noteTexte = (document.getElementById('lead-note')?.value || '').trim();
+    const date      = document.getElementById('lead-date-action')?.value || '';
+    const flag      = document.getElementById('lead-flag')?.value || '';
+    const nouveauStatut = document.getElementById('lead-statut-select')?.value || '';
+    const lead = this.state.leads.find(l => String(l.ID_Prospect) === String(id));
     if (!lead) return;
+
+    // Construire l'entrée de log datée
+    const jourStr = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'2-digit' });
+    const entreeLog = `[${jourStr} — ${Session.nom}] ${this._labelFlag(flag)}${noteTexte ? ' : ' + noteTexte : ''}`;
+    const noteFinale = entreeLog + (lead.Note_initiale ? '\n---\n' + lead.Note_initiale : '');
+
+    const champs = {
+      Note_initiale: noteFinale,
+      Date_prochaine_action: date,
+      FLAG_ACTION: flag,
+    };
+
+    if (nouveauStatut && nouveauStatut !== lead._statut) {
+      champs.STATUT_EMPOWER = nouveauStatut;
+      if (nouveauStatut === 'COMPTE_CREE' && !lead.WELCOME_PACK_DATE) champs.WELCOME_PACK_DATE = dateISOLocale();
+      if (nouveauStatut === 'INTEGRE') {
+        champs.Flag_converti = 'TRUE';
+        if (!lead.PREMIERE_COMMANDE_DATE) champs.PREMIERE_COMMANDE_DATE = dateISOLocale();
+      }
+    }
+
     try {
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', id, {
-        Note_initiale: note,
-        Date_prochaine_action: date,
-        FLAG_ACTION: flag,
-      });
-      Object.assign(lead, { Note_initiale: note, Date_prochaine_action: date, FLAG_ACTION: flag });
-      Toast.afficher('✅ Lead mis à jour', 'succes');
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', id, champs);
+      Object.assign(lead, champs);
+      if (nouveauStatut) lead._statut = nouveauStatut;
+      this.state.modal = null;
+      Toast.afficher(`✅ ${lead.Nom_Compte} mis à jour`, 'succes');
       this.render();
     } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
   },

@@ -16,6 +16,7 @@ window.VueAdmin = {
       formLead: this._initFormLead(),
       importEnCours: false,
       importResultat: null,
+      suivi: { chargement: false, leads: [], filtreStatut: 'TOUS', filtreCDS: 'TOUS' },
     };
     this.render();
     try {
@@ -45,7 +46,146 @@ window.VueAdmin = {
     };
   },
 
-  setAlexTab(tab) { this.state.alexTab = tab; this.render(); },
+  setAlexTab(tab) {
+    this.state.alexTab = tab;
+    if (tab === 'suivi' && !this.state.suivi.leads.length && !this.state.suivi.chargement) {
+      this._chargerSuivi();
+    } else {
+      this.render();
+    }
+  },
+
+  async _chargerSuivi() {
+    this.state.suivi.chargement = true;
+    this.render();
+    try {
+      const raw = await SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS');
+      this.state.suivi.leads = raw.filter(p =>
+        String(p.deleted || '').toUpperCase() !== 'TRUE' &&
+        String(p.Source_Import || '') === 'ESI_PIPELINE'
+      );
+    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+    this.state.suivi.chargement = false;
+    this.render();
+  },
+
+  _renderSuivi() {
+    const sv = this.state.suivi;
+    if (sv.chargement) return '<div class="spinner-centre">Chargement du suivi…</div>';
+
+    const STATUTS = [
+      { id: 'SAISIE',      lbl: 'À traiter',   coul: 'var(--c-primary)' },
+      { id: 'ASSIGNE',     lbl: 'Assigné',     coul: 'var(--c-accent,#0099cc)' },
+      { id: 'EN_COURS',    lbl: 'En cours',    coul: 'var(--c-warning,#f59e0b)' },
+      { id: 'COMPTE_CREE', lbl: 'Compte créé', coul: '#9333ea' },
+      { id: 'INTEGRE',     lbl: 'Intégré ✅',  coul: 'var(--c-success,#1a9e5c)' },
+      { id: 'ARCHIVE',     lbl: 'Archivé',     coul: 'var(--c-text-2)' },
+    ];
+    const CDS_NOMS = { 1000:'Tadjidine', 4001:'Lyes', 4002:'Mehdi', 4003:'Johanne', 4004:'Anthony' };
+
+    let leads = sv.leads;
+    if (sv.filtreCDS !== 'TOUS')    leads = leads.filter(l => String(l.PIN_CDS_Assigne) === sv.filtreCDS);
+    if (sv.filtreStatut !== 'TOUS') leads = leads.filter(l => l.STATUT_EMPOWER === sv.filtreStatut);
+
+    // Trier : date dépassée d'abord, puis par prochaine action
+    leads = [...leads].sort((a, b) => {
+      const now = Date.now();
+      const dA = a.Date_prochaine_action ? new Date(a.Date_prochaine_action).getTime() : 9e15;
+      const dB = b.Date_prochaine_action ? new Date(b.Date_prochaine_action).getTime() : 9e15;
+      const retA = dA < now ? 0 : 1;
+      const retB = dB < now ? 0 : 1;
+      if (retA !== retB) return retA - retB;
+      return dA - dB;
+    });
+
+    // KPIs globaux (sur tous les leads, pas filtrés)
+    const total = sv.leads.length;
+    const enAttente = sv.leads.filter(l => ['SAISIE','ASSIGNE'].includes(l.STATUT_EMPOWER)).length;
+    const enCours   = sv.leads.filter(l => ['EN_COURS','COMPTE_CREE'].includes(l.STATUT_EMPOWER)).length;
+    const integres  = sv.leads.filter(l => l.STATUT_EMPOWER === 'INTEGRE').length;
+
+    // Pins uniques pour filtre CDS
+    const cdsPins = [...new Set(sv.leads.map(l => l.PIN_CDS_Assigne).filter(Boolean))];
+
+    return `
+      <div class="bloc-fiche">
+        <div class="bloc-titre">📊 Suivi Pipeline EMPOWER</div>
+        <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">
+          ${total} leads · Mise à jour en temps réel par les CDS terrain.
+        </p>
+
+        <!-- KPIs -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+          <div style="padding:10px;border-radius:8px;background:rgba(255,165,0,.08);text-align:center">
+            <div style="font-size:24px;font-weight:800;color:var(--c-warning,#f59e0b)">${enAttente}</div>
+            <div style="font-size:10px;color:var(--c-text-2);margin-top:2px">En attente</div>
+          </div>
+          <div style="padding:10px;border-radius:8px;background:rgba(147,51,234,.08);text-align:center">
+            <div style="font-size:24px;font-weight:800;color:#9333ea">${enCours}</div>
+            <div style="font-size:10px;color:var(--c-text-2);margin-top:2px">En cours</div>
+          </div>
+          <div style="padding:10px;border-radius:8px;background:rgba(26,158,92,.08);text-align:center">
+            <div style="font-size:24px;font-weight:800;color:var(--c-success,#1a9e5c)">${integres}</div>
+            <div style="font-size:10px;color:var(--c-text-2);margin-top:2px">Intégrés ✅</div>
+          </div>
+        </div>
+
+        <!-- Filtres -->
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <select style="flex:1;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:8px;font-size:13px"
+                  onchange="VueAdmin.state.suivi.filtreCDS=this.value;VueAdmin.render()">
+            <option value="TOUS">Tous les CDS</option>
+            ${cdsPins.map(pin => `<option value="${pin}" ${sv.filtreCDS == pin ? 'selected':''}>${CDS_NOMS[Number(pin)] || 'PIN '+pin}</option>`).join('')}
+          </select>
+          <select style="flex:1;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:8px;font-size:13px"
+                  onchange="VueAdmin.state.suivi.filtreStatut=this.value;VueAdmin.render()">
+            <option value="TOUS">Tous statuts</option>
+            ${STATUTS.map(s => `<option value="${s.id}" ${sv.filtreStatut===s.id?'selected':''}>${s.lbl}</option>`).join('')}
+          </select>
+        </div>
+
+        <div style="font-size:11px;color:var(--c-text-2);margin-bottom:8px">${leads.length} résultat(s)</div>
+
+        <!-- Liste -->
+        ${leads.map(l => {
+          const st = STATUTS.find(s => s.id === l.STATUT_EMPOWER) || STATUTS[0];
+          const cdsNom = CDS_NOMS[Number(l.PIN_CDS_Assigne)] || l.PIN_CDS_Assigne || '—';
+          const dateP  = l.Date_prochaine_action ? String(l.Date_prochaine_action).slice(0,10) : null;
+          const retard = dateP && new Date(dateP) < new Date();
+          // Extraire la première ligne du log (entrée la plus récente)
+          const noteLines = String(l.Note_initiale || '').split('\n');
+          const noteRecente = noteLines[0]?.trim().slice(0, 80) || '';
+          const packOk = l.WELCOME_PACK_DATE;
+          const packAttend = !packOk && ['COMPTE_CREE','INTEGRE'].includes(l.STATUT_EMPOWER);
+          return `
+            <div style="padding:10px 0;border-bottom:1px solid var(--c-border)">
+              <div style="display:flex;align-items:flex-start;gap:8px">
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13px;font-weight:700;margin-bottom:4px">${l.Nom_Compte}</div>
+                  <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-bottom:4px">
+                    <span style="font-size:10px;padding:2px 8px;border-radius:99px;background:${st.coul};color:#fff;font-weight:700">${st.lbl}</span>
+                    ${l.POTENTIEL ? `<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--c-bg);border:1px solid var(--c-border);color:var(--c-text-2)">${l.POTENTIEL}</span>` : ''}
+                    <span style="font-size:11px;color:var(--c-text-2)">👤 ${cdsNom}</span>
+                  </div>
+                  ${noteRecente ? `<div style="font-size:11px;color:var(--c-text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${noteRecente}</div>` : ''}
+                </div>
+                <div style="text-align:right;flex-shrink:0;min-width:64px">
+                  ${dateP ? `<div style="font-size:11px;font-weight:${retard?'700':'400'};color:${retard?'var(--c-danger)':'var(--c-text-2)'}">
+                    ${retard ? '⚠️ ' : '⏰ '}${dateRelative(dateP)}
+                  </div>` : ''}
+                  ${packOk ? `<div style="font-size:10px;color:var(--c-success,#1a9e5c)">📦 Pack ✅</div>`
+                           : packAttend ? `<div style="font-size:10px;color:var(--c-warning,#f59e0b)">📦 Pack ⏳</div>` : ''}
+                </div>
+              </div>
+            </div>`;
+        }).join('')}
+
+        ${leads.length === 0 ? `<div style="text-align:center;padding:28px;color:var(--c-text-2)">Aucun lead pour ces filtres</div>` : ''}
+
+        <button class="btn-secondaire" style="width:100%;margin-top:14px"
+                onclick="VueAdmin.state.suivi.leads=[];VueAdmin._chargerSuivi()">🔄 Actualiser</button>
+      </div>`;
+  },
 
   setLeadProduits(produit) {
     const arr = this.state.formLead.produits;
@@ -481,14 +621,15 @@ window.VueAdmin = {
         </header>
         <!-- Onglets -->
         <div style="display:flex;border-bottom:2px solid var(--c-border);background:var(--c-surface)">
-          ${[['exports','📥 Exports'],['leads','➕ Créer un lead']].map(([t, l]) => `
+          ${[['exports','📥 Exports'],['leads','➕ Leads'],['suivi','📊 Suivi']].map(([t, l]) => `
             <button onclick="VueAdmin.setAlexTab('${t}')"
-                    style="flex:1;padding:12px 8px;border:none;border-bottom:${tab===t?'3px solid var(--c-primary)':'3px solid transparent'};
+                    style="flex:1;padding:12px 6px;border:none;border-bottom:${tab===t?'3px solid var(--c-primary)':'3px solid transparent'};
                            background:transparent;font-weight:${tab===t?'700':'400'};font-size:13px;
                            color:${tab===t?'var(--c-primary)':'var(--c-text-2)'};cursor:pointer">${l}</button>`).join('')}
         </div>
         <div class="dash-body avec-nav">
-          ${tab === 'exports' ? `
+          ${tab === 'suivi' ? this._renderSuivi()
+          : tab === 'exports' ? `
             <div class="bloc-fiche">
               <div class="bloc-titre">📥 Exports CSV — Reporting thématique</div>
               <p style="font-size:12px;color:var(--c-text-2);margin-bottom:14px">
