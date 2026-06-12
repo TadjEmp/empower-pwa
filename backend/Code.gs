@@ -894,16 +894,19 @@ function _syncSellInDrive(body, user) {
       return _json({ ok: false, erreur: 'V17_ID non configuré — exécutez installerBase()' });
 
     var ssV17  = SpreadsheetApp.openById(CONFIG.V17_ID);
-    var shV17  = ssV17.getSheetByName('📋 COMPTES HISTORIQUES');
+    var shV17  = null;
+    ssV17.getSheets().forEach(function(s){
+      if (!shV17 && s.getName().toUpperCase().indexOf('COMPTES') >= 0) shV17 = s;
+    });
     if (!shV17) {
-      // Fallback : chercher par mot-clé si le nom exact ne correspond pas
-      ssV17.getSheets().forEach(function(s) {
-        if (!shV17 && s.getName().toUpperCase().indexOf('COMPTES') >= 0) shV17 = s;
-      });
-    }
-    if (!shV17) {
-      var noms = ssV17.getSheets().map(function(s){ return s.getName(); }).join(', ');
-      return _json({ ok: false, erreur: 'Onglet COMPTES HISTORIQUES introuvable dans V17. Onglets présents : ' + noms });
+      // Créer l'onglet avec les bons en-têtes s'il n'existe pas encore
+      var _hdrs = ['RESELLER','CANAL','CA FY25 €','CA FY26 €','CA Q1FY27 €',
+                   'Q1FY25 €','Q2FY25 €','Q3FY25 €','Q4FY25 €',
+                   'Q1FY26 €','Q2FY26 €','Q3FY26 €','Q4FY26 €',
+                   'FLAG_BRUT','STATUT_FY27'];
+      shV17 = ssV17.insertSheet('📋 COMPTES HISTORIQUES');
+      shV17.getRange(1, 1, 1, _hdrs.length).setValues([_hdrs]);
+      shV17.setFrozenRows(1);
     }
 
     var v17Raw = shV17.getRange(1, 1, 1, shV17.getLastColumn()).getValues()[0];
