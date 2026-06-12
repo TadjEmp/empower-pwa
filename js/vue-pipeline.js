@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════
-//  vue-pipeline.js — EMPOWER TRACKER V2.1 (B3)
+//  vue-pipeline.js — EMPOWER TRACKER V2.2 (BUG-01)
 //  Workflow : SAISIE → ASSIGNE → EN_COURS → COMPTE_CREE → INTEGRE / ARCHIVE
 //  CHANNEL_MANAGER (Alexandra, Flavie) + ADMIN : saisie, attribution, avancement
 //  CDS : lecture + avancement de ses propres leads
@@ -58,7 +58,11 @@ window.VuePipeline = {
         SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
       ]);
       this._chargerCDS(params, objectifs);
+      initCDSRegistry(objectifs); // BUG-02 : peuple le registre global
+      // BUG-01 : TRACKER = uniquement leads créés via ESI (pas les 1674 imports bruts)
+      const SOURCE_VALIDES = ['ESI_PIPELINE'];
       this.state.leads = raw
+        .filter(p => SOURCE_VALIDES.includes(String(p.Source_Import || '').trim()))
         .map(p => ({ ...p, _statut: this._statutDe(p) }))
         .filter(p => this._peutGerer() || Session.voitTout() || Number(p.PIN_CDS_Assigne) === Session.pin);
       this.state.chargement = false;
@@ -90,7 +94,7 @@ window.VuePipeline = {
     return l;
   },
 
-  _nomCDS(pin) { return (this.CDS.length ? this.CDS : this.CDS_FALLBACK).find(c => c.pin === Number(pin))?.nom || (pin ? `PIN ${pin}` : '—'); },
+  _nomCDS(pin) { return resolveCDS(pin); }, // BUG-02 : délègue au helper global
 
   _retardWelcomePack(p) {
     if (p._statut !== 'COMPTE_CREE' || p.WELCOME_PACK_DATE) return false;
@@ -284,6 +288,13 @@ window.VuePipeline = {
       </div>
 
       <p style="font-size:11px;color:var(--c-text-2);text-align:center;padding:6px">← Glisser pour voir les statuts →</p>
+
+      ${this.state.leads.length === 0 ? `
+        <div class="vide" style="text-align:center;padding:40px 20px;color:var(--c-text-2)">
+          <div style="font-size:32px;margin-bottom:12px">📭</div>
+          <div style="font-weight:700;color:var(--c-title);margin-bottom:6px">Aucun lead à traiter</div>
+          <div style="font-size:13px">Les leads sont créés par Alexandra via le formulaire ➕ ci-dessous.</div>
+        </div>` : ''}
 
       <div class="kanban">
         ${this.STATUTS.map(st => {

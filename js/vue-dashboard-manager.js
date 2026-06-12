@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════
-//  vue-dashboard-manager.js — Vue équipe v7
+//  vue-dashboard-manager.js — Vue équipe v9 — BUG-07 contraste · BUG-08 saisie CA
 //  Graphiques SVG inline : pipeline funnel + per-CDS CA bars
 // ═══════════════════════════════════════
 
@@ -107,6 +107,42 @@ window.VueDashboardManager = {
 
   exporterCOPIL() { window.print(); },
 
+  // BUG-08 : enregistre le CA réalisé sur la ligne objectif du CDS
+  async saisirCA() {
+    const pin     = Number(document.getElementById('saisie-ca-cds')?.value);
+    const quarter = document.getElementById('saisie-ca-quarter')?.value;
+    const valStr  = document.getElementById('saisie-ca-valeur')?.value;
+    const note    = document.getElementById('saisie-ca-note')?.value || '';
+    const fb      = document.getElementById('saisie-ca-feedback');
+    if (!pin || !quarter || !valStr) {
+      if (fb) { fb.style.color = 'var(--c-danger)'; fb.textContent = '⚠️ Remplissez CDS, quarter et CA.'; }
+      return;
+    }
+    const val = parseAmount(valStr);
+    if (val > 500000) {
+      if (fb) { fb.style.color = 'var(--c-danger)'; fb.textContent = '⚠️ Montant aberrant (> 500 000 €).'; }
+      return;
+    }
+    if (fb) { fb.style.color = 'var(--c-text-2)'; fb.textContent = '⏳ Enregistrement…'; }
+    try {
+      const objectifs = await SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES');
+      const ligne = objectifs.find(o => Number(o.PIN_CDS) === pin);
+      if (!ligne) throw new Error('CDS introuvable dans objectifs');
+      const champ = `${quarter}_CA_Realise`;
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES', ligne.ID_Objectif, {
+        [champ]: val,
+        ...(note ? { [`${quarter}_Note_Saisie`]: `[Manuel] ${note}` } : {}),
+      });
+      await SheetsAPI.viderCache('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES');
+      if (fb) { fb.style.color = 'var(--c-success)'; fb.textContent = `✅ CA ${quarter} de ${resolveCDS(pin)} mis à jour : ${formatEuro(val)}`; }
+      Toast.afficher(`✅ CA ${quarter} — ${resolveCDS(pin)} : ${formatEuro(val)}`, 'succes');
+      // Rafraîchit le dashboard après 1.5s
+      setTimeout(() => this.init(), 1500);
+    } catch(e) {
+      if (fb) { fb.style.color = 'var(--c-danger)'; fb.textContent = '❌ ' + e.message; }
+    }
+  },
+
   async syntheseHebdo() {
     const btn = document.getElementById('btn-gem07');
     const zone = document.getElementById('gem07-zone');
@@ -169,8 +205,8 @@ window.VueDashboardManager = {
         <text x="0" y="${y + 11}" font-size="11" font-weight="700" fill="#0E0D30">${e.nom.toUpperCase()}</text>
         <rect x="0" y="${y + 15}" width="${wObj}" height="14" fill="#E8E8ED" rx="3"/>
         <rect x="0" y="${y + 15}" width="${wCA}"  height="14" fill="${col}"   rx="3" opacity=".88"/>
-        <text x="${xPct}" y="${y + 26}" font-size="10" fill="${col}" font-weight="700">${pctStr}</text>
-        <text x="${caX}" y="${y + 25}" font-size="9" fill="${caInside ? '#fff' : col}" text-anchor="${caAnchor}">${formatEUR(e.ca)}</text>
+        <text x="${xPct}" y="${y + 26}" font-size="10" fill="#0E0D30" font-weight="700">${pctStr}</text>
+        <text x="${caX}" y="${y + 25}" font-size="9" fill="${caInside ? '#fff' : '#0E0D30'}" text-anchor="${caAnchor}">${formatEUR(e.ca)}</text>
       `;
     }).join('');
     return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"
@@ -195,7 +231,7 @@ window.VueDashboardManager = {
       return `
         <rect x="${x}" y="${BASE - hV}" width="${bw}" height="${hV}" fill="#0050FF" rx="2" opacity=".8"/>
         <rect x="${x + bw + 2}" y="${BASE - hA}" width="${bw}" height="${hA}" fill="#FF6D68" rx="2" opacity=".8"/>
-        <text x="${x + slotW / 2 - 1}" y="${H - 2}" text-anchor="middle" font-size="9" fill="#626264">${d.sem.replace('S', '')}</text>
+        <text x="${x + slotW / 2 - 1}" y="${H - 2}" text-anchor="middle" font-size="9" fill="#0E0D30">${d.sem.replace('S', '')}</text>
       `;
     }).join('');
     return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"
@@ -364,6 +400,38 @@ window.VueDashboardManager = {
           <p style="font-size:11px;color:var(--c-text-2);margin-top:10px">
             💡 Dans Visites / Phoning, utilisez le bouton 📤 en haut à droite pour filtrer par période.
           </p>
+        </div>
+
+        <!-- BUG-08 : SAISIE CA RÉALISÉ À DATE -->
+        <div class="bloc-fiche no-print">
+          <div class="bloc-titre">📝 Saisie CA réalisé à date</div>
+          <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">Renseignez le CA terrain pour un CDS — la valeur remplace le sell-in du quarter sélectionné.</p>
+          <div style="display:grid;gap:10px">
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <label style="flex:1;min-width:120px;font-size:13px">CDS
+                <select id="saisie-ca-cds" style="width:100%;margin-top:4px;padding:8px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm)">
+                  ${d.equipe.map(e => `<option value="${e.pin}">${e.nom}</option>`).join('')}
+                </select>
+              </label>
+              <label style="flex:1;min-width:100px;font-size:13px">Quarter
+                <select id="saisie-ca-quarter" style="width:100%;margin-top:4px;padding:8px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm)">
+                  ${['Q1','Q2','Q3','Q4'].map(q => `<option value="${q}" ${q === d.quarter ? 'selected' : ''}>${q} FY27</option>`).join('')}
+                </select>
+              </label>
+            </div>
+            <label style="font-size:13px">CA réalisé (€)
+              <input id="saisie-ca-valeur" type="number" min="0" step="0.01" placeholder="ex : 18500"
+                     style="width:100%;margin-top:4px;padding:8px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);font-size:15px"/>
+            </label>
+            <label style="font-size:13px">Commentaire (facultatif)
+              <input id="saisie-ca-note" type="text" placeholder="ex : Sell-in S24 confirmé"
+                     style="width:100%;margin-top:4px;padding:8px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm)"/>
+            </label>
+            <button class="btn-primaire" onclick="VueDashboardManager.saisirCA()" style="padding:12px">
+              💾 Enregistrer le CA
+            </button>
+            <div id="saisie-ca-feedback" style="font-size:13px;min-height:18px"></div>
+          </div>
         </div>
 
         <!-- RACCOURCIS MANAGER -->

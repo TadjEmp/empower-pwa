@@ -1,9 +1,8 @@
 // ═══════════════════════════════════════
-//  vue-phoning.js — Module Phoning IA v7
-//  Pré-appel (script Groq) → Enregistrement 30s →
-//  Qualification auto → Post-appel → 📞_PHONING
-//  Cible : 🏢_COMPTES ou 📋_PROSPECTS
-//  v7 : liste prospects dédiée + archivage résultat (intéressé / non intéressé)
+//  vue-phoning.js — Module Phoning IA v9
+//  BUG-09 : planning-first workflow
+//  ÉTAPE 1 → planning · ÉTAPE 2 → lancer appel · ÉTAPE 3 → questionnaire
+//  Base phoning : uniquement 🏢_COMPTES (jamais PROSPECTS ni leads bruts)
 // ═══════════════════════════════════════
 
 window.VuePhoning = {
@@ -16,8 +15,8 @@ window.VuePhoning = {
       chargement: true, envoiEnCours: false,
       comptes: [], prospects: [],
       typeSource: 'EXISTANT', cible: null,
-      mode: 'APPEL',           // APPEL | LISTE | HISTORIQUE
-      filtreListe: 'TOUS',     // TOUS | A_APPELER | RAPPEL | NON_JOIGNABLE
+      mode: 'PLANNING',        // PLANNING | APPEL | HISTORIQUE
+      filtreListe: 'TOUS',
       recherche: '', script: '', scriptEnCours: false,
       enregistre: false, transcription: '', qualif: null,
       d: {
@@ -26,6 +25,12 @@ window.VuePhoning = {
         prochaineAction: '', dateRappel: '', note: '',
         resultatProspect: '',
       },
+      // BUG-09 — planning phoning
+      planning: [],
+      planningChargement: false,
+      formPlanif: null,        // null = fermé; objet = formulaire ouvert
+      filtrePlanning: 'SEMAINE', // SEMAINE | MOIS | TOUS
+      idPlanifEnCours: null,   // ID_Appel du plan lancé
       // R5 — historique appels + edit/delete
       journal: [],
       journalChargement: false,
@@ -41,18 +46,31 @@ window.VuePhoning = {
     this.state = this._etatInitial();
     this.render();
     try {
-      const [comptes, prospects] = await Promise.all([
+      const [comptes, planning] = await Promise.all([
         SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
-        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS'),
+        SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING'),
       ]);
-      this.state.comptes   = comptes.filter(c => Session.voitTout() || Number(c.PIN_CDS_Assigne) === Session.pin);
-      this.state.prospects = prospects.filter(p => Session.voitTout() || !p.PIN_CDS_Assigne || Number(p.PIN_CDS_Assigne) === Session.pin);
+      // BUG-09 : source phoning = uniquement COMPTES attribués au CDS
+      this.state.comptes = comptes.filter(c =>
+        Session.voitTout() || Number(c.PIN_CDS_Assigne) === Session.pin
+      );
+      // Planning = appels planifiés non supprimés du CDS courant
+      this.state.planning = planning
+        .filter(a =>
+          String(a.deleted || '').toUpperCase() !== 'TRUE' &&
+          String(a.Statut_Appel || '').toLowerCase() === 'planifié' &&
+          (Session.voitTout() || Number(a.PIN_CDS) === Session.pin)
+        )
+        .sort((a, b) => (a.Date_Planifiee || '').localeCompare(b.Date_Planifiee || ''));
+      // Si idCible passé (depuis fiche compte), ouvrir le formulaire de planification pré-rempli
       if (idCible) {
         const c = comptes.find(x => String(x.ID_Compte) === String(idCible));
-        const p = !c && prospects.find(x => String(x.ID_Prospect) === String(idCible));
-        if (c) { this.state.cible = c; this.state.typeSource = 'EXISTANT'; }
-        if (p) { this.state.cible = p; this.state.typeSource = 'PROSPECT'; }
-        if (this.state.cible) this.state.recherche = this.state.cible.Nom_Compte;
+        if (c) {
+          this.state.formPlanif = {
+            idCompte: c.ID_Compte, nomCompte: c.Nom_Compte,
+            datePlanifiee: '', objectif: '', note: '',
+          };
+        }
       }
       this.state.chargement = false;
       this.render();
@@ -107,9 +125,8 @@ window.VuePhoning = {
   },
 
   setSource(s)  { this.state.typeSource = s; this.state.cible = null; this.state.recherche = ''; this.render(); },
-  setMode(m)    {
+  setMode(m) {
     this.state.mode = m;
-    if (m === 'LISTE') this.state.typeSource = 'PROSPECT';
     if (m === 'HISTORIQUE') this._chargerJournal();
     this.render();
   },
@@ -313,6 +330,15 @@ window.VuePhoning = {
         });
       }
 
+      // 2b. Marquer l'appel planifié comme réalisé (BUG-09)
+      if (s.idPlanifEnCours) {
+        try {
+          await SheetsAPI.mettreAJour('EMPOWER_MDB', '📞_PHONING', s.idPlanifEnCours, {
+            Statut_Appel: 'réalisé',
+          });
+        } catch(_) { /* non bloquant */ }
+      }
+
       // 3. Log 📊_ACTIONS
       await SheetsAPI.ecrire('EMPOWER_MDB', '📊_ACTIONS', {
         ID_Action: genId('ACT'), Date_Action: new Date().toISOString(),
@@ -344,9 +370,7 @@ window.VuePhoning = {
           </div>
           <div class="succes-btns">
             <button class="btn-primaire" onclick="Router.aller('#/dashboard')">← Dashboard</button>
-            ${estProspect
-              ? `<button class="btn-secondaire" onclick="VuePhoning.init();VuePhoning.setMode('LISTE')">📋 Reprendre la liste</button>`
-              : `<button class="btn-secondaire" onclick="VuePhoning.init()">📞 Nouvel appel</button>`}
+            <button class="btn-secondaire" onclick="VuePhoning.init()">📋 Retour au planning</button>
           </div>
         </div>`;
     } catch(e) {
@@ -653,53 +677,51 @@ window.VuePhoning = {
       return;
     }
     const s = this.state;
-    const TITRES = { PRE: 'Phoning', CALL: 'Appel en cours', POST: 'Post-appel' };
+    const TITRES = { PRE: 'Préparer l\'appel', CALL: 'Appel en cours', POST: 'Post-appel' };
     const peutExtraire = Session.voitTout();
+    const backAction = (s.mode === 'PLANNING' || s.mode === 'HISTORIQUE')
+      ? 'history.back()'
+      : 'VuePhoning.setMode(\'PLANNING\')';
+    const titre = s.mode === 'PLANNING' ? 'Planning phoning'
+      : s.mode === 'HISTORIQUE' ? 'Journal appels'
+      : TITRES[s.phase];
 
     app.innerHTML = `
       <header class="header-vue">
-        <button onclick="${s.phase === 'PRE' ? 'history.back()' : 'VuePhoning.init()'}" class="btn-retour">←</button>
-        <h1>📞 ${s.mode === 'HISTORIQUE' ? 'Journal appels' : TITRES[s.phase]}</h1>
+        <button onclick="${backAction}" class="btn-retour">←</button>
+        <h1>📞 ${titre}</h1>
         <div style="display:flex;gap:6px">
           ${peutExtraire ? `<button class="btn-retour" title="Extraction CSV" onclick="VuePhoning.ouvrirExtraction()">📤</button>` : ''}
-          ${s.cible ? `<span class="badge-compteur">${s.cible.Nom_Compte.slice(0, 14)}</span>` : ''}
+          ${s.cible && s.mode === 'APPEL' ? `<span class="badge-compteur">${s.cible.Nom_Compte.slice(0, 14)}</span>` : ''}
         </div>
       </header>
       <div class="q-contenu avec-nav">
-        ${s.mode === 'HISTORIQUE' ? this._renderJournal() : this['_phase' + s.phase]()}
+        ${s.mode === 'PLANNING'    ? this._renderPlanning()
+        : s.mode === 'HISTORIQUE'  ? this._renderJournal()
+        : this['_phase' + s.phase]()}
       </div>
       ${NavBar('phoning')}
       ${this._renderModalEditAppel()}
       ${this._renderConfirmDeleteAppel()}
       ${this._renderExtraction()}
+      ${this._renderFormPlanif()}
     `;
-    if (s.mode !== 'HISTORIQUE') this._renderSuggestions();
+    if (s.mode === 'APPEL') this._renderSuggestions();
   },
 
   _phasePRE() {
     const s = this.state, d = s.d;
     const silence = this._semainesSilence();
 
-    const modeTabs = `
-      <div style="display:flex;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:4px;background:var(--c-surface);margin-bottom:16px">
-        ${[['APPEL','☎️ Appel'],['LISTE','📋 Liste'],['HISTORIQUE','📖 Journal']].map(([v, l]) => `
-          <button type="button" style="flex:1;padding:9px;border:none;border-radius:4px;font-weight:600;font-size:12px;cursor:pointer;
-            ${s.mode === v ? 'background:var(--c-title);color:#fff' : 'background:transparent;color:var(--c-text-2)'}"
-            onclick="VuePhoning.setMode('${v}')">${l}</button>`).join('')}
-      </div>`;
-
-    if (s.mode === 'LISTE') return modeTabs + this._renderListeProspects();
-
     return `<div class="q-champs">
-      ${modeTabs}
-      <label class="q-label">Type de base
-        <div style="display:flex;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:4px;background:var(--c-surface)">
-          ${[['EXISTANT', 'Base historique'], ['PROSPECT', 'Base prospects']].map(([v, l]) => `
-            <button type="button" style="flex:1;padding:9px;border:none;border-radius:4px;font-weight:600;font-size:14px;cursor:pointer;
-              ${s.typeSource === v ? 'background:var(--c-title);color:#fff' : 'background:transparent;color:var(--c-text-2)'}"
-              onclick="VuePhoning.setSource('${v}')">${l}</button>`).join('')}
+      ${s.idPlanifEnCours && s.cible ? `
+      <div style="background:var(--c-surface);border:1.5px solid var(--c-primary);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">📋</span>
+        <div>
+          <div style="font-weight:700;font-size:14px;color:var(--c-title)">${s.cible.Nom_Compte}</div>
+          <div style="font-size:12px;color:var(--c-text-2)">Appel planifié — objectif : ${d.objectif || '—'}</div>
         </div>
-      </label>
+      </div>` : ''}
       <label class="q-label">Compte à appeler
         <input class="q-input" placeholder="🔍 Rechercher…" value="${s.recherche}"
                oninput="VuePhoning.setRecherche(this.value)" autocomplete="off"/>
@@ -867,4 +889,244 @@ window.VuePhoning = {
       <button type="button" class="q-chip ${this.state.d[champ] === o ? 'active' : ''}"
               onclick="VuePhoning.setR('${champ}','${o}')">${o}</button>`).join('')}</div>`;
   },
-};
+
+  // ── BUG-09 : Planning phoning ──────────────────────────────────────────────
+
+  _renderPlanning() {
+    const s = this.state;
+    if (s.planningChargement) return '<div class="spinner-centre">Chargement planning…</div>';
+
+    const auj  = dateISOLocale();
+    const now  = auj;
+    // Calcule début de semaine (lundi) et fin de mois courant
+    const dateD = new Date(auj);
+    const jourSemaine = dateD.getDay() === 0 ? 6 : dateD.getDay() - 1;
+    dateD.setDate(dateD.getDate() - jourSemaine);
+    const debutSemaine = dateD.toISOString().slice(0, 10);
+    const finMois = new Date(dateD.getFullYear(), dateD.getMonth() + 2, 0).toISOString().slice(0, 10);
+
+    let liste = s.planning;
+    if (s.filtrePlanning === 'SEMAINE') {
+      const finSemaine = new Date(debutSemaine);
+      finSemaine.setDate(finSemaine.getDate() + 6);
+      const fs = finSemaine.toISOString().slice(0, 10);
+      liste = liste.filter(a => {
+        const d = (a.Date_Planifiee || '').slice(0, 10);
+        return d >= debutSemaine && d <= fs;
+      });
+    } else if (s.filtrePlanning === 'MOIS') {
+      liste = liste.filter(a => {
+        const d = (a.Date_Planifiee || '').slice(0, 10);
+        return d >= auj.slice(0, 7) + '-01' && d <= finMois;
+      });
+    }
+
+    const badges = {
+      'planifié': { bg: 'var(--c-primary)', lbl: 'Planifié' },
+      'en_cours': { bg: 'var(--c-warning)', lbl: 'En cours' },
+    };
+
+    return `<div class="q-champs">
+      <!-- Tabs navigation -->
+      <div style="display:flex;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:4px;background:var(--c-surface);margin-bottom:16px">
+        <button type="button" style="flex:1;padding:9px;border:none;border-radius:4px;font-weight:600;font-size:12px;cursor:pointer;background:var(--c-title);color:#fff">
+          📋 Planning
+        </button>
+        <button type="button" style="flex:1;padding:9px;border:none;border-radius:4px;font-weight:600;font-size:12px;cursor:pointer;background:transparent;color:var(--c-text-2)"
+                onclick="VuePhoning.setMode('HISTORIQUE')">📖 Journal</button>
+      </div>
+
+      <!-- Filtres temporels -->
+      <div style="display:flex;gap:6px;margin-bottom:14px">
+        ${[['SEMAINE','Cette semaine'],['MOIS','Ce mois'],['TOUS','Tous']].map(([v, l]) => `
+          <button class="btn-filtre ${s.filtrePlanning === v ? 'actif' : ''}"
+                  onclick="VuePhoning.setFiltrePlanning('${v}')">${l}</button>`).join('')}
+      </div>
+
+      <!-- Bouton planifier -->
+      <button class="btn-primaire" style="width:100%;margin-bottom:16px"
+              onclick="VuePhoning.ouvrirFormPlanif()">
+        ＋ Planifier un appel
+      </button>
+
+      <!-- Liste des appels planifiés -->
+      ${liste.length === 0
+        ? `<div style="padding:32px;text-align:center;color:var(--c-text-2)">
+             <div style="font-size:32px;margin-bottom:8px">📭</div>
+             <div style="font-size:14px">Aucun appel planifié pour cette période</div>
+             <div style="font-size:12px;margin-top:4px">Cliquez "Planifier un appel" pour en créer un.</div>
+           </div>`
+        : liste.map(a => {
+            const estPasse = (a.Date_Planifiee || '').slice(0, 10) < now;
+            const badge = badges[String(a.Statut_Appel || '').toLowerCase()] || badges['planifié'];
+            return `
+          <div style="background:var(--c-surface);border:1.5px solid ${estPasse ? 'var(--c-danger)' : 'var(--c-border)'};border-radius:var(--radius-sm);padding:12px;margin-bottom:8px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <span style="font-weight:700;font-size:15px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.Reseller || a.Nom_Compte || '—'}</span>
+              <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;background:${badge.bg};color:#fff;flex-shrink:0">${badge.lbl}</span>
+            </div>
+            <div style="font-size:12px;color:var(--c-text-2);margin-bottom:8px">
+              📅 ${a.Date_Planifiee ? a.Date_Planifiee.slice(0, 16).replace('T', ' ') : '—'}
+              ${estPasse ? ' <span style="color:var(--c-danger);font-weight:700">· En retard</span>' : ''}
+              ${a.Objectif_Appel ? ` · ${a.Objectif_Appel}` : ''}
+            </div>
+            ${a.Note_Preparation ? `<div style="font-size:12px;color:var(--c-text-2);font-style:italic;margin-bottom:8px">${String(a.Note_Preparation).slice(0, 80)}</div>` : ''}
+            <div style="display:flex;gap:8px">
+              <button class="btn-primaire" style="flex:2;font-size:13px;padding:9px"
+                      onclick="VuePhoning.lancerAppelPlanifie('${a.ID_Appel}')">
+                📞 Lancer l'appel
+              </button>
+              <button class="btn-secondaire" style="flex:1;font-size:13px;padding:9px"
+                      onclick="VuePhoning.supprimerPlanif('${a.ID_Appel}')">🗑</button>
+            </div>
+          </div>`;
+          }).join('')
+      }
+    </div>`;
+  },
+
+  _renderFormPlanif() {
+    const s = this.state;
+    if (!s.formPlanif) return '';
+    const f = s.formPlanif;
+
+    return `
+    <div class="modal-overlay" onclick="if(event.target===this)VuePhoning.fermerFormPlanif()">
+      <div class="modal" style="max-width:440px">
+        <h3>📋 Planifier un appel</h3>
+
+        <label class="q-label">Compte à appeler
+          ${f.idCompte
+            ? `<div style="padding:10px;background:var(--c-bg);border-radius:var(--radius-sm);font-weight:700;border:1.5px solid var(--c-primary)">${f.nomCompte}</div>`
+            : `<input class="q-input" placeholder="🔍 Rechercher un compte…" id="planif-recherche"
+                     value="${f.rechercheCompte || ''}"
+                     oninput="VuePhoning._rechercherPlanif(this.value)" autocomplete="off"/>
+               <div id="planif-suggestions"></div>`
+          }
+        </label>
+
+        <label class="q-label">Date et heure prévues
+          <input type="datetime-local" class="q-input"
+                 value="${f.datePlanifiee || ''}"
+                 onchange="VuePhoning.state.formPlanif.datePlanifiee=this.value"/>
+        </label>
+
+        <label class="q-label">Objectif de l'appel
+          <div class="q-chips" style="flex-wrap:wrap">
+            ${['Relance CA','Info produit','Prise de commande','Autre'].map(o => `
+              <button type="button" class="q-chip ${f.objectif === o ? 'active' : ''}"
+                      onclick="VuePhoning.state.formPlanif.objectif='${o}';VuePhoning.render()">${o}</button>`).join('')}
+          </div>
+        </label>
+
+        <label class="q-label">Note de préparation
+          <textarea class="q-textarea" rows="3" placeholder="Contexte, historique, points à aborder…"
+                    oninput="VuePhoning.state.formPlanif.note=this.value">${f.note || ''}</textarea>
+        </label>
+
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button class="btn-secondaire" style="flex:1" onclick="VuePhoning.fermerFormPlanif()">Annuler</button>
+          <button class="btn-primaire" style="flex:2" onclick="VuePhoning.sauvegarderPlanif()"
+                  ${s.envoiEnCours ? 'disabled' : ''}>
+            ${s.envoiEnCours ? 'Enregistrement…' : '✅ Planifier l\'appel'}
+          </button>
+        </div>
+      </div>
+    </div>`;
+  },
+
+  _rechercherPlanif(v) {
+    this.state.formPlanif.rechercheCompte = v;
+    const zone = document.getElementById('planif-suggestions');
+    if (!zone) return;
+    if (!v || v.length < 2) { zone.innerHTML = ''; return; }
+    const q = normaliserNom(v);
+    const matches = this.state.comptes.filter(c => normaliserNom(c.Nom_Compte).includes(q)).slice(0, 6);
+    zone.innerHTML = matches.map(c => `
+      <div class="q-arbre-btn" style="margin-top:4px" onclick="VuePhoning._choisirComptePlanif('${c.ID_Compte}','${c.Nom_Compte.replace(/'/g, "\\'")}')">
+        <strong>${c.Nom_Compte}</strong>
+        <span style="color:var(--c-text-2);font-size:12px">${c.Ville || '—'}</span>
+      </div>`).join('');
+  },
+
+  _choisirComptePlanif(id, nom) {
+    if (!this.state.formPlanif) return;
+    this.state.formPlanif.idCompte = id;
+    this.state.formPlanif.nomCompte = nom;
+    this.render();
+  },
+
+  ouvrirFormPlanif(idCompte = null) {
+    const c = idCompte ? this.state.comptes.find(x => String(x.ID_Compte) === String(idCompte)) : null;
+    this.state.formPlanif = {
+      idCompte: c ? c.ID_Compte : null,
+      nomCompte: c ? c.Nom_Compte : '',
+      rechercheCompte: '',
+      datePlanifiee: '',
+      objectif: '',
+      note: '',
+    };
+    this.render();
+  },
+
+  fermerFormPlanif() { this.state.formPlanif = null; this.render(); },
+
+  async sauvegarderPlanif() {
+    const f = this.state.formPlanif;
+    if (!f || !f.idCompte) { Toast.afficher('Sélectionnez un compte', 'warning'); return; }
+    if (!f.datePlanifiee)  { Toast.afficher('Indiquez la date prévue', 'warning'); return; }
+    this.state.envoiEnCours = true;
+    this.render();
+    try {
+      const c = this.state.comptes.find(x => String(x.ID_Compte) === String(f.idCompte));
+      const record = {
+        ID_Appel: genId('APPEL'),
+        Date_Planifiee: f.datePlanifiee,
+        Date: dateISOLocale(),
+        Semaine_ISO: getISOWeek(),
+        PIN_CDS: Session.pin, Nom_CDS: Session.nom,
+        ID_Cible: f.idCompte, Reseller: c ? c.Nom_Compte : f.nomCompte,
+        Statut_Appel: 'planifié',
+        Objectif_Appel: f.objectif,
+        Note_Preparation: f.note,
+        Timestamp: new Date().toISOString(),
+      };
+      await SheetsAPI.ecrire('EMPOWER_MDB', '📞_PHONING', record);
+      // Ajoute au state local pour affichage immédiat sans rechargement
+      this.state.planning.push(record);
+      this.state.planning.sort((a, b) => (a.Date_Planifiee || '').localeCompare(b.Date_Planifiee || ''));
+      this.state.formPlanif = null;
+      Toast.afficher('✅ Appel planifié', 'succes');
+    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+    this.state.envoiEnCours = false;
+    this.render();
+  },
+
+  lancerAppelPlanifie(id) {
+    const plan = this.state.planning.find(a => a.ID_Appel === id);
+    if (!plan) { Toast.afficher('Appel introuvable', 'warning'); return; }
+    const c = this.state.comptes.find(x => String(x.ID_Compte) === String(plan.ID_Cible));
+    if (!c) { Toast.afficher('Compte introuvable — vérifiez vos comptes attribués', 'warning'); return; }
+    this.state.cible          = c;
+    this.state.typeSource     = 'EXISTANT';
+    this.state.idPlanifEnCours = id;
+    this.state.mode           = 'APPEL';
+    this.state.phase          = 'PRE';
+    this.state.d.objectif     = plan.Objectif_Appel || '';
+    this.state.recherche      = c.Nom_Compte;
+    this.render();
+  },
+
+  async supprimerPlanif(id) {
+    if (!confirm('Supprimer cet appel planifié ?')) return;
+    try {
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', '📞_PHONING', id, {
+        deleted: 'TRUE', deleted_at: dateISOLocale(), deleted_by: Session.nom,
+      });
+      this.state.planning = this.state.planning.filter(a => a.ID_Appel !== id);
+      Toast.afficher('🗑 Appel supprimé', 'succes');
+      this.render();
+    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+  },
+
+  setFiltrePlanning(f) { this.state.filtrePlanning = f; this.render(); },
