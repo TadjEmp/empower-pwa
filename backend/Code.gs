@@ -895,7 +895,16 @@ function _syncSellInDrive(body, user) {
 
     var ssV17  = SpreadsheetApp.openById(CONFIG.V17_ID);
     var shV17  = ssV17.getSheetByName('📋 COMPTES HISTORIQUES');
-    if (!shV17) return _json({ ok: false, erreur: 'Onglet "📋 COMPTES HISTORIQUES" introuvable dans V17' });
+    if (!shV17) {
+      // Fallback : chercher par mot-clé si le nom exact ne correspond pas
+      ssV17.getSheets().forEach(function(s) {
+        if (!shV17 && s.getName().toUpperCase().indexOf('COMPTES') >= 0) shV17 = s;
+      });
+    }
+    if (!shV17) {
+      var noms = ssV17.getSheets().map(function(s){ return s.getName(); }).join(', ');
+      return _json({ ok: false, erreur: 'Onglet COMPTES HISTORIQUES introuvable dans V17. Onglets présents : ' + noms });
+    }
 
     var v17Raw = shV17.getRange(1, 1, 1, shV17.getLastColumn()).getValues()[0];
     var hIdx   = {};
