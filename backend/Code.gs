@@ -60,8 +60,9 @@ function _router(params, body) {
       case 'groqSTT':        return _groqSTT(body, user);
       case 'groqLLM':        return _groqLLM(body, user);
       case 'setGroqKey':     return _setGroqKey(body, user);
-      case 'purgerDonnees':  return _purgerDonnees(body, user);
-      default:               return _json({ ok: false, erreur: 'Action inconnue: ' + action });
+      case 'purgerDonnees':       return _purgerDonnees(body, user);
+      case 'importTrackerDrive':  return _importTrackerDrive(body, user);
+      default:                    return _json({ ok: false, erreur: 'Action inconnue: ' + action });
     }
   } catch(e) {
     _logErreur(user?.pin || '', action, e);
@@ -641,6 +642,196 @@ function _gemini(body, user) {
                data.candidates[0].content && data.candidates[0].content.parts &&
                data.candidates[0].content.parts[0].text) || '';
   return _json({ ok: true, texte: texte });
+}
+
+// ── IMPORT EMPOWER TRACKER DRIVE → 📋_PROSPECTS ────────────
+// Lit l'onglet "1 - Saisie" du fichier EMPOWER TRACKER Drive,
+// mappe chaque revendeur vers le format 📋_PROSPECTS et insère
+// les nouvelles lignes (Source_Import=ESI_PIPELINE). Non destructif.
+function _importTrackerDrive(body, user) {
+  if (!user || user.role !== 'ADMIN')
+    return _json({ ok: false, erreur: 'Réservé aux administrateurs' });
+
+  try {
+    var TRACKER_ID = '1Xpwrkl2V5RC1KHpw9KdW5HH9eAmRIwPDUHLZ_iAyOqA';
+
+    var NOM_VERS_PIN = {
+      'tadjidine': 1000, 'tadj': 1000,
+      'lyes': 4001,
+      'mehdi': 4002,
+      'johanne': 4003,
+      'anthony': 4004,
+    };
+
+    var mdb     = _getSpreadsheet('EMPOWER_MDB');
+    var tracker = SpreadsheetApp.openById(TRACKER_ID);
+
+    var saisie = tracker.getSheetByName('1 - Saisie');
+    if (!saisie) return _json({ ok: false, erreur: 'Onglet "1 - Saisie" introuvable dans le Tracker' });
+
+    var saisieData = saisie.getDataRange().getValues();
+    var headerRow  = -1;
+    for (var i = 0; i < saisieData.length; i++) {
+      if (String(saisieData[i][0]).trim() === 'Revendeur') { headerRow = i; break; }
+    }
+    if (headerRow < 0) return _json({ ok: false, erreur: 'En-têtes introuvables dans l\'onglet Saisie' });
+
+    var saisieHeaders = saisieData[headerRow].map(function(h) { return String(h).trim(); });
+    var col = function(name) { return saisieHeaders.indexOf(name); };
+    var C = {
+      revendeur:    col('Revendeur'),
+      cds:          col('CDS'),
+      origine:      col('Origine'),
+      actif:        col('Actif'),
+      potentiel:    col('Potentiel'),
+      derniereAct:  col('Dernière Action'),
+      natureAct:    col('Nature Action'),
+      objectifProch: col('Objectif Prochaine Action'),
+      prochaineAct: col('Prochaine Action'),
+      dateProchaAct: col('Date Prochaine action'),
+      welcomePack:  col('Welcome Pack Envoyé ?'),
+      dateWelcome:  col('Date Envoi Welcome Pack'),
+      canalPack:    col("Canal d'envoi  Pack"),
+      blocage:      col('Blocage'),
+      notes:        col('Notes'),
+    };
+
+    // Lire PROSPECTS existants pour déduplique par nom normalisé
+    var shP       = mdb.getSheetByName('📋_PROSPECTS');
+    var prospData = shP.getDataRange().getValues();
+    var pH        = prospData[0];
+    var nomColP   = pH.indexOf('Nom_Compte');
+    var srcColP   = pH.indexOf('Source_Import');
+
+    var existants = {};
+    for (var r = 1; r < prospData.length; r++) {
+      if (String(prospData[r][srcColP] || '') === 'ESI_PIPELINE') {
+        existants[_normNomGs(String(prospData[r][nomColP] || ''))] = true;
+      }
+    }
+
+    var headers_MDB = HEADERS_MDB['📋_PROSPECTS'];
+    var nouvelles   = [];
+    var skips       = 0;
+
+    for (var r = headerRow + 1; r < saisieData.length; r++) {
+      var row = saisieData[r];
+      var nom = String(row[C.revendeur] || '').trim();
+      if (!nom) continue;
+
+      var normNom = _normNomGs(nom);
+      if (existants[normNom]) { skips++; continue; }
+
+      var cdsStr = String(row[C.cds] || '').trim();
+      var pin    = NOM_VERS_PIN[cdsStr.toLowerCase()] || '';
+      var actif  = String(row[C.actif] || '').trim();
+      var statut = _mapStatutGs(actif);
+      var pot    = _mapPotentielGs(String(row[C.potentiel] || '').trim());
+      var orig   = String(row[C.origine] || '').trim();
+      var dern   = String(row[C.derniereAct] || '').trim();
+      var nature = String(row[C.natureAct] || '').trim();
+      var obj    = String(row[C.objectifProch] || '').trim();
+      var proch  = String(row[C.prochaineAct] || '').trim();
+      var dateP  = _formatDateGs(row[C.dateProchaAct]);
+      var wpack  = String(row[C.welcomePack] || '').trim();
+      var datew  = _formatDateGs(row[C.dateWelcome]);
+      var canal  = String(row[C.canalPack] || '').trim();
+      var bloc   = String(row[C.blocage] || '').trim();
+      var notes  = String(row[C.notes] || '').trim();
+
+      var noteParts = [notes];
+      if (bloc)   noteParts.push('[BLOCAGE: ' + bloc + ']');
+      if (obj)    noteParts.push('[OBJECTIF: ' + obj + ']');
+      if (proch)  noteParts.push('[PROCHAINE ACTION: ' + proch + ']');
+      if (nature) noteParts.push('[NATURE: ' + nature + ']');
+      if (dern)   noteParts.push('[DERNIÈRE ACTION: ' + dern + ']');
+      if (wpack)  noteParts.push('[WELCOME PACK: ' + wpack + (datew ? ' le ' + datew : '') + (canal ? ' via ' + canal : '') + ']');
+      var noteFinale = noteParts.filter(Boolean).join(' | ');
+
+      var now   = new Date().toISOString();
+      var today = Utilities.formatDate(new Date(), 'Europe/Paris', 'yyyy-MM-dd');
+      var uuid  = 'LEAD_TRK_' + Utilities.getUuid().split('-')[0].toUpperCase();
+
+      var ligne = new Array(headers_MDB.length).fill('');
+      headers_MDB.forEach(function(h, i) {
+        switch(h) {
+          case 'ID_Prospect':           ligne[i] = uuid; break;
+          case 'Nom_Compte':            ligne[i] = nom; break;
+          case 'PIN_CDS_Assigne':       ligne[i] = pin; break;
+          case 'Source_Import':         ligne[i] = 'ESI_PIPELINE'; break;
+          case 'FLAG_ACTION':           ligne[i] = dern || 'IMPORT_TRACKER'; break;
+          case 'CANAL':                 ligne[i] = 'EMPOWER'; break;
+          case 'Note_initiale':         ligne[i] = noteFinale; break;
+          case 'Date_prochaine_action': ligne[i] = dateP; break;
+          case 'Flag_traite':           ligne[i] = 'FALSE'; break;
+          case 'Flag_converti':         ligne[i] = statut === 'INTEGRE' ? 'TRUE' : 'FALSE'; break;
+          case 'Date_Import':           ligne[i] = today; break;
+          case 'Timestamp':             ligne[i] = now; break;
+          case 'STATUT_EMPOWER':        ligne[i] = statut; break;
+          case 'POTENTIEL':             ligne[i] = pot; break;
+          case 'ORIGINE':               ligne[i] = orig ? 'Tracker_' + orig : 'ESI_PIPELINE'; break;
+          case 'WELCOME_PACK_DATE':     ligne[i] = datew; break;
+        }
+      });
+
+      nouvelles.push(ligne);
+      existants[normNom] = true;
+    }
+
+    if (nouvelles.length > 0) {
+      shP.getRange(shP.getLastRow() + 1, 1, nouvelles.length, headers_MDB.length).setValues(nouvelles);
+      SpreadsheetApp.flush();
+    }
+
+    _log(user.pin, 'importTrackerDrive', nouvelles.length + ' leads importés, ' + skips + ' doublons');
+    return _json({ ok: true, crees: nouvelles.length, skips: skips,
+                   message: nouvelles.length + ' lead(s) importé(s), ' + skips + ' doublon(s) ignoré(s)' });
+
+  } catch(e) {
+    return _json({ ok: false, erreur: e.toString() });
+  }
+}
+
+function _normNomGs(s) {
+  return String(s).toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+}
+
+function _mapStatutGs(s) {
+  var sl = String(s).toLowerCase();
+  if (sl.indexOf('contacter') >= 0)                        return 'ASSIGNE';
+  if (sl.indexOf('discussion') >= 0)                       return 'SAISIE';
+  if (sl === 'en cours')                                   return 'EN_COURS';
+  if (sl.indexOf('compte cr') >= 0)                        return 'COMPTE_CREE';
+  if (sl.indexOf('1re commande') >= 0 || sl === '1re commande') return 'COMPTE_CREE';
+  if (sl === 'actif')                                      return 'INTEGRE';
+  if (sl.indexOf('bloqu') >= 0)                            return 'ARCHIVE';
+  if (sl.indexOf('finalis') >= 0)                          return 'INTEGRE';
+  return 'SAISIE';
+}
+
+function _mapPotentielGs(s) {
+  var sl = String(s).toLowerCase();
+  if (sl.indexOf('fort') >= 0 || sl.indexOf('>100') >= 0 || sl.indexOf('100') >= 0) return 'Fort';
+  if (sl.indexOf('moyen') >= 0 || sl.indexOf('20-100') >= 0)                         return 'Moyen';
+  if (sl.indexOf('faible') >= 0 || sl.indexOf('<20') >= 0)                            return 'Faible';
+  return 'Moyen';
+}
+
+function _formatDateGs(val) {
+  if (!val) return '';
+  if (val instanceof Date) {
+    if (isNaN(val.getTime()) || val.getFullYear() < 2000) return '';
+    return Utilities.formatDate(val, 'Europe/Paris', 'yyyy-MM-dd');
+  }
+  var s = String(val).trim();
+  if (!s || s === '0') return '';
+  try {
+    var d = new Date(s);
+    if (!isNaN(d.getTime()) && d.getFullYear() > 2000) {
+      return Utilities.formatDate(d, 'Europe/Paris', 'yyyy-MM-dd');
+    }
+  } catch(e) {}
+  return s;
 }
 
 // Stockage sécurisé de la clé Gemini — admin uniquement

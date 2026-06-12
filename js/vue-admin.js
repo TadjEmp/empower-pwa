@@ -14,6 +14,8 @@ window.VueAdmin = {
       alexTab: 'exports',   // 'exports' | 'leads'
       leadEnvoi: false,
       formLead: this._initFormLead(),
+      importEnCours: false,
+      importResultat: null,
     };
     this.render();
     try {
@@ -225,6 +227,32 @@ window.VueAdmin = {
           </button>
         </form>
       </div>`;
+  },
+
+  async importerDepuisTracker() {
+    if (this.state.importEnCours) return;
+    const ok = confirm('🔄 Synchroniser EMPOWER TRACKER → PROSPECTS ?\n\nLes revendeurs déjà présents en ESI_PIPELINE seront ignorés.\nLes nouveaux seront créés avec Source_Import=ESI_PIPELINE.');
+    if (!ok) return;
+    this.state.importEnCours  = true;
+    this.state.importResultat = null;
+    this.render();
+    try {
+      const r = await fetch(SheetsAPI.BASE_URL, {
+        method: 'POST', redirect: 'follow',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'importTrackerDrive', token: SheetsAPI.TOKEN }),
+      });
+      const data = await r.json();
+      if (!data.ok) throw new Error(data.erreur || 'Erreur Apps Script');
+      this.state.importResultat = { ok: true, message: data.message };
+      Toast.afficher(`✅ ${data.crees} lead(s) importés — ${data.skips} doublon(s) ignorés`, 'succes', 6000);
+      await SheetsAPI.viderCache('EMPOWER_MDB', '📋_PROSPECTS');
+    } catch(e) {
+      this.state.importResultat = { ok: false, message: e.message };
+      Toast.afficher('❌ Import : ' + e.message, 'erreur');
+    }
+    this.state.importEnCours = false;
+    this.render();
   },
 
   async sauverObjectif(idObjectif) {
@@ -551,6 +579,34 @@ window.VueAdmin = {
             Chaque export est tracé dans 📊_ACTIONS avec l'identité de l'exporteur.
           </p>
           ${this._renderExports()}
+        </div>
+
+        <!-- IMPORT EMPOWER TRACKER -->
+        <div class="bloc-fiche">
+          <div class="bloc-titre">🔄 Synchroniser EMPOWER TRACKER</div>
+          <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">
+            Importe les revendeurs de l'onglet <strong>1 - Saisie</strong> du fichier EMPOWER TRACKER (Google Drive)
+            dans la base <code>📋_PROSPECTS</code> avec <code>Source_Import=ESI_PIPELINE</code>.<br>
+            <strong>Non destructif</strong> — les doublons existants sont ignorés.
+            Statuts mappés automatiquement : Actif→INTEGRE, Compte créé→COMPTE_CREE, En cours→EN_COURS, etc.
+          </p>
+          ${this.state.importResultat ? `
+            <div style="padding:10px;border-radius:6px;margin-bottom:12px;
+              background:${this.state.importResultat.ok ? 'rgba(26,158,92,.1)' : 'rgba(255,109,104,.1)'};
+              border:1px solid ${this.state.importResultat.ok ? 'var(--c-success,#1a9e5c)' : 'var(--c-cta,#FF6D68)'}">
+              <span style="font-size:13px;font-weight:600">
+                ${this.state.importResultat.ok ? '✅' : '❌'} ${this.state.importResultat.message}
+              </span>
+            </div>` : ''}
+          <button class="btn-secondaire"
+                  style="background:var(--c-primary);color:#fff;border-color:var(--c-primary);padding:10px 16px"
+                  ${this.state.importEnCours ? 'disabled' : ''}
+                  onclick="VueAdmin.importerDepuisTracker()">
+            ${this.state.importEnCours ? '⏳ Import en cours…' : '🔄 Importer depuis EMPOWER TRACKER Drive'}
+          </button>
+          <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">
+            Source : Google Sheet Drive "EMPOWER TRACKER" · Onglet "1 - Saisie" (81 revendeurs actifs).
+          </p>
         </div>
 
         <!-- RGPD -->
