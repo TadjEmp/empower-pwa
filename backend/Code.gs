@@ -839,14 +839,17 @@ function _formatDateGs(val) {
 // Lit le classeur Drive sell-in, pivote par RESELLER/QUARTER,
 // écrit dans V17/📋 COMPTES HISTORIQUES et met à jour les CA dans 🏢_COMPTES.
 function _syncSellInDrive(body, user) {
+  // SOURCE : classeur SELL-IN (lecture)
+  // DESTINATIONS : 🏢_COMPTES (MDB) + V17 COMPTES HISTORIQUES (optionnel)
   if (!user || user.role !== 'ADMIN')
     return _json({ ok: false, erreur: 'Réservé aux administrateurs' });
   try {
+    // ── 1. Lire le classeur SELL-IN (source) ─────────────────────────────────
     var SELL_IN_ID = '1z8j5NISu5uMtIds8qV_oaBLkWUiyE4x54n5uWzD5Q0A';
-    var ssIn  = SpreadsheetApp.openById(SELL_IN_ID);
+    var ssIn = SpreadsheetApp.openById(SELL_IN_ID);
     var shData = null;
-    ssIn.getSheets().forEach(function(s) {
-      if (s.getName().toUpperCase().indexOf('DATA') >= 0) shData = s;
+    ssIn.getSheets().forEach(function(s){
+      if (!shData && s.getName().toUpperCase().indexOf('DATA') >= 0) shData = s;
     });
     if (!shData) return _json({ ok: false, erreur: 'Feuille DATA introuvable dans le classeur sell-in' });
 
@@ -859,15 +862,15 @@ function _syncSellInDrive(body, user) {
     var iCh  = hd.indexOf('CHANNEL');
     var iCA  = hd.indexOf('CA_EUR');
     if (iQ < 0 || iRes < 0 || iCA < 0)
-      return _json({ ok: false, erreur: 'Colonnes QUARTER / RESELLER / CA_EUR manquantes dans DATA' });
+      return _json({ ok: false, erreur: 'Colonnes manquantes dans DATA : QUARTER=' + iQ + ' RESELLER=' + iRes + ' CA_EUR=' + iCA });
 
-    // Pivot par RESELLER → somme CA par trimestre
+    // ── 2. Pivot par RESELLER ─────────────────────────────────────────────────
     var pivot = {};
     for (var r = 1; r < raw.length; r++) {
       var row = raw[r];
       var res = String(row[iRes] || '').trim();
-      var qtr = String(row[iQ]   || '').trim();   // 'Q1FY25', 'Q1FY27' …
-      var ch  = String(row[iCh]  || '').trim().toUpperCase();
+      var qtr = String(row[iQ]   || '').trim();
+      var ch  = iCh >= 0 ? String(row[iCh] || '').trim().toUpperCase() : '';
       var ca  = parseFloat(String(row[iCA] || '0').replace(/[€\s]/g,'').replace(',','.')) || 0;
       if (!res || !qtr) continue;
       if (!pivot[res]) pivot[res] = { canal: 'REVENDEUR' };
@@ -880,86 +883,31 @@ function _syncSellInDrive(body, user) {
     var QQ26 = ['Q1FY26','Q2FY26','Q3FY26','Q4FY26'];
     Object.keys(pivot).forEach(function(res) {
       var p = pivot[res];
-      p.CA_FY25    = QQ25.reduce(function(s,q){ return s + (p[q]||0); }, 0);
-      p.CA_FY26    = QQ26.reduce(function(s,q){ return s + (p[q]||0); }, 0);
-      p.CA_Q1FY27  = p['Q1FY27'] || 0;
-      if      (p.CA_Q1FY27 > 0) p.flag = 'ACTIF';
-      else if (p.CA_FY26   > 0) p.flag = 'REACTIVER';
-      else if (p.CA_FY25   > 0) p.flag = 'CHURN';
-      else                       p.flag = 'INACTIF';
+      p.CA_FY25   = QQ25.reduce(function(s,q){ return s + (p[q]||0); }, 0);
+      p.CA_FY26   = QQ26.reduce(function(s,q){ return s + (p[q]||0); }, 0);
+      p.CA_Q1FY27 = p['Q1FY27'] || 0;
+      p.flag = p.CA_Q1FY27 > 0 ? 'ACTIF' : p.CA_FY26 > 0 ? 'REACTIVER' : p.CA_FY25 > 0 ? 'CHURN' : 'INACTIF';
     });
 
-    // ── Écriture dans V17 ────────────────────────────────────────────────────
-    if (!CONFIG.V17_ID || CONFIG.V17_ID === 'EXECUTER_installerBase_DABORD')
-      return _json({ ok: false, erreur: 'V17_ID non configuré — exécutez installerBase()' });
-
-    var ssV17  = SpreadsheetApp.openById(CONFIG.V17_ID);
-    var shV17  = null;
-    ssV17.getSheets().forEach(function(s){
-      if (!shV17 && s.getName().toUpperCase().indexOf('COMPTES') >= 0) shV17 = s;
-    });
-    if (!shV17) {
-      // Créer l'onglet avec les bons en-têtes s'il n'existe pas encore
-      var _hdrs = ['RESELLER','CANAL','CA FY25 €','CA FY26 €','CA Q1FY27 €',
-                   'Q1FY25 €','Q2FY25 €','Q3FY25 €','Q4FY25 €',
-                   'Q1FY26 €','Q2FY26 €','Q3FY26 €','Q4FY26 €',
-                   'FLAG_BRUT','STATUT_FY27'];
-      shV17 = ssV17.insertSheet('📋 COMPTES HISTORIQUES');
-      shV17.getRange(1, 1, 1, _hdrs.length).setValues([_hdrs]);
-      shV17.setFrozenRows(1);
-    }
-
-    var v17Raw = shV17.getRange(1, 1, 1, shV17.getLastColumn()).getValues()[0];
-    var hIdx   = {};
-    v17Raw.forEach(function(h, i){ hIdx[String(h).trim()] = i; });
-    var nCols  = v17Raw.length;
-
-    var lr = shV17.getLastRow();
-    if (lr > 1) shV17.getRange(2, 1, lr - 1, nCols).clearContent();
-
-    var newRows = Object.keys(pivot).map(function(res) {
-      var p   = pivot[res];
-      var row = new Array(nCols).fill('');
-      var set = function(col, val){ if (hIdx[col] !== undefined) row[hIdx[col]] = val; };
-      set('RESELLER',    res);
-      set('CANAL',       p.canal);
-      set('CA FY25 €',   r2(p.CA_FY25));
-      set('CA FY26 €',   r2(p.CA_FY26));
-      set('CA Q1FY27 €', r2(p.CA_Q1FY27));
-      set('Q1FY25 €',    r2(p['Q1FY25']||0));
-      set('Q2FY25 €',    r2(p['Q2FY25']||0));
-      set('Q3FY25 €',    r2(p['Q3FY25']||0));
-      set('Q4FY25 €',    r2(p['Q4FY25']||0));
-      set('Q1FY26 €',    r2(p['Q1FY26']||0));
-      set('Q2FY26 €',    r2(p['Q2FY26']||0));
-      set('Q3FY26 €',    r2(p['Q3FY26']||0));
-      set('Q4FY26 €',    r2(p['Q4FY26']||0));
-      set('FLAG_BRUT',   p.flag);
-      set('STATUT_FY27', p.flag);
-      return row;
-    });
-    if (newRows.length > 0)
-      shV17.getRange(2, 1, newRows.length, nCols).setValues(newRows);
-
-    // ── Mise à jour des CA dans 🏢_COMPTES ───────────────────────────────────
-    var mdb  = _getSpreadsheet('EMPOWER_MDB');
-    var shC  = mdb.getSheetByName('🏢_COMPTES');
-    if (!shC) mdb.getSheets().forEach(function(s){
-      if (!shC && s.getName().toUpperCase().indexOf('COMPTES') >= 0 &&
-          s.getName().indexOf('HISTORIQUES') < 0) shC = s;
+    // ── 3. Mettre à jour 🏢_COMPTES (MDB) — PRIORITAIRE ─────────────────────
+    var mdb = _getSpreadsheet('EMPOWER_MDB');
+    var shC = null;
+    mdb.getSheets().forEach(function(s){
+      if (!shC && s.getName().replace(/[^\w]/g,'').toUpperCase().indexOf('COMPTES') >= 0
+          && s.getName().indexOf('HISTORIQUES') < 0) shC = s;
     });
     var comptesMaj = 0;
-    if (shC) {
-      var cH   = shC.getRange(1, 1, 1, shC.getLastColumn()).getValues()[0].map(String);
+    if (!shC) {
+      _log(user.pin, 'syncSellInDrive', 'WARN: onglet COMPTES introuvable dans MDB');
+    } else {
+      var cH    = shC.getRange(1, 1, 1, shC.getLastColumn()).getValues()[0].map(String);
       var cData = shC.getDataRange().getValues();
       var iNom  = cH.indexOf('Nom_Compte');
-      var iCA25 = cH.indexOf('CA_FY25');
-      var iCA26 = cH.indexOf('CA_FY26');
-      var iCAQ1 = cH.indexOf('CA_Q1FY27');
-      var iCanal = cH.indexOf('CANAL');
+      var iCA25 = cH.indexOf('CA_FY25'), iCA26 = cH.indexOf('CA_FY26');
+      var iCAQ1 = cH.indexOf('CA_Q1FY27'), iCanal = cH.indexOf('CANAL');
       for (var ri = 1; ri < cData.length; ri++) {
         var nom  = String(cData[ri][iNom] || '').trim();
-        var norm = nom.toLowerCase().replace(/[^a-z0-9]/g, '');
+        var norm = nom.toLowerCase().replace(/[^a-z0-9]/g,'');
         var key  = Object.keys(pivot).find(function(k){
           return k.toLowerCase().replace(/[^a-z0-9]/g,'') === norm;
         });
@@ -973,12 +921,54 @@ function _syncSellInDrive(body, user) {
         }
       }
     }
-    SpreadsheetApp.flush();
 
-    _log(user.pin, 'syncSellInDrive', newRows.length + ' revendeurs · ' + comptesMaj + ' comptes MAJ');
+    // ── 4. V17 COMPTES HISTORIQUES — optionnel, jamais bloquant ──────────────
+    var revendeurs = 0;
+    if (CONFIG.V17_ID && CONFIG.V17_ID !== 'EXECUTER_installerBase_DABORD') {
+      try {
+        var ssV17 = SpreadsheetApp.openById(CONFIG.V17_ID);
+        var shV17 = null;
+        ssV17.getSheets().forEach(function(s){
+          if (!shV17 && s.getName().toUpperCase().indexOf('COMPTES') >= 0) shV17 = s;
+        });
+        if (!shV17) {
+          var hdrs = ['RESELLER','CANAL','CA FY25 €','CA FY26 €','CA Q1FY27 €',
+                      'Q1FY25 €','Q2FY25 €','Q3FY25 €','Q4FY25 €',
+                      'Q1FY26 €','Q2FY26 €','Q3FY26 €','Q4FY26 €','FLAG_BRUT','STATUT_FY27'];
+          shV17 = ssV17.insertSheet('📋 COMPTES HISTORIQUES');
+          shV17.getRange(1,1,1,hdrs.length).setValues([hdrs]);
+          shV17.setFrozenRows(1);
+          SpreadsheetApp.flush();
+        }
+        var nCols17 = Math.max(1, shV17.getLastColumn());
+        var v17Raw  = shV17.getRange(1,1,1,nCols17).getValues()[0];
+        var hIdx = {}; v17Raw.forEach(function(h,i){ hIdx[String(h).trim()] = i; });
+        var lr17 = shV17.getLastRow();
+        if (lr17 > 1) shV17.getRange(2,1,lr17-1,nCols17).clearContent();
+        var newRows = Object.keys(pivot).map(function(res) {
+          var p = pivot[res]; var row = new Array(nCols17).fill('');
+          var set = function(col,val){ if (hIdx[col]!==undefined) row[hIdx[col]]=val; };
+          set('RESELLER',res); set('CANAL',p.canal);
+          set('CA FY25 €',r2(p.CA_FY25)); set('CA FY26 €',r2(p.CA_FY26));
+          set('CA Q1FY27 €',r2(p.CA_Q1FY27));
+          ['Q1','Q2','Q3','Q4'].forEach(function(q){
+            set(q+'FY25 €',r2(p[q+'FY25']||0)); set(q+'FY26 €',r2(p[q+'FY26']||0));
+          });
+          set('FLAG_BRUT',p.flag); set('STATUT_FY27',p.flag);
+          return row;
+        });
+        if (newRows.length > 0) shV17.getRange(2,1,newRows.length,nCols17).setValues(newRows);
+        revendeurs = newRows.length;
+      } catch(eV17) {
+        _log(user.pin, 'syncSellInDrive', 'WARN V17 (non bloquant) : ' + eV17.toString());
+      }
+    }
+
+    SpreadsheetApp.flush();
+    _log(user.pin, 'syncSellInDrive', revendeurs + ' revendeurs · ' + comptesMaj + ' comptes MAJ');
     return _json({
-      ok: true, revendeurs: newRows.length, comptesMaj: comptesMaj,
-      message: newRows.length + ' revendeurs synchronisés · ' + comptesMaj + ' comptes mis à jour'
+      ok: true, revendeurs: revendeurs, comptesMaj: comptesMaj,
+      message: revendeurs + ' revendeurs sync · ' + comptesMaj + ' comptes MDB mis à jour'
     });
   } catch(e) {
     return _json({ ok: false, erreur: e.toString() });
