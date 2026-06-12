@@ -146,26 +146,6 @@ function _verifierToken(token) {
 // ⚙️ À exécuter UNE FOIS manuellement depuis l'éditeur Apps Script.
 // Crée l'onglet 👤_UTILISATEURS avec mots de passe temporaires
 // (= à changer au premier usage via l'admin).
-function initUtilisateurs() {
-  const ss = _getSpreadsheet('EMPOWER_MDB');
-  if (ss.getSheetByName(CONFIG.SHEET_USERS)) throw new Error('Onglet déjà existant');
-  const sh = ss.insertSheet(CONFIG.SHEET_USERS);
-  sh.appendRow(['Email','Hash','Salt','PIN','Nom','Role','Actif','Token','Token_Expiry']);
-
-  const USERS = [
-    ['t.soefou@agence-impact.com',  1000, 'Tadjidine', 'ADMIN'],
-    ['lyes@agence-impact.com',      4001, 'Lyes',      'CDS'],
-    ['mehdi@agence-impact.com',     4002, 'Mehdi',     'CDS'],
-    ['johanne@agence-impact.com',   4003, 'Johanne',   'CDS'],
-    ['alexandra@agence-impact.com', 5000, 'Alexandra', 'CHANNEL_MANAGER'],
-  ];
-  USERS.forEach(([email, pin, nom, role]) => {
-    const salt = Utilities.getUuid();
-    const mdpTemp = 'Empower' + pin + '!';   // ex : Empower4001!
-    sh.appendRow([email, _sha256(mdpTemp + salt), salt, pin, nom, role, 'OUI', '', '']);
-  });
-  Logger.log('5 utilisateurs créés — mdp temporaire : Empower<PIN>!');
-}
 
 // ⚙️ À exécuter UNE FOIS : ajoute à 📋_PROSPECTS les colonnes pipeline
 // EMPOWER manquantes (STATUT_EMPOWER, POTENTIEL, etc. — cartographie §C.4).

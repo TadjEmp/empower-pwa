@@ -3,7 +3,7 @@
 //  Cache-first pour assets statiques
 // ═══════════════════════════════════════
 
-const CACHE_NAME  = 'esi-v5-6';
+const CACHE_NAME  = 'esi-v5-7';
 // Chemins relatifs : fonctionne à la racine d'un domaine comme en sous-dossier GitHub Pages
 const ASSETS_CORE = [
   './',
@@ -17,6 +17,7 @@ const ASSETS_CORE = [
   './css/dashboard.css',
   './css/pipeline.css',
   './js/utils.js',
+  './js/helpers.js',
   './js/session.js',
   './js/api.js',
   './js/groq.js',
