@@ -40,14 +40,21 @@ window.VuePipeline = {
     this.CDS = cds.length > 0 ? cds : this.CDS_FALLBACK;
   },
 
-  // CHANNEL_MANAGER (Alexandra, Flavie) et ADMIN peuvent gérer les leads
-  _peutGerer() { return Session.voitTout() || Session.estChannel(); },
+  // ── Droits (Bloc 4) ──
+  // Voir tous les leads : ADMIN + CHANNEL_MANAGER (Alexandra). CDS : ses propres leads. EXTERNE (Flavie) : saisie.
+  _voitTous()    { return Session.voitTout(); },
+  // Attribuer / avancer / éditer un lead : ADMIN uniquement. Alexandra (CHANNEL_MANAGER) = lecture seule.
+  _peutAssigner(){ return Session.estManager(); },
+  // Saisir un nouveau lead : ADMIN + CHANNEL_MANAGER (Alexandra) + EXTERNE (Flavie).
+  _peutSaisir()  { return Session.estManager() || Session.estChannel() || Session.estExterne(); },
+  // Lecture seule (Alexandra) : voit tout mais ne peut rien modifier hormis la saisie.
+  _lectureSeule(){ return Session.estChannel(); },
 
   async init() {
     this.state = {
       leads: [], chargement: true, envoiEnCours: false,
       recherche: '', filtreCDS: 'TOUS', filtrePotentiel: 'TOUS',
-      filtreStatut: 'TOUS', filtreAlerte: 'TOUS',
+      filtreStatut: 'TOUS', filtreAlerte: 'TOUS', filtreOrigine: 'TOUS',
       colonnesEtendues: {},
       modal: null,
     };
@@ -65,7 +72,8 @@ window.VuePipeline = {
       this.state.leads = raw
         .filter(p => String(p.deleted || '').toUpperCase() !== 'TRUE')
         .map(p => ({ ...p, _statut: this._statutDe(p) }))
-        .filter(p => this._peutGerer() || Session.voitTout() || Number(p.PIN_CDS_Assigne) === Session.pin);
+        // ADMIN + CHANNEL_MANAGER : tous les leads. CDS : uniquement les siens (PIN_CDS_Assigne=Session.pin). EXTERNE : ses saisies.
+        .filter(p => this._voitTous() || Number(p.PIN_CDS_Assigne) === Session.pin);
       this.state.chargement = false;
       this.render();
     } catch(e) {
@@ -91,8 +99,9 @@ window.VuePipeline = {
     const q = normaliserNom(this.state.recherche);
     if (q) l = l.filter(p => normaliserNom(p.Nom_Compte).includes(q) || normaliserNom(p.Ville || '').includes(q));
     if (this.state.filtreCDS !== 'TOUS') l = l.filter(p => String(p.PIN_CDS_Assigne) === String(this.state.filtreCDS));
-    if (this.state.filtrePotentiel !== 'TOUS') l = l.filter(p => (p.POTENTIEL || '') === this.state.filtrePotentiel);
+    if (this.state.filtrePotentiel !== 'TOUS') l = l.filter(p => String(p.POTENTIEL || '').toLowerCase() === String(this.state.filtrePotentiel).toLowerCase());
     if (this.state.filtreStatut !== 'TOUS') l = l.filter(p => p._statut === this.state.filtreStatut);
+    if (this.state.filtreOrigine !== 'TOUS') l = l.filter(p => String(p.ORIGINE || '').toLowerCase() === String(this.state.filtreOrigine).toLowerCase());
     if (this.state.filtreAlerte === 'WP_RETARD') l = l.filter(p => this._retardWelcomePack(p));
     if (this.state.filtreAlerte === 'WP_ENVOYE') l = l.filter(p => !!p.WELCOME_PACK_DATE);
     if (this.state.filtreAlerte === 'ACTION_DUE') l = l.filter(p => p.Date_prochaine_action && estDepassee(p.Date_prochaine_action));
@@ -114,6 +123,16 @@ window.VuePipeline = {
       'PERDU':                '🗄 Perdu',
     };
     return MAP[String(flag || '').toUpperCase()] || flag || '—';
+  },
+
+  // Origines distinctes présentes dans les leads (case-insensitive, libellé d'affichage = 1ère occurrence)
+  _originesDistinctes() {
+    const vues = new Map();
+    this.state.leads.forEach(p => {
+      const o = String(p.ORIGINE || '').trim();
+      if (o && !vues.has(o.toLowerCase())) vues.set(o.toLowerCase(), o);
+    });
+    return [...vues.values()].sort((a, b) => a.localeCompare(b, 'fr'));
   },
 
   _retardWelcomePack(p) {
@@ -177,7 +196,7 @@ window.VuePipeline = {
     try {
       const r = await fetch(SheetsAPI.BASE_URL, {
         method: 'POST', redirect: 'follow',
-        headers: { 'Content-Type': 'application/json' },
+        // Pas de Content-Type → requête simple, évite le préflight CORS (Apps Script ne gère pas OPTIONS)
         body: JSON.stringify({ action: 'attribuerLead', token: SheetsAPI.TOKEN, id, cdsPin: Number(pin), cdsNom: this._nomCDS(pin) }),
       }).then(x => x.json());
       if (!r.ok) throw new Error(r.erreur);
@@ -280,7 +299,9 @@ window.VuePipeline = {
       return;
     }
     const leads = this.leadsFiltres;
-    const peutGerer = this._peutGerer();
+    const voitTous = this._voitTous();      // filtres par CDS (ADMIN + CHANNEL_MANAGER)
+    const peutSaisir = this._peutSaisir();   // bouton nouveau lead
+    const lectureSeule = this._lectureSeule(); // Alexandra
     const cdsList = this.CDS.length ? this.CDS : this.CDS_FALLBACK;
 
     app.innerHTML = `
@@ -288,6 +309,7 @@ window.VuePipeline = {
         <button onclick="Router.aller('#/dashboard')" class="btn-retour">←</button>
         <h1>EMPOWER TRACKER</h1>
         <span class="badge-compteur">${leads.length} leads</span>
+        ${lectureSeule ? '<span class="badge-compteur" style="background:var(--c-text-2);color:#fff" title="Vue lecture seule">👁 Lecture seule</span>' : ''}
       </header>
 
       <div class="barre-filtres">
@@ -295,10 +317,10 @@ window.VuePipeline = {
                style="border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:8px 12px;font-size:14px;width:100%"
                oninput="VuePipeline.setRecherche(this.value)"/>
         <div class="filtres-statut">
-          ${peutGerer ? `
+          ${voitTous ? `
           <select onchange="VuePipeline.state.filtreCDS=this.value;VuePipeline.render()">
             <option value="TOUS">👥 Tous CDS</option>
-            ${cdsList.map(c => `<option value="${c.pin}" ${String(this.state.filtreCDS) == String(c.pin) ? 'selected' : ''}>${c.nom}</option>`).join('')}
+            ${cdsList.map(c => `<option value="${c.pin}" ${String(this.state.filtreCDS) == String(c.pin) ? 'selected' : ''}>${this._nomCDS(c.pin)}</option>`).join('')}
           </select>` : ''}
           <select onchange="VuePipeline.state.filtreStatut=this.value;VuePipeline.render()">
             <option value="TOUS">Tous statuts</option>
@@ -314,6 +336,11 @@ window.VuePipeline = {
             <option value="WP_ENVOYE" ${this.state.filtreAlerte==='WP_ENVOYE'?'selected':''}>📦 Welcome Pack envoyé</option>
             <option value="ACTION_DUE" ${this.state.filtreAlerte==='ACTION_DUE'?'selected':''}>⏰ Action en retard</option>
           </select>
+          ${voitTous ? `
+          <select onchange="VuePipeline.state.filtreOrigine=this.value;VuePipeline.render()">
+            <option value="TOUS">Toutes origines</option>
+            ${this._originesDistinctes().map(o => `<option value="${o}" ${String(this.state.filtreOrigine).toLowerCase()===String(o).toLowerCase()?'selected':''}>${o}</option>`).join('')}
+          </select>` : ''}
         </div>
       </div>
 
@@ -377,7 +404,7 @@ window.VuePipeline = {
         }).join('')}
       </div>
 
-      ${peutGerer ? '<button class="fab" onclick="VuePipeline.ouvrirSaisie()" title="Nouveau lead" style="bottom:140px">＋</button>' : ''}
+      ${peutSaisir ? '<button class="fab" onclick="VuePipeline.ouvrirSaisie()" title="Nouveau lead" style="bottom:140px">＋</button>' : ''}
       ${NavBar('tracker')}
       ${this._renderModal()}
     `;
@@ -466,7 +493,9 @@ window.VuePipeline = {
     // Fiche lead : info complète + édition inline + IA Gemini
     const l = m.lead;
     if (!l) return '';
-    const peutGerer = this._peutGerer();
+    // Droits Bloc 4 : ADMIN gère tout ; CDS édite/avance SES leads ; Alexandra (CHANNEL_MANAGER) = lecture seule ; EXTERNE = saisie seule.
+    const peutAssigner = this._peutAssigner();   // attribution CDS → ADMIN uniquement
+    const peutEditer = Session.estManager() || (Session.estCDS() && Number(l.PIN_CDS_Assigne) === Session.pin); // suivi + avancement
     const cdsList = this.CDS.length ? this.CDS : this.CDS_FALLBACK;
     const statut = this.STATUTS.find(s => s.id === l._statut);
     const FLAGS = ['SAISIE','A_RELANCER','EN_COURS','A_RAPPELER','INTERESSE','WELCOME_PACK_ENVOYE','NON_INTERESSE','PERDU'];
@@ -500,7 +529,8 @@ window.VuePipeline = {
           <div class="q-recap-ligne"><span>Créé le</span><strong>${l.Date_Import ? dateRelative(l.Date_Import) : '—'}</strong></div>
         </div>
 
-        <!-- Mise à jour suivi -->
+        <!-- Mise à jour suivi (édition réservée : ADMIN ou CDS propriétaire) -->
+        ${peutEditer ? `
         <div style="margin-bottom:12px;padding:12px;background:var(--c-bg);border-radius:var(--radius-sm);border:1px solid var(--c-border)">
           <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.04em;margin-bottom:8px">📝 MISE À JOUR SUIVI</div>
 
@@ -529,7 +559,7 @@ window.VuePipeline = {
 
           <button class="btn-primaire" style="width:100%;margin-top:8px;font-size:13px"
                   onclick="VuePipeline.mettreAJourLead('${l.ID_Prospect}')">✅ Enregistrer la mise à jour</button>
-        </div>
+        </div>` : ''}
 
         <!-- Historique complet -->
         ${l.Note_initiale ? `
@@ -538,20 +568,21 @@ window.VuePipeline = {
           <div style="margin-top:6px;font-size:12px;line-height:1.6;white-space:pre-wrap;color:var(--c-text-2);padding:8px;background:var(--c-bg);border-radius:var(--radius-sm);border:1px solid var(--c-border)">${String(l.Note_initiale).replace(/</g,'&lt;')}</div>
         </details>` : ''}
 
-        ${peutGerer ? `
+        ${peutAssigner ? `
         <label style="margin-bottom:8px">Attribuer à un CDS
           <select id="attr-cds" onchange="VuePipeline.attribuer('${l.ID_Prospect}', this.value)">
             <option value="">— choisir —</option>
-            ${cdsList.map(c => `<option value="${c.pin}" ${Number(l.PIN_CDS_Assigne) === c.pin ? 'selected' : ''}>${c.nom}</option>`).join('')}
+            ${cdsList.map(c => `<option value="${c.pin}" ${Number(l.PIN_CDS_Assigne) === c.pin ? 'selected' : ''}>${this._nomCDS(c.pin)}</option>`).join('')}
           </select>
         </label>` : ''}
 
+        ${peutEditer ? `
         <label style="margin-bottom:6px">Avancer dans le pipeline</label>
         <div class="q-chips" style="flex-wrap:wrap">
           ${this.STATUTS.filter(s => s.id !== l._statut && s.id !== 'ARCHIVE').map(s => `
             <button type="button" class="q-chip" onclick="VuePipeline.deplacer('${l.ID_Prospect}','${s.id}')">${s.lbl}</button>`).join('')}
           <button type="button" class="q-chip" style="background:var(--c-text-2)" onclick="VuePipeline.deplacer('${l.ID_Prospect}','ARCHIVE')">🗄 Archiver</button>
-        </div>
+        </div>` : ''}
 
         <!-- IA Gemini — slots T01/T02/T04/T05 -->
         <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--c-border)">

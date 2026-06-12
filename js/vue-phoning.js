@@ -24,6 +24,8 @@ window.VuePhoning = {
         statutAppel: '', interetEmpower: '', frein: '',
         prochaineAction: '', dateRappel: '', note: '',
         resultatProspect: '',
+        // BLOC 3 — post-appel comptes
+        commandeAnnoncee: '', montantEstime: '', statutFinal: '',
       },
       // BUG-09 — planning phoning
       planning: [],
@@ -50,9 +52,17 @@ window.VuePhoning = {
         SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
         SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING'),
       ]);
-      // BUG-09 : source phoning = uniquement COMPTES attribués au CDS
+      // BUG-09 + BLOC 3 : base phoning = comptes attribués au CDS,
+      // restreinte aux comptes HISTORIQUES (STATUT_COMPTE RÉACTIVER ou ACTIF).
+      const STATUTS_PHONING = ['REACTIVER', 'RÉACTIVER', 'ACTIF'];
+      const estHistorique = c => {
+        const st = String(c.STATUT_COMPTE || '').trim().toUpperCase();
+        // Pas de statut renseigné → on garde (compte historique par défaut).
+        return st === '' || STATUTS_PHONING.includes(st);
+      };
       this.state.comptes = comptes.filter(c =>
-        Session.voitTout() || Number(c.PIN_CDS_Assigne) === Session.pin
+        (Session.voitTout() || Number(c.PIN_CDS_Assigne) === Session.pin) &&
+        estHistorique(c)
       );
       // Planning = appels planifiés non supprimés du CDS courant
       this.state.planning = planning
@@ -137,7 +147,7 @@ window.VuePhoning = {
     this.state.mode       = 'APPEL';
     this.state.phase      = 'PRE';
     this.state.recherche  = '';
-    Object.assign(this.state.d, { objectif:'', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'' });
+    Object.assign(this.state.d, { objectif:'', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'' });
     this.render();
   },
 
@@ -149,7 +159,7 @@ window.VuePhoning = {
     this.state.mode       = 'APPEL';
     this.state.phase      = 'PRE';
     this.state.recherche  = c.Nom_Compte;
-    Object.assign(this.state.d, { objectif:'', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'' });
+    Object.assign(this.state.d, { objectif:'', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'' });
     this.render();
   },
   setFiltreListe(f) { this.state.filtreListe = f; this.render(); },
@@ -166,14 +176,14 @@ window.VuePhoning = {
     this.render();
   },
 
-  // Sélectionner un prospect depuis la liste et passer directement à l'appel
+  // Sélectionner un prospect → BLOC 3 : passer par l'ÉTAPE 1 (objectif) avant l'appel
   choisirEtDemarrer(idx) {
     const p = this.listeProspectsTriee[idx];
     if (!p) return;
     this.state.cible = p;
     this.state.typeSource = 'PROSPECT';
     this.state.mode = 'APPEL';
-    this.state.phase = 'CALL';
+    this.state.phase = 'PRE';   // planification obligatoire (objectif) avant CALL
     this.render();
   },
 
@@ -216,6 +226,16 @@ window.VuePhoning = {
     return Math.floor((Date.now() - new Date(ref).getTime()) / (7 * 86400000));
   },
 
+  // BLOC 3 — pré-remplissage : dernier produit commandé (tolérant aux noms de colonnes).
+  _dernierProduit() {
+    const c = this.state.cible;
+    if (!c) return '';
+    const v = c.Dernier_Produit || c.Dernier_produit || c.DERNIER_PRODUIT
+           || c.Dernier_NSB || c.Produit_Dernier || '';
+    const s = String(v).trim();
+    return (!s || /^(undefined|null|nan)$/i.test(s)) ? '' : s;
+  },
+
   // ── Script d'accroche IA ──
   async genererScript() {
     if (!this.state.cible) { Toast.afficher('Sélectionnez un compte d\'abord', 'warning'); return; }
@@ -234,7 +254,11 @@ window.VuePhoning = {
   },
 
   demarrerAppel() {
+    // BLOC 3 — ÉTAPE 1 obligatoire : compte + objectif avant de lancer l'appel.
     if (!this.state.cible) { Toast.afficher('Sélectionnez un compte', 'warning'); return; }
+    if (!String(this.state.d.objectif || '').trim()) {
+      Toast.afficher('Indiquez l\'objectif de l\'appel avant de continuer', 'warning'); return;
+    }
     this.state.phase = 'CALL';
     this.render();
   },
@@ -266,10 +290,10 @@ window.VuePhoning = {
           });
           this.state.qualif = q;
           const d = this.state.d;
-          if (!d.frein) d.frein = q.frein_detecte || '';
-          if (!d.prochaineAction) d.prochaineAction = q.action_recommandee || '';
-          if (q.deadline_action_jours && !d.dateRappel) {
-            d.dateRappel = dateISOLocale(new Date(Date.now() + q.deadline_action_jours * 86400000));
+          if (!d.frein) d.frein = q.freindetecte || '';
+          if (!d.prochaineAction) d.prochaineAction = q.actionrecommandee || '';
+          if (q.deadlineactionjours && !d.dateRappel) {
+            d.dateRappel = dateISOLocale(new Date(Date.now() + q.deadlineactionjours * 86400000));
           }
           d.note = (d.note ? d.note + '\n' : '') + (q.resume || txt);
           // Auto-suggestion résultat prospect depuis score IA
@@ -278,7 +302,7 @@ window.VuePhoning = {
             else if (q.score <= 1) d.resultatProspect = 'NON_INTERESSE';
             else                   d.resultatProspect = 'RAPPELER';
           }
-          Toast.afficher(`✅ Qualifié : ${q.type_appel} · score ${q.score}/5`, 'succes', 4000);
+          Toast.afficher(`✅ Qualifié : ${q.typeappel || '—'} · score ${q.score ?? '—'}/5`, 'succes', 4000);
         } catch(e) { Toast.afficher('❌ IA : ' + e.message, 'erreur'); }
         this.state.phase = 'POST';
         this.render();
@@ -315,9 +339,30 @@ window.VuePhoning = {
         Frein_Principal: d.frein,
         Prochaine_Action: d.prochaineAction,
         Date_Rappel: d.dateRappel,
-        Note: [d.note, s.qualif ? `[IA ${s.qualif.type_appel} · ${s.qualif.score}/5]` : ''].filter(Boolean).join('\n'),
+        Commande_Annoncee: estProspect ? '' : (d.commandeAnnoncee || ''),
+        Montant_Estime: estProspect ? '' : (parseCA(d.montantEstime) ?? ''),
+        Statut_Final: estProspect ? (d.resultatProspect || '') : (d.statutFinal || ''),
+        Note: [d.note, s.qualif ? `[IA ${s.qualif.typeappel} · ${s.qualif.score}/5]` : ''].filter(Boolean).join('\n'),
         Timestamp: new Date().toISOString(),
       });
+
+      // 1b. BLOC 6 — alertes score Groq (post-appel)
+      const _score = Number(s.qualif?.score) || 0;
+      const _notif = (dest, type, msg) => SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
+        ID_Notif: genId('NOTIF'), Date_Envoi: new Date().toISOString(),
+        PIN_Destinataire: dest, Type_Notif: type,
+        Message: msg, ID_Cible: idCible, Statut_Lu: 'NON',
+        Timestamp: new Date().toISOString(),
+      }).catch(() => {});
+      if (_score >= 4) {
+        // Score ≥ 4 → CDS concerné + Tadjidine (1000)
+        const dests = [...new Set([Session.pin, 1000])];
+        for (const dest of dests) await _notif(dest, 'SCORE_GROQ', `Score IA ${_score}/5 · ${c.Nom_Compte}`);
+      }
+      // Lead sourcé Flavie + score ≥ 2 → Flavie (3000)
+      if (_score >= 2 && estProspect && String(c.ORIGINE || '').toUpperCase().includes('FLAVIE')) {
+        await _notif(3000, 'SCORE_GROQ_FLAVIE', `Score IA ${_score}/5 · lead ${c.Nom_Compte}`);
+      }
 
       // 2. Mise à jour fiche
       if (estProspect) {
@@ -344,12 +389,20 @@ window.VuePhoning = {
         const local = s.prospects.find(p => p.ID_Prospect === idCible);
         if (local) Object.assign(local, maj);
       } else {
-        await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', idCible, {
+        const majCompte = {
           Date_Derniere_Action: dateISOLocale(),
           Type_Derniere_Action: 'Appel',
           Prochaine_action: d.prochaineAction,
           Date_prochaine_action: d.dateRappel,
-        });
+        };
+        // BLOC 3 — statut final aligné sur le vocabulaire réel (EN_COURS/INTEGRE/ARCHIVE)
+        if (['EN_COURS', 'INTEGRE', 'ARCHIVE'].includes(d.statutFinal)) {
+          majCompte.STATUT_COMPTE = d.statutFinal;
+        }
+        await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', idCible, majCompte);
+        // Sync état local
+        const localC = s.comptes.find(x => String(x.ID_Compte) === String(idCible));
+        if (localC) Object.assign(localC, majCompte);
       }
 
       // 2b. Marquer l'appel planifié comme réalisé (BUG-09)
@@ -387,6 +440,9 @@ window.VuePhoning = {
           <div class="succes-recap">
             <div>${d.statutAppel} · Intérêt EMPOWER : ${d.interetEmpower || '—'}</div>
             ${msgResultat ? `<div>${msgResultat}</div>` : ''}
+            ${!estProspect && d.commandeAnnoncee && d.commandeAnnoncee !== 'Non'
+              ? `<div>🛒 Commande ${d.commandeAnnoncee.toLowerCase()}${parseCA(d.montantEstime) !== null ? ' · ≈ ' + fmtCA(d.montantEstime) + ' €' : ''}</div>` : ''}
+            ${!estProspect && d.statutFinal ? `<div>📌 Statut final : ${d.statutFinal}</div>` : ''}
             ${d.prochaineAction ? `<div>🎯 ${d.prochaineAction}${d.dateRappel ? ' — ' + dateRelative(d.dateRappel) : ''}</div>` : ''}
             ${s.qualif?.resume ? `<div>🤖 ${s.qualif.resume}</div>` : ''}
           </div>
@@ -575,6 +631,9 @@ window.VuePhoning = {
       Frein_Principal:   a.Frein_Principal || '',
       Prochaine_Action:  a.Prochaine_Action || '',
       Date_Rappel:       a.Date_Rappel || '',
+      Commande_Annoncee: a.Commande_Annoncee || '',
+      Montant_Estime:    a.Montant_Estime != null && a.Montant_Estime !== '' ? a.Montant_Estime : '',
+      Statut_Final:      a.Statut_Final || '',
       Transcription:     a.Transcription || '',
       Note:              a.Note || '',
     }));
@@ -617,7 +676,7 @@ window.VuePhoning = {
           </div>
           ${a.Interet_EMPOWER ? `<div style="font-size:12px;color:var(--c-text-2)">Intérêt : ${a.Interet_EMPOWER}</div>` : ''}
           ${a.Frein_Principal ? `<div style="font-size:12px;color:var(--c-text-2)">Frein : ${a.Frein_Principal}</div>` : ''}
-          ${a.Note ? `<div style="font-size:12px;font-style:italic;color:var(--c-text-2);margin-top:4px">${String(a.Note).slice(0, 80)}${a.Note.length > 80 ? '…' : ''}</div>` : ''}
+          ${a.Note ? `<div style="font-size:12px;font-style:italic;color:var(--c-text-2);margin-top:4px">${String(a.Note).slice(0, 80)}${String(a.Note).length > 80 ? '…' : ''}</div>` : ''}
           ${peutModif ? `
           <div style="display:flex;gap:6px;margin-top:8px">
             <button class="btn-secondaire" style="padding:5px 10px;font-size:12px;width:auto"
@@ -711,7 +770,9 @@ window.VuePhoning = {
     const cdsUniq = [...new Set(this.state.journal.map(a => a.PIN_CDS).filter(Boolean))];
     const cdsList = cdsUniq.map(pin => {
       const a = this.state.journal.find(x => String(x.PIN_CDS) === String(pin));
-      return { pin: String(pin), nom: a?.Nom_CDS || `PIN ${pin}` };
+      // Bloc 9 : jamais de PIN affiché → resolveCDS pour le libellé commercial.
+      const nom = a?.Nom_CDS || (window.resolveCDS ? resolveCDS(pin) : '—');
+      return { pin: String(pin), nom: (nom && nom !== '—') ? nom : 'Commercial' };
     });
 
     return `
@@ -815,9 +876,10 @@ window.VuePhoning = {
       ${s.cible ? `<div class="q-recap">
         <div class="q-recap-ligne"><span>Statut</span><strong>${s.cible.STATUT_COMPTE || s.cible.STATUT_EMPOWER || s.cible.Statut || '—'}</strong></div>
         ${s.cible.POTENTIEL ? `<div class="q-recap-ligne"><span>Potentiel</span><strong>${s.cible.POTENTIEL}</strong></div>` : ''}
-        ${silence !== null ? `<div class="q-recap-ligne"><span>Silence</span><strong>${silence} semaine(s)</strong></div>` : ''}
+        <div class="q-recap-ligne"><span>Silence</span><strong>${silence !== null ? silence + ' semaine(s)' : '—'}</strong></div>
+        <div class="q-recap-ligne"><span>Dernier produit</span><strong>${this._dernierProduit() || '—'}</strong></div>
+        <div class="q-recap-ligne"><span>CA FY26</span><strong>${(() => { const f = fmtCA(s.cible.CA_FY26); return f === '—' ? '—' : f + ' €'; })()}</strong></div>
         ${s.cible.Tel ? `<div class="q-recap-ligne"><span>Téléphone</span><strong><a class="lien-tel" href="tel:${String(s.cible.Tel).replace(/\s/g, '')}">${s.cible.Tel}</a></strong></div>` : ''}
-        ${s.cible.CA_FY25 ? `<div class="q-recap-ligne"><span>CA FY25</span><strong>${formatEuro(s.cible.CA_FY25)}</strong></div>` : ''}
         ${s.cible.Note_initiale ? `<div style="font-size:12px;color:var(--c-text-2);padding-top:6px;font-style:italic">${String(s.cible.Note_initiale).slice(0, 100)}</div>` : ''}
       </div>` : ''}
       <label class="q-label">Objectif de l'appel
@@ -830,7 +892,11 @@ window.VuePhoning = {
       ${s.script ? `<div class="q-recap"><h3>📜 Script suggéré</h3>
         <p style="font-size:13px;line-height:1.6;white-space:pre-wrap">${s.script}</p></div>` : ''}
 
-      <button type="button" class="btn-primaire" onclick="VuePhoning.demarrerAppel()">📞 Démarrer l'appel →</button>
+      ${!s.cible || !String(d.objectif || '').trim()
+        ? `<div style="font-size:11px;color:var(--c-text-2);text-align:center;margin-top:4px">Sélectionnez un compte et saisissez un objectif pour activer l'appel.</div>`
+        : ''}
+      <button type="button" class="btn-primaire" onclick="VuePhoning.demarrerAppel()"
+              ${!s.cible || !String(d.objectif || '').trim() ? 'disabled style="opacity:.5;cursor:not-allowed"' : ''}>📞 Démarrer l'appel →</button>
     </div>`;
   },
 
@@ -934,10 +1000,10 @@ window.VuePhoning = {
     return `<div class="q-champs">
       ${s.qualif ? `<div class="q-recap">
         <h3>🤖 Qualification IA</h3>
-        <div class="q-recap-ligne"><span>Type</span><strong>${s.qualif.type_appel}</strong></div>
-        <div class="q-recap-ligne"><span>Score</span><strong>${s.qualif.score}/5</strong></div>
-        ${s.qualif.frein_detecte ? `<div class="q-recap-ligne"><span>Frein</span><strong>${s.qualif.frein_detecte}</strong></div>` : ''}
-        ${s.qualif.concurrent_detecte ? `<div class="q-recap-ligne"><span>Concurrent</span><strong>${s.qualif.concurrent_detecte}</strong></div>` : ''}
+        <div class="q-recap-ligne"><span>Type</span><strong>${s.qualif.typeappel || '—'}</strong></div>
+        <div class="q-recap-ligne"><span>Score</span><strong>${s.qualif.score ?? '—'}/5</strong></div>
+        ${s.qualif.freindetecte ? `<div class="q-recap-ligne"><span>Frein</span><strong>${s.qualif.freindetecte}</strong></div>` : ''}
+        ${s.qualif.concurrentdetecte ? `<div class="q-recap-ligne"><span>Concurrent</span><strong>${s.qualif.concurrentdetecte}</strong></div>` : ''}
         <p style="font-size:13px;margin-top:8px">${s.qualif.resume || ''}</p>
       </div>` : ''}
       ${s.transcription ? `<details style="font-size:12px;color:var(--c-text-2)">
@@ -951,7 +1017,18 @@ window.VuePhoning = {
         <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.04em;margin-bottom:8px">📋 RÉSULTAT DU PROSPECT</div>
         ${this._r('resultatProspect', ['INTERESSE', 'RAPPELER', 'NON_JOIGNABLE', 'NON_INTERESSE'])}
         <div style="font-size:11px;color:var(--c-text-2);margin-top:6px">${infoResultat}</div>
-      </div>` : ''}
+      </div>` : `
+      <div style="background:var(--c-surface);border:1.5px solid var(--c-primary);border-radius:var(--radius-sm);padding:12px;margin-bottom:4px">
+        <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.04em;margin-bottom:8px">🛒 SUITE COMMERCIALE</div>
+        <label class="q-label" style="margin-top:0">Commande annoncée ${this._r('commandeAnnoncee', ['Oui', 'À confirmer', 'Non'])}</label>
+        ${d.commandeAnnoncee && d.commandeAnnoncee !== 'Non' ? `
+        <label class="q-label">Montant estimé (€)
+          <input class="q-input" type="text" inputmode="decimal" placeholder="ex : 1 500"
+                 value="${d.montantEstime}" oninput="VuePhoning.set('montantEstime', this.value)"/>
+          ${d.montantEstime ? `<span style="font-size:11px;color:var(--c-text-2)">${fmtCA(d.montantEstime) === '—' ? 'Montant invalide → —' : '≈ ' + fmtCA(d.montantEstime) + ' €'}</span>` : ''}
+        </label>` : ''}
+        <label class="q-label">Statut final ${this._r('statutFinal', ['EN_COURS', 'INTEGRE', 'ARCHIVE'])}</label>
+      </div>`}
 
       <label class="q-label">Frein principal
         <input class="q-input" placeholder="ex : Prix" value="${d.frein}" oninput="VuePhoning.set('frein', this.value)"/></label>

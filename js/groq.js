@@ -12,45 +12,64 @@ const GroqAPI = {
   _mediaRecorder: null,
   _chunks: [],
 
-  SYSTEM_PROMPT: `Tu es l'assistant commercial IA de l'équipe Norton France (Impact Sales Marketing).
-Tu aides les CDS terrain (TADJIDINE, LYES, JOHANNE, MEHDI) à qualifier leurs appels revendeurs IT français.
+  SYSTEM_PROMPT: `Tu es l'assistant commercial IA de l'équipe Norton France — Impact Sales Marketing (ISM).
+Tu analyses les appels terrain des CDS (TADJIDINE, LYES, JOHANNE, MEHDI)
+et les contacts onboarding d'ALEXANDRA et FLAVIE.
 
 CONTEXTE MÉTIER :
-- Programme Sell-In Norton FY27 + Programme EMPOWER (partenariat revendeur IT récurrent)
-- Distributeurs : Ingram Micro, TD SYNNEX
-- Gamme : Antivirus Plus · 360 Standard · 360 Deluxe 3D/5D · 360 Premium · 360 Advanced · 360 for Gamers · Norton Small Business (NSB) · Avast Business Hub
-- EMPOWER = portail EmpowerReseller.Norton.com · marge +25% sur 3 ans · licences récurrentes
+  Programme Sell-In Norton FY27 | Programme EMPOWER (marge 25% récurrente 3 ans)
+  Distributeurs : Ingram Micro, TD SYNNEX
+  Gamme : Antivirus Plus, 360 Standard, 360 Deluxe 3D/5D, 360 Premium,
+           360 Advanced, 360 for Gamers, NSB, Avast Business Hub
+  EMPOWER : portail EmpowerReseller.Norton.com — marge 25% sur 3 ans, licences récurrentes
 
-TYPE D'APPEL (à détecter automatiquement) :
-1. RÉACTIVATION_SELL_IN → revendeur silencieux >8 semaines sur Ingram/TD SYNNEX
-2. RELANCE_SELL_IN → revendeur actif, relance commande
-3. ONBOARDING_EMPOWER → prospect pipeline Alexandra/Flavie, pas encore sur Empower
-4. SUIVI_EMPOWER → compte EMPOWER existant à accompagner (blocage, 1ère commande, upsell)
-
-CONCURRENTS TERRAIN FRANCE : ESET · Kaspersky · Bitdefender · Malwarebytes · Sophos · Avast Business · McAfee Trellix · Trend Micro · CoffieSoft
+TYPES D'APPEL — détecter automatiquement :
+  1. REACTIVATION_SELLIN  → revendeur silencieux ≥8 semaines Ingram/TD SYNNEX
+  2. RELANCE_SELLIN       → revendeur actif, relance commande
+  3. ONBOARDING_EMPOWER   → prospect pipeline Alexandra/Flavie, pas encore sur Empower
+  4. SUIVI_EMPOWER        → compte Empower existant (blocage / 1ère commande / upsell)
 
 CONTRE-ARGUMENTS VALIDÉS :
-- "Pas le temps" → Formation EMPOWER 30 min à distance, sans contrainte horaire
-- "Trop cher" → Marge récurrente +25% via EMPOWER sur 3 ans, ROI prouvé
-- "Travaille avec concurrent" → Norton grand public + TPE, complémentaire non substituable
-- "Mauvaise expérience plateforme" → Support dédié nouveau portail 2025, accompagnement CDS
-- "Pas de demande client" → NSB clé en main TPE 1-20 postes, ESD zéro rupture
+  - "Pas le temps"             → Formation EMPOWER 30 min à distance, sans contrainte horaire
+  - "Trop cher"                → Marge récurrente 25% via EMPOWER sur 3 ans, ROI prouvé
+  - "Travaille avec concurrent"→ Norton grand public/TPE, complémentaire non substituable
+  - "Mauvaise expérience"      → Support dédié, nouveau portail 2025, accompagnement CDS
+  - "Pas de demande client"    → NSB clé en main TPE 1-20 postes, ESD zéro rupture
 
-RÉPONSE FORMAT JSON STRICT :
+CONCURRENTS TERRAIN :
+  ESET, Kaspersky, Bitdefender, Malwarebytes, Sophos,
+  Avast Business, McAfee, Trellix, Trend Micro, CoffieSoft
+
+RÈGLES DE SCORING (score 1 à 5) :
+  1 = Froid, aucun intérêt
+  2 = Écoute passive, pas d'engagement
+  3 = Intéressé, frein identifié mais surmontable
+  4 = Prêt à commander ou s'inscrire sur EMPOWER
+  5 = Commande annoncée ou inscription EMPOWER confirmée
+
+RÈGLES D'ALERTE :
+  alertecds         = true si score ≥ 3 ET type ONBOARDING_EMPOWER
+  alerteflavie      = true si lead EMPOWER qualifié ET score ≥ 3 ET Flavie a sourcé
+  alertealexandra   = true si nouveau potentiel détecté non encore dans pipeline
+  alertewelcomepack = true si score ≥ 3 ET welcome pack non encore envoyé
+  alertenextstep    = true si prochaine action détectée avec deadline ≤ 7 jours
+
+RÉPONSE — FORMAT JSON STRICT (aucun texte en dehors du JSON) :
 {
-  "type_appel": "RÉACTIVATION_SELL_IN | RELANCE_SELL_IN | ONBOARDING_EMPOWER | SUIVI_EMPOWER",
-  "resume": "max 3 phrases : ce que le client a dit · frein · intention",
-  "frein_detecte": "...",
-  "concurrent_detecte": "...",
-  "produit_detecte": "...",
+  "typeappel": "REACTIVATION_SELLIN|RELANCE_SELLIN|ONBOARDING_EMPOWER|SUIVI_EMPOWER",
+  "resume": "max 3 phrases — ce que le client a dit, frein principal, intention",
+  "freindetecte": "texte libre ou null",
+  "concurrentdetecte": "nom concurrent ou null",
+  "produitdetecte": "produit mentionné ou null",
   "score": 1,
-  "action_recommandee": "action unique précise pour le CDS",
-  "deadline_action_jours": 7,
-  "alerte_cds": false,
-  "alerte_welcome_pack": false,
-  "alerte_next_step": false
-}
-Réponds UNIQUEMENT avec le JSON, sans texte autour.`,
+  "actionrecommandee": "1 action unique, précise, réalisable par le CDS dans les 7 jours",
+  "deadlineactionjours": 7,
+  "alertecds": false,
+  "alerteflavie": false,
+  "alertealexandra": false,
+  "alertewelcomepack": false,
+  "alertenextstep": false
+}`,
 
   // ── La clé est côté Apps Script — jamais dans le navigateur ──
   estConfigure() { return Session.estConnecte(); },
@@ -58,7 +77,8 @@ Réponds UNIQUEMENT avec le JSON, sans texte autour.`,
   async sauverCle(cle) {
     const r = await fetch(SheetsAPI.BASE_URL, {
       method: 'POST', redirect: 'follow',
-      headers: { 'Content-Type': 'application/json' },
+      // Pas de header Content-Type → requête "simple", évite le préflight CORS
+      // (Apps Script Web App ne répond pas aux OPTIONS ; le body texte est parsé par doPost)
       body: JSON.stringify({ action: 'setGroqKey', token: SheetsAPI.TOKEN, cle }),
     });
     if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -100,7 +120,8 @@ Réponds UNIQUEMENT avec le JSON, sans texte autour.`,
     });
     const r = await fetch(SheetsAPI.BASE_URL, {
       method: 'POST', redirect: 'follow',
-      headers: { 'Content-Type': 'application/json' },
+      // Pas de header Content-Type → requête "simple", évite le préflight CORS
+      // (Apps Script Web App ne répond pas aux OPTIONS ; le body texte est parsé par doPost)
       body: JSON.stringify({
         action:   'groqSTT',
         token:    SheetsAPI.TOKEN,
@@ -119,7 +140,8 @@ Réponds UNIQUEMENT avec le JSON, sans texte autour.`,
     if (!this.estConfigure()) throw new Error('Non connecté');
     const r = await fetch(SheetsAPI.BASE_URL, {
       method: 'POST', redirect: 'follow',
-      headers: { 'Content-Type': 'application/json' },
+      // Pas de header Content-Type → requête "simple", évite le préflight CORS
+      // (Apps Script Web App ne répond pas aux OPTIONS ; le body texte est parsé par doPost)
       body: JSON.stringify({
         action:      'groqLLM',
         token:       SheetsAPI.TOKEN,

@@ -1,6 +1,7 @@
 // ═══════════════════════════════════════
 //  vue-dashboard-manager.js — Vue équipe v9 — BUG-07 contraste · BUG-08 saisie CA
 //  Graphiques SVG inline : pipeline funnel + per-CDS CA bars
+//  BLOC 4 : Home ALEXANDRA (CHANNEL_MANAGER) — vue onboarding lecture seule dédiée
 // ═══════════════════════════════════════
 
 window.VueDashboardManager = {
@@ -9,6 +10,8 @@ window.VueDashboardManager = {
 
   async init() {
     if (!Session.voitTout()) { Router.aller('#/dashboard'); return; }
+    // BLOC 4 — Alexandra (CHANNEL_MANAGER) a une home onboarding dédiée, lecture seule.
+    if (Session.estChannel && Session.estChannel()) { return this.initChannel(); }
     this.state = { chargement: true, d: null };
     this.render();
     try {
@@ -27,6 +30,140 @@ window.VueDashboardManager = {
       this.state.chargement = false;
       document.getElementById('app').innerHTML = `<div class="erreur">Erreur : ${e.message}</div>`;
     }
+  },
+
+  // ════════════════════════════════════════════════════════════════
+  //  BLOC 4 — HOME ALEXANDRA (CHANNEL_MANAGER) — LECTURE SEULE
+  //  Aucune donnée sell-in brute, aucun CA/volume/prix détaillé.
+  // ════════════════════════════════════════════════════════════════
+  async initChannel() {
+    this.state = { chargement: true, dc: null };
+    this.render();
+    try {
+      const [prospects, objectifs] = await Promise.all([
+        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS'),
+        SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
+      ]);
+      this.state.dc = this._calculerChannel({ prospects, objectifs });
+      this.state.chargement = false;
+      this.render();
+    } catch(e) {
+      this.state.chargement = false;
+      document.getElementById('app').innerHTML = `<div class="erreur">Erreur : ${e.message}</div>`;
+    }
+  },
+
+  _calculerChannel({ prospects, objectifs }) {
+    const norm = v => String(v || '').trim().toUpperCase();
+    const now  = Date.now();
+
+    // ── Compteurs pipeline par STATUT_EMPOWER (vocabulaire réel) ──
+    // Traiter = ASSIGNE + SAISIE · En cours = EN_COURS (+ COMPTE_CREE) · Intégré = INTEGRE · Archivé = ARCHIVE
+    let cTraiter = 0, cEnCours = 0, cIntegre = 0, cArchive = 0;
+    prospects.forEach(p => {
+      const s = norm(p.STATUT_EMPOWER);
+      if (s === 'ASSIGNE' || s === 'SAISIE')       cTraiter++;
+      else if (s === 'EN_COURS' || s === 'COMPTE_CREE') cEnCours++;
+      else if (s === 'INTEGRE')                     cIntegre++;
+      else if (s === 'ARCHIVE')                     cArchive++;
+    });
+    const compteurs = [
+      { id: 'TRAITER',  lbl: 'À traiter', n: cTraiter, coul: '#0050FF' },
+      { id: 'EN_COURS', lbl: 'En cours',  n: cEnCours, coul: '#f59e0b' },
+      { id: 'INTEGRE',  lbl: 'Intégré',   n: cIntegre, coul: '#00b27e' },
+      { id: 'ARCHIVE',  lbl: 'Archivé',   n: cArchive, coul: '#626264' },
+    ];
+
+    // ── Taux d'intégration par CDS (%) — assignés vs intégrés ──
+    // Regroupement par prénom résolu (jamais de PIN affiché).
+    const parCDS = {};
+    prospects.forEach(p => {
+      const pinOuNom = p.PIN_CDS_Assigne || p.Nom_CDS;
+      const prenom   = resolveCDS(pinOuNom);
+      if (prenom === '—') return;           // lead non assigné → exclu du taux
+      if (!parCDS[prenom]) parCDS[prenom] = { nom: prenom, assignes: 0, integres: 0 };
+      parCDS[prenom].assignes++;
+      if (norm(p.STATUT_EMPOWER) === 'INTEGRE') parCDS[prenom].integres++;
+    });
+    const tauxParCDS = Object.values(parCDS)
+      .map(c => ({ ...c, taux: c.assignes > 0 ? Math.round(c.integres / c.assignes * 100) : 0 }))
+      .sort((a, b) => b.taux - a.taux);
+
+    // ── CA réalisé par CDS avec LABEL SOURCE visible (sell-in / saisie manuelle) ──
+    // Lecture seule. Pas de sell-in brut, pas de détail volumes/prix.
+    const caParCDS = (objectifs || []).map(o => {
+      const prenom = resolveCDS(o.PIN_CDS || o.Nom_CDS);
+      if (prenom === '—') return null;
+      // détecte une saisie manuelle via la note "[Manuel]" posée par Tadjidine (BUG-08)
+      const noteQ = ['Q1','Q2','Q3','Q4']
+        .map(q => String(o[`${q}_Note_Saisie`] || ''))
+        .join(' ');
+      const manuel = /\[manuel\]/i.test(noteQ);
+      const caBrut = parseCA(
+        o.Q1_CA_Realise ?? o.FY27_CA_Realise ?? o.CA_Realise
+      );
+      return {
+        nom: prenom,
+        ca: caBrut,
+        caStr: fmtCA(caBrut),
+        source: manuel ? 'saisie manuelle' : 'sell-in',
+      };
+    }).filter(Boolean)
+      .sort((a, b) => (b.ca ?? -1) - (a.ca ?? -1));
+
+    // ── 10 derniers leads INTEGRE ──
+    const dateRef = p =>
+      p.PREMIERE_COMMANDE_DATE || p.Date_prochaine_action || p.Timestamp || p.Date_Import || '';
+    const derniersIntegres = prospects
+      .filter(p => norm(p.STATUT_EMPOWER) === 'INTEGRE')
+      .map(p => ({
+        nom:    p.Nom_Compte || '—',
+        cds:    resolveCDS(p.PIN_CDS_Assigne || p.Nom_CDS),
+        origine: p.ORIGINE || '—',
+        date:   dateRef(p),
+      }))
+      .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+      .slice(0, 10);
+
+    // ── Alerte Welcome Pack : WELCOME_PACK_DATE vide & ancienneté ≥ J14 ──
+    const ancienneteJours = p => {
+      const ref = p.Date_Import || p.Timestamp || p.Date_prochaine_action;
+      const t = ref ? new Date(ref).getTime() : 0;
+      return t ? Math.floor((now - t) / 86400000) : null;
+    };
+    const alerteWelcome = prospects
+      .filter(p => {
+        const s = norm(p.STATUT_EMPOWER);
+        if (s === 'ARCHIVE') return false;
+        const wp = String(p.WELCOME_PACK_DATE || '').trim();
+        if (wp) return false;                 // Welcome Pack déjà envoyé
+        const age = ancienneteJours(p);
+        return age !== null && age >= 14;
+      })
+      .map(p => ({
+        nom: p.Nom_Compte || '—',
+        cds: resolveCDS(p.PIN_CDS_Assigne || p.Nom_CDS),
+        jours: ancienneteJours(p),
+      }))
+      .sort((a, b) => (b.jours || 0) - (a.jours || 0));
+
+    // ── Leads ARCHIVE / blocage ──
+    const leadsArchive = prospects
+      .filter(p => norm(p.STATUT_EMPOWER) === 'ARCHIVE')
+      .map(p => ({
+        nom:  p.Nom_Compte || '—',
+        cds:  resolveCDS(p.PIN_CDS_Assigne || p.Nom_CDS),
+        note: String(p.NOTE_BLOCAGE || p.Note_Blocage || p.FLAG_ACTION || '').trim() || '—',
+      }));
+
+    const totalPipeline   = cTraiter + cEnCours + cIntegre + cArchive;
+    const tauxIntegration = (totalPipeline - cArchive) > 0
+      ? Math.round(cIntegre / (totalPipeline - cArchive) * 100) : 0;
+
+    return {
+      compteurs, tauxParCDS, caParCDS, derniersIntegres,
+      alerteWelcome, leadsArchive, totalPipeline, tauxIntegration,
+    };
   },
 
   _calculer({ objectifs, visites, appels, prospects, comptes, params }) {
@@ -244,12 +381,141 @@ window.VueDashboardManager = {
     </svg>`;
   },
 
+  // ── BLOC 4 : rendu HOME ALEXANDRA (onboarding, lecture seule) ──
+  renderChannel() {
+    const app = document.getElementById('app');
+    const dc  = this.state.dc;
+    const dateFr = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+    const badgeSource = src =>
+      `<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;vertical-align:middle;
+        ${src === 'saisie manuelle'
+          ? 'background:#FFF1EC;color:#C2410C'
+          : 'background:#E8F0FF;color:#0050FF'}">${src}</span>`;
+
+    app.innerHTML = `
+      <header class="header-vue no-print">
+        <h1>Onboarding EMPOWER</h1>
+      </header>
+
+      <div class="dash-body avec-nav">
+        <p class="dash-date">${dateFr} · Pipeline onboarding · Lecture seule</p>
+
+        <!-- COMPTEURS PIPELINE -->
+        <div class="stat-tuiles">
+          ${dc.compteurs.map(c => `
+            <div class="stat-tuile" style="border-top:3px solid ${c.coul}">
+              <div class="stat-tuile-lbl">${c.lbl}</div>
+              <div class="stat-tuile-val" style="color:${c.coul}">${c.n}</div>
+            </div>`).join('')}
+        </div>
+
+        <!-- TAUX INTÉGRATION GLOBAL -->
+        <div class="bloc-fiche">
+          <div class="bloc-titre">📋 Pipeline onboarding</div>
+          <p style="font-size:13px;color:var(--c-text-2);margin:0">
+            <strong style="color:var(--c-text)">${dc.totalPipeline}</strong> lead(s) au total ·
+            taux d'intégration global : <strong style="color:var(--c-success)">${dc.tauxIntegration}%</strong>
+          </p>
+          <button class="btn-lien no-print" onclick="Router.aller('#/empower-tracker')"
+                  style="font-size:12px;margin-top:8px">Voir le Tracker →</button>
+        </div>
+
+        <!-- TAUX INTÉGRATION PAR CDS -->
+        <div class="bloc-fiche">
+          <div class="bloc-titre">🎯 Taux d'intégration par CDS</div>
+          ${dc.tauxParCDS.length ? `
+          <div class="tableau-equipe">
+            <div class="te-ligne te-head" style="grid-template-columns:1.4fr 1.4fr 0.7fr"><span>CDS</span><span>Intégrés / Assignés</span><span>Taux</span></div>
+            ${dc.tauxParCDS.map(c => {
+              const col = c.taux >= 50 ? 'pace-ok' : c.taux >= 30 ? 'pace-watch' : 'pace-risk';
+              return `
+              <div class="te-ligne" style="grid-template-columns:1.4fr 1.4fr 0.7fr">
+                <span><strong>${c.nom}</strong></span>
+                <span>${c.integres} / ${c.assignes}</span>
+                <span class="pace-badge ${col}">${c.taux}%</span>
+              </div>`;
+            }).join('')}
+          </div>` : '<div class="pas-de-donnees">Aucun lead assigné.</div>'}
+        </div>
+
+        <!-- CA RÉALISÉ (label source visible) -->
+        <div class="bloc-fiche">
+          <div class="bloc-titre">💶 CA réalisé par CDS</div>
+          <p style="font-size:11px;color:var(--c-text-2);margin:0 0 10px">
+            Valeur saisie par Tadjidine — source indiquée pour chaque CDS.
+          </p>
+          ${dc.caParCDS.length ? `
+          <div class="tableau-equipe">
+            ${dc.caParCDS.map(c => `
+              <div class="te-ligne" style="grid-template-columns:1fr auto auto;gap:8px">
+                <span><strong>${c.nom}</strong></span>
+                <span style="font-size:13px">${c.caStr === '—' ? '—' : c.caStr + ' €'}</span>
+                <span>${badgeSource(c.source)}</span>
+              </div>`).join('')}
+          </div>` : '<div class="pas-de-donnees">Aucune donnée CA.</div>'}
+        </div>
+
+        <!-- 10 DERNIERS LEADS INTÉGRÉS -->
+        <div class="bloc-fiche">
+          <div class="bloc-titre">✅ 10 derniers leads intégrés</div>
+          ${dc.derniersIntegres.length ? `
+          <div class="tableau-equipe">
+            <div class="te-ligne te-head" style="grid-template-columns:1.5fr 1fr 1fr"><span>Compte</span><span>CDS</span><span>Origine</span></div>
+            ${dc.derniersIntegres.map(l => `
+              <div class="te-ligne" style="grid-template-columns:1.5fr 1fr 1fr">
+                <span><strong>${l.nom}</strong></span>
+                <span>${l.cds}</span>
+                <span style="font-size:11px;color:var(--c-text-2)">${l.origine}</span>
+              </div>`).join('')}
+          </div>` : '<div class="pas-de-donnees">Aucun lead intégré pour le moment.</div>'}
+        </div>
+
+        <!-- ALERTE WELCOME PACK -->
+        <div class="bloc-fiche">
+          <div class="bloc-titre">📦 Welcome Pack non envoyé (≥ J14)</div>
+          ${dc.alerteWelcome.length ? `
+          <div class="dash-alertes">
+            ${dc.alerteWelcome.map(l => `
+              <div class="alerte-ligne">
+                📦 <strong>${l.nom}</strong> — ${l.cds} · <span style="color:var(--c-danger)">${l.jours} j sans Welcome Pack</span>
+              </div>`).join('')}
+          </div>` : '<div class="pas-de-donnees">Aucun lead en alerte Welcome Pack 🎉</div>'}
+        </div>
+
+        <!-- LEADS ARCHIVÉS / BLOCAGE -->
+        <div class="bloc-fiche">
+          <div class="bloc-titre">🗄️ Leads archivés / bloqués</div>
+          ${dc.leadsArchive.length ? `
+          <div class="tableau-equipe">
+            <div class="te-ligne te-head" style="grid-template-columns:1.5fr 1fr 1.5fr"><span>Compte</span><span>CDS</span><span>Motif</span></div>
+            ${dc.leadsArchive.map(l => `
+              <div class="te-ligne" style="grid-template-columns:1.5fr 1fr 1.5fr">
+                <span><strong>${l.nom}</strong></span>
+                <span>${l.cds}</span>
+                <span style="font-size:11px;color:var(--c-text-2)">${l.note}</span>
+              </div>`).join('')}
+          </div>` : '<div class="pas-de-donnees">Aucun lead archivé.</div>'}
+        </div>
+
+        <!-- RACCOURCIS LECTURE SEULE -->
+        <div class="dash-raccourcis no-print">
+          <button class="raccourci" onclick="Router.aller('#/empower-tracker')">📊<span>Tracker</span></button>
+          <button class="raccourci" onclick="Router.aller('#/comptes')">🏢<span>Comptes</span></button>
+        </div>
+      </div>
+      ${NavBar('home')}
+    `;
+  },
+
   render() {
     const app = document.getElementById('app');
     if (!this.state || this.state.chargement) {
-      app.innerHTML = '<div class="spinner-centre">Chargement vue équipe…</div>';
+      app.innerHTML = '<div class="spinner-centre">Chargement…</div>';
       return;
     }
+    // BLOC 4 — vue dédiée Alexandra
+    if (this.state.dc) { return this.renderChannel(); }
     const d      = this.state.d;
     const PACE   = {
       ON_TRACK: { lbl: '🟢', cls: 'pace-ok' },

@@ -1,7 +1,9 @@
 // ═══════════════════════════════════════
-//  vue-objectifs.js — SUIVI DES OBJECTIFS V2.1 (B6)
+//  vue-objectifs.js — SUIVI DES OBJECTIFS V2.2 (Bloc 3)
 //  Sources : 🎯_OBJECTIFS_PRIMES · ⚙️_PARAMS
-//  Manager : saisie CA réalisé par CDS · mise à jour en direct
+//  ADMIN : saisie CA réalisé + objectifs CDS
+//  CDS   : lecture seule (filtré sur Session.pin)
+//  Règles transverses Bloc 9 : resolveCDS · parseCA/fmtCA · aucun PIN affiché
 // ═══════════════════════════════════════
 
 window.VueObjectifs = {
@@ -76,25 +78,28 @@ window.VueObjectifs = {
       this._dansQuarter(p.PREMIERE_COMMANDE_DATE || p.Timestamp, q)
     ).length;
     const obj3 = Number(o[`${q}_Obj_Onboarding`] || 0);
-    const flavie = this.state.prospects.filter(p =>
-      Number(p.PIN_CDS_Assigne) === pin &&
-      String(p.Flag_converti||'').toUpperCase() === 'TRUE' &&
-      String(p.ORIGINE||'').toLowerCase().includes('flavie') &&
-      this._dansQuarter(p.PREMIERE_COMMANDE_DATE || p.Timestamp, q)
-    ).length;
-    return { integres, flavie, terrain: integres - flavie, obj3 };
+    // Comptes onboardés via Flavie OU Alexandra (ORIGINE contient l'un ou l'autre)
+    const viaCanal = this.state.prospects.filter(p => {
+      const origine = String(p.ORIGINE||'').toLowerCase();
+      return Number(p.PIN_CDS_Assigne) === pin &&
+        String(p.Flag_converti||'').toUpperCase() === 'TRUE' &&
+        (origine.includes('flavie') || origine.includes('alexandra')) &&
+        this._dansQuarter(p.PREMIERE_COMMANDE_DATE || p.Timestamp, q);
+    }).length;
+    return { integres, viaCanal, terrain: integres - viaCanal, obj3 };
   },
 
   _donneesCDS(pin) {
     const q = this.state.quarter;
     const o = this.state.objectifs.find(x => Number(x.PIN_CDS) === pin) || {};
-    const ca  = parseAmount(o[`${q}_CA_Realise`] || 0);
-    const obj = parseAmount(o[`${q}_Obj_Revise`] || o[`${q}_Obj_Initial`] || 0);
-    const pct = obj > 0 ? Math.round(ca / obj * 100) : 0;
+    // parseCA (Bloc 9) : rejette les dates corrompues et NaN, retourne null
+    const ca  = window.parseCA(o[`${q}_CA_Realise`])  ?? 0;
+    const obj = window.parseCA(o[`${q}_Obj_Revise`])  ?? window.parseCA(o[`${q}_Obj_Initial`]) ?? 0;
+    const pct = (obj > 0 && isFinite(ca) && isFinite(obj)) ? Math.round(ca / obj * 100) : 0;
     const numSem   = parseInt((this.state.semaine || 'S01').replace('S', ''), 10) || 1;
-    const semDansQ = Math.min(numSem, 13);
-    const projection = semDansQ > 0 ? Math.round(ca / semDansQ * 13) : 0;
-    const ecart = obj - ca;
+    const semDansQ = Math.min(Math.max(numSem, 1), 13);
+    const projection = isFinite(ca) ? Math.round(ca / semDansQ * 13) : 0;
+    const ecart = isFinite(obj) && isFinite(ca) ? obj - ca : null;
     const pace  = pct >= 100 ? 'ON_TRACK' : pct >= 80 ? 'WATCH' : 'AT_RISK';
     return { ca, obj, pct, projection, ecart, pace, id: o.ID_Objectif || '' };
   },
@@ -106,16 +111,18 @@ window.VueObjectifs = {
     </div>`;
   },
 
-  // ── Ouvrir modal saisie (Manager uniquement) ──
+  // ── Ouvrir modal saisie (ADMIN uniquement) ──
   ouvrirModalSaisie() {
+    // Sécurité : seul l'ADMIN peut saisir/modifier les objectifs
+    if (!Session.voitTout()) return;
     const q   = this.state.quarter;
     const frm = {};
     this.state.objectifs.forEach(o => {
       frm[o.ID_Objectif] = {
-        ca:          parseAmount(o[`${q}_CA_Realise`] || 0),
-        obj_ca:      parseAmount(o[`${q}_Obj_Revise`] || o[`${q}_Obj_Initial`] || 0),
-        obj_nsb:     Number(o[`${q}_Obj_NSB`]        || 0),
-        obj_onboard: Number(o[`${q}_Obj_Onboarding`] || 0),
+        ca:          window.parseCA(o[`${q}_CA_Realise`])  ?? 0,
+        obj_ca:      window.parseCA(o[`${q}_Obj_Revise`])  ?? window.parseCA(o[`${q}_Obj_Initial`]) ?? 0,
+        obj_nsb:     Number(o[`${q}_Obj_NSB`]              || 0),
+        obj_onboard: Number(o[`${q}_Obj_Onboarding`]       || 0),
       };
     });
     this.state.formSaisie = frm;
@@ -126,17 +133,20 @@ window.VueObjectifs = {
 
   async sauvegarderSaisie(e) {
     e.preventDefault();
+    // Sécurité : seul l'ADMIN peut enregistrer des modifications
+    if (!Session.voitTout()) return;
     if (this.state.saving) return;
     this.state.saving = true;
     const q = this.state.quarter;
     let ok = 0, err = 0;
     try {
       for (const [id, vals] of Object.entries(this.state.formSaisie)) {
+        const safeNum = v => { const n = window.parseCA(v); return (n !== null && isFinite(n)) ? n : 0; };
         const maj = {
-          [`${q}_CA_Realise`]:    parseAmount(typeof vals === 'object' ? vals.ca      : vals),
-          [`${q}_Obj_Revise`]:    parseAmount(typeof vals === 'object' ? vals.obj_ca  : 0) || undefined,
-          [`${q}_Obj_NSB`]:       Number(typeof vals === 'object' ? vals.obj_nsb      : 0) || undefined,
-          [`${q}_Obj_Onboarding`]:Number(typeof vals === 'object' ? vals.obj_onboard  : 0) || undefined,
+          [`${q}_CA_Realise`]:    safeNum(typeof vals === 'object' ? vals.ca         : vals),
+          [`${q}_Obj_Revise`]:    safeNum(typeof vals === 'object' ? vals.obj_ca     : 0) || undefined,
+          [`${q}_Obj_NSB`]:       Number(typeof vals === 'object' ? vals.obj_nsb     : 0) || undefined,
+          [`${q}_Obj_Onboarding`]:Number(typeof vals === 'object' ? vals.obj_onboard : 0) || undefined,
         };
         // Ne garder que les champs non-undefined
         Object.keys(maj).forEach(k => maj[k] === undefined && delete maj[k]);
@@ -173,43 +183,59 @@ window.VueObjectifs = {
     const q          = this.state.quarter;
     const estManager = Session.voitTout();
 
-    const renderCDS = (pin, nom) => {
+    // fmtEUR : affiche '—' si valeur invalide/nulle, sinon montant €
+    const fmtEUR = v => {
+      const n = window.parseCA(v);
+      if (n === null || !isFinite(n)) return '—';
+      return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR',
+        minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
+    };
+    const safePct = p => (typeof p === 'number' && isFinite(p)) ? `${p}%` : '—';
+
+    const renderCDS = (pin, nomBrut) => {
       const d = this._donneesCDS(pin);
       const PACE_LBL = { ON_TRACK: '🟢 ON TRACK', WATCH: '🟡 WATCH', AT_RISK: '🔴 AT RISK' };
       const a2 = this._axe2CDS(pin);
       const a3 = this._axe3CDS(pin);
+      // Résolution du nom : priorité resolveCDS(pin) — jamais de PIN brut dans l'UI
+      const nomAffiche = window.resolveCDS(pin) !== '—' ? window.resolveCDS(pin)
+                       : (nomBrut ? window.resolveCDS(nomBrut) || nomBrut : '—');
+      const ecartHtml = d.ecart === null ? '—'
+        : `${d.ecart > 0 ? '-' : '+'}${fmtEUR(Math.abs(d.ecart))}`;
+      const ecartCouleur = d.ecart === null ? 'var(--c-text-2)'
+        : d.ecart > 0 ? 'var(--c-danger)' : 'var(--c-success)';
       return `
         <div class="bloc-fiche">
-          ${nom ? `<div class="bloc-titre">${nom}
+          <div class="bloc-titre">${nomAffiche}
             <span class="pace-badge ${d.pace === 'ON_TRACK' ? 'pace-ok' : d.pace === 'WATCH' ? 'pace-watch' : 'pace-risk'}">${PACE_LBL[d.pace]}</span>
-          </div>` : ''}
+          </div>
           <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;margin-bottom:4px">AXE 1 — CA</div>
           <div class="pace-chiffres">
-            <strong>${formatEUR(d.ca)}</strong>
-            <span>/ ${formatEUR(d.obj)} — ${q}</span>
+            <strong>${fmtEUR(d.ca)}</strong>
+            <span>/ ${fmtEUR(d.obj)} — ${q}</span>
           </div>
           ${this._barreProgression(d.pct, d.pace)}
           <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
-            <div class="stat-mini"><div>${d.pct}%</div><div>Atteinte</div></div>
-            <div class="stat-mini"><div>${formatEUR(d.projection)}</div><div>Projection ${q}</div></div>
-            <div class="stat-mini" style="color:${d.ecart > 0 ? 'var(--c-danger)' : 'var(--c-success)'}">
-              <div>${d.ecart > 0 ? '-' : '+'}${formatEUR(Math.abs(d.ecart))}</div>
+            <div class="stat-mini"><div>${safePct(d.pct)}</div><div>Atteinte</div></div>
+            <div class="stat-mini"><div>${fmtEUR(d.projection)}</div><div>Projection ${q}</div></div>
+            <div class="stat-mini" style="color:${ecartCouleur}">
+              <div>${ecartHtml}</div>
               <div>Écart</div>
             </div>
           </div>
           <div style="height:1px;background:var(--c-border);margin:12px 0"></div>
           <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;margin-bottom:4px">AXE 2 — NSB</div>
           <div style="display:flex;gap:12px;flex-wrap:wrap">
-            <div class="stat-mini"><div>${a2.valide}</div><div>Validés</div></div>
-            <div class="stat-mini"><div>${a2.total - a2.valide}</div><div>En attente</div></div>
-            ${a2.obj2 > 0 ? `<div class="stat-mini"><div>${a2.obj2}</div><div>Objectif</div></div>` : ''}
+            <div class="stat-mini"><div>${a2.valide ?? '—'}</div><div>Validés</div></div>
+            <div class="stat-mini"><div>${(a2.total - a2.valide) ?? '—'}</div><div>En attente</div></div>
+            ${a2.obj2 > 0 ? `<div class="stat-mini"><div>${a2.obj2}</div><div>Objectif NSB</div></div>` : ''}
           </div>
           <div style="height:1px;background:var(--c-border);margin:12px 0"></div>
           <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;margin-bottom:4px">AXE 3 — ONBOARDING EMPOWER</div>
           <div style="display:flex;gap:12px;flex-wrap:wrap">
-            <div class="stat-mini"><div>${a3.integres}</div><div>Total</div></div>
-            <div class="stat-mini"><div>${a3.flavie}</div><div>Via Flavie</div></div>
-            <div class="stat-mini"><div>${a3.terrain}</div><div>Terrain</div></div>
+            <div class="stat-mini"><div>${a3.integres ?? '—'}</div><div>Total intégrés</div></div>
+            <div class="stat-mini"><div>${a3.viaCanal ?? '—'}</div><div>Via Flavie/Alexandra</div></div>
+            <div class="stat-mini"><div>${a3.terrain ?? '—'}</div><div>Par le CDS</div></div>
             ${a3.obj3 > 0 ? `<div class="stat-mini"><div>${a3.obj3}</div><div>Objectif</div></div>` : ''}
           </div>
         </div>`;
@@ -217,25 +243,33 @@ window.VueObjectifs = {
 
     let corps = '';
     if (estManager) {
-      const CDS      = this.state.objectifs.map(o => ({ pin: Number(o.PIN_CDS), nom: o.Nom_CDS }));
-      const totalCA  = CDS.reduce((s, c) => s + this._donneesCDS(c.pin).ca,  0);
-      const totalObj = CDS.reduce((s, c) => s + this._donneesCDS(c.pin).obj, 0);
-      const pctTotal = totalObj > 0 ? Math.round(totalCA / totalObj * 100) : 0;
+      // Construit la liste CDS depuis objectifs — nom résolu via resolveCDS
+      const CDS = this.state.objectifs.map(o => ({
+        pin: Number(o.PIN_CDS),
+        nom: window.resolveCDS(Number(o.PIN_CDS)) !== '—'
+          ? window.resolveCDS(Number(o.PIN_CDS))
+          : window.resolveCDS(o.Nom_CDS) || (o.Nom_CDS || '—'),
+      }));
+      const totalCA  = CDS.reduce((s, c) => s + (this._donneesCDS(c.pin).ca  || 0), 0);
+      const totalObj = CDS.reduce((s, c) => s + (this._donneesCDS(c.pin).obj || 0), 0);
+      const pctTotal  = (totalObj > 0 && isFinite(totalCA) && isFinite(totalObj))
+        ? Math.round(totalCA / totalObj * 100) : 0;
       const paceTotal = pctTotal >= 100 ? 'ON_TRACK' : pctTotal >= 80 ? 'WATCH' : 'AT_RISK';
       corps = `
         <div class="bloc-fiche">
           <div class="bloc-titre">Équipe — ${q}
             <span class="pace-badge ${paceTotal === 'ON_TRACK' ? 'pace-ok' : paceTotal === 'WATCH' ? 'pace-watch' : 'pace-risk'}">${pctTotal}%</span>
             <button class="btn-lien" style="margin-left:auto;font-size:13px" onclick="VueObjectifs.ouvrirModalSaisie()">
-              📥 Saisir CA Réalisé
+              📥 Saisir / Modifier Objectifs
             </button>
           </div>
-          <div class="pace-chiffres"><strong>${formatEUR(totalCA)}</strong><span>/ ${formatEUR(totalObj)}</span></div>
+          <div class="pace-chiffres"><strong>${fmtEUR(totalCA)}</strong><span>/ ${fmtEUR(totalObj)}</span></div>
           ${this._barreProgression(pctTotal, paceTotal)}
         </div>
         ${CDS.map(c => renderCDS(c.pin, c.nom)).join('')}
       `;
     } else {
+      // CDS : lecture seule — filtré sur son propre PIN
       corps = renderCDS(Session.pin, null);
     }
 
@@ -257,7 +291,8 @@ window.VueObjectifs = {
   },
 
   _renderModal() {
-    if (!this.state.modalSaisie) return '';
+    // Double sécurité : modal inaccessible si non-ADMIN
+    if (!this.state.modalSaisie || !Session.voitTout()) return '';
     const q    = this.state.quarter;
     const inp  = (id, field, label, unit='€', step='0.01') => {
       const v = this.state.formSaisie[id]?.[field] ?? 0;
@@ -273,12 +308,16 @@ window.VueObjectifs = {
       const id = o.ID_Objectif;
       if (!this.state.formSaisie[id] || typeof this.state.formSaisie[id] !== 'object')
         this.state.formSaisie[id] = { ca: 0, obj_ca: 0, obj_nsb: 0, obj_onboard: 0 };
+      // Nom résolu : jamais de PIN brut ni de Nom_CDS non traité
+      const nomAff = window.resolveCDS(Number(o.PIN_CDS)) !== '—'
+        ? window.resolveCDS(Number(o.PIN_CDS))
+        : window.resolveCDS(o.Nom_CDS) || (o.Nom_CDS || '—');
       return `
         <div style="margin-bottom:14px;padding:10px;background:var(--c-bg);border-radius:var(--radius-sm);border:1px solid var(--c-border)">
-          <div style="font-weight:700;font-size:14px;margin-bottom:8px">${o.Nom_CDS}</div>
-          ${inp(id,'ca',      'CA réalisé',       '€')}
-          ${inp(id,'obj_ca',  'Obj. CA révisé',   '€')}
-          ${inp(id,'obj_nsb', 'Obj. NSB/Q',       'cmd','1')}
+          <div style="font-weight:700;font-size:14px;margin-bottom:8px">${nomAff}</div>
+          ${inp(id,'ca',         'CA réalisé',       '€')}
+          ${inp(id,'obj_ca',     'Obj. CA révisé',   '€')}
+          ${inp(id,'obj_nsb',    'Obj. NSB/Q',       'cmd','1')}
           ${inp(id,'obj_onboard','Obj. Onboarding/Q','cpt','1')}
         </div>`;
     }).join('');

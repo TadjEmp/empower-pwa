@@ -240,6 +240,29 @@ function _mettreAJour({ fichier, onglet, id, champs }) {
   });
 
   SpreadsheetApp.flush();
+
+  // ── Bloc 6 — déclencheurs temps réel sur transition STATUT_EMPOWER ──
+  // Non bloquant : les notifs n'altèrent jamais le retour JSON ci-dessous.
+  try {
+    var nouvStatut = champs && champs.STATUT_EMPOWER;
+    if (nouvStatut) {
+      if (nouvStatut === 'EN_COURS') {
+        // Passage EN_COURS → Alexandra (5000) + Flavie (3000)
+        _notifier(5000, 'STATUT_EN_COURS', 'Prospect en cours: ' + id, id);
+        _notifier(3000, 'STATUT_EN_COURS', 'Prospect en cours: ' + id, id);
+      } else if (nouvStatut === 'INTEGRE') {
+        // Passage INTEGRE → Tadjidine (1000) + Alexandra (5000) + Flavie (3000)
+        _notifier(1000, 'STATUT_INTEGRE', 'Prospect intégré: ' + id, id);
+        _notifier(5000, 'STATUT_INTEGRE', 'Prospect intégré: ' + id, id);
+        _notifier(3000, 'STATUT_INTEGRE', 'Prospect intégré: ' + id, id);
+      } else if (nouvStatut === 'ARCHIVE') {
+        // Passage ARCHIVE (ou blocage) → Alexandra (5000) + Tadjidine (1000)
+        _notifier(5000, 'STATUT_ARCHIVE', 'Prospect archivé/bloqué: ' + id, id);
+        _notifier(1000, 'STATUT_ARCHIVE', 'Prospect archivé/bloqué: ' + id, id);
+      }
+    }
+  } catch (e) { _logErreur('', '_mettreAJour.notif', e); }
+
   return _json({ ok: true, ligneModifiee: rowIdx });
 }
 
@@ -253,6 +276,29 @@ function _uploadPhoto({ nom, base64 }, user) {
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   _log(user?.pin || '', 'uploadPhoto', nom || file.getName());
   return _json({ ok: true, url: file.getUrl() });
+}
+
+// ── MOTEUR D'ALERTES (Bloc 6) — 🔔_NOTIFS ───────────────────
+// Appende une notification temps réel destinée à un PIN.
+// Colonnes : ID_Notif, Date_Envoi, PIN_Destinataire, Type_Notif,
+//            Message, ID_Cible, Statut_Lu, Timestamp.
+// Le front lit ses notifs via SheetsAPI.lire('EMPOWER_MDB','🔔_NOTIFS')
+// filtré sur PIN_Destinataire = Session.pin.
+// Jamais bloquant : une erreur de notif ne doit pas casser l'action métier.
+function _notifier(pinDestinataire, typeNotif, message, idCible) {
+  try {
+    if (!pinDestinataire && pinDestinataire !== 0) return;
+    var sh = _getSpreadsheet('EMPOWER_MDB').getSheetByName('🔔_NOTIFS');
+    if (!sh) return;
+    var now = new Date().toISOString();
+    var idNotif = 'NOTIF_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    sh.appendRow([
+      idNotif, now, pinDestinataire, typeNotif || 'INFO',
+      message || '', idCible || '', 'NON', now
+    ]);
+  } catch (e) {
+    _logErreur(pinDestinataire || '', '_notifier', e);
+  }
 }
 
 // ── ATTRIBUER LEAD (Alexandra / Tadjidine) ──────────────────
@@ -269,6 +315,11 @@ function _attribuerLead({ id, cdsPin, cdsNom, pin }) {
     },
   });
   _log(pin, 'attribuerLead', `Lead ${id} → ${cdsNom || cdsPin}`);
+  // Bloc 6 — alerte J0 au CDS assigné. Si pas de cdsPin : statut reste
+  // ASSIGNE sans notif (rien à notifier tant que personne n'est assigné).
+  if (cdsPin || cdsPin === 0) {
+    _notifier(cdsPin, 'LEAD_ASSIGNE', 'Nouveau lead assigné: ' + id, id);
+  }
   return r;
 }
 
@@ -358,6 +409,7 @@ const PARAMS_FY27 = [
   ['APP_NAME','ESI — Empower Sales Intelligence','Nom application'],
   ['LOCK_TIMEOUT_MS','10000','Timeout verrou écriture (ms)'],
   ['NOTIF_FLAVIE_PIN','3000','PIN destinataire notifs phoning'],
+  ['GROQ_SYSTEM_PROMPT','Tu es l\'assistant IA d\'ESI (Empower Sales Intelligence), l\'outil terrain des CDS Norton/Gen Digital. Tu aides à qualifier des revendeurs IT, résumer des visites/appels et suggérer la prochaine action commerciale. Réponds toujours en français, de façon concise, factuelle et orientée action. Ne jamais inventer de chiffres : si une donnée manque, écris \"—\". Respecte le RGPD : aucune donnée personnelle inutile. Format de sortie : phrases courtes ou JSON si demandé.','System prompt Groq (Bloc 8)'],
 ];
 
 // Objectifs FY27 Option D3 (PDF incentives) + CA Q1 réalisé (SELL IN W7)
@@ -446,20 +498,26 @@ function installerBase() {
   return { mdb: mdb.getUrl(), v17: v17.getUrl(), comptes: comptes.length, prospects: prospects.length };
 }
 
-// ⚙️ Recrée l'onglet 👤_UTILISATEURS avec les vrais credentials FY27.
-// À exécuter depuis l'éditeur Apps Script (menu Exécuter → fixUtilisateurs).
+// ⚙️ Recrée l'onglet 👤_UTILISATEURS avec les vrais credentials FY27 (BLOC 1 du spec).
+// ⚠️ FONCTION MANUELLE — NE PAS auto-exécuter / ne pas appeler depuis le router.
+// Tadjidine doit la ré-exécuter manuellement depuis l'éditeur Apps Script
+// (menu Exécuter → fixUtilisateurs) pour APPLIQUER les nouveaux mots de passe +
+// le compte Flavie. Tant qu'elle n'est pas ré-exécutée, les sessions/logins
+// actuels restent inchangés (les hash existants ne sont pas écrasés).
 function fixUtilisateurs() {
   var ss = _getSpreadsheet('EMPOWER_MDB');
   var existing = ss.getSheetByName(CONFIG.SHEET_USERS);
   if (existing) ss.deleteSheet(existing);
   var sh = ss.insertSheet(CONFIG.SHEET_USERS);
   sh.appendRow(['Email','Hash','Salt','PIN','Nom','Role','Actif','Token','Token_Expiry']);
+  // Mots de passe alignés sur le BLOC 1 du spec ERI.txt.
   var USERS = [
-    ['t.soefou@agence-impact.com',        'Empower101000', 1000, 'Tadjidine',  'ADMIN'],
-    ['lm.daoud@agence-impact.com',         'Empower104001', 4001, 'Lyes',       'CDS'],
-    ['m.hocine@agence-impact.com',         'Empower104002', 4002, 'Mehdi',      'CDS'],
-    ['j.lhermitte@agence-impact.com',      'Empower104003', 4003, 'Johanne',    'CDS'],
-    ['alexandra.alguazil@gendigital.com',  'Empower105000', 5000, 'Alexandra',  'CHANNEL_MANAGER'],
+    ['t.soefou@agence-impact.com',        'NortonFY27!', 1000, 'Tadjidine',  'ADMIN'],
+    ['lm.daoud@agence-impact.com',         'NortonCDS27', 4001, 'Lyes',       'CDS'],
+    ['m.hocine@agence-impact.com',         'NortonCDS27', 4002, 'Mehdi',      'CDS'],
+    ['j.lhermitte@agence-impact.com',      'NortonCDS27', 4003, 'Johanne',    'CDS'],
+    ['alexandra.alguazil@gendigital.com',  'ChanMgr27',   5000, 'Alexandra',  'CHANNEL_MANAGER'],
+    ['flavie@agence-impact.com',           'ChanMgr27',   3000, 'Flavie',     'EXTERNE'],
   ];
   USERS.forEach(function(u) {
     var salt = Utilities.getUuid();
@@ -569,9 +627,9 @@ function _groqLLM(body, user) {
 }
 
 function _setGroqKey(body, user) {
-  if (!user || user.role !== 'ADMIN') return _json({ ok: false, erreur: 'Accès réservé à l\'administrateur' });
+  if (!user || user.role !== 'ADMIN') return _json({ ok: false, erreur: 'Accès réservé à l\'administrateur (rôle ADMIN requis)' });
   var cle = String(body.cle || '').trim();
-  if (!cle) return _json({ ok: false, erreur: 'Clé vide' });
+  if (!cle) return _json({ ok: false, erreur: 'Clé Groq vide — saisissez une clé API valide (gsk_...)' });
   PropertiesService.getScriptProperties().setProperty('GROQ_API_KEY', cle);
   return _json({ ok: true });
 }
@@ -977,9 +1035,9 @@ function _syncSellInDrive(body, user) {
 
 // Stockage sécurisé de la clé Gemini — admin uniquement
 function _setGeminiKey(body, user) {
-  if (!user || user.role !== 'ADMIN') return _json({ ok: false, erreur: 'Accès réservé à l\'administrateur' });
+  if (!user || user.role !== 'ADMIN') return _json({ ok: false, erreur: 'Accès réservé à l\'administrateur (rôle ADMIN requis)' });
   var cle = String(body.cle || '').trim();
-  if (!cle) return _json({ ok: false, erreur: 'Clé vide' });
+  if (!cle) return _json({ ok: false, erreur: 'Clé Gemini vide — saisissez une clé API valide' });
   PropertiesService.getScriptProperties().setProperty('GEMINI_API_KEY', cle);
   return _json({ ok: true });
 }

@@ -8,7 +8,9 @@ window.VueAdmin = {
   state: null,
 
   async init() {
-    if (!Session.voitTout()) { Router.aller('#/dashboard'); return; }
+    // Alexandra (CHANNEL_MANAGER) garde son espace exports/leads ;
+    // seul ADMIN voit le bloc clés API (rendu dans la branche estManager ci-dessous).
+    if (!Session.estManager() && !Session.estChannel()) { Router.aller('#/dashboard'); return; }
     this.state = {
       chargement: true, objectifs: [], params: [], envoiEnCours: false,
       alexTab: 'exports',   // 'exports' | 'leads'
@@ -137,7 +139,7 @@ window.VueAdmin = {
           <select style="flex:1;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:8px;font-size:13px"
                   onchange="VueAdmin.state.suivi.filtreCDS=this.value;VueAdmin.render()">
             <option value="TOUS">Tous les CDS</option>
-            ${cdsPins.map(pin => `<option value="${pin}" ${sv.filtreCDS == pin ? 'selected':''}>${CDS_NOMS[Number(pin)] || 'PIN '+pin}</option>`).join('')}
+            ${cdsPins.map(pin => `<option value="${pin}" ${sv.filtreCDS == pin ? 'selected':''}>${CDS_NOMS[Number(pin)] || (window.resolveCDS ? resolveCDS(pin) : pin)}</option>`).join('')}
           </select>
           <select style="flex:1;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:8px;font-size:13px"
                   onchange="VueAdmin.state.suivi.filtreStatut=this.value;VueAdmin.render()">
@@ -237,8 +239,8 @@ window.VueAdmin = {
         Produits_Potentiels: f.produits.join(', '),
         Note_initiale:     f.notes,
         PIN_CDS_Assigne:   f.cdsAssigne,
-        STATUT_EMPOWER:    'ASSIGNE',
-        FLAG_ACTION:       'ASSIGNE',
+        STATUT_EMPOWER:    f.cdsAssigne ? 'ASSIGNE' : 'SAISIE',
+        FLAG_ACTION:       f.cdsAssigne ? 'ASSIGNE' : 'A_TRAITER',
         Flag_traite:       'FALSE',
         Date_Import:       dateISOLocale(),
         Timestamp:         new Date().toISOString(),
@@ -246,8 +248,18 @@ window.VueAdmin = {
       };
 
       await SheetsAPI.ecrire('EMPOWER_MDB', '📋_PROSPECTS', lead);
+      // Bloc 4 : si un CDS est assigné, déclencher l'action backend attribuerLead
+      // → émet la notif J0 (LEAD_ASSIGNE) au CDS. Sans CDS, le lead reste "à traiter".
+      if (f.cdsAssigne) {
+        await SheetsAPI._fetchRetry(SheetsAPI.BASE_URL, 'POST', 2, {
+          action: 'attribuerLead', token: SheetsAPI.TOKEN,
+          id: lead.ID_Prospect, cdsPin: f.cdsAssigne,
+          cdsNom: (window.resolveCDS ? resolveCDS(f.cdsAssigne) : f.cdsAssigne),
+        });
+      }
       await this._logExport(`LEAD_CREE:${f.nom}`, 1);
-      Toast.afficher(`✅ Lead créé — ${f.nom} → assigné à PIN ${f.cdsAssigne}`, 'succes', 5000);
+      const _cdsLbl = window.resolveCDS ? resolveCDS(f.cdsAssigne) : f.cdsAssigne;
+      Toast.afficher(`✅ Lead créé — ${f.nom}${f.cdsAssigne ? ` → assigné à ${_cdsLbl}` : ' (à traiter)'}`, 'succes', 5000);
       this.state.formLead = this._initFormLead();
     } catch(err) {
       Toast.afficher('❌ ' + err.message, 'erreur');
@@ -435,30 +447,58 @@ window.VueAdmin = {
     this.state.envoiEnCours = false;
   },
 
+  // Toggle affichage/masquage d'un champ clé (password ⇄ text)
+  toggleCleVisible(inputId, btnId) {
+    const inp = document.getElementById(inputId);
+    const btn = document.getElementById(btnId);
+    if (!inp) return;
+    const visible = inp.type === 'text';
+    inp.type = visible ? 'password' : 'text';
+    if (btn) btn.textContent = visible ? '👁️ Afficher' : '🙈 Masquer';
+  },
+
   async sauverCleGroq() {
     const v = document.getElementById('admin-groq-key').value.trim();
-    if (!v) { Toast.afficher('Clé vide — rien enregistré', 'warning'); return; }
+    // Ne pas écraser une clé existante si le champ est vide
+    if (!v) { Toast.afficher('Champ vide — la clé existante est conservée', 'warning'); return; }
+    // Validation format Groq (préfixe gsk_) avant envoi
+    if (!v.startsWith('gsk_')) {
+      Toast.afficher('Format invalide : une clé Groq commence par « gsk_ »', 'warning');
+      return;
+    }
     const btn = document.getElementById('btn-groq-save');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Envoi…'; }
     try {
       await GroqAPI.sauverCle(v);
       document.getElementById('admin-groq-key').value = '';
-      Toast.afficher('✅ Clé Groq stockée côté Apps Script (PropertiesService)', 'succes');
-    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
-    finally { if (btn) { btn.disabled = false; btn.textContent = '💾 Enregistrer la clé'; } }
+      Toast.afficher('Clé enregistrée avec succès', 'succes');
+    } catch(e) {
+      // Message EXACT renvoyé par le backend (pas "failed")
+      Toast.afficher('❌ ' + (e && e.message ? e.message : 'Erreur inconnue'), 'erreur');
+    }
+    finally { if (btn) { btn.disabled = false; btn.textContent = '💾 Enregistrer la clé Groq'; } }
   },
 
   async sauverCleGemini() {
     const v = document.getElementById('admin-gemini-key').value.trim();
-    if (!v) { Toast.afficher('Clé vide — rien enregistré', 'warning'); return; }
+    // Ne pas écraser une clé existante si le champ est vide
+    if (!v) { Toast.afficher('Champ vide — la clé existante est conservée', 'warning'); return; }
+    // Validation format Gemini (préfixe AIza) avant envoi
+    if (!v.startsWith('AIza')) {
+      Toast.afficher('Format invalide : une clé Gemini commence par « AIza »', 'warning');
+      return;
+    }
     const btn = document.getElementById('btn-gemini-save');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Envoi…'; }
     try {
       await GeminiAPI.sauverCle(v);
       document.getElementById('admin-gemini-key').value = '';
-      Toast.afficher('✅ Clé Gemini stockée côté Apps Script (PropertiesService)', 'succes');
-    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
-    finally { if (btn) { btn.disabled = false; btn.textContent = '💾 Enregistrer la clé'; } }
+      Toast.afficher('Clé enregistrée avec succès', 'succes');
+    } catch(e) {
+      // Message EXACT renvoyé par le backend (pas "failed")
+      Toast.afficher('❌ ' + (e && e.message ? e.message : 'Erreur inconnue'), 'erreur');
+    }
+    finally { if (btn) { btn.disabled = false; btn.textContent = '💾 Enregistrer la clé Gemini'; } }
   },
 
   // ── Test réel des clés IA (appel léger via proxy Apps Script) ──
@@ -513,7 +553,7 @@ window.VueAdmin = {
     try {
       const r = await fetch(SheetsAPI.BASE_URL, {
         method: 'POST', redirect: 'follow',
-        headers: { 'Content-Type': 'application/json' },
+        // Pas de Content-Type → requête simple, évite le préflight CORS (Apps Script ne gère pas OPTIONS)
         body: JSON.stringify({ action: 'purgerDonnees', token: SheetsAPI.TOKEN, pinCDS: cible }),
       });
       const data = await r.json();
@@ -679,7 +719,7 @@ window.VueAdmin = {
           ${this.state.objectifs.map(o => `
             <div style="border-bottom:1px solid var(--c-border);padding:10px 0">
               <strong style="font-size:14px">${o.Nom_CDS}
-                <span style="color:var(--c-text-2);font-weight:400"> · PIN ${o.PIN_CDS} · FY27 : ${formatEuro(o.FY27_Obj)}</span>
+                <span style="color:var(--c-text-2);font-weight:400"> · FY27 : ${formatEuro(o.FY27_Obj)}</span>
               </strong>
               <div style="display:flex;gap:6px;margin-top:8px">
                 ${['Q1', 'Q2', 'Q3', 'Q4'].map(q => `
@@ -697,7 +737,11 @@ window.VueAdmin = {
         <!-- CLÉS API -->
         <div class="bloc-fiche">
           <div class="bloc-titre">Clé API Groq (transcription vocale + LLM)</div>
-          <input id="admin-groq-key" type="password" class="q-input" placeholder="gsk_…" autocomplete="new-password"/>
+          <div style="display:flex;gap:8px;align-items:stretch">
+            <input id="admin-groq-key" type="password" class="q-input" style="flex:1" placeholder="gsk_…" autocomplete="new-password"/>
+            <button id="btn-groq-toggle" type="button" class="btn-secondaire" style="width:auto;flex-shrink:0;white-space:nowrap"
+                    onclick="VueAdmin.toggleCleVisible('admin-groq-key','btn-groq-toggle')">👁️ Afficher</button>
+          </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
             <button id="btn-groq-save" class="btn-secondaire"
                     onclick="VueAdmin.sauverCleGroq()">💾 Enregistrer la clé Groq</button>
@@ -712,7 +756,11 @@ window.VueAdmin = {
 
         <div class="bloc-fiche">
           <div class="bloc-titre">Clé API Gemini (IA assistant)</div>
-          <input id="admin-gemini-key" type="password" class="q-input" placeholder="AQ…" autocomplete="new-password"/>
+          <div style="display:flex;gap:8px;align-items:stretch">
+            <input id="admin-gemini-key" type="password" class="q-input" style="flex:1" placeholder="AIza…" autocomplete="new-password"/>
+            <button id="btn-gemini-toggle" type="button" class="btn-secondaire" style="width:auto;flex-shrink:0;white-space:nowrap"
+                    onclick="VueAdmin.toggleCleVisible('admin-gemini-key','btn-gemini-toggle')">👁️ Afficher</button>
+          </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
             <button id="btn-gemini-save" class="btn-secondaire"
                     onclick="VueAdmin.sauverCleGemini()">💾 Enregistrer la clé Gemini</button>
@@ -810,7 +858,7 @@ window.VueAdmin = {
             <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--c-border)">
               <div>
                 <div style="font-size:14px;font-weight:600">${o.Nom_CDS}</div>
-                <div style="font-size:11px;color:var(--c-text-2)">PIN ${o.PIN_CDS} · 📞 appels + 🗺️ visites</div>
+                <div style="font-size:11px;color:var(--c-text-2)">📞 appels + 🗺️ visites</div>
               </div>
               <button id="btn-purge-${o.PIN_CDS}" class="btn-secondaire"
                       style="padding:8px 14px;width:auto;color:var(--c-danger);border-color:var(--c-danger)"

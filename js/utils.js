@@ -138,7 +138,7 @@ function generateCSV(data, filename) {
 }
 
 function NavBar(actif) {
-  const items = [
+  const tousItems = [
     { id: 'home',        hash: '#/dashboard',           icone: '⌂',  lbl: 'Home' },
     { id: 'tracker',     hash: '#/empower-tracker',     icone: '▤',  lbl: 'Tracker' },
     { id: 'historiques', hash: '#/comptes-historiques', icone: '🏢', lbl: 'Comptes' },
@@ -146,7 +146,20 @@ function NavBar(actif) {
     { id: 'visites',     hash: '#/visites',             icone: '📅', lbl: 'Visites' },
     { id: 'objectifs',   hash: '#/objectifs',           icone: '🎯', lbl: 'Objectifs' },
     { id: 'primes',      hash: '#/primes',              icone: '🏆', lbl: 'Primes' },
+    { id: 'comptes',     hash: '#/comptes',             icone: '🗂️', lbl: 'Comptes' },
+    { id: 'reporting',   hash: '#/manager',             icone: '📊', lbl: 'Reporting' },
+    { id: 'admin',       hash: '#/admin',               icone: '⚙', lbl: 'Admin' },
   ];
+
+  // Filtrage role-aware : ne rend QUE les onglets autorisés par la matrice RBAC.
+  let items = tousItems;
+  const role = (typeof Session !== 'undefined') ? Session.role : null;
+  if (role && typeof window.Permissions !== 'undefined') {
+    const autorises = window.Permissions.onglets(role);
+    // Préserve l'ordre de tousItems, ne garde que les tabs autorisés.
+    items = tousItems.filter(i => autorises.indexOf(i.id) !== -1);
+  }
+
   return `
     <div class="app-brand-bar">
       <div class="app-brand-logo">
@@ -170,3 +183,123 @@ function NavBar(actif) {
         </a>`).join('')}
     </nav>`;
 }
+
+// ═══════════════════════════════════════
+//  Bloc 9 #1 — resolveCDS(pinOuLibelle) → prénom EN MAJUSCULES ou '—'
+//  Gère pin numérique, libellé "TADJ", nom complet, alias texte.
+// ═══════════════════════════════════════
+(function () {
+  const PIN_VERS_PRENOM = {
+    1000: 'TADJIDINE',
+    4001: 'LYES',
+    4002: 'MEHDI',
+    4003: 'JOHANNE',
+    5000: 'ALEXANDRA',
+    3000: 'FLAVIE',
+  };
+
+  // alias texte (normalisés en MAJUSCULES, sans accents) → prénom canonique
+  const ALIAS = {
+    'TADJ':              'TADJIDINE',
+    'TADJIDINE':         'TADJIDINE',
+    'TADJIDINE SOEFOU':  'TADJIDINE',
+    'SOEFOU':            'TADJIDINE',
+    'LYES':              'LYES',
+    'DAOUD':             'LYES',
+    'LYES DAOUD':        'LYES',
+    'MEHDI':             'MEHDI',
+    'HOCINE':            'MEHDI',
+    'MEHDI HOCINE':      'MEHDI',
+    'JOHANNE':           'JOHANNE',
+    'LHERMITTE':         'JOHANNE',
+    'JOHANNE LHERMITTE': 'JOHANNE',
+    'ALEXANDRA':         'ALEXANDRA',
+    'ALGUAZIL':          'ALEXANDRA',
+    'ALEXANDRA ALGUAZIL':'ALEXANDRA',
+    'FLAVIE':            'FLAVIE',
+  };
+
+  function resolveCDS(pinOuLibelle) {
+    if (pinOuLibelle === null || pinOuLibelle === undefined) return '—';
+
+    // 1) PIN numérique direct (number ou string purement numérique)
+    const asNum = Number(pinOuLibelle);
+    if (typeof pinOuLibelle === 'number' || /^\s*\d+\s*$/.test(String(pinOuLibelle))) {
+      if (PIN_VERS_PRENOM[asNum]) return PIN_VERS_PRENOM[asNum];
+    }
+
+    // 2) Libellé texte
+    const brut = String(pinOuLibelle).trim();
+    if (!brut) return '—';
+
+    const norm = brut
+      .toUpperCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (ALIAS[norm]) return ALIAS[norm];
+
+    // 3) Recherche par mot-clé (un prénom ou nom contenu dans le libellé)
+    for (const cle in ALIAS) {
+      if (cle.indexOf(' ') === -1 && norm.indexOf(cle) !== -1) {
+        return ALIAS[cle];
+      }
+    }
+
+    return '—';
+  }
+
+  window.resolveCDS = resolveCDS;
+})();
+
+// ═══════════════════════════════════════
+//  Bloc 9 #2 — parseCA(v) / fmtCA(v)
+//  Montants robustes. Valeurs corrompues (dates "11/4/1903", NaN) → null / '—'.
+// ═══════════════════════════════════════
+(function () {
+
+  function parseCA(v) {
+    if (v === null || v === undefined || v === '') return null;
+
+    if (typeof v === 'number') return isFinite(v) ? v : null;
+
+    let str = String(v).trim();
+    if (!str) return null;
+
+    // Rejet des valeurs ressemblant à une date (dd/mm/yyyy, yyyy-mm-dd, etc.)
+    // — fréquentes corruptions du tracker ("11/4/1903").
+    if (/[\/]/.test(str) && /\d/.test(str)) {
+      // une chaîne avec des '/' entre chiffres est traitée comme date corrompue
+      if (/^\d{1,4}[\/]\d{1,2}[\/]\d{1,4}$/.test(str)) return null;
+    }
+    if (/^\d{4}-\d{2}-\d{2}/.test(str)) return null;
+
+    // Nettoyage FR/EN
+    let cleaned;
+    if (str.includes(',') && str.includes('.')) {
+      const liComma = str.lastIndexOf(','), liDot = str.lastIndexOf('.');
+      cleaned = liComma > liDot
+        ? str.replace(/\./g, '').replace(',', '.')
+        : str.replace(/,/g, '');
+    } else {
+      cleaned = str.replace(/\s/g, '').replace(',', '.');
+    }
+    cleaned = cleaned.replace(/[^0-9.\-]/g, '');
+    if (cleaned === '' || cleaned === '-' || cleaned === '.') return null;
+
+    const n = parseFloat(cleaned);
+    return isFinite(n) ? n : null;
+  }
+
+  function fmtCA(v) {
+    const n = parseCA(v);
+    if (n === null || !isFinite(n)) return '—';
+    return new Intl.NumberFormat('fr-FR', {
+      minimumFractionDigits: 0, maximumFractionDigits: 0,
+    }).format(n);
+  }
+
+  window.parseCA = parseCA;
+  window.fmtCA   = fmtCA;
+})();

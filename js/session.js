@@ -59,5 +59,6 @@ const Session = {
   estManager()  { return this.role === 'ADMIN'; },
   estCDS()      { return this.role === 'CDS'; },
   estChannel()  { return this.role === 'CHANNEL_MANAGER'; },
+  estExterne()  { return this.role === 'EXTERNE'; },
   voitTout()    { return this.role === 'ADMIN' || this.role === 'CHANNEL_MANAGER'; },
 };

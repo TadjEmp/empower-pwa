@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════
-//  vue-comptes.js v5 — BUG-03 parseAmount · BUG-04 LECLERC · BUG-05 statuts · BUG-06 filtre CDS
+//  vue-comptes.js v6 — Alexandra lecture seule · parseCA/fmtCA · resolveCDS(utils) · filtre Actif dynamique
 // ═══════════════════════════════════════
 
 window.VueComptes = {
@@ -36,47 +36,57 @@ window.VueComptes = {
     }
   },
 
+  // Statut compte calculé avec parseCA (immunisé dates corrompues type "11/4/1903")
+  _statutCompte(c) {
+    const q1 = window.parseCA(c.CA_Q1FY27);
+    if (q1 !== null && q1 > 0) return 'actif';
+    const fy26 = window.parseCA(c.CA_FY26);
+    if (fy26 !== null && fy26 > 0) return 'a_reactiver';
+    return 'silencieux';
+  },
+
   get listeFiltree() {
     let l = [...this.state.comptes];
 
-    // Recherche texte — inclut CANAL (BUG-04)
+    // Recherche texte case-insensitive — inclut CANAL et SECTEUR
     const q = normaliserNom(this.state.recherche);
     if (q) l = l.filter(c =>
-      normaliserNom(c.Nom_Compte).includes(q) ||
-      normaliserNom(c.Ville).includes(q) ||
-      normaliserNom(c.CANAL || '').includes(q)
+      normaliserNom(c.Nom_Compte || '').includes(q) ||
+      normaliserNom(c.Ville     || '').includes(q) ||
+      normaliserNom(c.CANAL     || '').includes(q) ||
+      normaliserNom(c.SECTEUR   || '').includes(q)
     );
 
-    // BUG-04 : filtre LECLERC / REVENDEURS
+    // Filtre LECLERC / REVENDEURS — case-insensitive inclusif
     if (this.state.filtreCanal === 'LECLERC') {
-      l = l.filter(c => String(c.CANAL || '').toUpperCase().includes('LECLERC'));
+      l = l.filter(c => normaliserNom(c.CANAL || '').includes('LECLERC'));
     } else if (this.state.filtreCanal === 'REVENDEURS') {
-      l = l.filter(c => !String(c.CANAL || '').toUpperCase().includes('LECLERC'));
+      l = l.filter(c => !normaliserNom(c.CANAL || '').includes('LECLERC'));
     }
 
-    // BUG-05 : filtre statut calculé dynamiquement
+    // Filtre statut calculé dynamiquement (parseCA — résistant aux dates corrompues)
     if (this.state.filtreStatut === 'actif') {
-      l = l.filter(c => getStatutCompte(c) === 'actif');
+      l = l.filter(c => this._statutCompte(c) === 'actif');
     } else if (this.state.filtreStatut === 'a_reactiver') {
-      l = l.filter(c => getStatutCompte(c) === 'a_reactiver');
+      l = l.filter(c => this._statutCompte(c) === 'a_reactiver');
     } else if (this.state.filtreStatut === 'silencieux') {
-      l = l.filter(c => getStatutCompte(c) === 'silencieux');
+      l = l.filter(c => this._statutCompte(c) === 'silencieux');
     } else if (this.state.filtreStatut === 'SANS_CDS') {
       l = l.filter(c => !c.PIN_CDS_Assigne);
     }
 
-    // BUG-06 : filtre CDS pour le Manager
+    // Filtre CDS pour Manager/Admin uniquement
     if (Session.voitTout() && this.state.filtreCDSPin !== 'TOUS') {
       l = l.filter(c => String(c.PIN_CDS_Assigne) === String(this.state.filtreCDSPin));
     }
 
-    // Tri — BUG-03 : parseAmount pour tri CA
+    // Tri — parseCA pour CA (résistant aux dates corrompues)
     if (this.state.triPar === 'PRIORITE')
       l.sort((a, b) => (this.PRIORITE_ORDRE[a.Priorite] ?? 9) - (this.PRIORITE_ORDRE[b.Priorite] ?? 9));
     if (this.state.triPar === 'CA')
-      l.sort((a, b) => parseAmount(b.CA_FY26 || 0) - parseAmount(a.CA_FY26 || 0));
+      l.sort((a, b) => (window.parseCA(b.CA_FY26) || 0) - (window.parseCA(a.CA_FY26) || 0));
     if (this.state.triPar === 'NOM')
-      l.sort((a, b) => String(a.Nom_Compte).localeCompare(String(b.Nom_Compte)));
+      l.sort((a, b) => String(a.Nom_Compte || '').localeCompare(String(b.Nom_Compte || '')));
     return l;
   },
 
@@ -154,10 +164,15 @@ window.VueComptes = {
       <div class="liste-comptes avec-nav">
         ${liste.length === 0 ? '<div class="vide">Aucun compte pour ces critères</div>'
           : liste.map(c => {
-            // BUG-03 : afficherCA() sécurisé avec assertAmountSane
-            const caFY26 = afficherCA(c.CA_FY26);
-            const caQ1   = afficherCA(c.CA_Q1FY27);
-            const nomCDS = resolveCDS(c.PIN_CDS_Assigne) || (c.Nom_CDS ? c.Nom_CDS : null); // BUG-02
+            // fmtCA : retourne '—' si valeur invalide/nulle/corrompue (date "11/4/1903" → '—')
+            const caFY26 = window.fmtCA(c.CA_FY26);
+            const caQ1   = window.fmtCA(c.CA_Q1FY27);
+            // resolveCDS (utils.js) : retourne '—' si PIN inconnu — jamais de PIN brut dans l'UI
+            const nomCDS = window.resolveCDS(c.PIN_CDS_Assigne) !== '—'
+              ? window.resolveCDS(c.PIN_CDS_Assigne)
+              : (c.Nom_CDS ? window.resolveCDS(c.Nom_CDS) : null);
+            // Alexandra (CHANNEL_MANAGER) : vue lecture seule — pas d'actions terrain
+            const estLectureSeule = Session.role === 'CHANNEL_MANAGER';
             return `
           <div class="carte-compte-v2">
             <div class="cc-pills" onclick="Router.aller('#/compte/${c.ID_Compte}')">
@@ -165,7 +180,7 @@ window.VueComptes = {
               ${this._badgePriorite(c.Priorite)}
               <span style="margin-left:auto;font-size:13px;font-weight:700;color:var(--c-title)">FY26 ${caFY26}</span>
             </div>
-            <div class="cc-nom" onclick="Router.aller('#/compte/${c.ID_Compte}')">${c.Nom_Compte}</div>
+            <div class="cc-nom" onclick="Router.aller('#/compte/${c.ID_Compte}')">${c.Nom_Compte || '—'}</div>
             <div class="cc-infos" onclick="Router.aller('#/compte/${c.ID_Compte}')">
               <span>📍 ${c.Ville || '—'}</span>
               <span>${c.CANAL || '—'}</span>
@@ -173,10 +188,11 @@ window.VueComptes = {
               ${c.Date_prochaine_action ? `
                 <span class="${estDepassee(c.Date_prochaine_action) ? 'prochaine-action alerte' : ''}">⏰ ${dateRelative(c.Date_prochaine_action)}</span>` : ''}
             </div>
+            ${estLectureSeule ? `` : `
             <div class="cc-actions">
               <button class="btn-visiter" onclick="Router.aller('#/questionnaire/${c.ID_Compte}')">Visiter</button>
               <button class="btn-tel-outline" onclick="Router.aller('#/phoning/${c.ID_Compte}')" title="Appeler">📞</button>
-            </div>
+            </div>`}
             ${Session.estManager() ? `
             <div class="cc-infos" style="align-items:center;gap:6px">
               <span style="font-weight:600">${nomCDS ? '👤 ' + nomCDS : '⚠️ Non attribué'}</span>
@@ -190,7 +206,7 @@ window.VueComptes = {
           }).join('')}
       </div>
 
-      <button class="fab" onclick="Router.aller('#/questionnaire')" title="Nouvelle visite" style="bottom:140px">＋</button>
+      ${Session.role !== 'CHANNEL_MANAGER' ? `<button class="fab" onclick="Router.aller('#/questionnaire')" title="Nouvelle visite" style="bottom:140px">＋</button>` : ''}
       ${NavBar('comptes')}
     `;
     const champ = document.getElementById('recherche-comptes');
@@ -201,17 +217,20 @@ window.VueComptes = {
   },
 
   async attribuer(idCompte, pin) {
-    if (!pin || !Session.estManager()) return;
-    const nom = resolveCDS(pin);
+    // Lecture seule pour CHANNEL_MANAGER (Alexandra) — jamais d'écriture
+    if (!pin || Session.role === 'CHANNEL_MANAGER') return;
+    if (!Session.estManager()) return;
+    const nom = window.resolveCDS(pin); // utils.js — retourne '—' si inconnu
+    if (nom === '—') { Toast.afficher('CDS inconnu', 'erreur'); return; }
     try {
       await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', idCompte, {
         PIN_CDS_Assigne: Number(pin), Nom_CDS: nom,
       });
       const c = this.state.comptes.find(x => String(x.ID_Compte) === String(idCompte));
       if (c) { c.PIN_CDS_Assigne = Number(pin); c.Nom_CDS = nom; }
-      Toast.afficher(`✅ Compte attribué à ${nom}`, 'succes');
+      Toast.afficher(`Compte attribué à ${nom}`, 'succes');
       this.render();
-    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+    } catch(e) { Toast.afficher('Erreur : ' + (e.message || e), 'erreur'); }
   },
 
   setRecherche:   debounce(function(v) { VueComptes.state.recherche = v;      VueComptes.render(); }, 250),

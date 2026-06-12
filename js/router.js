@@ -69,16 +69,31 @@ const Router = {
       return;
     }
 
+    // ── Garde RBAC (matrice Permissions) ──
+    if (route.auth && typeof window.Permissions !== 'undefined') {
+      if (!window.Permissions.routeAutorisee(Session.role, hash)) {
+        const cible = window.Permissions.routeParDefaut(Session.role) || '#/login';
+        if (cible !== hash) { this.aller(cible); return; }
+      }
+    }
+
     const match = hash.match(route.pattern);
     const param  = route.param ? match[route.param] : null;
+
+    // ── #/dashboard : aiguillage par rôle ──
+    // CHANNEL_MANAGER → VueDashboardManager ; sinon VueDashboardCDS.
+    let vueNom = route.vue;
+    if (/^#\/dashboard$/.test(hash) && Session.role === 'CHANNEL_MANAGER') {
+      vueNom = 'VueDashboardManager';
+    }
 
     // Détection sous-vue VISITES via hash
     const sousVue = hash.includes('/visites/planning') ? 'planning'
                   : hash.includes('/visites/cr/')      ? 'cr'
                   : null;
 
-    const vue = window[route.vue];
-    if (!vue) { console.error('[Router] Vue introuvable :', route.vue); return; }
+    const vue = window[vueNom];
+    if (!vue) { console.error('[Router] Vue introuvable :', vueNom); return; }
 
     if (typeof vue.init === 'function') {
       if (sousVue === 'planning') vue.init('planning');

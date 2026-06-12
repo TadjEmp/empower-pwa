@@ -7,12 +7,24 @@
 
 window.VueVisites = {
 
-  STATUTS: ['planifiée', 'réalisée', 'reportée', 'annulée'],
+  // Bloc 3 : vocabulaire statuts aligné spec — Planifiée / En cours / Réalisée / Annulée
+  STATUTS: ['planifiée', 'en cours', 'réalisée', 'annulée'],
   STATUT_COULEURS: {
     'planifiée': 'var(--c-primary)',
+    'en cours':  'var(--c-warning)',
     'réalisée':  'var(--c-success)',
-    'reportée':  'var(--c-warning)',
     'annulée':   'var(--c-text-2)',
+    // tolérance ancien libellé en base
+    'reportée':  'var(--c-warning)',
+  },
+  // libellés d'affichage (capitalisés, jamais undefined)
+  _labelStatut(s) {
+    const v = (s || 'planifiée').toLowerCase();
+    const map = {
+      'planifiée': 'Planifiée', 'en cours': 'En cours',
+      'réalisée': 'Réalisée', 'annulée': 'Annulée', 'reportée': 'Reportée',
+    };
+    return map[v] || (v.charAt(0).toUpperCase() + v.slice(1)) || '—';
   },
 
   state: {
@@ -51,7 +63,9 @@ window.VueVisites = {
       this.state.visites = visites
         .filter(v => String(v.deleted || '').toUpperCase() !== 'TRUE')
         .filter(v => Session.voitTout() || Number(v.PIN_CDS) === Session.pin);
-      this.state.comptes = comptes.filter(c => Session.voitTout() || Number(c.PIN_CDS_Assigne) === Session.pin);
+      this.state.comptes = comptes
+        .filter(c => Session.voitTout() || Number(c.PIN_CDS_Assigne) === Session.pin)
+        .map(c => this._enrichirCompte(c));
 
       if (param && sousVue === 'cr') {
         this.state.visitePlanifiee = this.state.visites.find(v => v.ID_Visite === param) || null;
@@ -67,6 +81,63 @@ window.VueVisites = {
 
   _trouverVisite(id) {
     return (this.state.visites || []).find(v => v.ID_Visite === id) || null;
+  },
+
+  // ── Bloc 3 : SCORE RELANCE (URGENT → STANDARD) + données fiche compte ──
+  _semainesSilence(c) {
+    const ref = c.Date_Derniere_Action || c['Date_dernière_action'] ||
+                c.PREMIERE_COMMANDE_DATE || c.Date_Derniere_Commande || '';
+    if (!ref) return null;
+    const t = new Date(ref).getTime();
+    if (isNaN(t)) return null;
+    const w = Math.floor((Date.now() - t) / (7 * 86400000));
+    return w >= 0 ? w : null;
+  },
+
+  _enrichirCompte(c) {
+    const statut  = String(c.STATUT_COMPTE || c.FLAG_ACTION || '').toUpperCase();
+    const urgent  = statut.includes('URGENT') || statut.includes('CHURN');
+    const facteur = urgent ? 2.0 : (statut.includes('REACTIVER') ? 1.0 : 0.5);
+    const caFy26  = parseCA(c.CA_FY26);
+    const silence = this._semainesSilence(c);
+    // score relance = poids statut + ancienneté silence (relances anciennes prioritaires)
+    const score   = facteur * 100 + (silence || 0);
+    return {
+      ID_Compte:     c.ID_Compte || '',
+      Nom_Compte:    c.Nom_Compte || '—',
+      Ville:         c.Ville || '',
+      CANAL:         c.CANAL || '',
+      caFy26,                                   // number|null
+      potentiel:     c.POTENTIEL || c.Priorite || '—',
+      hasEmpower:    String(c.HAS_EMPOWER || '').toUpperCase() === 'TRUE',
+      silence,                                  // number|null
+      urgent,
+      score,
+      _raw:          c,
+    };
+  },
+
+  // comptes triés pour le sélecteur de planification (URGENT → STANDARD)
+  get comptesTries() {
+    return [...this.state.comptes].sort((a, b) => (b.score || 0) - (a.score || 0));
+  },
+
+  // mini fiche compte (Bloc 3 : CA FY26, dernier Q, semaines silence, POTENTIEL)
+  _ficheCompteSelectionne(idCompte) {
+    if (!idCompte) return '';
+    const c = this.state.comptes.find(x => x.ID_Compte === idCompte);
+    if (!c) return '';
+    const dernierQ = parseCA(c._raw.CA_Q1FY27);
+    const cell = (lbl, val) =>
+      `<div style="flex:1;min-width:80px"><div style="font-size:10px;color:var(--c-text-2);text-transform:uppercase">${lbl}</div><div style="font-size:13px;font-weight:700">${val}</div></div>`;
+    return `
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin:-4px 0 10px;padding:10px;background:var(--c-bg);border-radius:var(--radius-sm);border:1px solid var(--c-border)">
+        ${cell('CA FY26', fmtCA(c.caFy26))}
+        ${cell('Dernier Q', dernierQ != null ? fmtCA(dernierQ) : '—')}
+        ${cell('Silence', c.silence != null ? c.silence + ' sem.' : '—')}
+        ${cell('Potentiel', c.potentiel || '—')}
+        ${c.urgent ? `<div style="flex-basis:100%;font-size:11px;color:var(--c-danger);font-weight:700">🔴 Relance URGENTE</div>` : ''}
+      </div>`;
   },
 
   _resetFormPlanif() {
@@ -106,6 +177,13 @@ window.VueVisites = {
     }));
   },
 
+  // ── Bloc 3 : historique des visites réalisées ──
+  get visitesRealisees() {
+    return this.state.visites
+      .filter(v => (v.Statut_Visite || '').toLowerCase() === 'réalisée')
+      .sort((a, b) => (b.Date || b.Date_Planif || '').localeCompare(a.Date || a.Date_Planif || ''));
+  },
+
   get nbPlanifAujourdHui() {
     const today = dateISOLocale();
     return this.state.visites.filter(v =>
@@ -133,10 +211,30 @@ window.VueVisites = {
   },
   setModeVue(mode) { this.state.modeVue = mode; this.render(); },
 
-  // ── Compte-rendu ──
+  // ── Bloc 3 : passage Planifiée → En cours (déverrouille le questionnaire) ──
+  async demarrerVisite(idVisite) {
+    const v = this.state.visites.find(x => x.ID_Visite === idVisite);
+    if (!v) { Toast.afficher('Visite introuvable', 'warning'); return; }
+    if (!Session.voitTout() && Number(v.PIN_CDS) !== Session.pin) {
+      Toast.afficher('Vous ne pouvez démarrer que vos propres visites', 'warning'); return;
+    }
+    try {
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', '🗺️_VISITES', idVisite, { Statut_Visite: 'en cours' });
+      v.Statut_Visite = 'en cours';
+      Toast.afficher('▶️ Visite en cours — questionnaire déverrouillé', 'succes');
+      this.render();
+    } catch(err) { Toast.afficher('❌ ' + err.message, 'erreur'); }
+  },
+
+  // ── Compte-rendu (Bloc 3 : accessible SEULEMENT si Statut_Visite = "En cours") ──
   ouvrirCR(idVisite) {
     const v = this.state.visites.find(x => x.ID_Visite === idVisite);
     if (!v) { Toast.afficher('Visite introuvable', 'warning'); return; }
+    const statut = (v.Statut_Visite || 'planifiée').toLowerCase();
+    if (statut !== 'en cours') {
+      Toast.afficher('Démarrez la visite ("En cours") avant de remplir le questionnaire', 'warning');
+      return;
+    }
     this.state.visitePlanifiee = v;
     if (window.VueQuestionnaire) {
       VueQuestionnaire.init(v.ID_Cible || null);
@@ -181,7 +279,7 @@ window.VueVisites = {
       this.state.visites.unshift(visite);
       this.state.dateVue = f.date;
       this.state.modalPlanif = false;
-      Toast.afficher(`✅ Visite planifiée — ${f.nomCible} le ${f.date}`, 'succes');
+      Toast.afficher(`✅ Visite planifiée — ${nomFinal} le ${f.date}`, 'succes');
       this.render();
     } catch(err) { Toast.afficher('❌ ' + err.message, 'erreur'); }
   },
@@ -306,28 +404,24 @@ window.VueVisites = {
   ouvrirExtraction()  { this.state.extractOuvert = true; this.render(); },
   fermerExtraction()  { this.state.extractOuvert = false; this.render(); },
 
-  get extractionCount() {
+  _matchExtraction(v) {
     const f = this.state.extractFiltres;
-    return this.state.visites.filter(v => {
-      const date = (v.Date || v.Date_Planif || '').slice(0, 10);
-      if (f.debut && date < f.debut) return false;
-      if (f.fin   && date > f.fin)   return false;
-      if (f.statut !== 'TOUS' && v.Statut_Visite !== f.statut) return false;
-      if (f.cds !== 'TOUS' && String(v.PIN_CDS) !== f.cds) return false;
-      return true;
-    }).length;
+    const date = (v.Date || v.Date_Planif || '').slice(0, 10);
+    if (f.debut && date < f.debut) return false;
+    if (f.fin   && date > f.fin)   return false;
+    if (f.statut !== 'TOUS' &&
+        (v.Statut_Visite || 'planifiée').toLowerCase() !== f.statut.toLowerCase()) return false;
+    if (f.cds !== 'TOUS' && String(v.PIN_CDS) !== f.cds) return false;
+    return true;
+  },
+
+  get extractionCount() {
+    return this.state.visites.filter(v => this._matchExtraction(v)).length;
   },
 
   exporterVisites() {
     const f = this.state.extractFiltres;
-    const data = this.state.visites.filter(v => {
-      const date = (v.Date || v.Date_Planif || '').slice(0, 10);
-      if (f.debut && date < f.debut) return false;
-      if (f.fin   && date > f.fin)   return false;
-      if (f.statut !== 'TOUS' && v.Statut_Visite !== f.statut) return false;
-      if (f.cds !== 'TOUS' && String(v.PIN_CDS) !== f.cds) return false;
-      return true;
-    });
+    const data = this.state.visites.filter(v => this._matchExtraction(v));
     if (!data.length) { Toast.afficher('Aucune visite pour ces filtres', 'warning'); return; }
 
     const debut = f.debut || 'debut';
@@ -340,12 +434,11 @@ window.VueVisites = {
       Date:             (v.Date || v.Date_Planif || '').slice(0, 10),
       Heure:            v.Heure || '',
       Semaine_ISO:      v.Semaine_ISO || '',
-      CDS:              v.Nom_CDS || '',
-      PIN_CDS:          v.PIN_CDS || '',
+      CDS:              resolveCDS(v.PIN_CDS || v.Nom_CDS) || '',
       Compte:           v.Nom_Compte || '',
       ID_Cible:         v.ID_Cible || '',
       Type_Visite:      v.Type_Visite || '',
-      Statut:           v.Statut_Visite || '',
+      Statut:           this._labelStatut(v.Statut_Visite),
       Canal:            v.Canal || '',
       Interlocuteur:    v.Interlocuteur || '',
       Commande_Prise:   v.Commande_Prise || '',
@@ -366,31 +459,39 @@ window.VueVisites = {
 
   // ── Carte visite (R5 : boutons edit/delete/dupliquer) ──
   _carteVisite(v) {
-    const statut = v.Statut_Visite || 'planifiée';
+    const statut = (v.Statut_Visite || 'planifiée').toLowerCase();
     const coul   = this.STATUT_COULEURS[statut] || 'var(--c-text-2)';
-    const isPlanif    = statut === 'planifiée';
+    const isPlanif    = statut === 'planifiée' || statut === 'reportée';
+    const isEnCours   = statut === 'en cours';
     const peutModif   = Session.voitTout() || Number(v.PIN_CDS) === Session.pin;
+    const cdsNom = Session.voitTout() ? resolveCDS(v.PIN_CDS || v.Nom_CDS) : '';
 
     return `
       <div class="carte-visite" style="border-left:4px solid ${coul}">
         <div class="cv-head">
           <span class="cv-heure">${v.Heure || '—'}</span>
-          <span class="cv-statut" style="color:${coul}">${statut}</span>
+          <span class="cv-statut" style="color:${coul}">${this._labelStatut(statut)}</span>
         </div>
         <div class="cv-nom">${v.Nom_Compte || '—'}</div>
-        ${v.Type_Visite ? `<div class="cv-type">${v.Type_Visite.replace(/_/g,' ')}</div>` : ''}
-        ${v.Nom_CDS && Session.voitTout() ? `<div class="cv-type" style="color:var(--c-text-2);font-size:11px">👤 ${v.Nom_CDS}</div>` : ''}
+        ${v.Type_Visite ? `<div class="cv-type">${String(v.Type_Visite).replace(/_/g,' ')}</div>` : ''}
+        ${cdsNom && cdsNom !== '—' ? `<div class="cv-type" style="color:var(--c-text-2);font-size:11px">👤 ${cdsNom}</div>` : ''}
         ${(v.Note_Privee || v.Commentaire_Prep) ? `<div class="cv-note">📝 ${(v.Note_Privee || v.Commentaire_Prep).slice(0, 80)}</div>` : ''}
         <div class="cv-actions" style="gap:6px;flex-wrap:wrap">
           ${isPlanif ? `
             <button class="btn-primaire" style="padding:8px 14px;font-size:13px;width:auto"
+                    onclick="VueVisites.demarrerVisite('${v.ID_Visite}')">
+              ▶️ Démarrer
+            </button>` : ''}
+          ${isEnCours ? `
+            <button class="btn-primaire" style="padding:8px 14px;font-size:13px;width:auto"
                     onclick="VueVisites.ouvrirCR('${v.ID_Visite}')">
               ✍️ Compte-rendu
-            </button>` : `
+            </button>` : ''}
+          ${(!isPlanif && !isEnCours) ? `
             <button class="btn-secondaire" style="padding:6px 12px;font-size:12px;width:auto"
                     onclick="Router.aller('#/compte/${v.ID_Cible || ''}')">
               📋 Fiche compte
-            </button>`}
+            </button>` : ''}
           ${peutModif ? `
             <button class="btn-secondaire" title="Modifier" style="padding:6px 11px;font-size:13px;width:auto"
                     onclick="VueVisites.ouvrirEdition('${v.ID_Visite}')">✏️</button>
@@ -422,7 +523,16 @@ window.VueVisites = {
     });
 
     let contenu = '';
-    if (this.state.modeVue === 'jour') {
+    if (this.state.modeVue === 'historique') {
+      const hist = this.visitesRealisees;
+      contenu = hist.length === 0
+        ? `<div style="padding:32px;text-align:center;color:var(--c-text-2)">Aucune visite réalisée pour l'instant.</div>`
+        : `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+             <span style="font-size:13px;color:var(--c-text-2)">${hist.length} visite(s) réalisée(s)</span>
+             <button class="btn-secondaire" style="width:auto;padding:6px 12px;font-size:12px" onclick="VueVisites.ouvrirExtraction()">📤 Export CSV</button>
+           </div>
+           ${hist.map(v => this._carteVisite(v)).join('')}`;
+    } else if (this.state.modeVue === 'jour') {
       const vj = this.visitesJour;
       contenu = vj.length === 0
         ? `<div style="padding:32px;text-align:center;color:var(--c-text-2)">
@@ -451,7 +561,9 @@ window.VueVisites = {
         </div>`;
     }
 
-    const peutExtraire = Session.voitTout();
+    // Bloc 3 : export historique accessible aux CDS (sur leurs propres visites, déjà filtrées)
+    // + Managers/Admin (toute l'équipe). Tout le monde a donc le bouton.
+    const peutExtraire = true;
 
     app.innerHTML = `
       <header class="header-vue">
@@ -467,12 +579,14 @@ window.VueVisites = {
       <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--c-surface);border-bottom:1px solid var(--c-border)">
         <button class="btn-filtre ${this.state.modeVue === 'jour' ? 'actif' : ''}" onclick="VueVisites.setModeVue('jour')">Jour</button>
         <button class="btn-filtre ${this.state.modeVue === 'semaine' ? 'actif' : ''}" onclick="VueVisites.setModeVue('semaine')">Semaine</button>
+        <button class="btn-filtre ${this.state.modeVue === 'historique' ? 'actif' : ''}" onclick="VueVisites.setModeVue('historique')">Historique</button>
+        ${this.state.modeVue !== 'historique' ? `
         <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
           <button class="btn-retour" onclick="VueVisites.jourPrecedent()">‹</button>
           <span style="font-size:13px;font-weight:600;white-space:nowrap">${this.state.modeVue === 'jour' ? dateLbl : 'Semaine en cours'}</span>
           <button class="btn-retour" onclick="VueVisites.jourSuivant()">›</button>
           ${!estAujd ? `<button class="btn-filtre" style="font-size:11px;padding:4px 8px" onclick="VueVisites.allerAujourdhui()">Auj.</button>` : ''}
-        </div>
+        </div>` : ''}
       </div>
 
       <div class="avec-nav" style="padding:12px">
@@ -515,14 +629,15 @@ window.VueVisites = {
                <div style="font-size:11px;color:var(--c-text-2);margin:-6px 0 10px;padding:6px 10px;background:var(--c-bg);border-radius:var(--radius-sm)">
                  💡 Ce compte n'est pas dans la base. La visite sera enregistrée — vous pourrez l'ajouter dans le Tracker après si besoin.
                </div>`
-            : `<label>Compte *
+            : `<label>Compte * <span style="font-size:11px;color:var(--c-text-2);font-weight:400">(triés par score relance — 🔴 urgents en tête)</span>
                  <select required onchange="VueVisites.setCible(this.value, this.options[this.selectedIndex].dataset.nom)">
                    <option value="">— sélectionner —</option>
-                   ${this.state.comptes.slice(0, 300).map(c =>
-                     `<option value="${c.ID_Compte}" data-nom="${c.Nom_Compte}">${c.Nom_Compte}${c.Ville ? ' — ' + c.Ville : ''}</option>`
+                   ${this.comptesTries.slice(0, 300).map(c =>
+                     `<option value="${c.ID_Compte}" data-nom="${c.Nom_Compte}">${c.urgent ? '🔴 ' : ''}${c.Nom_Compte}${c.Ville ? ' — ' + c.Ville : ''}${c.silence != null ? ' · ' + c.silence + 's' : ''}</option>`
                    ).join('')}
                  </select>
-               </label>`
+               </label>
+               ${this._ficheCompteSelectionne(f.idCible)}`
           }
           <div style="display:flex;gap:10px">
             <label style="flex:2">Date *
@@ -583,7 +698,7 @@ window.VueVisites = {
           <label>Statut
             <select onchange="VueVisites.state.modalEdition.statut=this.value">
               ${this.STATUTS.map(s =>
-                `<option value="${s}" ${m.statut === s ? 'selected' : ''}>${s}</option>`
+                `<option value="${s}" ${(m.statut || '').toLowerCase() === s ? 'selected' : ''}>${this._labelStatut(s)}</option>`
               ).join('')}
             </select>
           </label>
@@ -630,8 +745,8 @@ window.VueVisites = {
     // liste CDS pour filtre (voitTout uniquement)
     const cdsUniq = [...new Set(this.state.visites.map(v => v.PIN_CDS).filter(Boolean))];
     const cdsList = cdsUniq.map(pin => {
-      const v = this.state.visites.find(x => String(x.PIN_CDS) === String(pin));
-      return { pin: String(pin), nom: v?.Nom_CDS || `PIN ${pin}` };
+      const nom = resolveCDS(pin);
+      return { pin: String(pin), nom: nom && nom !== '—' ? nom : 'Autre' };
     });
 
     return `
@@ -646,16 +761,17 @@ window.VueVisites = {
             <input type="date" value="${f.fin}"
                    onchange="VueVisites.state.extractFiltres.fin=this.value;VueVisites.render()"/></label>
         </div>
+        ${Session.voitTout() ? `
         <label>Commercial
           <select onchange="VueVisites.state.extractFiltres.cds=this.value;VueVisites.render()">
             <option value="TOUS" ${f.cds === 'TOUS' ? 'selected' : ''}>Tous</option>
             ${cdsList.map(c => `<option value="${c.pin}" ${f.cds === c.pin ? 'selected' : ''}>${c.nom}</option>`).join('')}
           </select>
-        </label>
+        </label>` : ''}
         <label>Statut
           <select onchange="VueVisites.state.extractFiltres.statut=this.value;VueVisites.render()">
             <option value="TOUS" ${f.statut === 'TOUS' ? 'selected' : ''}>Tous</option>
-            ${this.STATUTS.map(s => `<option value="${s}" ${f.statut === s ? 'selected' : ''}>${s}</option>`).join('')}
+            ${this.STATUTS.map(s => `<option value="${s}" ${f.statut === s ? 'selected' : ''}>${this._labelStatut(s)}</option>`).join('')}
           </select>
         </label>
         <div style="background:var(--c-bg);border-radius:var(--radius-sm);padding:12px;text-align:center;margin:12px 0;border:1px solid var(--c-border)">

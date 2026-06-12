@@ -10,7 +10,8 @@ window.GeminiAPI = {
     const r = await fetch(SheetsAPI.BASE_URL, {
       method:   'POST',
       redirect: 'follow',
-      headers:  { 'Content-Type': 'application/json' },
+      // Pas de header Content-Type → requête "simple", évite le préflight CORS
+      // (Apps Script ne répond pas aux OPTIONS ; doPost parse le body texte en JSON)
       body: JSON.stringify({
         action:   'gemini',
         token:    SheetsAPI.TOKEN,
@@ -134,7 +135,8 @@ Français professionnel, concis.`;
     const r = await fetch(SheetsAPI.BASE_URL, {
       method:   'POST',
       redirect: 'follow',
-      headers:  { 'Content-Type': 'application/json' },
+      // Pas de header Content-Type → requête "simple", évite le préflight CORS
+      // (Apps Script ne répond pas aux OPTIONS ; doPost parse le body texte en JSON)
       body: JSON.stringify({ action: 'setGeminiKey', token: SheetsAPI.TOKEN, cle }),
     });
     if (!r.ok) throw new Error('HTTP ' + r.status);

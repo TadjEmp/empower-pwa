@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════
 //  vue-comptes-historiques.js — COMPTES HISTORIQUES
-//  V2.1 — Stub B1 · Implémentation complète : B4
+//  V2.2 — Bloc 9 complet : parseCA/fmtCA, resolveCDS, filtres robustes
 //  Sources : V17/📋 COMPTES HISTORIQUES · 🏢_COMPTES
 // ═══════════════════════════════════════
 
@@ -29,22 +29,34 @@ window.VueComptesHistoriques = {
         const mdb = mapMDB.get(normaliserNom(r.RESELLER || '')) || null;
         const canal = (r.CANAL || '').toUpperCase();
         const reseller = (r.RESELLER || '').toUpperCase();
+        // LECLERC : matching inclusif case-insensitive (Bloc 9 #3)
         const isLeclerc = canal === 'LECLERC'
           || canal.includes('GMS') || canal.includes('GSA') || canal.includes('GRANDE SURFACE')
           || reseller.includes('LECLERC')
           || (canal.includes('DRIVE') && reseller.includes('LECLERC'));
+
+        // parseCA robuste : valeurs corrompues (dates "11/4/1903") → null (Bloc 9 #2)
+        const caFy25   = window.parseCA(r['CA FY25 €']  || r.CA_FY25  || null);
+        const caFy26   = window.parseCA(r['CA FY26 €']  || r.CA_FY26  || null);
+        const caQ1Fy27 = window.parseCA(r['CA Q1FY27 €'] || mdb?.CA_Q1FY27 || null);
+
+        // PIN CDS → prénom via resolveCDS (Bloc 9 #1) ; jamais de PIN brut dans l'UI
+        const pinBrut = mdb?.PIN_CDS_Assigne || null;
+        const nomCDSBrut = mdb?.Nom_CDS || '';
+        const cdsPrenom = window.resolveCDS(pinBrut || nomCDSBrut);
+
         return {
           id:       mdb?.ID_Compte || null,
           nom:      r.RESELLER || '—',
           canal:    r.CANAL || '—',
           type:     isLeclerc ? 'LECLERC' : 'REVENDEURS',
-          caFy25:   parseAmount(r['CA FY25 €'] || r.CA_FY25 || 0),
-          caFy26:   parseAmount(r['CA FY26 €'] || r.CA_FY26 || 0),
-          caQ1Fy27: parseAmount(r['CA Q1FY27 €'] || 0),
+          caFy25,
+          caFy26,
+          caQ1Fy27,
           statut:   mdb?.STATUT_COMPTE || r.STATUT_FY27 || r.FLAG_BRUT || '—',
           priorite: r.FLAG_BRUT || '',
-          pin:      mdb?.PIN_CDS_Assigne || null,
-          nomCDS:   mdb?.Nom_CDS || '—',
+          pin:      pinBrut,   // stocké pour filtrage CDS mais jamais affiché
+          cdsPrenom,           // prénom résolu — utilisé dans l'UI
           nextAction: mdb?.Prochaine_action || '',
           dateNextAction: mdb?.Date_prochaine_action || '',
         };
@@ -63,19 +75,22 @@ window.VueComptesHistoriques = {
 
   get listeFiltree() {
     let l = [...this.state.comptes];
+    // Recherche case-insensitive via normaliserNom (Bloc 9 #3)
     const q = normaliserNom(this.state.recherche);
     if (q) l = l.filter(c => normaliserNom(c.nom).includes(q));
+    // Filtre type LECLERC — matching sur type pré-calculé case-insensitive (Bloc 9 #3)
     if (this.state.filtreType !== 'TOUS') l = l.filter(c => c.type === this.state.filtreType);
     if (this.state.filtreStatut !== 'TOUS') l = l.filter(c => {
       const st = (c.statut   || '').toUpperCase();
       const pr = (c.priorite || '').toUpperCase();
       const f  = this.state.filtreStatut;
       if (f === 'REACTIVER') return st.startsWith('REACTIVER') || pr.startsWith('REACTIVER');
-      if (f === 'ACTIF')     return st === 'ACTIF' || pr === 'ACTIF' || c.caQ1Fy27 > 0;
-      if (f === 'INACTIF')   return st === 'INACTIF' || pr === 'INACTIF' || (c.caFy26 === 0 && c.caQ1Fy27 === 0);
+      // "Actif" = CA_Q1FY27 > 0, calculé dynamiquement (Bloc 9 #3)
+      if (f === 'ACTIF')     return st === 'ACTIF' || pr === 'ACTIF' || (c.caQ1Fy27 !== null && c.caQ1Fy27 > 0);
+      if (f === 'INACTIF')   return st === 'INACTIF' || pr === 'INACTIF' || ((c.caFy26 === null || c.caFy26 === 0) && (c.caQ1Fy27 === null || c.caQ1Fy27 === 0));
       return st === f || pr === f;
     });
-    if (this.state.triPar === 'CA')  l.sort((a, b) => b.caFy26 - a.caFy26);
+    if (this.state.triPar === 'CA')  l.sort((a, b) => (b.caFy26 || 0) - (a.caFy26 || 0));
     if (this.state.triPar === 'NOM') l.sort((a, b) => a.nom.localeCompare(b.nom));
     if (this.state.triPar === 'PRIORITE') {
       const ordre = { REACTIVER_URGENT: 0, REACTIVER: 1, CHURN: 2, INACTIF: 3 };
@@ -103,7 +118,8 @@ window.VueComptesHistoriques = {
 
     const liste = this.listeFiltree;
     const total = this.state.comptes.length;
-    const caTotal = this.state.comptes.reduce((s, c) => s + c.caFy26, 0);
+    // caTotal : null → 0 pour la somme (Bloc 9 #2)
+    const caTotal = this.state.comptes.reduce((s, c) => s + (c.caFy26 || 0), 0);
     const nbLeclerc = this.state.comptes.filter(c => c.type === 'LECLERC').length;
     const nbRevendeurs = this.state.comptes.filter(c => c.type === 'REVENDEURS').length;
 
@@ -119,12 +135,12 @@ window.VueComptesHistoriques = {
         <div class="ch-stat"><div class="ch-stat-val">${total}</div><div class="ch-stat-lbl">Comptes</div></div>
         <div class="ch-stat bleu"><div class="ch-stat-val">${nbLeclerc}</div><div class="ch-stat-lbl">Leclerc</div></div>
         <div class="ch-stat coral"><div class="ch-stat-val">${nbRevendeurs}</div><div class="ch-stat-lbl">Revendeurs</div></div>
-        <div class="ch-stat"><div class="ch-stat-val" style="font-size:13px">${formatEUR(caTotal)}</div><div class="ch-stat-lbl">CA FY26</div></div>
+        <div class="ch-stat"><div class="ch-stat-val" style="font-size:13px">${window.fmtCA(caTotal) !== '—' ? window.fmtCA(caTotal) + ' €' : '—'}</div><div class="ch-stat-lbl">CA FY26</div></div>
       </div>
 
       <!-- Filtres -->
       <div class="barre-filtres">
-        <input id="ch-recherche" type="search" placeholder="🔍 Rechercher un compte…" value="${this.state.recherche}"
+        <input id="ch-recherche" type="search" placeholder="🔍 Rechercher un compte…" value="${this.state.recherche.replace(/"/g,'&quot;')}"
                style="border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:8px 12px;font-size:14px;width:100%"
                oninput="VueComptesHistoriques.setRecherche(this.value)"/>
         <div class="filtres-flags">
@@ -150,18 +166,24 @@ window.VueComptesHistoriques = {
       <div class="liste-comptes avec-nav">
         ${liste.length === 0
           ? '<div class="vide" style="padding:32px;text-align:center;color:var(--c-text-2)">Aucun compte pour ces critères</div>'
-          : liste.map(c => `
+          : liste.map(c => {
+            // fmtCA : valeurs corrompues ou nulles → '—' (Bloc 9 #2)
+            const caFy26Fmt   = window.fmtCA(c.caFy26);
+            const caFy25Fmt   = window.fmtCA(c.caFy25);
+            const caQ1Fy27Fmt = window.fmtCA(c.caQ1Fy27);
+            const caFy26Affiche = caFy26Fmt !== '—' ? `${caFy26Fmt} €` : '—';
+            return `
           <div class="carte-compte-v2">
             <div class="cc-pills" onclick="${c.id ? `Router.aller('#/compte/${c.id}')` : 'void(0)'}">
               ${this._pillType(c.type)}
-              <span style="margin-left:auto;font-size:13px;font-weight:700;color:var(--c-title)">${formatEUR(c.caFy26)}<span style="font-size:11px;font-weight:400;color:var(--c-text-2)"> FY26</span></span>
+              <span style="margin-left:auto;font-size:13px;font-weight:700;color:var(--c-title)">${caFy26Affiche}<span style="font-size:11px;font-weight:400;color:var(--c-text-2)"> FY26</span></span>
             </div>
-            <div class="cc-nom" onclick="${c.id ? `Router.aller('#/compte/${c.id}')` : 'void(0)'}">${c.nom}</div>
+            <div class="cc-nom" onclick="${c.id ? `Router.aller('#/compte/${c.id}')` : 'void(0)'}">${c.nom !== '—' ? c.nom : '—'}</div>
             <div class="cc-infos">
-              <span>📍 ${c.canal}</span>
-              ${c.caFy25 ? `<span>FY25 : ${formatEUR(c.caFy25)}</span>` : ''}
-              ${c.caQ1Fy27 ? `<span style="color:var(--c-success)">Q1FY27 : ${formatEUR(c.caQ1Fy27)}</span>` : ''}
-              ${Session.voitTout() ? `<span>👤 ${c.nomCDS}</span>` : ''}
+              <span>📍 ${c.canal !== '—' ? c.canal : '—'}</span>
+              ${caFy25Fmt !== '—' ? `<span>FY25 : ${caFy25Fmt} €</span>` : ''}
+              ${caQ1Fy27Fmt !== '—' ? `<span style="color:var(--c-success)">Q1FY27 : ${caQ1Fy27Fmt} €</span>` : ''}
+              ${Session.voitTout() && c.cdsPrenom !== '—' ? `<span>👤 ${c.cdsPrenom}</span>` : ''}
             </div>
             ${c.statut && c.statut !== '—' ? `
             <div class="cc-infos" style="margin-top:4px">
@@ -169,11 +191,12 @@ window.VueComptesHistoriques = {
               ${c.dateNextAction ? `<span class="${estDepassee(c.dateNextAction)?'prochaine-action alerte':''}">⏰ ${dateRelative(c.dateNextAction)}</span>` : ''}
             </div>` : ''}
             <div class="cc-actions">
-              <button class="btn-visiter" onclick="Router.aller('#/visites?compte=${c.id||c.nom}')">Planifier visite</button>
+              <button class="btn-visiter" onclick="Router.aller('#/visites?compte=${encodeURIComponent(c.id||c.nom)}')">Planifier visite</button>
               <button class="btn-tel-outline" onclick="Router.aller('#/phoning${c.id ? '/'+c.id : ''}')" title="Appeler">📞</button>
               ${c.id ? `<button class="btn-tel-outline" onclick="Router.aller('#/compte/${c.id}')" title="Fiche">📋</button>` : ''}
             </div>
-          </div>`).join('')}
+          </div>`;
+          }).join('')}
       </div>
 
       ${NavBar('historiques')}

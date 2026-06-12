@@ -2,6 +2,7 @@
 //  vue-reactiver.js — Comptes à réactiver
 //  Source : V17 FLAG_BRUT=REACTIVER + EMPOWER MDB COMPTES
 //  Scoring : CA FY26 × facteur statut
+//  Bloc 9 : resolveCDS + parseCA/fmtCA + null-safety + filtres case-insensitive
 // ═══════════════════════════════════════
 
 window.VueReactiver = {
@@ -26,22 +27,29 @@ window.VueReactiver = {
           return f.includes('REACTIVER') || f.includes('CHURN') || f.includes('INACTIF');
         })
         .map(r => {
-          const flag   = (r.FLAG_BRUT || '').toUpperCase();
-          const caFy26 = Number(r['CA FY26 €'] || r.CA_FY26 || 0);
-          const score  = caFy26 * (this.SCORE[flag] || 0.3);
-          const mdb    = mapMDB.get(normaliserNom(r.RESELLER || '')) || null;
+          const flag    = (r.FLAG_BRUT || '').toUpperCase().trim();
+          // parseCA : gère valeurs corrompues (dates "11/4/1903", NaN, undefined) → null
+          const caFy26  = window.parseCA(r['CA FY26 €'] != null ? r['CA FY26 €'] : r.CA_FY26) || 0;
+          const caFy25  = window.parseCA(r['CA FY25 €'] != null ? r['CA FY25 €'] : r.CA_FY25) || 0;
+          const caQ1Fy27 = window.parseCA(r['CA Q1FY27 €'] != null ? r['CA Q1FY27 €'] : r.CA_Q1FY27) || 0;
+          const score   = caFy26 * (this.SCORE[flag] || 0.3);
+          const mdb     = mapMDB.get(normaliserNom(r.RESELLER || '')) || null;
+          const pinCDS  = mdb?.PIN_CDS_Assigne || null;
           return {
-            nom:       r.RESELLER || '—',
-            canal:     r.CANAL || '—',
-            caFy25:    Number(r['CA FY25 €'] || 0),
+            nom:       (r.RESELLER || '').trim() || '—',
+            canal:     (r.CANAL || '').trim() || '—',
+            caFy25,
             caFy26,
-            caQ1Fy27:  Number(r['CA Q1FY27 €'] || 0),
+            caQ1Fy27,
             flag,
             score,
             urgent:    flag.includes('URGENT'),
-            statut:    mdb?.STATUT_COMPTE || r.STATUT_FY27 || '—',
+            // Statuts alignés sur le vocabulaire réel : ASSIGNE|EN_COURS|INTEGRE|ARCHIVE
+            statut:    (mdb?.STATUT_COMPTE || r.STATUT_FY27 || '').trim() || '—',
             idMDB:     mdb?.ID_Compte || null,
-            pinCDS:    mdb?.PIN_CDS_Assigne || null,
+            pinCDS,
+            // prénom résolu — jamais de PIN brut dans l'UI
+            cdsPrenom: pinCDS ? window.resolveCDS(pinCDS) : '—',
           };
         });
 
@@ -50,24 +58,31 @@ window.VueReactiver = {
       this.render();
     } catch(e) {
       this.state.chargement = false;
+      console.error('[VueReactiver] init error:', e);
       document.getElementById('app').innerHTML =
-        `<div class="erreur">Erreur chargement : ${e.message}</div>`;
+        `<div class="erreur">Erreur chargement : ${e.message || 'inconnue'}</div>`;
     }
   },
 
   get listeFiltree() {
     let l = [...this.state.comptes];
-    if (this.state.filtreFlag === 'URGENT') l = l.filter(c => c.urgent);
-    if (this.state.filtreFlag === 'STANDARD') l = l.filter(c => !c.urgent);
-    if (!Session.voitTout()) l = l.filter(c => !c.pinCDS || Number(c.pinCDS) === Session.pin);
+    // Filtres case-insensitive (comparaison toUpperCase)
+    const fFlag = (this.state.filtreFlag || '').toUpperCase();
+    if (fFlag === 'URGENT')   l = l.filter(c => c.urgent);
+    if (fFlag === 'STANDARD') l = l.filter(c => !c.urgent);
+    // CDS : filtre sur SES comptes uniquement (ASSIGNE = son pin) — ADMIN/CHANNEL_MANAGER voient tout
+    if (!Session.voitTout()) {
+      l = l.filter(c => !c.pinCDS || Number(c.pinCDS) === Number(Session.pin));
+    }
     if (this.state.triPar === 'SCORE') l.sort((a, b) => b.score - a.score);
     if (this.state.triPar === 'CA')    l.sort((a, b) => b.caFy26 - a.caFy26);
-    if (this.state.triPar === 'NOM')   l.sort((a, b) => a.nom.localeCompare(b.nom));
+    if (this.state.triPar === 'NOM')   l.sort((a, b) => (a.nom || '').localeCompare(b.nom || ''));
     return l;
   },
 
   render() {
     const app = document.getElementById('app');
+    if (!app) return;
     if (this.state.chargement) {
       app.innerHTML = '<div class="spinner-centre">Chargement des comptes à réactiver…</div>';
       return;
@@ -75,7 +90,8 @@ window.VueReactiver = {
     const liste   = this.listeFiltree;
     const urgents = this.state.comptes.filter(c => c.urgent).length;
     const total   = this.state.comptes.length;
-    const caTotal = this.state.comptes.reduce((s, c) => s + c.caFy26, 0);
+    // caTotal : somme des caFy26 déjà parsés (numbers sains, pas de valeurs corrompues)
+    const caTotal = this.state.comptes.reduce((s, c) => s + (c.caFy26 || 0), 0);
 
     app.innerHTML = `
       <header class="header-vue">
@@ -94,7 +110,7 @@ window.VueReactiver = {
           <div class="stat-reactiver-lbl">Standard</div>
         </div>
         <div class="stat-reactiver">
-          <div class="stat-reactiver-val">${formatEuro(caTotal)}</div>
+          <div class="stat-reactiver-val">${window.fmtCA(caTotal)}</div>
           <div class="stat-reactiver-lbl">CA FY26 dormant</div>
         </div>
       </div>
@@ -110,9 +126,9 @@ window.VueReactiver = {
         </div>
         <div class="filtres-statut">
           <select onchange="VueReactiver.setTri(this.value)">
-            <option value="SCORE">Score décroissant</option>
-            <option value="CA">CA décroissant</option>
-            <option value="NOM">Nom A→Z</option>
+            <option value="SCORE" ${this.state.triPar === 'SCORE' ? 'selected' : ''}>Score décroissant</option>
+            <option value="CA"    ${this.state.triPar === 'CA'    ? 'selected' : ''}>CA décroissant</option>
+            <option value="NOM"   ${this.state.triPar === 'NOM'   ? 'selected' : ''}>Nom A→Z</option>
           </select>
         </div>
       </div>
@@ -120,40 +136,66 @@ window.VueReactiver = {
       <div class="liste-reactiver">
         ${liste.length === 0
           ? '<div class="vide">Aucun compte pour ces filtres</div>'
-          : liste.map(c => `
-            <div class="carte-reactiver ${c.urgent ? 'urgent' : 'standard'}"
-                 onclick="${c.idMDB ? `Router.aller('#/compte/${c.idMDB}')` : 'void(0)'}">
-              <div class="reactiver-gauche">
-                <div class="reactiver-nom">${c.nom}</div>
-                <div class="reactiver-infos">${c.canal} · ${c.statut}</div>
-              </div>
-              <div class="reactiver-droite">
-                <span class="score-badge ${c.urgent ? 'haut' : ''}">${c.urgent ? '🔴 URGENT' : '🟡 À réactiver'}</span>
-                <div class="reactiver-ca">${formatEuro(c.caFy26)}</div>
-                <div style="font-size:11px;color:var(--c-text-2)">FY26</div>
-                ${c.caQ1Fy27 > 0 ? `<div style="font-size:11px;color:var(--c-success)">${formatEuro(c.caQ1Fy27)} Q1FY27</div>` : ''}
-              </div>
-            </div>
-          `).join('')}
+          : liste.map(c => this._carteHTML(c)).join('')}
       </div>
 
       <button class="fab" onclick="VueReactiver.exporterCSV()" title="Exporter">📋</button>
     `;
   },
 
-  setFiltre(f) { this.state.filtreFlag = f; this.render(); },
-  setTri(t)    { this.state.triPar = t;     this.render(); },
+  _carteHTML(c) {
+    const caFy26Fmt   = window.fmtCA(c.caFy26);
+    const caQ1Fmt     = c.caQ1Fy27 > 0 ? window.fmtCA(c.caQ1Fy27) : null;
+    // Jamais de PIN affiché — on utilise cdsPrenom (résolu via resolveCDS)
+    const cdsLabel    = c.cdsPrenom && c.cdsPrenom !== '—'
+      ? `<span class="reactiver-cds">${c.cdsPrenom}</span>`
+      : '';
+    const statutLabel = c.statut !== '—' ? ` · ${c.statut}` : '';
+    return `
+      <div class="carte-reactiver ${c.urgent ? 'urgent' : 'standard'}"
+           onclick="${c.idMDB ? `Router.aller('#/compte/${c.idMDB}')` : 'void(0)'}">
+        <div class="reactiver-gauche">
+          <div class="reactiver-nom">${c.nom}</div>
+          <div class="reactiver-infos">${c.canal}${statutLabel}${cdsLabel ? ' · ' + cdsLabel.replace(/<[^>]+>/g,'') : ''}</div>
+          ${cdsLabel}
+        </div>
+        <div class="reactiver-droite">
+          <span class="score-badge ${c.urgent ? 'haut' : ''}">${c.urgent ? '🔴 URGENT' : '🟡 À réactiver'}</span>
+          <div class="reactiver-ca">${caFy26Fmt}</div>
+          <div style="font-size:11px;color:var(--c-text-2)">FY26</div>
+          ${caQ1Fmt ? `<div style="font-size:11px;color:var(--c-success)">${caQ1Fmt} Q1FY27</div>` : ''}
+        </div>
+      </div>
+    `;
+  },
+
+  setFiltre(f) { this.state.filtreFlag = (f || 'TOUS').toUpperCase(); this.render(); },
+  setTri(t)    { this.state.triPar = t || 'SCORE';                    this.render(); },
 
   exporterCSV() {
     const rows = this.listeFiltree;
-    const csv  = ['Nom,Canal,CA FY25,CA FY26,Q1 FY27,Flag,Urgent']
-      .concat(rows.map(r =>
-        `"${r.nom}","${r.canal}",${r.caFy25},${r.caFy26},${r.caQ1Fy27},${r.flag},${r.urgent}`
-      )).join('\n');
+    if (!rows.length) {
+      if (typeof Toast !== 'undefined') Toast.afficher('Aucune donnée à exporter', 'warning');
+      return;
+    }
+    // fmtCA pour les colonnes CA — jamais de NaN/undefined dans le CSV
+    const csv = ['Nom;Canal;CA FY25;CA FY26;Q1 FY27;Flag;Urgent;CDS']
+      .concat(rows.map(r => [
+        `"${(r.nom  || '').replace(/"/g,'""')}"`,
+        `"${(r.canal|| '').replace(/"/g,'""')}"`,
+        window.fmtCA(r.caFy25),
+        window.fmtCA(r.caFy26),
+        window.fmtCA(r.caQ1Fy27),
+        r.flag || '—',
+        r.urgent ? 'OUI' : 'NON',
+        // cdsPrenom résolu — jamais le PIN brut
+        r.cdsPrenom || '—',
+      ].join(';'))).join('\n');
+    const bom = '﻿';
     const a = document.createElement('a');
-    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+    a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(bom + csv);
     a.download = `reactiver_${dateISOLocale()}.csv`;
     a.click();
-    Toast.afficher('📥 Export CSV téléchargé', 'succes');
+    if (typeof Toast !== 'undefined') Toast.afficher('📥 Export CSV téléchargé', 'succes');
   },
 };

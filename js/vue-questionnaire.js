@@ -281,8 +281,8 @@ window.VueQuestionnaire = {
           });
           if (q.resume) this.state.d.resumeIA = q.resume;
           if (q.score)  this.state.d.score = q.score;
-          if (q.action_recommandee && !this.state.d.prochaineActionTexte)
-            this.state.d.prochaineActionTexte = q.action_recommandee;
+          if (q.actionrecommandee && !this.state.d.prochaineActionTexte)
+            this.state.d.prochaineActionTexte = q.actionrecommandee;
           Toast.afficher('✅ Résumé IA généré', 'succes');
         } catch(e) { Toast.afficher('❌ IA : ' + e.message, 'erreur'); }
         this.render();
