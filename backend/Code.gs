@@ -944,27 +944,33 @@ function _syncSellInDrive(body, user) {
     // ── Mise à jour des CA dans 🏢_COMPTES ───────────────────────────────────
     var mdb  = _getSpreadsheet('EMPOWER_MDB');
     var shC  = mdb.getSheetByName('🏢_COMPTES');
-    var cH   = shC.getRange(1,1,1,shC.getLastColumn()).getValues()[0].map(String);
-    var cData = shC.getDataRange().getValues();
-    var iNom  = cH.indexOf('Nom_Compte');
-    var iCA25 = cH.indexOf('CA_FY25');
-    var iCA26 = cH.indexOf('CA_FY26');
-    var iCAQ1 = cH.indexOf('CA_Q1FY27');
-    var iCanal = cH.indexOf('CANAL');
+    if (!shC) mdb.getSheets().forEach(function(s){
+      if (!shC && s.getName().toUpperCase().indexOf('COMPTES') >= 0 &&
+          s.getName().indexOf('HISTORIQUES') < 0) shC = s;
+    });
     var comptesMaj = 0;
-    for (var ri = 1; ri < cData.length; ri++) {
-      var nom  = String(cData[ri][iNom] || '').trim();
-      var norm = nom.toLowerCase().replace(/[^a-z0-9]/g, '');
-      var key  = Object.keys(pivot).find(function(k){
-        return k.toLowerCase().replace(/[^a-z0-9]/g,'') === norm;
-      });
-      if (key) {
-        var p = pivot[key]; var rn = ri + 1;
-        if (iCA25  >= 0) shC.getRange(rn, iCA25+1 ).setValue(r2(p.CA_FY25));
-        if (iCA26  >= 0) shC.getRange(rn, iCA26+1 ).setValue(r2(p.CA_FY26));
-        if (iCAQ1  >= 0) shC.getRange(rn, iCAQ1+1 ).setValue(r2(p.CA_Q1FY27));
-        if (iCanal >= 0) shC.getRange(rn, iCanal+1).setValue(p.canal);
-        comptesMaj++;
+    if (shC) {
+      var cH   = shC.getRange(1, 1, 1, shC.getLastColumn()).getValues()[0].map(String);
+      var cData = shC.getDataRange().getValues();
+      var iNom  = cH.indexOf('Nom_Compte');
+      var iCA25 = cH.indexOf('CA_FY25');
+      var iCA26 = cH.indexOf('CA_FY26');
+      var iCAQ1 = cH.indexOf('CA_Q1FY27');
+      var iCanal = cH.indexOf('CANAL');
+      for (var ri = 1; ri < cData.length; ri++) {
+        var nom  = String(cData[ri][iNom] || '').trim();
+        var norm = nom.toLowerCase().replace(/[^a-z0-9]/g, '');
+        var key  = Object.keys(pivot).find(function(k){
+          return k.toLowerCase().replace(/[^a-z0-9]/g,'') === norm;
+        });
+        if (key) {
+          var p = pivot[key]; var rn = ri + 1;
+          if (iCA25  >= 0) shC.getRange(rn, iCA25+1 ).setValue(r2(p.CA_FY25));
+          if (iCA26  >= 0) shC.getRange(rn, iCA26+1 ).setValue(r2(p.CA_FY26));
+          if (iCAQ1  >= 0) shC.getRange(rn, iCAQ1+1 ).setValue(r2(p.CA_Q1FY27));
+          if (iCanal >= 0) shC.getRange(rn, iCanal+1).setValue(p.canal);
+          comptesMaj++;
+        }
       }
     }
     SpreadsheetApp.flush();
