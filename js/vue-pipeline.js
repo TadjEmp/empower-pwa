@@ -17,13 +17,16 @@ window.VuePipeline = {
     { id: 'ARCHIVE',     lbl: 'Archivé',      coul: 'var(--c-text-2)' },
   ],
 
-  // Fallback si ⚙️_PARAMS ne contient pas les CDS
+  // BLOC 1 : 4004 Anthony retiré du fallback
   CDS_FALLBACK: [ { pin: 4001, nom: 'Lyes' }, { pin: 4002, nom: 'Mehdi' }, { pin: 4003, nom: 'Johanne' }, { pin: 1000, nom: 'Tadjidine' } ],
   CDS: [],
 
   LIMITE_COL: 20,
 
   state: null,
+
+  // BLOCS 7 & 3.2 — valeurs channel disponibles (calculées à l'init)
+  CHANNELS: [],
 
   _chargerCDS(params, objectifs) {
     // ⚙️_PARAMS réel : PINS_CDS='4001,4002,4003' + PIN_MANAGER='1000'
@@ -55,6 +58,7 @@ window.VuePipeline = {
       leads: [], chargement: true, envoiEnCours: false,
       recherche: '', filtreCDS: 'TOUS', filtrePotentiel: 'TOUS',
       filtreStatut: 'TOUS', filtreAlerte: 'TOUS', filtreOrigine: 'TOUS',
+      filtreChannel: 'TOUS', // BLOC 7
       colonnesEtendues: {},
       modal: null,
     };
@@ -67,13 +71,35 @@ window.VuePipeline = {
       ]);
       this._chargerCDS(params, objectifs);
       initCDSRegistry(objectifs); // BUG-02 : peuple le registre global
+
+      // BLOC 7 — extraire la liste des channels disponibles
+      const channelsVus = new Set();
+      raw.forEach(p => { if (p.CANAL) channelsVus.add(String(p.CANAL).trim()); });
+      this.CHANNELS = [...channelsVus].sort();
+
       // TRACKER : tous les leads attribués au CDS (ou tous pour ADMIN/CHANNEL_MANAGER)
-      // Le filtre ESI_PIPELINE retiré — les leads importés (BASE_PROSPECTS_RELANCER) sont désormais visibles
       this.state.leads = raw
-        .filter(p => String(p.deleted || '').toUpperCase() !== 'TRUE')
+        // BLOC 4.2 : exclure les leads soft-deleted
+        .filter(p => String(p.Flag_traite || '').toUpperCase() !== 'DELETED'
+                  && String(p.deleted   || '').toUpperCase() !== 'TRUE')
+        // BLOC 5 : exclure les comptes déjà convertis (Flag_converti=TRUE) pour CDS/CHANNEL_MANAGER
+        .filter(p => {
+          if (Session.estManager()) return true; // ADMIN voit tout
+          return String(p.Flag_converti || '').toUpperCase() !== 'TRUE';
+        })
         .map(p => ({ ...p, _statut: this._statutDe(p) }))
-        // ADMIN + CHANNEL_MANAGER : tous les leads. CDS : uniquement les siens (PIN_CDS_Assigne=Session.pin). EXTERNE : ses saisies.
-        .filter(p => this._voitTous() || Number(p.PIN_CDS_Assigne) === Session.pin);
+        // BLOC 5 : dédoublonnage par Nom_Compte normalisé — garde le premier (ordre source)
+        .filter((p, _i, arr) => {
+          const k = normaliserNom(p.Nom_Compte);
+          return arr.findIndex(x => normaliserNom(x.Nom_Compte) === k) === _i;
+        })
+        // ADMIN + CHANNEL_MANAGER : tous les leads. CDS : uniquement les siens.
+        .filter(p => this._voitTous() || Number(p.PIN_CDS_Assigne) === Session.pin)
+        // BLOC 3.2 : Alexandra voit uniquement les leads actifs (hors INTEGRE/ARCHIVE) par défaut
+        .filter(p => {
+          if (!Session.estChannel()) return true;
+          return p._statut !== 'INTEGRE' && p._statut !== 'ARCHIVE';
+        });
       this.state.chargement = false;
       this.render();
     } catch(e) {
@@ -105,6 +131,8 @@ window.VuePipeline = {
     if (this.state.filtreAlerte === 'WP_RETARD') l = l.filter(p => this._retardWelcomePack(p));
     if (this.state.filtreAlerte === 'WP_ENVOYE') l = l.filter(p => !!p.WELCOME_PACK_DATE);
     if (this.state.filtreAlerte === 'ACTION_DUE') l = l.filter(p => p.Date_prochaine_action && estDepassee(p.Date_prochaine_action));
+    // BLOC 7 — filtre channel
+    if (this.state.filtreChannel !== 'TOUS') l = l.filter(p => String(p.CANAL || '').trim() === this.state.filtreChannel);
     return l;
   },
 
@@ -235,24 +263,38 @@ window.VuePipeline = {
       }
     } catch { /* GEM-T02 optionnel — on continue si erreur */ }
 
+    // BLOC 4.1 — attribution directe à la création (ADMIN + CHANNEL_MANAGER)
+    const cdsAssignePin = this._peutAssigner() ? (v('nl-cds-assigne') || '') : '';
+    const statutInit    = cdsAssignePin ? 'ASSIGNE' : 'SAISIE';
+
     const lead = {
       ID_Prospect: genId('PROS'),
       Nom_Compte: nomSaisi, Ville: v('nl-ville'), Code_Postal: v('nl-cp'),
       Tel: v('nl-tel'), Email: v('nl-email'),
-      PIN_CDS_Assigne: '', Source_Import: 'ESI_PIPELINE',
-      FLAG_ACTION: 'SAISIE', CANAL: v('nl-canal'),
+      PIN_CDS_Assigne: cdsAssignePin ? Number(cdsAssignePin) : '',
+      Source_Import: 'ESI_PIPELINE',
+      FLAG_ACTION: statutInit, CANAL: v('nl-canal'),
       Note_initiale: v('nl-note'), Date_prochaine_action: v('nl-date-action'),
       Flag_traite: 'FALSE', Flag_converti: 'FALSE',
       Date_Import: dateISOLocale(),
       Timestamp: new Date().toISOString(),
-      STATUT_EMPOWER: 'SAISIE', POTENTIEL: v('nl-potentiel'),
+      STATUT_EMPOWER: statutInit, POTENTIEL: v('nl-potentiel'),
       ORIGINE: v('nl-origine'), CONTACT_NOM: v('nl-contact'), CONTACT_FONCTION: v('nl-fonction'),
     };
     try {
       await SheetsAPI.ecrire('EMPOWER_MDB', '📋_PROSPECTS', lead);
-      this.state.leads.unshift({ ...lead, _statut: 'SAISIE' });
+      this.state.leads.unshift({ ...lead, _statut: statutInit });
+      // BLOC 4.3 — si CDS attribué à la création : déclencher alerte J0 (préserve les triggers existants)
+      if (cdsAssignePin) {
+        fetch(SheetsAPI.BASE_URL, {
+          method: 'POST', redirect: 'follow',
+          body: JSON.stringify({ action: 'attribuerLead', token: SheetsAPI.TOKEN,
+            id: lead.ID_Prospect, cdsPin: Number(cdsAssignePin),
+            cdsNom: this._nomCDS(cdsAssignePin) }),
+        }).catch(() => {}); // non bloquant
+      }
       this.state.modal = null;
-      Toast.afficher('✅ Lead créé : ' + lead.Nom_Compte, 'succes');
+      Toast.afficher(`✅ Lead créé${cdsAssignePin ? ' → ' + this._nomCDS(cdsAssignePin) : ''} : ` + lead.Nom_Compte, 'succes');
 
       // GEM-T01 — Enrichissement automatique post-création (asynchrone, non bloquant)
       GeminiAPI.gemT01_enrichirLead(lead).then(raw => {
@@ -340,6 +382,11 @@ window.VuePipeline = {
           <select onchange="VuePipeline.state.filtreOrigine=this.value;VuePipeline.render()">
             <option value="TOUS">Toutes origines</option>
             ${this._originesDistinctes().map(o => `<option value="${o}" ${String(this.state.filtreOrigine).toLowerCase()===String(o).toLowerCase()?'selected':''}>${o}</option>`).join('')}
+          </select>` : ''}
+          ${/* BLOC 7 — filtre channel */ this.CHANNELS.length > 1 ? `
+          <select onchange="VuePipeline.state.filtreChannel=this.value;VuePipeline.render()">
+            <option value="TOUS">Tous canaux</option>
+            ${this.CHANNELS.map(c => `<option value="${c}" ${this.state.filtreChannel===c?'selected':''}>${c}</option>`).join('')}
           </select>` : ''}
         </div>
       </div>
@@ -476,6 +523,13 @@ window.VuePipeline = {
                 <option value="Autre">Autre</option>
               </select>
             </label>
+            ${/* BLOC 4.1 — attribution directe à la création */ this._peutAssigner() ? `
+            <label>Attribuer à un CDS (optionnel)
+              <select id="nl-cds-assigne">
+                <option value="">— Non attribué pour l'instant —</option>
+                ${(this.CDS.length ? this.CDS : this.CDS_FALLBACK).map(c => `<option value="${c.pin}">${this._nomCDS(c.pin)}</option>`).join('')}
+              </select>
+            </label>` : ''}
             <label>Notes de qualification
               <textarea id="nl-note" rows="4"
                         placeholder="Exemple : revendeur IT 5 boutiques — déjà utilisateur Norton Home / rencontré au salon IT Partners en nov. 2024 — intérêt confirmé pour EMPOWER pack revendeur — demande démo avant signature — bloquer sur le prix à date. Contact : Jean Martin (gérant), disponible le matin."></textarea>
@@ -603,8 +657,14 @@ window.VuePipeline = {
                       white-space:pre-wrap;border:1px solid var(--c-border);color:var(--c-text)"></div>
         </div>
 
-        <div class="modal-btns">
+        <div class="modal-btns" style="flex-wrap:wrap;gap:8px">
           <button type="button" onclick="VuePipeline.fermerModal()">Fermer</button>
+          ${/* BLOC 4.2 — bouton suppression avec contrôle d'accès */
+            (Session.estManager() || Session.estChannel() || Number(l.PIN_CDS_Assigne) === Session.pin)
+            ? `<button type="button"
+                style="background:var(--c-danger,#e53935);color:#fff;border:none;border-radius:var(--radius-sm);padding:10px 18px;cursor:pointer;font-size:13px"
+                onclick="VuePipeline.supprimerLead('${l.ID_Prospect}')">🗑 Supprimer</button>`
+            : ''}
           <button type="button" class="btn-primaire" onclick="Router.aller('#/phoning')">📞 Planifier appel</button>
         </div>
       </div>
@@ -645,6 +705,35 @@ window.VuePipeline = {
       if (nouveauStatut) lead._statut = nouveauStatut;
       this.state.modal = null;
       Toast.afficher(`✅ ${lead.Nom_Compte} mis à jour`, 'succes');
+      this.render();
+    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+  },
+
+  // ── BLOC 4.2 — Suppression douce d'un lead ──────────────────
+  // Droits : CDS = ses propres leads / ADMIN + CHANNEL_MANAGER = tous
+  async supprimerLead(id) {
+    const lead = this.state.leads.find(l => String(l.ID_Prospect) === String(id));
+    if (!lead) return;
+
+    // Contrôle accès côté front (le backend re-vérifie aussi)
+    const peutSuppr = Session.estManager() || Session.estChannel()
+                   || Number(lead.PIN_CDS_Assigne) === Session.pin;
+    if (!peutSuppr) { Toast.afficher('❌ Droits insuffisants', 'erreur'); return; }
+
+    const ok = confirm(`Confirmer la suppression de "${lead.Nom_Compte}" ?\n\nCette action est irréversible.`);
+    if (!ok) return;
+
+    try {
+      const r = await fetch(SheetsAPI.BASE_URL, {
+        method: 'POST', redirect: 'follow',
+        body: JSON.stringify({ action: 'supprimerLead', token: SheetsAPI.TOKEN, id }),
+      }).then(x => x.json());
+      if (!r.ok) throw new Error(r.erreur);
+      // Retirer du state local immédiatement
+      this.state.leads = this.state.leads.filter(l => String(l.ID_Prospect) !== String(id));
+      this.state.modal = null;
+      await SheetsAPI.viderCache('EMPOWER_MDB', '📋_PROSPECTS');
+      Toast.afficher(`🗑 ${lead.Nom_Compte} supprimé`, 'succes');
       this.render();
     } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
   },

@@ -63,6 +63,9 @@ function _router(params, body) {
       case 'purgerDonnees':       return _purgerDonnees(body, user);
       case 'importTrackerDrive':  return _importTrackerDrive(body, user);
       case 'syncSellInDrive':     return _syncSellInDrive(body, user);
+      // ── V4 ──
+      case 'supprimerLead':       return _supprimerLead(body, user);
+      case 'syncOnboarding':      return _syncOnboarding(body, user);
       default:                    return _json({ ok: false, erreur: 'Action inconnue: ' + action });
     }
   } catch(e) {
@@ -717,7 +720,8 @@ function _importTrackerDrive(body, user) {
       'lyes': 4001,
       'mehdi': 4002,
       'johanne': 4003,
-      'anthony': 4004,
+      // BLOC 1 : anthony → Tadjidine (4004 supprimé)
+      'anthony': 1000,
     };
 
     var mdb     = _getSpreadsheet('EMPOWER_MDB');
@@ -1038,4 +1042,321 @@ function _setGeminiKey(body, user) {
   if (!cle) return _json({ ok: false, erreur: 'Clé Gemini vide — saisissez une clé API valide' });
   PropertiesService.getScriptProperties().setProperty('GEMINI_API_KEY', cle);
   return _json({ ok: true });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  V4 — BLOC 4.2 : SUPPRESSION DOUCE D'UN LEAD
+//  Droits : CDS = ses propres leads uniquement
+//           ADMIN + CHANNEL_MANAGER = tous les leads
+//  Mécanisme : Flag_traite = 'DELETED' (soft delete, non destructif)
+// ══════════════════════════════════════════════════════════════
+function _supprimerLead(body, user) {
+  var id = String(body.id || '').trim();
+  if (!id) return _json({ ok: false, erreur: 'ID du lead manquant' });
+
+  var ss = _getSpreadsheet('EMPOWER_MDB');
+  var sh = ss.getSheetByName('📋_PROSPECTS');
+  if (!sh) return _json({ ok: false, erreur: 'Onglet 📋_PROSPECTS introuvable' });
+
+  var vals    = sh.getDataRange().getValues();
+  var headers = vals[0];
+  var idCol   = headers.indexOf('ID_Prospect');
+  var pinCol  = headers.indexOf('PIN_CDS_Assigne');
+  var flagCol = headers.indexOf('Flag_traite');
+
+  if (idCol < 0) return _json({ ok: false, erreur: 'Colonne ID_Prospect introuvable' });
+
+  var rowIdx = -1;
+  for (var r = 1; r < vals.length; r++) {
+    if (String(vals[r][idCol]) === id) { rowIdx = r + 1; break; }
+  }
+  if (rowIdx < 0) return _json({ ok: false, erreur: 'Lead ' + id + ' introuvable' });
+
+  // Contrôle accès : CDS ne peut supprimer que ses propres leads
+  var peutSupprimer = user.role === 'ADMIN' || user.role === 'CHANNEL_MANAGER';
+  if (!peutSupprimer) {
+    var pinLead = Number(vals[rowIdx - 1][pinCol]);
+    peutSupprimer = pinLead === Number(user.pin);
+  }
+  if (!peutSupprimer) return _json({ ok: false, erreur: 'Droits insuffisants — vous ne pouvez supprimer que vos propres leads' });
+
+  // Soft-delete : Flag_traite = 'DELETED'
+  if (flagCol >= 0) sh.getRange(rowIdx, flagCol + 1).setValue('DELETED');
+  // Marquer aussi FLAG_ACTION pour la lisibilité côté Sheets
+  var flagActCol = headers.indexOf('FLAG_ACTION');
+  if (flagActCol >= 0) sh.getRange(rowIdx, flagActCol + 1).setValue('SUPPRIME');
+
+  SpreadsheetApp.flush();
+  _log(user.pin, 'supprimerLead', 'Lead soft-deleted : ' + id);
+  return _json({ ok: true, id: id });
+}
+
+// ══════════════════════════════════════════════════════════════
+//  V4 — BLOC 1 : MIGRATION réattribution J. Nouet + Anthony → Tadjidine (1000)
+//  Exécuter UNE FOIS manuellement depuis l'éditeur Apps Script.
+//  Cherche dans 🏢_COMPTES et 📋_PROSPECTS les lignes avec PIN_CDS_Assigne = 4004
+//  (Anthony) ou Nom_CDS contenant 'Nouet' et les réattribue à Tadjidine (1000).
+// ══════════════════════════════════════════════════════════════
+function migrerReattribuerBloc1() {
+  var ss   = _getSpreadsheet('EMPOWER_MDB');
+  var PIN_TADJIDINE = 1000;
+  var NOM_TADJIDINE = 'Tadjidine';
+  var total = 0;
+
+  ['🏢_COMPTES', '📋_PROSPECTS'].forEach(function(onglet) {
+    var sh = ss.getSheetByName(onglet);
+    if (!sh) return;
+    var vals    = sh.getDataRange().getValues();
+    var headers = vals[0];
+    var pinCol  = headers.indexOf('PIN_CDS_Assigne');
+    var nomCol  = headers.indexOf('Nom_CDS');
+    if (pinCol < 0) return;
+
+    for (var r = 1; r < vals.length; r++) {
+      var pin = Number(vals[r][pinCol]);
+      var nom = String(vals[r][nomCol] || '').toLowerCase();
+      var match = pin === 4004 || nom.indexOf('nouet') >= 0 || nom.indexOf('anthony') >= 0;
+      if (!match) continue;
+      sh.getRange(r + 1, pinCol + 1).setValue(PIN_TADJIDINE);
+      if (nomCol >= 0) sh.getRange(r + 1, nomCol + 1).setValue(NOM_TADJIDINE);
+      total++;
+    }
+  });
+
+  SpreadsheetApp.flush();
+  Logger.log('✅ Bloc 1 migration : ' + total + ' lignes réattribuées à Tadjidine (1000)');
+  return total;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  V4 — BLOC 2 : ONGLET EMPOWER_ONBOARDING
+//  Génère / met à jour l'onglet EMPOWER_ONBOARDING dans EMPOWER_MDB.
+//  Source : 📋_PROSPECTS (leads pipeline) + 🏢_COMPTES (CA historique)
+//           + 📉_SELL_IN_HISTORIQUE si disponible.
+//  Idempotent : préserve DATE_DERNIER_APPEL, STATUT_APPEL, NOTES_APPEL, DATE_RELANCE.
+//  Exécuter via bouton "🔄 Actualiser Onboarding" (admin) ou action syncOnboarding.
+// ══════════════════════════════════════════════════════════════
+var ONBOARDING_HEADERS = [
+  'NOM_COMPTE','CANAL','COMMERCIAL_ATTRIBUÉ','STATUT_EMPOWER','PRIORITÉ',
+  'CA_FY25','CA_FY26','CA_FY27','DERNIER_QUARTER_ACTIF',
+  'DATE_DERNIER_APPEL','STATUT_APPEL','NOTES_APPEL','DATE_RELANCE','TRACKER_LINK',
+];
+
+var STATUT_APPEL_OPTIONS = ['À appeler','Appelé–RDV','Sans suite','Onboardé','Refus'];
+
+function _syncOnboarding(body, user) {
+  if (!user || (user.role !== 'ADMIN' && user.role !== 'CHANNEL_MANAGER'))
+    return _json({ ok: false, erreur: 'Réservé aux profils ADMIN et CHANNEL_MANAGER' });
+  try {
+    var n = creerOngletOnboarding();
+    return _json({ ok: true, lignes: n, message: n + ' comptes dans EMPOWER_ONBOARDING' });
+  } catch(e) {
+    return _json({ ok: false, erreur: e.toString() });
+  }
+}
+
+function creerOngletOnboarding() {
+  var ss = _getSpreadsheet('EMPOWER_MDB');
+
+  // ── 1. Lire les sources ─────────────────────────────────────
+  var shP = ss.getSheetByName('📋_PROSPECTS');
+  var shC = null;
+  ss.getSheets().forEach(function(s) {
+    if (!shC && s.getName().replace(/[^\w]/g,'').toUpperCase().indexOf('COMPTES') >= 0
+        && s.getName().indexOf('HISTORIQUES') < 0) shC = s;
+  });
+  var shSI = ss.getSheetByName('📉_SELL_IN_HISTORIQUE');
+
+  // Pivot CA depuis SELL_IN_HISTORIQUE
+  var caMap = {};
+  if (shSI) {
+    var siVals = shSI.getDataRange().getValues();
+    var siH    = siVals[0];
+    var iRes   = siH.indexOf('RESELLER');
+    var iCA25  = siH.indexOf('CA_FY25_TOTAL');
+    var iCA26  = siH.indexOf('CA_FY26_TOTAL');
+    var iQ1FY27 = siH.indexOf('Q1FY27');
+    var iQ2FY26 = siH.indexOf('Q2FY26');
+    var iQ3FY26 = siH.indexOf('Q3FY26');
+    var iQ4FY26 = siH.indexOf('Q4FY26');
+    for (var r = 1; r < siVals.length; r++) {
+      var res = _normNomGs(String(siVals[r][iRes] || ''));
+      if (!res) continue;
+      caMap[res] = {
+        ca25:  Number(siVals[r][iCA25]  || 0),
+        ca26:  Number(siVals[r][iCA26]  || 0),
+        ca27:  Number(siVals[r][iQ1FY27] || 0),
+        dqActif: _dernierQuarterActif(siVals[r], siH),
+      };
+    }
+  }
+
+  // Fallback CA depuis 🏢_COMPTES
+  if (shC) {
+    var cVals = shC.getDataRange().getValues();
+    var cH = cVals[0];
+    var cNom = cH.indexOf('Nom_Compte');
+    var cCA25 = cH.indexOf('CA_FY25'), cCA26 = cH.indexOf('CA_FY26'), cCAQ1 = cH.indexOf('CA_Q1FY27');
+    for (var cr = 1; cr < cVals.length; cr++) {
+      var cnorm = _normNomGs(String(cVals[cr][cNom] || ''));
+      if (!cnorm || caMap[cnorm]) continue;
+      caMap[cnorm] = {
+        ca25: Number(cVals[cr][cCA25] || 0),
+        ca26: Number(cVals[cr][cCA26] || 0),
+        ca27: Number(cVals[cr][cCAQ1] || 0),
+        dqActif: '',
+      };
+    }
+  }
+
+  // ── 2. Dédupliquer les prospects ───────────────────────────
+  var NOMS_CDS = {1000:'Tadjidine',4001:'Lyes',4002:'Mehdi',4003:'Johanne',5000:'Alexandra'};
+  var prosps = {};
+  if (shP) {
+    var pVals = shP.getDataRange().getValues();
+    var pH = pVals[0];
+    var pNom = pH.indexOf('Nom_Compte'), pPin = pH.indexOf('PIN_CDS_Assigne');
+    var pCanal = pH.indexOf('CANAL'), pStatut = pH.indexOf('STATUT_EMPOWER');
+    var pFlag = pH.indexOf('Flag_traite');
+    for (var pr = 1; pr < pVals.length; pr++) {
+      var deleted = String(pVals[pr][pFlag] || '').toUpperCase();
+      if (deleted === 'DELETED') continue;
+      var pn = _normNomGs(String(pVals[pr][pNom] || ''));
+      if (!pn) continue;
+      if (!prosps[pn]) {
+        prosps[pn] = {
+          nom:    String(pVals[pr][pNom] || '').trim(),
+          pin:    Number(pVals[pr][pPin] || 0),
+          canal:  String(pVals[pr][pCanal] || '').trim() || 'EMPOWER',
+          statut: String(pVals[pr][pStatut] || '').trim(),
+        };
+      }
+    }
+  }
+
+  // ── 3. Lire l'onglet existant (préserver les champs manuels) ─
+  var MANUAL_FIELDS = ['DATE_DERNIER_APPEL','STATUT_APPEL','NOTES_APPEL','DATE_RELANCE'];
+  var existantes = {};
+  var shO = ss.getSheetByName('EMPOWER_ONBOARDING');
+  if (shO) {
+    var oVals = shO.getDataRange().getValues();
+    if (oVals.length > 1) {
+      var oH   = oVals[0];
+      var oNom = oH.indexOf('NOM_COMPTE');
+      for (var or = 1; or < oVals.length; or++) {
+        var on = _normNomGs(String(oVals[or][oNom] || ''));
+        if (!on) continue;
+        var manual = {};
+        MANUAL_FIELDS.forEach(function(f) {
+          var idx = oH.indexOf(f);
+          if (idx >= 0) manual[f] = oVals[or][idx];
+        });
+        existantes[on] = manual;
+      }
+    }
+    ss.deleteSheet(shO);
+  }
+
+  // ── 4. Créer l'onglet et écrire ────────────────────────────
+  shO = ss.insertSheet('EMPOWER_ONBOARDING');
+  shO.getRange(1, 1, 1, ONBOARDING_HEADERS.length).setValues([ONBOARDING_HEADERS]).setFontWeight('bold');
+
+  // Construire l'union des noms (prospects + caMap)
+  var tousPNorm = {};
+  Object.keys(prosps).forEach(function(k) { tousPNorm[k] = true; });
+  Object.keys(caMap).forEach(function(k)  { tousPNorm[k] = true; });
+
+  var lignes = [];
+  Object.keys(tousPNorm).forEach(function(norm) {
+    var p   = prosps[norm];
+    var ca  = caMap[norm] || { ca25: 0, ca26: 0, ca27: 0, dqActif: '' };
+    var nom = p ? p.nom : (Object.keys(caMap).find(function(k) { return k === norm; }) || norm);
+    var pin = p ? p.pin : 0;
+    var canal  = p ? p.canal : 'EMPOWER';
+    var statut = p ? p.statut : '';
+
+    var comm = NOMS_CDS[pin] || (pin ? 'PIN ' + pin : '—');
+    var prio  = _calculerPriorite(ca, statut);
+    var manual = existantes[norm] || {};
+
+    var ligne = new Array(ONBOARDING_HEADERS.length).fill('');
+    var set = function(col, val) {
+      var i = ONBOARDING_HEADERS.indexOf(col);
+      if (i >= 0) ligne[i] = val;
+    };
+    set('NOM_COMPTE',          nom);
+    set('CANAL',               canal);
+    set('COMMERCIAL_ATTRIBUÉ', comm);
+    set('STATUT_EMPOWER',      statut || '❌ NON ACTIF');
+    set('PRIORITÉ',            prio);
+    set('CA_FY25',             ca.ca25 || '');
+    set('CA_FY26',             ca.ca26 || '');
+    set('CA_FY27',             ca.ca27 || '');
+    set('DERNIER_QUARTER_ACTIF', ca.dqActif || '');
+    // Champs manuels préservés
+    MANUAL_FIELDS.forEach(function(f) { set(f, manual[f] || ''); });
+    set('TRACKER_LINK',        statut ? '→ Pipeline' : '⚠️ Créer');
+
+    lignes.push(ligne);
+  });
+
+  // Trier : 🔴 HIGH d'abord, puis 🟠 MEDIUM, puis 🟢 LOW
+  var prioOrd = {'🔴 HIGH': 0, '🟠 MEDIUM': 1, '🟢 LOW': 2};
+  lignes.sort(function(a, b) {
+    var pa = prioOrd[a[ONBOARDING_HEADERS.indexOf('PRIORITÉ')]] ?? 9;
+    var pb = prioOrd[b[ONBOARDING_HEADERS.indexOf('PRIORITÉ')]] ?? 9;
+    return pa - pb;
+  });
+
+  if (lignes.length > 0) {
+    shO.getRange(2, 1, lignes.length, ONBOARDING_HEADERS.length).setValues(lignes);
+  }
+
+  // Validation dropdown STATUT_APPEL
+  var statutAppelCol = ONBOARDING_HEADERS.indexOf('STATUT_APPEL') + 1;
+  if (lignes.length > 0 && statutAppelCol > 0) {
+    var rule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(STATUT_APPEL_OPTIONS, true)
+      .setAllowInvalid(false)
+      .build();
+    shO.getRange(2, statutAppelCol, lignes.length, 1).setDataValidation(rule);
+  }
+
+  shO.setFrozenRows(1);
+  SpreadsheetApp.flush();
+  Logger.log('✅ EMPOWER_ONBOARDING : ' + lignes.length + ' comptes');
+  return lignes.length;
+}
+
+function _dernierQuarterActif(row, headers) {
+  var quarters = ['Q4FY26','Q3FY26','Q2FY26','Q1FY26','Q4FY25','Q3FY25','Q2FY25','Q1FY25'];
+  for (var i = 0; i < quarters.length; i++) {
+    var idx = headers.indexOf(quarters[i]);
+    if (idx >= 0 && Number(row[idx] || 0) > 0) return quarters[i];
+  }
+  return '';
+}
+
+function _calculerPriorite(ca, statut) {
+  var SEUIL_CA = 5000; // €
+  var moisDepuisFY26Q4 = 6; // approximation : Q4FY26 ≈ > 6 mois
+
+  var actifEmpower = statut && statut !== '❌ NON ACTIF' && statut !== '' && statut !== 'ARCHIVE';
+  if (actifEmpower) return '🟢 LOW';
+
+  var ca26 = ca.ca26 || 0;
+  var ca27 = ca.ca27 || 0;
+  var dq   = ca.dqActif || '';
+
+  // Actif récemment (FY27 ou Q3-Q4 FY26)
+  if (ca27 > 0 || dq === 'Q3FY26' || dq === 'Q4FY26') return '🟢 LOW';
+
+  // Dernier achat entre 3 et 6 mois (Q1-Q2 FY26)
+  if (dq === 'Q1FY26' || dq === 'Q2FY26') return '🟠 MEDIUM';
+
+  // Aucun achat depuis > 6 mois ou jamais onboardé avec CA > seuil
+  if (ca26 > SEUIL_CA || ca.ca25 > SEUIL_CA) return '🔴 HIGH';
+  if (!dq && (ca26 > 0 || ca.ca25 > 0)) return '🔴 HIGH';
+
+  return '🟠 MEDIUM';
 }

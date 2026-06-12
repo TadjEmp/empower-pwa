@@ -85,7 +85,7 @@ window.VueAdmin = {
       { id: 'INTEGRE',     lbl: 'Intégré ✅',  coul: 'var(--c-success,#1a9e5c)' },
       { id: 'ARCHIVE',     lbl: 'Archivé',     coul: 'var(--c-text-2)' },
     ];
-    const CDS_NOMS = { 1000:'Tadjidine', 4001:'Lyes', 4002:'Mehdi', 4003:'Johanne', 4004:'Anthony' };
+    const CDS_NOMS = { 1000:'Tadjidine', 4001:'Lyes', 4002:'Mehdi', 4003:'Johanne' }; // BLOC 1 : 4004 Anthony supprimé
 
     let leads = sv.leads;
     if (sv.filtreCDS !== 'TOUS')    leads = leads.filter(l => String(l.PIN_CDS_Assigne) === sv.filtreCDS);

@@ -152,12 +152,16 @@ function NavBar(actif) {
   ];
 
   // Filtrage role-aware : ne rend QUE les onglets autorisés par la matrice RBAC.
-  let items = tousItems;
+  // Si le rôle est connu mais Permissions non chargé → liste vide (sécurité par défaut).
+  // Si session non initialisée → liste vide (évite d'afficher tout à un utilisateur non identifié).
+  let items = [];
   const role = (typeof Session !== 'undefined') ? Session.role : null;
   if (role && typeof window.Permissions !== 'undefined') {
     const autorises = window.Permissions.onglets(role);
-    // Préserve l'ordre de tousItems, ne garde que les tabs autorisés.
     items = tousItems.filter(i => autorises.indexOf(i.id) !== -1);
+  } else if (!role) {
+    // Pas encore connecté → rien dans la nav
+    items = [];
   }
 
   return `
