@@ -6,7 +6,7 @@
 
 const GroqAPI = {
   STT_MODEL:      'whisper-large-v3',
-  LLM_MODEL:      'llama3-70b-8192',
+  LLM_MODEL:      'llama-3.3-70b-versatile',
   TEMPERATURE:    0.3,
   RECORD_SECONDS: 30,
   _mediaRecorder: null,
