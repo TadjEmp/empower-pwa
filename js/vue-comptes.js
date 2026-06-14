@@ -17,16 +17,20 @@ window.VueComptes = {
     this.state.chargement = true;
     this.render();
     try {
-      const [raw, objectifs] = await Promise.all([
+      const [raw, objectifs, cdsApi] = await Promise.all([
         SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
         SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
+        SheetsAPI.lireCDS(), // V5 BUG1 — liste CDS dynamique (inclut Alexandra)
       ]);
       initCDSRegistry(objectifs); // BUG-02
       // BUG-06 : CDS ne voit que ses comptes dès l'ouverture
       this.state.comptes = raw.filter(c =>
         Session.voitTout() || Number(c.PIN_CDS_Assigne) === Session.pin
       );
-      this._cdsListe = objectifs.map(o => ({ pin: Number(o.PIN_CDS), nom: o.Nom_CDS }));
+      // V5 BUG1 — source de vérité lireCDS (Alexandra incluse) ; fallback OBJECTIFS_PRIMES
+      this._cdsListe = (Array.isArray(cdsApi) && cdsApi.length)
+        ? cdsApi.map(c => ({ pin: Number(c.pin), nom: String(c.nom) }))
+        : objectifs.map(o => ({ pin: Number(o.PIN_CDS), nom: o.Nom_CDS }));
       this.state.chargement = false;
       this.render();
     } catch(e) {
@@ -106,6 +110,7 @@ window.VueComptes = {
     const cdsList = (this._cdsListe || [
       { pin: 1000, nom: 'Tadjidine' }, { pin: 4001, nom: 'Lyes' },
       { pin: 4002, nom: 'Mehdi' },     { pin: 4003, nom: 'Johanne' },
+      { pin: 5000, nom: 'Alexandra' }, // V5 BUG1
     ]);
 
     app.innerHTML = `

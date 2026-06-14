@@ -21,8 +21,9 @@
       'home', 'tracker', 'historiques', 'phoning', 'visites',
       'objectifs', 'primes', 'questionnaire', 'comptes',
     ],
+    // V5 BUG5 — Alexandra : conserve OBJECTIFS ; jamais Visites/Phoning/Primes.
     CHANNEL_MANAGER: [
-      'home', 'tracker', 'comptes', 'reporting',
+      'home', 'tracker', 'comptes', 'objectifs', 'reporting',
     ],
     EXTERNE: [
       'tracker',

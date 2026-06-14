@@ -17,8 +17,8 @@ window.VuePipeline = {
     { id: 'ARCHIVE',     lbl: 'Archivé',      coul: 'var(--c-text-2)' },
   ],
 
-  // BLOC 1 : 4004 Anthony retiré du fallback
-  CDS_FALLBACK: [ { pin: 4001, nom: 'Lyes' }, { pin: 4002, nom: 'Mehdi' }, { pin: 4003, nom: 'Johanne' }, { pin: 1000, nom: 'Tadjidine' } ],
+  // BLOC 1 : 4004 Anthony retiré du fallback · V5 BUG1 : Alexandra (5000) ajoutée
+  CDS_FALLBACK: [ { pin: 4001, nom: 'Lyes' }, { pin: 4002, nom: 'Mehdi' }, { pin: 4003, nom: 'Johanne' }, { pin: 1000, nom: 'Tadjidine' }, { pin: 5000, nom: 'Alexandra' } ],
   CDS: [],
 
   LIMITE_COL: 20,
@@ -28,16 +28,21 @@ window.VuePipeline = {
   // BLOCS 7 & 3.2 — valeurs channel disponibles (calculées à l'init)
   CHANNELS: [],
 
-  _chargerCDS(params, objectifs) {
-    // V4.2 — GARANTIE ABSOLUE : les 4 CDS sont toujours présents
-    // Ne dépend plus de ⚙️_PARAMS (évite tout bug de cache IDB ou valeur PINS_CDS erronée)
-    const NOMS = { 1000:'Tadjidine', 4001:'Lyes', 4002:'Mehdi', 4003:'Johanne' };
-    const nomMap = {};
-    (objectifs || []).forEach(o => {
-      const pin = Number(o.PIN_CDS), nom = String(o.Nom_CDS || '').trim();
-      if (pin && nom) nomMap[pin] = nom;
-    });
-    this.CDS = [1000, 4001, 4002, 4003].map(pin => ({ pin, nom: nomMap[pin] || NOMS[pin] }));
+  _chargerCDS(params, objectifs, cdsApi) {
+    // V5 BUG1 — source de vérité = lireCDS (backend). Inclut Alexandra (5000).
+    // GARANTIE ABSOLUE : si l'API est indisponible, fallback codé en dur (5 entrées).
+    // Ne dépend plus de ⚙️_PARAMS (évite tout bug de cache IDB ou PINS_CDS erronée).
+    if (Array.isArray(cdsApi) && cdsApi.length) {
+      this.CDS = cdsApi.map(c => ({ pin: Number(c.pin), nom: String(c.nom) }));
+    } else {
+      const NOMS = { 1000:'Tadjidine', 4001:'Lyes', 4002:'Mehdi', 4003:'Johanne', 5000:'Alexandra' };
+      const nomMap = {};
+      (objectifs || []).forEach(o => {
+        const pin = Number(o.PIN_CDS), nom = String(o.Nom_CDS || '').trim();
+        if (pin && nom) nomMap[pin] = nom;
+      });
+      this.CDS = [1000, 4001, 4002, 4003, 5000].map(pin => ({ pin, nom: nomMap[pin] || NOMS[pin] }));
+    }
     // Synchronise _CDS_REGISTRY pour resolveCDS() dans toute l'app
     this.CDS.forEach(c => { window._CDS_REGISTRY[String(c.pin)] = c.nom; });
   },
@@ -63,12 +68,13 @@ window.VuePipeline = {
     };
     this.render();
     try {
-      const [raw, params, objectifs] = await Promise.all([
+      const [raw, params, objectifs, cdsApi] = await Promise.all([
         SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS'),
         SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
         SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
+        SheetsAPI.lireCDS(), // V5 BUG1 — liste CDS dynamique (inclut Alexandra)
       ]);
-      this._chargerCDS(params, objectifs);
+      this._chargerCDS(params, objectifs, cdsApi);
       initCDSRegistry(objectifs); // BUG-02 : peuple le registre global
 
       // BLOC 7 — extraire la liste des channels disponibles

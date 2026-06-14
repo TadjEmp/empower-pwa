@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════
-//  api.js — EMPOWER MDB API Layer v4.1
+//  api.js — EMPOWER MDB API Layer v5.0
 //  Cache IndexedDB · Retry ×3 · Offline queue · Dedup
 //  !! Remplacer BASE_URL par l'URL de ton Apps Script !!
 // ═══════════════════════════════════════
@@ -19,7 +19,7 @@ const SheetsAPI = {
     this._online = navigator.onLine;
     window.addEventListener('online',  () => { this._online = true;  this._syncQueue(); });
     window.addEventListener('offline', () => { this._online = false; });
-    console.info('[API] v4.1 prêt · online=' + this._online);
+    console.info('[API] v5.0 prêt · online=' + this._online);
   },
 
   // ── LOGIN ────────────────────────────────────────────
@@ -100,6 +100,49 @@ const SheetsAPI = {
     this._gererAuthExpiree(r);
     if (!r.ok) throw new Error(r.erreur || 'Erreur MAJ');
     await this._invalidate(`${fichier}::${onglet}`);
+    return r;
+  },
+
+  // ── V5 — RÉFÉRENTIEL CDS (BUG1) ──────────────────────
+  // Liste dynamique des commerciaux pour les dropdowns d'attribution.
+  // Retourne un tableau [{pin,nom,role}] ou null si indisponible (le caller
+  // applique son fallback codé en dur).
+  async lireCDS() {
+    try {
+      const url  = `${this.BASE_URL}?action=lireCDS&token=${encodeURIComponent(this.TOKEN || '')}`;
+      const data = await this._fetchRetry(url, 'GET');
+      this._gererAuthExpiree(data);
+      return (data && data.ok && Array.isArray(data.cds)) ? data.cds : null;
+    } catch(e) { return null; }
+  },
+
+  // ── V5 — PERMISSIONS PAR RÔLE (BUG5) ─────────────────
+  async lirePermissions() {
+    try {
+      const url  = `${this.BASE_URL}?action=lirePermissions&token=${encodeURIComponent(this.TOKEN || '')}`;
+      const data = await this._fetchRetry(url, 'GET');
+      this._gererAuthExpiree(data);
+      return (data && data.ok && Array.isArray(data.onglets)) ? data.onglets : null;
+    } catch(e) { return null; }
+  },
+
+  // ── V5 — DASHBOARD AGRÉGÉ (BUG6) ─────────────────────
+  // Cards agrégées côté backend, filtrées par rôle. Disponible pour les vues
+  // qui veulent des compteurs prêts à l'emploi.
+  async lireDashboard() {
+    const url  = `${this.BASE_URL}?action=lireDashboard&token=${encodeURIComponent(this.TOKEN || '')}`;
+    const data = await this._fetchRetry(url, 'GET');
+    this._gererAuthExpiree(data);
+    return data;
+  },
+
+  // ── V5 — SAISIE MANUELLE CA (F3) ─────────────────────
+  async mettreAJourCA(quarter, montant, pinCible) {
+    const payload = { action: 'mettreAJourCA', quarter, montant, token: this.TOKEN };
+    if (pinCible) payload.pinCible = pinCible;
+    const r = await this._fetchRetry(this.BASE_URL, 'POST', this.MAX_RETRY, payload);
+    this._gererAuthExpiree(r);
+    if (!r.ok) throw new Error(r.erreur || 'Erreur MAJ CA');
     return r;
   },
 
