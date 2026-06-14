@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-//  Code.gs — EMPOWER MDB Google Apps Script v4.1
+//  Code.gs — EMPOWER MDB Google Apps Script v5.0
 //  Backend API pour PWA EMPOWER FY27
 //
 //  DÉPLOIEMENT :
@@ -50,8 +50,14 @@ function _router(params, body) {
     if (!user) return _json({ ok: false, erreur: 'AUTH', detail: 'Session invalide ou expirée — reconnectez-vous' });
 
     switch (action) {
-      case 'lire':           return _lire(params);
+      case 'lire':           return _lire(params, user);
       case 'ecrire':         return _ecrire(body);
+      // ── V5 — actions de référence (dropdowns, permissions, dashboard) ──
+      case 'lireCDS':         return _lireCDS();
+      case 'lirePermissions': return _lirePermissions(user);
+      case 'lireDashboard':   return _lireDashboard(user);
+      case 'mettreAJourCA':   return _mettreAJourCA(body, user);
+      case 'purgerProspectsBase': return _purgerProspectsBase(body, user);
       case 'mettreAJour':    return _mettreAJour(body);
       case 'attribuerLead':  return _attribuerLead({ ...body, pin: user.pin });
       case 'uploadPhoto':    return _uploadPhoto(body, user);
@@ -171,7 +177,12 @@ function initPipelineColonnes() {
 }
 
 // ── LIRE ────────────────────────────────────────────────────
-function _lire({ fichier, onglet }) {
+// BUG2 (v5) — sur 📋_PROSPECTS, exclut pour tous les rôles SAUF ADMIN
+// les ~1674 prospects résiduels Flavie (Source_Import contenant FLAVIE ou
+// BASE_PROSPECTS_RELANCER). La source de vérité des non-ADMIN = ESI_PIPELINE
+// + comptes attribués. Les lignes soft-deleted (Flag_traite=DELETED) sont
+// exclues pour tout le monde sur cet onglet.
+function _lire({ fichier, onglet }, user) {
   const ss = _getSpreadsheet(fichier);
   const sh = ss.getSheetByName(onglet);
   if (!sh) return _json({ ok: false, erreur: `Onglet "${onglet}" introuvable dans ${fichier}` });
@@ -180,13 +191,30 @@ function _lire({ fichier, onglet }) {
   if (vals.length < 2) return _json({ ok: true, data: [] });
 
   const headers = vals[0].map(h => String(h).trim());
-  const data = vals.slice(1)
+  let data = vals.slice(1)
     .filter(row => row.some(c => c !== ''))
     .map(row => {
       const obj = {};
       headers.forEach((h, i) => { obj[h] = row[i] ?? ''; });
       return obj;
     });
+
+  // BUG2 — filtrage Flavie / base résiduelle sur 📋_PROSPECTS
+  if (onglet === '📋_PROSPECTS') {
+    const estFlavie = function(o) {
+      const src = String(o.Source_Import || '').toUpperCase();
+      return src.indexOf('FLAVIE') >= 0 || src.indexOf('BASE_PROSPECTS_RELANCER') >= 0;
+    };
+    const estSupprime = function(o) {
+      return String(o.Flag_traite || '').toUpperCase() === 'DELETED';
+    };
+    const isAdmin = user && user.role === 'ADMIN';
+    data = data.filter(function(o) {
+      if (estSupprime(o)) return false;          // soft-delete : caché à tous
+      if (!isAdmin && estFlavie(o)) return false; // Flavie : caché aux non-ADMIN
+      return true;
+    });
+  }
 
   return _json({ ok: true, data, count: data.length });
 }
@@ -355,7 +383,7 @@ function _logErreur(pin, module, err) {
     const sh = ss.getSheetByName('🔴_ERROR_LOGS');
     if (sh) sh.appendRow([
       new Date().toISOString(), pin, '', module,
-      err.message, err.stack || '', '{}', true, '4.1'
+      err.message, err.stack || '', '{}', true, '5.0'
     ]);
   } catch {}
 }
@@ -378,7 +406,7 @@ const HEADERS_MDB = {
   '🏢_COMPTES': ['ID_Compte','Nom_Compte','Ville','Code_Postal','Tel','Email','PIN_CDS_Assigne','Nom_CDS','CANAL','SECTEUR','HAS_EMPOWER','FLAG_ACTION','Priorite','STATUT_COMPTE','CA_FY25','CA_FY26','CA_Q1FY27','Date_Derniere_Action','Type_Derniere_Action','Prochaine_action','Date_prochaine_action','Slider_Receptivite','Note_initiale','Flag_traite','Flag_converti','Latitude','Longitude','Source_Import','Date_Import','Timestamp'],
   '📋_PROSPECTS': ['ID_Prospect','Nom_Compte','Ville','Code_Postal','Tel','Email','PIN_CDS_Assigne','Source_Import','FLAG_ACTION','CANAL','Note_initiale','Date_prochaine_action','Flag_traite','Flag_converti','Date_Import','Timestamp','STATUT_EMPOWER','POTENTIEL','ORIGINE','CONTACT_NOM','CONTACT_FONCTION','WELCOME_PACK_DATE','PREMIERE_COMMANDE_DATE'],
   '🗺️_VISITES': ['ID_Visite','Date','Heure','Semaine_ISO','PIN_CDS','Nom_CDS','ID_Cible','Nom_Compte','Type_Visite','Statut_Visite','Source_Visite','Type_Revendeur','Nb_Employes','Interlocuteur_Nom','Interlocuteur_Fonction','Contact_Direct','Contact_Data','Concurrent_Actuel','Satisf_Concurrent','Produits_Norton','Canal_Appro','Part_Lineaire','Arbre_EMPOWER_Statut','Freins_JSON','Grossistes_JSON','Marketing_Present','Marketing_Supports','PLV_Installe','Photo_URL','Resultat_Visite','Slider_Receptivite','Note_Privee','Prochaine_Action_Texte','Prochaine_Action_Date','GPS_Lat','GPS_Lng','Duree_Minutes','Timestamp'],
-  '📞_PHONING': ['ID_Appel','Date','Semaine_ISO','PIN_CDS','Nom_CDS','ID_Cible','Reseller','Statut_Appel','Interet_EMPOWER','Frein_Principal','Prochaine_Action','Date_Rappel','Note','Timestamp'],
+  '📞_PHONING': ['ID_Appel','Date','Semaine_ISO','PIN_CDS','Nom_CDS','ID_Cible','Reseller','Type_Appel','Statut_Appel','Interet_EMPOWER','Interet_Score','Questionnaire_JSON','Frein_Principal','Prochaine_Action','Date_Rappel','Note','Timestamp'],
   '📊_ACTIONS': ['ID_Action','Date_Action','Type_Action','Source','PIN_CDS','Nom_Compte','Statut_Avant','Statut_Apres','Resum_IA','GPS_Lat','GPS_Lng','Timestamp'],
   '🎯_OBJECTIFS_PRIMES': ['ID_Objectif','Nom_CDS','PIN_CDS','Q1_Obj_Initial','Q2_Obj_Initial','Q3_Obj_Initial','Q4_Obj_Initial','FY27_Obj','Q1_Obj_Revise','Q2_Obj_Revise','Q3_Obj_Revise','Q4_Obj_Revise','Q1_CA_Realise','Q2_CA_Realise','Q3_CA_Realise','Q4_CA_Realise','Prime_Q1','Prime_Q2','Prime_Q3','Prime_Q4','Bonus_Manager_Eligible'],
   '⚙️_PARAMS': ['Parametre','Valeur','Description'],
@@ -406,7 +434,7 @@ const PARAMS_FY27 = [
   ['PIN_MANAGER','1000','PIN manager (Tadjidine)'],
   ['PIN_FLAVIE','3000','PIN Flavie (phoning/admin)'],
   ['PIN_ADMIN','3000','PIN admin système'],
-  ['VERSION_APP','4.1','Version EMPOWER MDB'],
+  ['VERSION_APP','5.0','Version EMPOWER MDB'],
   ['APP_NAME','ESI — Empower Sales Intelligence','Nom application'],
   ['LOCK_TIMEOUT_MS','10000','Timeout verrou écriture (ms)'],
   ['NOTIF_FLAVIE_PIN','3000','PIN destinataire notifs phoning'],
@@ -945,8 +973,9 @@ function _trouverOngletSellIn(ss) {
 function _syncSellInDrive(body, user) {
   // SOURCE : classeur SELL-IN (lecture)
   // DESTINATIONS : 🏢_COMPTES (MDB) + V17 COMPTES HISTORIQUES (optionnel)
-  if (!user || user.role !== 'ADMIN')
-    return _json({ ok: false, erreur: 'Réservé aux administrateurs' });
+  // BUG3 (v5) — ouvert à TOUS les rôles authentifiés (plus ADMIN-only).
+  // Le routeur a déjà validé le token ; aucune restriction de rôle ici.
+  if (!user) return _json({ ok: false, erreur: 'Session invalide' });
   try {
     // ── 1. Lire le classeur SELL-IN (source) ─────────────────────────────────
     var SELL_IN_ID = '1z8j5NISu5uMtIds8qV_oaBLkWUiyE4x54n5uWzD5Q0A';
@@ -1006,6 +1035,7 @@ function _syncSellInDrive(body, user) {
       var iNom  = cH.indexOf('Nom_Compte');
       var iCA25 = cH.indexOf('CA_FY25'), iCA26 = cH.indexOf('CA_FY26');
       var iCAQ1 = cH.indexOf('CA_Q1FY27'), iCanal = cH.indexOf('CANAL');
+      var iStatut = cH.indexOf('STATUT_COMPTE'); // BUG4 — recalcul dynamique
       for (var ri = 1; ri < cData.length; ri++) {
         var nom  = String(cData[ri][iNom] || '').trim();
         var norm = nom.toLowerCase().replace(/[^a-z0-9]/g,'');
@@ -1018,6 +1048,14 @@ function _syncSellInDrive(body, user) {
           if (iCA26  >= 0) shC.getRange(rn, iCA26+1 ).setValue(r2(p.CA_FY26));
           if (iCAQ1  >= 0) shC.getRange(rn, iCAQ1+1 ).setValue(r2(p.CA_Q1FY27));
           if (iCanal >= 0) shC.getRange(rn, iCanal+1).setValue(p.canal);
+          // BUG4 — STATUT_COMPTE recalculé à partir du CA fraîchement synchronisé
+          if (iStatut >= 0) {
+            var ca27 = p.CA_Q1FY27 || 0, ca26 = p.CA_FY26 || 0, ca25 = p.CA_FY25 || 0;
+            var statut = ca27 > 0 ? 'ACTIF' :
+                         ca26 > 0 ? 'REACTIVER' :
+                         ca25 > 0 ? 'CHURN' : 'INACTIF';
+            shC.getRange(rn, iStatut+1).setValue(statut);
+          }
           comptesMaj++;
         }
       }
@@ -1392,4 +1430,212 @@ function _calculerPriorite(ca, statut) {
   if (!dq && (ca26 > 0 || ca.ca25 > 0)) return '🔴 HIGH';
 
   return '🟠 MEDIUM';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  V5 — RÉFÉRENTIEL CDS / PERMISSIONS / DASHBOARD
+// ══════════════════════════════════════════════════════════════
+
+// Source unique des commerciaux (BUG1). Tadjidine ET Alexandra peuvent
+// attribuer à n'importe quel CDS — le filtrage de QUI peut attribuer est
+// géré côté frontend (ADMIN + CHANNEL_MANAGER), la liste reste complète.
+var CDS_LIST = [
+  { pin: 1000, nom: 'Tadjidine', role: 'ADMIN' },
+  { pin: 4001, nom: 'Lyes',      role: 'CDS' },
+  { pin: 4002, nom: 'Mehdi',     role: 'CDS' },
+  { pin: 4003, nom: 'Johanne',   role: 'CDS' },
+  { pin: 5000, nom: 'Alexandra', role: 'CHANNEL_MANAGER' },
+];
+
+// BUG1 — liste dynamique des CDS pour tous les dropdowns du front.
+function _lireCDS() {
+  return _json({ ok: true, cds: CDS_LIST });
+}
+
+// BUG5 — onglets visibles par rôle. Le front masque tout onglet absent
+// de cette liste. PRIMES retiré pour CHANNEL_MANAGER, OBJECTIFS conservé.
+function _lirePermissions(user) {
+  var PERMS = {
+    'ADMIN':           ['home','tracker','comptes','visites','phoning','objectifs','onboarding','reporting'],
+    'CDS':             ['home','tracker','comptes','visites','phoning','objectifs'],
+    'CHANNEL_MANAGER': ['home','tracker','objectifs','onboarding','reporting'],
+  };
+  return _json({ ok: true, role: user.role, onglets: PERMS[user.role] || [] });
+}
+
+// BUG6 — agrégats HOME calculés côté backend, filtrés par rôle.
+// CDS → portefeuille personnel ; ADMIN / CHANNEL_MANAGER → vue globale équipe.
+// Le front choisit quelles cards afficher selon le rôle.
+function _lireDashboard(user) {
+  var ss = _getSpreadsheet('EMPOWER_MDB');
+  var pin = Number(user.pin);
+  var estManager = (user.role === 'ADMIN' || user.role === 'CHANNEL_MANAGER');
+
+  function lignes(nom) {
+    var sh = ss.getSheetByName(nom);
+    if (!sh || sh.getLastRow() < 2) return { headers: [], rows: [] };
+    var vals = sh.getDataRange().getValues();
+    return { headers: vals[0].map(String), rows: vals.slice(1) };
+  }
+  function idx(h, n) { return h.indexOf(n); }
+
+  // ── 🏢_COMPTES ──
+  var C = lignes('🏢_COMPTES');
+  var cCAQ1 = idx(C.headers, 'CA_Q1FY27');
+  var cStat = idx(C.headers, 'STATUT_COMPTE');
+  var cPin  = idx(C.headers, 'PIN_CDS_Assigne');
+  var caFY27 = 0, comptesActifs = 0, activite265Actifs = 0, activite265Total = 0;
+  C.rows.forEach(function(r) {
+    var dansPortef = estManager || (cPin >= 0 && Number(r[cPin]) === pin);
+    activite265Total++;
+    var ca = cCAQ1 >= 0 ? (parseFloat(r[cCAQ1]) || 0) : 0;
+    var actif = cStat >= 0 && String(r[cStat]).toUpperCase() === 'ACTIF';
+    if (ca > 0) activite265Actifs++;
+    if (dansPortef) {
+      caFY27 += ca;
+      if (actif) comptesActifs++;
+    }
+  });
+
+  // ── 📋_PROSPECTS (Flavie + DELETED exclus) ──
+  var P = lignes('📋_PROSPECTS');
+  var pStat = idx(P.headers, 'STATUT_EMPOWER');
+  var pPrem = idx(P.headers, 'PREMIERE_COMMANDE_DATE');
+  var pOrig = idx(P.headers, 'ORIGINE');
+  var pSrc  = idx(P.headers, 'Source_Import');
+  var pFlag = idx(P.headers, 'Flag_traite');
+  var pPin  = idx(P.headers, 'PIN_CDS_Assigne');
+  var leadsOnboarding = 0, comptesOnboardes = 0, onboardingTerrain = 0;
+  P.rows.forEach(function(r) {
+    var src = pSrc >= 0 ? String(r[pSrc]).toUpperCase() : '';
+    if (src.indexOf('FLAVIE') >= 0 || src.indexOf('BASE_PROSPECTS_RELANCER') >= 0) return;
+    if (pFlag >= 0 && String(r[pFlag]).toUpperCase() === 'DELETED') return;
+    if (!estManager && pPin >= 0 && Number(r[pPin]) !== pin) return;
+    if (pStat >= 0 && String(r[pStat]).toUpperCase() === 'INTEGRE') leadsOnboarding++;
+    if (pPrem >= 0 && String(r[pPrem]).trim() !== '') comptesOnboardes++;
+    if (pOrig >= 0 && String(r[pOrig]).toUpperCase().indexOf('TRACKER') >= 0) onboardingTerrain++;
+  });
+
+  // ── 📞_PHONING ──
+  var PH = lignes('📞_PHONING');
+  var phPin = idx(PH.headers, 'PIN_CDS');
+  var suiviPhoning = 0, phoningEquipe = 0;
+  PH.rows.forEach(function(r) {
+    phoningEquipe++;
+    if (phPin >= 0 && Number(r[phPin]) === pin) suiviPhoning++;
+  });
+
+  // ── 🗺️_VISITES ──
+  var VI = lignes('🗺️_VISITES');
+  var viPin = idx(VI.headers, 'PIN_CDS');
+  var visites = 0, visitesEquipe = 0;
+  VI.rows.forEach(function(r) {
+    visitesEquipe++;
+    if (viPin >= 0 && Number(r[viPin]) === pin) visites++;
+  });
+
+  return _json({
+    ok: true,
+    role: user.role,
+    cards: {
+      caFY27:            Math.round(caFY27 * 100) / 100,
+      comptesActifs:     comptesActifs,
+      suiviPhoning:      suiviPhoning,
+      visites:           visites,
+      leadsOnboarding:   leadsOnboarding,
+      comptesOnboardes:  comptesOnboardes,
+      onboardingTerrain: onboardingTerrain,
+      visitesEquipe:     visitesEquipe,
+      phoningEquipe:     phoningEquipe,
+      activite265:       { actifs: activite265Actifs, total: activite265Total },
+    },
+  });
+}
+
+// F3 — saisie manuelle du CA réalisé par quarter, en complément du sync SELL IN.
+// Écrit dans 🎯_OBJECTIFS_PRIMES (colonne Qx_CA_Realise) pour le PIN courant.
+// Un CDS ne met à jour que SON CA ; un ADMIN peut viser un autre PIN (body.pinCible).
+// body: { quarter: 'Q1'|'Q2'|'Q3'|'Q4', montant: Number, pinCible?: Number }
+function _mettreAJourCA(body, user) {
+  body = body || {};
+  var quarter = String(body.quarter || '').toUpperCase().trim();
+  if (['Q1','Q2','Q3','Q4'].indexOf(quarter) < 0)
+    return _json({ ok: false, erreur: 'Quarter invalide (attendu Q1..Q4)' });
+  var montant = parseFloat(String(body.montant).replace(',', '.'));
+  if (isNaN(montant) || montant < 0)
+    return _json({ ok: false, erreur: 'Montant CA invalide' });
+
+  var pinCible = body.pinCible ? Number(body.pinCible) : Number(user.pin);
+  if (pinCible !== Number(user.pin) && user.role !== 'ADMIN')
+    return _json({ ok: false, erreur: 'Non autorisé — vous ne pouvez saisir que votre propre CA' });
+
+  var sh = _getSpreadsheet('EMPOWER_MDB').getSheetByName('🎯_OBJECTIFS_PRIMES');
+  if (!sh) return _json({ ok: false, erreur: 'Onglet 🎯_OBJECTIFS_PRIMES introuvable' });
+
+  var vals    = sh.getDataRange().getValues();
+  var headers = vals[0];
+  var iPin    = headers.indexOf('PIN_CDS');
+  var iCol    = headers.indexOf(quarter + '_CA_Realise');
+  if (iPin < 0 || iCol < 0)
+    return _json({ ok: false, erreur: 'Colonnes PIN_CDS / ' + quarter + '_CA_Realise introuvables' });
+
+  for (var r = 1; r < vals.length; r++) {
+    if (Number(vals[r][iPin]) === pinCible) {
+      sh.getRange(r + 1, iCol + 1).setValue(montant);
+      SpreadsheetApp.flush();
+      _log(user.pin, 'mettreAJourCA', pinCible + ' ' + quarter + '=' + montant);
+      return _json({ ok: true, pin: pinCible, quarter: quarter, montant: montant });
+    }
+  }
+  return _json({ ok: false, erreur: 'Aucune ligne objectifs pour le PIN ' + pinCible });
+}
+
+// BUG2 — purge ADMIN de la base résiduelle Flavie : marquage Flag_traite='DELETED'
+// (soft-delete, non destructif). Cible les lignes Source_Import FLAVIE / BASE_PROSPECTS_RELANCER.
+function _purgerProspectsBase(body, user) {
+  if (!user || user.role !== 'ADMIN')
+    return _json({ ok: false, erreur: 'Réservé aux administrateurs' });
+
+  var sh = _getSpreadsheet('EMPOWER_MDB').getSheetByName('📋_PROSPECTS');
+  if (!sh) return _json({ ok: false, erreur: 'Onglet 📋_PROSPECTS introuvable' });
+
+  var vals    = sh.getDataRange().getValues();
+  var headers = vals[0];
+  var iSrc    = headers.indexOf('Source_Import');
+  var iFlag   = headers.indexOf('Flag_traite');
+  if (iSrc < 0 || iFlag < 0)
+    return _json({ ok: false, erreur: 'Colonnes Source_Import / Flag_traite introuvables' });
+
+  var purges = 0;
+  for (var r = 1; r < vals.length; r++) {
+    var src = String(vals[r][iSrc] || '').toUpperCase();
+    var dejaSupprime = String(vals[r][iFlag] || '').toUpperCase() === 'DELETED';
+    if (!dejaSupprime && (src.indexOf('FLAVIE') >= 0 || src.indexOf('BASE_PROSPECTS_RELANCER') >= 0)) {
+      sh.getRange(r + 1, iFlag + 1).setValue('DELETED');
+      purges++;
+    }
+  }
+  SpreadsheetApp.flush();
+  _log(user.pin, 'purgerProspectsBase', purges + ' prospects base marqués DELETED');
+  return _json({ ok: true, purges: purges });
+}
+
+// ⚙️ F1 — Migration colonnes APPEL_FROID dans 📞_PHONING.
+// À exécuter UNE FOIS manuellement depuis l'éditeur Apps Script si la MDB existe déjà.
+// Ajoute Type_Appel, Interet_Score, Questionnaire_JSON sans toucher aux données.
+function migrerColonnesPhoning() {
+  var sh = _getSpreadsheet('EMPOWER_MDB').getSheetByName('📞_PHONING');
+  if (!sh) throw new Error('Onglet 📞_PHONING introuvable');
+  var headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(String);
+  var COLS = ['Type_Appel', 'Interet_Score', 'Questionnaire_JSON'];
+  var added = 0;
+  COLS.forEach(function(c) {
+    if (headers.indexOf(c) < 0) {
+      sh.getRange(1, sh.getLastColumn() + 1).setValue(c).setFontWeight('bold');
+      added++;
+    }
+  });
+  SpreadsheetApp.flush();
+  Logger.log('✅ migrerColonnesPhoning : ' + added + ' colonne(s) ajoutée(s)');
+  return added;
 }
