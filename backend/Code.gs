@@ -58,7 +58,7 @@ function _router(params, body) {
       case 'lireDashboard':   return _lireDashboard(user);
       case 'mettreAJourCA':   return _mettreAJourCA(body, user);
       case 'purgerProspectsBase': return _purgerProspectsBase(body, user);
-      case 'mettreAJour':    return _mettreAJour(body);
+      case 'mettreAJour':    return _mettreAJour(body, user);
       case 'attribuerLead':  return _attribuerLead({ ...body, pin: user.pin });
       case 'uploadPhoto':    return _uploadPhoto(body, user);
       case 'gemini':         return _gemini(body, user);
@@ -208,11 +208,23 @@ function _lire({ fichier, onglet }, user) {
     const estSupprime = function(o) {
       return String(o.Flag_traite || '').toUpperCase() === 'DELETED';
     };
-    const isAdmin = user && user.role === 'ADMIN';
+    const isAdmin   = user && user.role === 'ADMIN';
+    const isCDS     = user && user.role === 'CDS';
+    const userPin   = user ? Number(user.pin) : 0;
     data = data.filter(function(o) {
-      if (estSupprime(o)) return false;          // soft-delete : caché à tous
-      if (!isAdmin && estFlavie(o)) return false; // Flavie : caché aux non-ADMIN
+      if (estSupprime(o)) return false;
+      if (!isAdmin && estFlavie(o)) return false;
+      // C03 — CDS voit uniquement son portefeuille (leads assignés à son PIN)
+      if (isCDS && o.PIN_CDS_Assigne && Number(o.PIN_CDS_Assigne) !== userPin) return false;
       return true;
+    });
+  }
+
+  // C07 — CDS voit uniquement ses comptes dans 🏢_COMPTES
+  if (onglet === '🏢_COMPTES' && user && user.role === 'CDS') {
+    const userPin = Number(user.pin);
+    data = data.filter(function(o) {
+      return !o.PIN_CDS_Assigne || Number(o.PIN_CDS_Assigne) === userPin;
     });
   }
 
@@ -237,7 +249,7 @@ function _ecrire({ fichier, onglet, donnee }) {
 }
 
 // ── METTRE À JOUR ───────────────────────────────────────────
-function _mettreAJour({ fichier, onglet, id, champs }) {
+function _mettreAJour({ fichier, onglet, id, champs }, user) {
   const ss = _getSpreadsheet(fichier);
   const sh = ss.getSheetByName(onglet);
   if (!sh) return _json({ ok: false, erreur: `Onglet "${onglet}" introuvable` });
@@ -246,7 +258,8 @@ function _mettreAJour({ fichier, onglet, id, champs }) {
   const headers = vals[0];
 
   // Colonne ID — chercher ID_Compte, IDCompte, ID_Prospect, etc.
-  const idColNames = ['ID_Compte','IDCompte','ID_Prospect','IDProspect','ID_Visite','IDVisite','ID_Appel','ID_Objectif','ID_Action','ID_Notif','ID_NSB'];
+  // NOM_COMPTE ajouté pour EMPOWER_ONBOARDING (pas de colonne ID dédiée)
+  const idColNames = ['ID_Compte','IDCompte','ID_Prospect','IDProspect','ID_Visite','IDVisite','ID_Appel','ID_Objectif','ID_Action','ID_Notif','ID_NSB','NOM_COMPTE'];
   let idColIdx = -1;
   for (const name of idColNames) {
     idColIdx = headers.indexOf(name);
@@ -259,6 +272,19 @@ function _mettreAJour({ fichier, onglet, id, champs }) {
     if (String(vals[r][idColIdx]) === String(id)) { rowIdx = r + 1; break; }
   }
   if (rowIdx < 0) return _json({ ok: false, erreur: `ID "${id}" non trouvé dans ${onglet}` });
+
+  // Contrôle d'appartenance pour les onglets sensibles (PROSPECTS + PHONING + APPELS)
+  // CDS ne peut modifier/supprimer que ses propres enregistrements.
+  var estSuppression = champs && (String(champs.Flag_traite||'').toUpperCase() === 'DELETED' || String(champs.deleted||'').toUpperCase() === 'TRUE');
+  if (estSuppression && user && user.role === 'CDS') {
+    var pinColIdx = headers.indexOf('PIN_CDS_Assigne') >= 0 ? headers.indexOf('PIN_CDS_Assigne') : headers.indexOf('PIN_CDS');
+    if (pinColIdx >= 0) {
+      var pinLigne = Number(vals[rowIdx - 1][pinColIdx]);
+      if (pinLigne && pinLigne !== Number(user.pin)) {
+        return _json({ ok: false, erreur: 'Droits insuffisants — vous ne pouvez supprimer que vos propres enregistrements' });
+      }
+    }
+  }
 
   // Mettre à jour uniquement les colonnes demandées
   Object.entries(champs).forEach(([colName, val]) => {
