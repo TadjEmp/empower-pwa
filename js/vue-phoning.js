@@ -26,7 +26,10 @@ window.VuePhoning = {
         resultatProspect: '',
         // BLOC 3 — post-appel comptes
         commandeAnnoncee: '', montantEstime: '', statutFinal: '',
+        // F1 — Appel à froid questionnaire
+        typeAppel: '', interetScore: 0, concurrentActuel: '', potentielEstime: '',
       },
+      geminiAnalyse: null, geminiEnCours: false,
       // BUG-09 — planning phoning
       planning: [],
       planningChargement: false,
@@ -147,7 +150,8 @@ window.VuePhoning = {
     this.state.mode       = 'APPEL';
     this.state.phase      = 'PRE';
     this.state.recherche  = '';
-    Object.assign(this.state.d, { objectif:'', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'' });
+    this.state.geminiAnalyse = null;
+    Object.assign(this.state.d, { objectif:'', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'', typeAppel:'', interetScore:0, concurrentActuel:'', potentielEstime:'' });
     this.render();
   },
 
@@ -159,7 +163,8 @@ window.VuePhoning = {
     this.state.mode       = 'APPEL';
     this.state.phase      = 'PRE';
     this.state.recherche  = c.Nom_Compte;
-    Object.assign(this.state.d, { objectif:'', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'' });
+    this.state.geminiAnalyse = null;
+    Object.assign(this.state.d, { objectif:'', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'', typeAppel:'', interetScore:0, concurrentActuel:'', potentielEstime:'' });
     this.render();
   },
   setFiltreListe(f) { this.state.filtreListe = f; this.render(); },
@@ -334,8 +339,18 @@ window.VuePhoning = {
         Semaine_ISO: getISOWeek(),
         PIN_CDS: Session.pin, Nom_CDS: Session.nom,
         ID_Cible: idCible, Reseller: c.Nom_Compte,
+        Type_Appel: d.typeAppel || '',
         Statut_Appel: d.statutAppel,
         Interet_EMPOWER: d.interetEmpower,
+        Interet_Score: d.typeAppel === 'Appel_Froid' ? (d.interetScore || '') : '',
+        Questionnaire_JSON: d.typeAppel === 'Appel_Froid'
+          ? JSON.stringify({
+              interet_score:    d.interetScore || 0,
+              concurrent_actuel: d.concurrentActuel || '',
+              potentiel_estime:  d.potentielEstime || '',
+              gemini_analyse:    s.geminiAnalyse || '',
+            })
+          : '',
         Frein_Principal: d.frein,
         Prochaine_Action: d.prochaineAction,
         Date_Rappel: d.dateRappel,
@@ -990,12 +1005,22 @@ window.VuePhoning = {
   _phasePOST() {
     const s = this.state, d = s.d;
     const estProspect = s.typeSource === 'PROSPECT';
+    const estFroid = d.typeAppel === 'Appel_Froid';
     const infoResultat = {
       INTERESSE:     '✅ Le lead sera avancé <strong>EN COURS</strong> dans le Tracker',
       NON_INTERESSE: '🗄️ Le prospect sera <strong>archivé</strong> définitivement',
       NON_JOIGNABLE: '📵 Rappel planifié · statut conservé',
       RAPPELER:      '🔔 Rappel planifié à la date choisie',
     }[d.resultatProspect] || 'Sélectionnez un résultat pour archiver automatiquement';
+
+    const statutsAppel = estFroid
+      ? ['Intéressé', 'Non intéressé', 'Rappel', 'Faux numéro']
+      : ['Répondu', 'Répondeur', 'Occupé', 'Faux numéro', 'Refus'];
+
+    const scoreStars = score => Array.from({length:5}, (_, i) => `
+      <button type="button" style="font-size:22px;background:none;border:none;cursor:pointer;padding:2px;line-height:1;color:${i < score ? '#f59e0b' : 'var(--c-border)'}"
+              onclick="VuePhoning.state.d.interetScore=${i+1};VuePhoning.render()">★</button>`
+    ).join('');
 
     return `<div class="q-champs">
       ${s.qualif ? `<div class="q-recap">
@@ -1009,7 +1034,58 @@ window.VuePhoning = {
       ${s.transcription ? `<details style="font-size:12px;color:var(--c-text-2)">
         <summary>Transcription brute</summary><p>${s.transcription}</p></details>` : ''}
 
-      <label class="q-label">Statut de l'appel ${this._r('statutAppel', ['Répondu', 'Répondeur', 'Occupé', 'Faux numéro', 'Refus'])}</label>
+      <!-- F1 — Type d'appel -->
+      <label class="q-label">Type d'appel
+        <div class="q-chips">
+          ${['Relance','Appel_Froid','RDV'].map(o => `
+            <button type="button" class="q-chip ${d.typeAppel === o ? 'active' : ''}"
+                    onclick="VuePhoning.setR('typeAppel','${o}')">${o.replace('_', ' ')}</button>`).join('')}
+        </div>
+      </label>
+
+      <!-- F1 — Questionnaire Appel Froid (conditionnel) -->
+      ${estFroid ? `
+      <div style="background:var(--c-surface);border:2px solid var(--c-primary);border-radius:var(--radius-sm);padding:14px;margin-bottom:4px">
+        <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.05em;margin-bottom:12px">❄️ QUESTIONNAIRE APPEL À FROID</div>
+
+        <label class="q-label" style="margin-top:0">Score d'intérêt EMPOWER (1-5)
+          <div style="display:flex;align-items:center;gap:4px;margin-top:4px">
+            ${scoreStars(d.interetScore)}
+            <span style="font-size:12px;color:var(--c-text-2);margin-left:8px">${d.interetScore > 0 ? d.interetScore + '/5' : 'Non noté'}</span>
+          </div>
+        </label>
+
+        <label class="q-label">Concurrent actuel
+          <input class="q-input" placeholder="ex : Bitdefender, ESET, pas de solution…"
+                 value="${d.concurrentActuel}"
+                 oninput="VuePhoning.state.d.concurrentActuel=this.value"/>
+        </label>
+
+        <label class="q-label">Potentiel estimé
+          <div class="q-chips">
+            ${['Fort','Moyen','Faible'].map(o => `
+              <button type="button" class="q-chip ${d.potentielEstime === o ? 'active' : ''}"
+                      onclick="VuePhoning.setR('potentielEstime','${o}')">${o}</button>`).join('')}
+          </div>
+        </label>
+
+        <!-- Analyse Gemini -->
+        ${s.geminiAnalyse ? `
+        <div style="background:linear-gradient(135deg,var(--c-bg) 0%,rgba(0,80,255,.04) 100%);border:1.5px solid var(--c-primary);border-radius:var(--radius-sm);padding:12px;margin-top:10px">
+          <div style="font-size:11px;font-weight:700;color:var(--c-primary);margin-bottom:8px">✨ Analyse Gemini</div>
+          <div style="font-size:13px;line-height:1.65;white-space:pre-wrap;color:var(--c-text)">${s.geminiAnalyse}</div>
+        </div>` : ''}
+
+        <button type="button" class="btn-secondaire" style="width:100%;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px"
+                onclick="VuePhoning.analyserAvecGemini()"
+                ${s.geminiEnCours ? 'disabled' : ''}>
+          ${s.geminiEnCours
+            ? '<span style="animation:spin 1s linear infinite;display:inline-block">🔄</span> Analyse Gemini…'
+            : (s.geminiAnalyse ? '🔄 Relancer l\'analyse Gemini' : '✨ Analyser avec Gemini')}
+        </button>
+      </div>` : ''}
+
+      <label class="q-label">Statut de l'appel ${this._r('statutAppel', statutsAppel)}</label>
       <label class="q-label">Intérêt EMPOWER ${this._r('interetEmpower', ['Fort', 'Moyen', 'Faible', 'Aucun', 'Déjà inscrit'])}</label>
 
       ${estProspect ? `
@@ -1300,4 +1376,40 @@ window.VuePhoning = {
   },
 
   setFiltrePlanning(f) { this.state.filtrePlanning = f; this.render(); },
+
+  // ── F1 : Analyse Gemini du questionnaire appel à froid ──
+  async analyserAvecGemini() {
+    const s = this.state, d = s.d, c = s.cible;
+    if (!c) return;
+    s.geminiEnCours = true;
+    this.render();
+    try {
+      const ctx = `Tu es un assistant commercial expert en distribution IT/cybersécurité (Norton France). Tu analyses des appels commerciaux terrain et fournis des recommandations opérationnelles.`;
+      const stars = d.interetScore > 0 ? '★'.repeat(d.interetScore) + '☆'.repeat(5 - d.interetScore) : '—';
+      const prompt = `Analyse cet appel commercial et donne une recommandation précise :
+
+Compte : ${c.Nom_Compte || '—'} (${c.Ville || '—'} · canal ${c.CANAL || '—'})
+Type d'appel : ${d.typeAppel || '—'}
+Intérêt EMPOWER déclaré : ${d.interetEmpower || '—'}
+Score d'intérêt (1-5) : ${d.interetScore || '—'}/5 ${stars}
+Frein principal : ${d.frein || '—'}
+Concurrent actuel : ${d.concurrentActuel || 'non renseigné'}
+Potentiel estimé : ${d.potentielEstime || '—'}
+Statut de l'appel : ${d.statutAppel || '—'}
+Notes : ${d.note || 'aucune'}
+
+Fournis exactement :
+1. BILAN (2 lignes max — ce qui a bien/mal fonctionné)
+2. PROCHAINE ACTION (1 action concrète + délai suggéré)
+3. ARGUMENT CLÉ (1-2 phrases adaptées au frein et concurrent détectés)
+
+Ton : direct, professionnel, actionnable. Français. 150 mots max.`;
+      s.geminiAnalyse = await GeminiAPI._appeler(prompt, ctx);
+    } catch(e) {
+      Toast.afficher('❌ Gemini : ' + e.message, 'erreur');
+      s.geminiAnalyse = null;
+    }
+    s.geminiEnCours = false;
+    this.render();
+  },
 };
