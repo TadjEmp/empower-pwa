@@ -895,6 +895,50 @@ function _formatDateGs(val) {
   return s;
 }
 
+// ── Détection robuste de l'onglet données dans le classeur SELL-IN ────────
+// S0 : GID exact (URL ?gid=577118803) — méthode la plus fiable
+// S1 : headers réels (QUARTER + RESELLER en ligne 1)
+// S2 : pattern de nom, un pattern à la fois sur TOUS les onglets (évite le court-circuit précoce)
+// S3 : fallback premier onglet
+function _trouverOngletSellIn(ss) {
+  var sheets = ss.getSheets();
+
+  // S0 — GID connu (identifié dans l'URL du fichier SELL IN : ?gid=577118803)
+  for (var si = 0; si < sheets.length; si++) {
+    if (sheets[si].getSheetId() === 577118803) {
+      Logger.log('[SellIn] S0 GID=577118803 → "' + sheets[si].getName() + '"');
+      return sheets[si];
+    }
+  }
+
+  // S1 — headers réels (QUARTER + RESELLER obligatoires en ligne 1)
+  for (var s1 = 0; s1 < sheets.length; s1++) {
+    var nc = Math.min(sheets[s1].getLastColumn(), 20);
+    if (nc < 1) continue;
+    var hd1 = sheets[s1].getRange(1, 1, 1, nc).getValues()[0]
+                .map(function(x){ return String(x).trim().toUpperCase(); });
+    Logger.log('[SellIn] S1 "' + sheets[s1].getName() + '" hd=' + hd1.slice(0,6).join('|'));
+    if (hd1.indexOf('QUARTER') >= 0 && hd1.indexOf('RESELLER') >= 0) {
+      Logger.log('[SellIn] S1 match headers → "' + sheets[s1].getName() + '"');
+      return sheets[s1];
+    }
+  }
+
+  // S2 — nom de l'onglet (exhaustion par pattern avant de passer au suivant)
+  var pats = ['DATA', 'SELL', 'Q1FY', 'FY'];
+  for (var p = 0; p < pats.length; p++) {
+    for (var s2 = 0; s2 < sheets.length; s2++) {
+      if (sheets[s2].getName().toUpperCase().indexOf(pats[p]) >= 0) {
+        Logger.log('[SellIn] S2 pattern "' + pats[p] + '" → "' + sheets[s2].getName() + '"');
+        return sheets[s2];
+      }
+    }
+  }
+
+  Logger.log('[SellIn] S3 fallback → "' + sheets[0].getName() + '"');
+  return sheets[0];
+}
+
 // ── SYNC SELL-IN DRIVE → V17 + 🏢_COMPTES ─────────────────────────────────
 // Lit le classeur Drive sell-in, pivote par RESELLER/QUARTER,
 // écrit dans V17/📋 COMPTES HISTORIQUES et met à jour les CA dans 🏢_COMPTES.
@@ -907,11 +951,7 @@ function _syncSellInDrive(body, user) {
     // ── 1. Lire le classeur SELL-IN (source) ─────────────────────────────────
     var SELL_IN_ID = '1z8j5NISu5uMtIds8qV_oaBLkWUiyE4x54n5uWzD5Q0A';
     var ssIn = SpreadsheetApp.openById(SELL_IN_ID);
-    var shData = null;
-    ssIn.getSheets().forEach(function(s){
-      if (!shData && s.getName().toUpperCase().indexOf('DATA') >= 0) shData = s;
-    });
-    if (!shData) return _json({ ok: false, erreur: 'Feuille DATA introuvable dans le classeur sell-in' });
+    var shData = _trouverOngletSellIn(ssIn);
 
     var raw = shData.getDataRange().getValues();
     if (raw.length < 2) return _json({ ok: false, erreur: 'Pas de données dans la feuille DATA' });
@@ -921,6 +961,7 @@ function _syncSellInDrive(body, user) {
     var iRes = hd.indexOf('RESELLER');
     var iCh  = hd.indexOf('CHANNEL');
     var iCA  = hd.indexOf('CA_EUR');
+    Logger.log('[syncSellIn] Onglet: "' + shData.getName() + '" · ' + (raw.length-1) + ' lignes · cols: Q=' + iQ + ' RES=' + iRes + ' CA=' + iCA);
     if (iQ < 0 || iRes < 0 || iCA < 0)
       return _json({ ok: false, erreur: 'Colonnes manquantes dans DATA : QUARTER=' + iQ + ' RESELLER=' + iRes + ' CA_EUR=' + iCA });
 
@@ -980,6 +1021,9 @@ function _syncSellInDrive(body, user) {
           comptesMaj++;
         }
       }
+      Logger.log('[syncSellIn] Pivot sample key: ' + (Object.keys(pivot)[0]||'n/a'));
+      Logger.log('[syncSellIn] MDB sample nom: ' + (cData[1] ? String(cData[1][iNom]||'') : 'n/a'));
+      Logger.log('[syncSellIn] Comptes matchés: ' + comptesMaj + ' / ' + (cData.length-1));
     }
 
     // ── 4. V17 COMPTES HISTORIQUES — optionnel, jamais bloquant ──────────────
@@ -1163,16 +1207,14 @@ function creerOngletOnboarding() {
 
   // ── 1. Lire le fichier SELL IN Drive (source unique) ──────────
   var ssIn = SpreadsheetApp.openById(SELL_IN_DRIVE_ID);
-  var shData = null;
-  ssIn.getSheets().forEach(function(s) {
-    if (!shData && s.getName().toUpperCase().indexOf('DATA') >= 0) shData = s;
-  });
-  if (!shData) throw new Error('Feuille DATA introuvable dans le SELL IN Drive (' + SELL_IN_DRIVE_ID + ')');
+  var shData = _trouverOngletSellIn(ssIn);
 
   var raw = shData.getDataRange().getValues();
+  Logger.log('[creerOnglet] Onglet: "' + shData.getName() + '" · ' + (raw.length-1) + ' lignes de données');
   if (raw.length < 2) throw new Error('SELL IN Drive : aucune donnée dans la feuille DATA');
 
   var hd   = raw[0].map(function(x) { return String(x).trim().toUpperCase(); });
+  Logger.log('[creerOnglet] Headers: ' + hd.slice(0,10).join(' | '));
   var iQ   = hd.indexOf('QUARTER');
   var iRes = hd.indexOf('RESELLER');
   var iCh  = hd.indexOf('CHANNEL');
@@ -1234,6 +1276,7 @@ function creerOngletOnboarding() {
       }
     }
   }
+  Logger.log('[creerOnglet] cdsMap: ' + Object.keys(cdsMap).length + ' comptes MDB · pivot: ' + Object.keys(pivot).length + ' revendeurs SELL IN');
 
   // ── 3. Sauvegarder les champs manuels de l'onglet existant ────
   var MANUAL_FIELDS = ['DATE_DERNIER_APPEL','STATUT_APPEL','NOTES_APPEL','DATE_RELANCE'];
