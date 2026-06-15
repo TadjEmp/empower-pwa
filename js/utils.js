@@ -15,7 +15,7 @@ function dateISOLocale(d = new Date()) {
 }
 
 function normaliserNom(str = '') {
-  return (str || '').toUpperCase().trim().replace(/\s+/g, ' ');
+  return (str || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim().replace(/\s+/g, ' ');
 }
 
 // ── Normalisation montants (Section 24 — anti-aberrants) ──
@@ -253,6 +253,8 @@ function NavBar(actif) {
   }
 
   window.resolveCDS = resolveCDS;
+  // Exposer la version utils.js pour que helpers.js puisse y accéder (chaînage)
+  window._resolveCDSBase = resolveCDS;
 })();
 
 // ═══════════════════════════════════════

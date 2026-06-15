@@ -15,9 +15,15 @@ function resolveCDS(pin) {
   if (window._CDS_REGISTRY[String(Number(key))]) return window._CDS_REGISTRY[String(Number(key))];
   const FALLBACK = {
     '1000': 'Tadjidine', '4001': 'Lyes', '4002': 'Mehdi', '4003': 'Johanne',
+    '5000': 'Alexandra', '5001': 'Flavie',
     't001': 'Tadjidine', 'j002': 'Johanne', 'm003': 'Mehdi', 'l004': 'Lyes',
     't.soefou': 'Tadjidine',
   };
+  // Tentative via la version utils.js (ALIAS map complète) avant le fallback hardcodé
+  if (window._resolveCDSBase && window._resolveCDSBase !== resolveCDS) {
+    const fromBase = window._resolveCDSBase(pin);
+    if (fromBase && fromBase !== '—') return fromBase;
+  }
   return FALLBACK[key] || FALLBACK[key.toLowerCase()] || `[${key}]`;
 }
 

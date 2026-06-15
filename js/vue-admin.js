@@ -21,6 +21,9 @@ window.VueAdmin = {
       syncSellInEnCours: false,
       syncSellInResultat: null,
       suivi: { chargement: false, leads: [], filtreStatut: 'TOUS', filtreCDS: 'TOUS' },
+      // BLOC 10 — filtre Pickup Date pour exports (manager + channel)
+      filtrePickupDe: '',
+      filtrePickupA: '',
     };
     this.render();
     try {
@@ -651,8 +654,87 @@ window.VueAdmin = {
     }
   },
 
+  // BLOC 10 — Export Tracker EMPOWER avec colonnes métier + filtre Pickup Date
+  async exporterTracker() {
+    const btn = document.getElementById('btn-export-tracker');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Chargement…'; }
+    try {
+      const leads = await SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS');
+      const de  = this.state.filtrePickupDe ? new Date(this.state.filtrePickupDe).getTime() : 0;
+      const au  = this.state.filtrePickupA  ? new Date(this.state.filtrePickupA + 'T23:59:59').getTime() : Infinity;
+      const rows = leads
+        .filter(p => String(p.Source_Import || '') === 'ESI_PIPELINE' && String(p.deleted || '').toUpperCase() !== 'TRUE')
+        .filter(p => {
+          if (!de && !au) return true;
+          const t = new Date(p.Date_Import || p.Timestamp || 0).getTime();
+          return t >= de && t <= au;
+        })
+        .map(p => ({
+          Nom_Compte:         p.Nom_Compte || '',
+          Statut_Pipeline:    p.STATUT_EMPOWER || '',
+          CDS_Nom:            resolveCDS(p.PIN_CDS_Assigne || p.Nom_CDS),
+          PIN_CDS:            p.PIN_CDS_Assigne || '',
+          POTENTIEL:          p.POTENTIEL || '',
+          ORIGINE:            p.ORIGINE || '',
+          Date_Import:        String(p.Date_Import || '').slice(0, 10),
+          Welcome_Pack_Date:  String(p.WELCOME_PACK_DATE || '').slice(0, 10),
+          Date_prochaine_action: String(p.Date_prochaine_action || '').slice(0, 10),
+          Ville:              p.Ville || '',
+          Departement:        p.Departement || '',
+          Interlocuteur:      p.Interlocuteur || '',
+          Tel:                p.Tel || '',
+          Email:              p.Email || '',
+          Produits_Potentiels: p.Produits_Potentiels || '',
+          Note_initiale:      String(p.Note_initiale || '').replace(/\n/g, ' '),
+          FLAG_ACTION:        p.FLAG_ACTION || '',
+          PREMIERE_COMMANDE_DATE: String(p.PREMIERE_COMMANDE_DATE || '').slice(0, 10),
+        }));
+      const csv  = this._toCSV(rows);
+      const date = dateISOLocale();
+      this._telechargerCSV(csv, `ESI_TRACKER_EMPOWER_${date}.csv`);
+      await this._logExport('TRACKER_EMPOWER', rows.length);
+      Toast.afficher(`✅ Tracker EMPOWER — ${rows.length} lead(s) exportés`, 'succes');
+    } catch(e) {
+      Toast.afficher('❌ Export Tracker : ' + e.message, 'erreur');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '📥 CSV'; }
+    }
+  },
+
   _renderExports() {
-    return this.EXPORT_GROUPES.map(groupe => `
+    const de = this.state.filtrePickupDe || '';
+    const au = this.state.filtrePickupA  || '';
+    const filtrePickupHtml = `
+      <div style="margin-bottom:16px;padding:10px 12px;background:var(--c-bg);border-radius:var(--radius-sm);border:1px solid var(--c-border)">
+        <div style="font-size:12px;font-weight:700;color:var(--c-text-2);margin-bottom:8px">📅 Filtre Pickup Date</div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <label style="font-size:12px;flex:1;min-width:120px">Du
+            <input type="date" class="q-input" style="margin-top:3px;padding:6px" value="${de}"
+                   onchange="VueAdmin.state.filtrePickupDe=this.value"/>
+          </label>
+          <label style="font-size:12px;flex:1;min-width:120px">Au
+            <input type="date" class="q-input" style="margin-top:3px;padding:6px" value="${au}"
+                   onchange="VueAdmin.state.filtrePickupA=this.value"/>
+          </label>
+          <button class="btn-secondaire" style="padding:7px 12px;width:auto;align-self:flex-end"
+                  onclick="VueAdmin.state.filtrePickupDe='';VueAdmin.state.filtrePickupA='';VueAdmin.render()">✕ Reset</button>
+        </div>
+        <div style="font-size:11px;color:var(--c-text-2);margin-top:6px">Appliqué sur l'export Tracker EMPOWER (Date_Import).</div>
+      </div>
+    `;
+    const trackerExportHtml = `
+      <div style="margin-bottom:18px">
+        <div style="font-size:12px;font-weight:700;color:var(--c-title);letter-spacing:.04em;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--c-border)">📊 Tracker EMPOWER</div>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:8px 0;gap:12px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600">Export Tracker EMPOWER (pipeline)</div>
+            <div style="font-size:11px;color:var(--c-text-2);margin-top:1px">Leads ESI_PIPELINE — colonnes métier : Statut, CDS, Welcome Pack, Prochaine action, POTENTIEL, ORIGINE</div>
+          </div>
+          <button id="btn-export-tracker" class="btn-secondaire" style="padding:8px 14px;width:auto;flex-shrink:0"
+                  onclick="VueAdmin.exporterTracker()">📥 CSV</button>
+        </div>
+      </div>`;
+    return filtrePickupHtml + trackerExportHtml + this.EXPORT_GROUPES.map(groupe => `
       <div style="margin-bottom:18px">
         <div style="font-size:12px;font-weight:700;color:var(--c-title);letter-spacing:.04em;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--c-border)">${groupe.titre}</div>
         ${groupe.exports.map(e => `

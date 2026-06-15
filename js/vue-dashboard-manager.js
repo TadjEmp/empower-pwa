@@ -40,11 +40,14 @@ window.VueDashboardManager = {
     this.state = { chargement: true, dc: null };
     this.render();
     try {
-      const [prospects, objectifs] = await Promise.all([
+      const [prospects, objectifs, params] = await Promise.all([
         SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS'),
         SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
+        SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
       ]);
-      this.state.dc = this._calculerChannel({ prospects, objectifs });
+      // BUG-07 : peuple le registre CDS avant le calcul des taux par CDS
+      if (typeof initCDSRegistry === 'function') initCDSRegistry(objectifs);
+      this.state.dc = this._calculerChannel({ prospects, objectifs, params });
       this.state.chargement = false;
       this.render();
     } catch(e) {
@@ -53,9 +56,12 @@ window.VueDashboardManager = {
     }
   },
 
-  _calculerChannel({ prospects, objectifs }) {
+  _calculerChannel({ prospects, objectifs, params }) {
     const norm = v => String(v || '').trim().toUpperCase();
     const now  = Date.now();
+    // BUG-07 : quarter dynamique depuis PARAMS
+    const paramMap = Object.fromEntries((params || []).map(p => [p.Parametre, p.Valeur]));
+    const quarter  = paramMap.QuarterActif || 'Q1';
 
     // BUG 1 — seuls les leads ESI_PIPELINE non supprimés comptent (pas la base 📋_PROSPECTS entière)
     const leads = prospects.filter(p =>
@@ -105,8 +111,9 @@ window.VueDashboardManager = {
         .map(q => String(o[`${q}_Note_Saisie`] || ''))
         .join(' ');
       const manuel = /\[manuel\]/i.test(noteQ);
+      // BUG-07 : utiliser le quarter actif dynamique, pas Q1 hardcodé
       const caBrut = parseCA(
-        o.Q1_CA_Realise ?? o.FY27_CA_Realise ?? o.CA_Realise
+        o[`${quarter}_CA_Realise`] ?? o.FY27_CA_Realise ?? o.CA_Realise
       );
       return {
         nom: prenom,
@@ -180,12 +187,15 @@ window.VueDashboardManager = {
 
     // Le manager est aussi commercial terrain : il figure dans la perf équipe.
     const equipe = objectifs.map(o => {
-      const pin = Number(o.PIN_CDS);
-      const ca  = Number(o[`${quarter}_CA_Realise`] || 0);
-      const obj = Number(o[`${quarter}_Obj_Revise`] || o[`${quarter}_Obj_Initial`] || 0);
-      const pct = obj > 0 ? Math.round(ca / obj * 100) : 0;
+      const pin    = Number(o.PIN_CDS);
+      const ca     = Number(o[`${quarter}_CA_Realise`] || 0);
+      const obj    = Number(o[`${quarter}_Obj_Revise`] || o[`${quarter}_Obj_Initial`] || 0);
+      const pct    = obj > 0 ? Math.round(ca / obj * 100) : 0;
+      // BLOC 5 — référence FY26 : annuel ÷ 4 pour comparer au quarter actif
+      const caFY26Annual = Number(o.FY26_CA_Realise || o.CA_FY26 || 0);
+      const caFY26 = caFY26Annual > 0 ? Math.round(caFY26Annual / 4) : 0;
       return {
-        pin, nom: o.Nom_CDS, ca, obj, pct,
+        pin, nom: o.Nom_CDS, ca, obj, pct, caFY26,
         pace:       pct >= 100 ? 'ON_TRACK' : pct >= 80 ? 'WATCH' : 'AT_RISK',
         visitesSem: visites.filter(v => Number(v.PIN_CDS) === pin && v.Semaine_ISO === semaine).length,
         appelsSem:  appels.filter(a => Number(a.PIN_CDS) === pin && a.Semaine_ISO === semaine).length,
@@ -213,6 +223,7 @@ window.VueDashboardManager = {
     const tauxIntegration = assignes > 0 ? Math.round(integres / assignes * 100) : 0;
     const caTotal         = equipe.reduce((s, e) => s + e.ca, 0);
     const objTotal        = equipe.reduce((s, e) => s + e.obj, 0);
+    const caFY26Total     = equipe.reduce((s, e) => s + (e.caFY26 || 0), 0);
 
     // ── Entonnoir pipeline par statut ──
     const STAT_LABELS = {
@@ -242,7 +253,7 @@ window.VueDashboardManager = {
 
     return {
       quarter, semaine, equipe, leadsBloques, comptesRouges,
-      tauxIntegration, integres, assignes, caTotal, objTotal,
+      tauxIntegration, integres, assignes, caTotal, objTotal, caFY26Total,
       pctTotal: objTotal > 0 ? Math.round(caTotal / objTotal * 100) : 0,
       pipelineStages, activiteEquipe,
     };
@@ -328,32 +339,37 @@ window.VueDashboardManager = {
 
   // ── SVG : barres CA par CDS ──
   _svgCaEquipe(equipe) {
-    const maxVal = Math.max(...equipe.map(e => Math.max(e.ca, e.obj)), 1);
+    const maxVal = Math.max(...equipe.map(e => Math.max(e.ca, e.obj, e.caFY26 || 0)), 1);
     const W    = 290;
-    const ROW  = 46;
+    const ROW  = 52;
     const H    = equipe.length * ROW + 4;
     const PACE_COL = { ON_TRACK: '#00b27e', WATCH: '#f59e0b', AT_RISK: '#FA0000' };
     const bars = equipe.map((e, i) => {
-      const wObj = Math.max(4, Math.round(e.obj / maxVal * 210));
-      const wCA  = e.ca > 0 ? Math.max(4, Math.round(e.ca / maxVal * 210)) : 0;
-      const y    = i * ROW + 2;
-      const col  = PACE_COL[e.pace];
+      const wObj   = Math.max(4, Math.round(e.obj / maxVal * 210));
+      const wCA    = e.ca > 0 ? Math.max(4, Math.round(e.ca / maxVal * 210)) : 0;
+      const wFY26  = e.caFY26 > 0 ? Math.max(4, Math.round(e.caFY26 / maxVal * 210)) : 0;
+      const y      = i * ROW + 2;
+      const col    = PACE_COL[e.pace];
       const pctStr = `${e.pct}%`;
-      const xPct = wObj + 6;
-      // CA dans la barre si assez large, sinon APRÈS le label % (évite la superposition quand obj/CA ≈ 0)
+      const xPct   = wObj + 6;
       const caInside = wCA > 40;
       const caX      = wCA > 20 ? wCA - 4 : xPct + pctStr.length * 6 + 6;
       const caAnchor = wCA > 20 ? 'end' : 'start';
       return `
         <text x="0" y="${y + 11}" font-size="11" font-weight="700" fill="#0E0D30">${e.nom.toUpperCase()}</text>
-        <rect x="0" y="${y + 15}" width="${wObj}" height="14" fill="#E8E8ED" rx="3"/>
-        <rect x="0" y="${y + 15}" width="${wCA}"  height="14" fill="${col}"   rx="3" opacity=".88"/>
-        <text x="${xPct}" y="${y + 26}" font-size="10" fill="#0E0D30" font-weight="700">${pctStr}</text>
-        <text x="${caX}" y="${y + 25}" font-size="9" fill="${caInside ? '#fff' : '#0E0D30'}" text-anchor="${caAnchor}">${formatEUR(e.ca)}</text>
+        <rect x="0" y="${y + 15}" width="${wObj}" height="12" fill="#E8E8ED" rx="3"/>
+        <rect x="0" y="${y + 15}" width="${wCA}"  height="12" fill="${col}"   rx="3" opacity=".88"/>
+        <text x="${xPct}" y="${y + 25}" font-size="10" fill="#0E0D30" font-weight="700">${pctStr}</text>
+        <text x="${caX}" y="${y + 24}" font-size="9" fill="${caInside ? '#fff' : '#0E0D30'}" text-anchor="${caAnchor}">${formatEUR(e.ca)}</text>
+        ${wFY26 > 0 ? `
+        <rect x="0" y="${y + 32}" width="${wFY26}" height="8" fill="none" stroke="#9333ea" stroke-width="1.5" stroke-dasharray="3 2" rx="2"/>
+        <text x="${wFY26 + 4}" y="${y + 40}" font-size="9" fill="#9333ea">FY26 ${formatEUR(e.caFY26)}</text>` : ''}
       `;
     }).join('');
     return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"
-                 style="width:100%;height:auto;display:block;margin-top:8px">${bars}</svg>`;
+                 style="width:100%;height:auto;display:block;margin-top:8px">
+      ${bars}
+    </svg>`;
   },
 
   // ── SVG : activité équipe 6 semaines ──
@@ -400,8 +416,13 @@ window.VueDashboardManager = {
           : 'background:#E8F0FF;color:#0050FF'}">${src}</span>`;
 
     app.innerHTML = `
-      <header class="header-vue no-print">
+      <header class="header-vue no-print" style="display:flex;align-items:center;justify-content:space-between">
         <h1>Onboarding EMPOWER</h1>
+        <div style="display:flex;gap:6px">
+          <button class="btn-retour" title="Actualiser"
+                  onclick="SheetsAPI.viderCache('EMPOWER_MDB','📋_PROSPECTS').then(()=>VueDashboardManager.initChannel())">🔄</button>
+          <button class="btn-deco" onclick="Session.deconnecter();Router.aller('#/login')" title="Déconnexion">⏻</button>
+        </div>
       </header>
 
       <div class="dash-body avec-nav">
@@ -551,6 +572,12 @@ window.VueDashboardManager = {
             <div class="stat-tuile-val">${formatEuro(d.caTotal)}</div>
             <div style="font-size:11px;color:var(--c-text-2);margin-top:2px">/ ${formatEuro(d.objTotal)} obj. · <strong style="color:${d.pctTotal>=100?'var(--c-success)':d.pctTotal>=80?'var(--c-warning)':'var(--c-danger)'}">${d.pctTotal}%</strong></div>
           </div>
+          ${d.caFY26Total > 0 ? `
+          <div class="stat-tuile" style="border-top:3px solid #9333ea">
+            <div class="stat-tuile-lbl" style="color:#9333ea">📊 Réf. FY26/trim.</div>
+            <div class="stat-tuile-val" style="color:#9333ea">${formatEuro(d.caFY26Total)}</div>
+            <div style="font-size:11px;color:var(--c-text-2);margin-top:2px">CA annuel ÷ 4 équipe</div>
+          </div>` : ''}
           <div class="stat-tuile bleu">
             <div class="stat-tuile-lbl">Leads pipeline</div>
             <div class="stat-tuile-val">${d.assignes}</div>
@@ -578,11 +605,12 @@ window.VueDashboardManager = {
         <div class="bloc-fiche">
           <div class="bloc-titre">📊 CA réalisé vs objectif par CDS — ${d.quarter}</div>
           ${this._svgCaEquipe(d.equipe)}
-          <div style="display:flex;gap:16px;font-size:11px;color:var(--c-text-2);margin-top:8px">
+          <div style="display:flex;gap:16px;font-size:11px;color:var(--c-text-2);margin-top:8px;flex-wrap:wrap">
             <span><span style="display:inline-block;width:10px;height:10px;background:#E8E8ED;border-radius:2px;vertical-align:middle"></span> Objectif</span>
             <span><span style="display:inline-block;width:10px;height:10px;background:#00b27e;border-radius:2px;vertical-align:middle"></span> On Track</span>
             <span><span style="display:inline-block;width:10px;height:10px;background:#f59e0b;border-radius:2px;vertical-align:middle"></span> Watch</span>
             <span><span style="display:inline-block;width:10px;height:10px;background:#FA0000;border-radius:2px;vertical-align:middle"></span> At Risk</span>
+            <span><span style="display:inline-block;width:10px;height:8px;border:1.5px dashed #9333ea;border-radius:2px;vertical-align:middle"></span> FY26 réf./trim.</span>
           </div>
         </div>
 
@@ -590,20 +618,21 @@ window.VueDashboardManager = {
         <div class="bloc-fiche">
           <div class="bloc-titre">Détail performance par CDS</div>
           <div class="tableau-equipe">
-            <div class="te-ligne te-head">
-              <span>CDS</span><span>CA / OBJ</span><span>%</span><span>📅</span><span>📞</span><span>🎯</span>
+            <div class="te-ligne te-head" style="grid-template-columns:1.2fr 1.4fr 0.6fr 0.8fr 0.4fr 0.4fr 0.4fr">
+              <span>CDS</span><span>CA / OBJ</span><span>%</span><span style="color:#9333ea">FY26/trim</span><span>📅</span><span>📞</span><span>🎯</span>
             </div>
             ${d.equipe.map(e => `
-            <div class="te-ligne" onclick="Router.aller('#/comptes?cds=${e.pin}')" style="cursor:pointer">
+            <div class="te-ligne" style="cursor:pointer;grid-template-columns:1.2fr 1.4fr 0.6fr 0.8fr 0.4fr 0.4fr 0.4fr" onclick="Router.aller('#/comptes?cds=${e.pin}')">
               <span><strong>${PACE[e.pace].lbl} ${e.nom}</strong></span>
               <span style="font-size:12px">${formatEuro(e.ca)} / ${formatEuro(e.obj)}</span>
               <span class="pace-badge ${PACE[e.pace].cls}">${e.pct}%</span>
+              <span style="font-size:11px;color:#9333ea">${e.caFY26 > 0 ? formatEuro(e.caFY26) : '—'}</span>
               <span>${e.visitesSem}</span>
               <span>${e.appelsSem}</span>
               <span>${e.leadsEnCours}</span>
             </div>`).join('')}
           </div>
-          <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">📅 visites ${d.semaine} · 📞 appels ${d.semaine} · 🎯 leads actifs</p>
+          <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">📅 visites ${d.semaine} · 📞 appels ${d.semaine} · 🎯 leads actifs · <span style="color:#9333ea">FY26/trim = CA FY26 annuel ÷ 4</span></p>
         </div>
 
         <!-- ENTONNOIR PIPELINE EMPOWER (SVG) -->

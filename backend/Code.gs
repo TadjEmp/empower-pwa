@@ -44,6 +44,9 @@ function _router(params, body) {
     // Actions publiques
     if (action === 'ping')  return _json({ ok: true, ts: new Date().toISOString() });
     if (action === 'login') return _login(params?.email || body?.email, params?.motdepasse || body?.motdepasse);
+    // BLOC 9 — Réinitialisation mot de passe (actions publiques, sans token de session)
+    if (action === 'sendResetEmail') return _sendResetEmail(body?.email);
+    if (action === 'resetPassword')  return _resetPassword(body?.token, body?.nouveauMotdepasse);
 
     // Auth par token de session
     user = _verifierToken(params?.token || body?.token);
@@ -135,6 +138,105 @@ function _login(email, motdepasse) {
     });
   }
   return _json({ ok: false, erreur: 'Email ou mot de passe incorrect' });
+}
+
+// ── BLOC 9 — Réinitialisation mot de passe ───────────────────
+// Génère un token temporaire (30 min), l'envoie par email via MailApp.
+// Colonnes attendues dans 👤_UTILISATEURS : Reset_Token · Reset_Token_Expiry
+// Si absentes, les ajoute dynamiquement.
+function _sendResetEmail(email) {
+  if (!email) return _json({ ok: false, erreur: 'Email requis' });
+  const sh = _getUsersSheet();
+  if (!sh) return _json({ ok: false, erreur: 'Onglet utilisateurs manquant' });
+
+  const vals    = sh.getDataRange().getValues();
+  const headers = vals[0];
+  const col     = n => headers.indexOf(n);
+  const emailNorm = String(email).trim().toLowerCase();
+
+  // Ajouter colonnes Reset si absentes
+  if (col('Reset_Token') === -1) {
+    sh.getRange(1, headers.length + 1).setValue('Reset_Token');
+    sh.getRange(1, headers.length + 2).setValue('Reset_Token_Expiry');
+    headers.push('Reset_Token', 'Reset_Token_Expiry');
+  }
+
+  let found = false;
+  for (let r = 1; r < vals.length; r++) {
+    const row = vals[r];
+    if (String(row[col('Email')]).trim().toLowerCase() !== emailNorm) continue;
+    found = true;
+
+    const resetToken  = Utilities.getUuid().replace(/-/g, '');
+    const resetExpiry = Date.now() + 30 * 60 * 1000; // 30 minutes
+
+    sh.getRange(r + 1, col('Reset_Token') + 1).setValue(resetToken);
+    sh.getRange(r + 1, col('Reset_Token_Expiry') + 1).setValue(resetExpiry);
+    SpreadsheetApp.flush();
+
+    // URL de reset — pointera vers l'application avec token en hash
+    const appUrl = ScriptApp.getService().getUrl().replace('/exec', '') + '/exec';
+    const resetUrl = PropertiesService.getScriptProperties().getProperty('APP_URL') || 'https://[VOTRE-APPLI].github.io/empower-pwa';
+    const lienReset = `${resetUrl}/#/reset-password?token=${resetToken}`;
+
+    try {
+      MailApp.sendEmail({
+        to: emailNorm,
+        subject: '[ESI Norton] Réinitialisation de votre mot de passe',
+        body: `Bonjour ${row[col('Nom')]},\n\nVous avez demandé la réinitialisation de votre mot de passe ESI.\n\nCliquez sur le lien ci-dessous (valable 30 minutes) :\n${lienReset}\n\nSi vous n'avez pas fait cette demande, ignorez cet email.\n\n— Impact Sales Marketing`,
+        name: 'ESI Norton — EMPOWER Sales Intelligence',
+      });
+      return _json({ ok: true, message: 'Email de réinitialisation envoyé' });
+    } catch(mailErr) {
+      // Si MailApp n'est pas autorisé, retourner le lien pour l'admin
+      return _json({
+        ok: true,
+        message: 'Lien généré (email non envoyé — configurer MailApp)',
+        lienAdmin: lienReset,
+        token: resetToken,
+      });
+    }
+  }
+
+  // Ne pas révéler si l'email n'existe pas (sécurité)
+  if (!found) return _json({ ok: true, message: 'Si cet email existe, un lien de réinitialisation a été envoyé.' });
+}
+
+// Valide le token et change le mot de passe
+function _resetPassword(token, nouveauMotdepasse) {
+  if (!token || !nouveauMotdepasse) return _json({ ok: false, erreur: 'Token et nouveau mot de passe requis' });
+  if (nouveauMotdepasse.length < 6) return _json({ ok: false, erreur: 'Mot de passe trop court (6 caractères minimum)' });
+
+  const sh = _getUsersSheet();
+  if (!sh) return _json({ ok: false, erreur: 'Onglet utilisateurs manquant' });
+
+  const vals    = sh.getDataRange().getValues();
+  const headers = vals[0];
+  const col     = n => headers.indexOf(n);
+
+  if (col('Reset_Token') === -1) return _json({ ok: false, erreur: 'Aucun token de reset configuré' });
+
+  for (let r = 1; r < vals.length; r++) {
+    const row = vals[r];
+    if (String(row[col('Reset_Token')]) !== String(token)) continue;
+
+    const expiry = Number(row[col('Reset_Token_Expiry')]);
+    if (!expiry || expiry < Date.now()) return _json({ ok: false, erreur: 'Lien expiré — demandez un nouveau lien' });
+
+    // Régénérer hash + salt
+    const newSalt = Utilities.getUuid().replace(/-/g, '').slice(0, 16);
+    const newHash = _sha256(nouveauMotdepasse + newSalt);
+
+    sh.getRange(r + 1, col('Hash') + 1).setValue(newHash);
+    sh.getRange(r + 1, col('Salt') + 1).setValue(newSalt);
+    sh.getRange(r + 1, col('Reset_Token') + 1).setValue('');
+    sh.getRange(r + 1, col('Reset_Token_Expiry') + 1).setValue('');
+    SpreadsheetApp.flush();
+
+    return _json({ ok: true, message: 'Mot de passe mis à jour — vous pouvez vous connecter' });
+  }
+
+  return _json({ ok: false, erreur: 'Token invalide ou déjà utilisé' });
 }
 
 function _verifierToken(token) {

@@ -397,6 +397,11 @@ window.VuePhoning = {
         } else if (res === 'NON_JOIGNABLE' || res === 'RAPPELER') {
           // Reste en pipeline, rappel planifié
           maj.Flag_traite = 'FALSE';
+        } else if (res === 'A_VISITER') {
+          // Prospect à visiter sur le terrain — conservé en pipeline, marqué A_VISITER
+          maj.FLAG_ACTION = 'A_VISITER';
+          maj.STATUT_EMPOWER = 'A_VISITER';
+          maj.Flag_traite = 'FALSE';
         }
 
         await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', idCible, maj);
@@ -445,6 +450,7 @@ window.VuePhoning = {
         NON_INTERESSE:  '🗄️ Prospect <strong>archivé</strong> (non intéressé)',
         NON_JOIGNABLE:  '📵 Rappel planifié · prospect non joignable',
         RAPPELER:       '🔔 Rappel planifié',
+        A_VISITER:      '📍 Prospect marqué <strong>À VISITER</strong> — planifier une visite terrain',
       }[d.resultatProspect] || '';
 
       document.getElementById('app').innerHTML = `
@@ -633,25 +639,41 @@ window.VuePhoning = {
     const ts = dateISOLocale().replace(/-/g, '');
     const fn = `PHONING_${f.debut || 'debut'}_${f.fin || 'fin'}_${ts}.csv`;
 
-    const rows = data.map(a => ({
-      ID_Appel:          a.ID_Appel || '',
-      Date:              (a.Date || '').slice(0, 10),
-      Semaine_ISO:       a.Semaine_ISO || '',
-      CDS:               a.Nom_CDS || '',
-      PIN_CDS:           a.PIN_CDS || '',
-      Compte:            a.Reseller || '',
-      Canal:             a.Canal || '',
-      Statut_Appel:      a.Statut_Appel || '',
-      Interet_EMPOWER:   a.Interet_EMPOWER || '',
-      Frein_Principal:   a.Frein_Principal || '',
-      Prochaine_Action:  a.Prochaine_Action || '',
-      Date_Rappel:       a.Date_Rappel || '',
-      Commande_Annoncee: a.Commande_Annoncee || '',
-      Montant_Estime:    a.Montant_Estime != null && a.Montant_Estime !== '' ? a.Montant_Estime : '',
-      Statut_Final:      a.Statut_Final || '',
-      Transcription:     a.Transcription || '',
-      Note:              a.Note || '',
-    }));
+    const rows = data.map(a => {
+      // BLOC 10 — Extraire score Groq et concurrent depuis Questionnaire_JSON
+      let scoreGroq = a.Interet_Score || '';
+      let concurrentGroq = a.Concurrent_Actuel || '';
+      let resumeIA = '';
+      try {
+        if (a.Questionnaire_JSON) {
+          const qj = JSON.parse(a.Questionnaire_JSON);
+          scoreGroq      = qj.interet_score ?? scoreGroq;
+          concurrentGroq = qj.concurrent_actuel || qj.concurrent || concurrentGroq;
+          resumeIA       = qj.gemini_analyse || '';
+        }
+      } catch(_) {}
+      return {
+        ID_Appel:          a.ID_Appel || '',
+        Date:              (a.Date || '').slice(0, 10),
+        Semaine_ISO:       a.Semaine_ISO || '',
+        CDS:               resolveCDS(a.PIN_CDS || a.Nom_CDS) || '',
+        Compte:            a.Reseller || '',
+        Type_Appel:        a.Type_Appel || '',
+        Statut_Appel:      a.Statut_Appel || '',
+        Interet_EMPOWER:   a.Interet_EMPOWER || '',
+        Score_Groq:        scoreGroq !== '' ? scoreGroq : '',
+        Frein_Principal:   a.Frein_Principal || '',
+        Concurrent_Actuel: concurrentGroq || '',
+        Resume_IA:         resumeIA || '',
+        Prochaine_Action:  a.Prochaine_Action || '',
+        Date_Rappel:       a.Date_Rappel || '',
+        Commande_Annoncee: a.Commande_Annoncee || '',
+        Montant_Estime:    a.Montant_Estime != null && a.Montant_Estime !== '' ? a.Montant_Estime : '',
+        Statut_Final:      a.Statut_Final || '',
+        Note:              a.Note || '',
+        Timestamp:         a.Timestamp || '',
+      };
+    });
 
     generateCSV(rows, fn);
     this.state.extractOuvert = false;
@@ -1091,7 +1113,7 @@ window.VuePhoning = {
       ${estProspect ? `
       <div style="background:var(--c-surface);border:1.5px solid var(--c-primary);border-radius:var(--radius-sm);padding:12px;margin-bottom:4px">
         <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.04em;margin-bottom:8px">📋 RÉSULTAT DU PROSPECT</div>
-        ${this._r('resultatProspect', ['INTERESSE', 'RAPPELER', 'NON_JOIGNABLE', 'NON_INTERESSE'])}
+        ${this._r('resultatProspect', ['INTERESSE', 'RAPPELER', 'NON_JOIGNABLE', 'NON_INTERESSE', 'A_VISITER'])}
         <div style="font-size:11px;color:var(--c-text-2);margin-top:6px">${infoResultat}</div>
       </div>` : `
       <div style="background:var(--c-surface);border:1.5px solid var(--c-primary);border-radius:var(--radius-sm);padding:12px;margin-bottom:4px">

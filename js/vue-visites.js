@@ -150,6 +150,8 @@ window.VueVisites = {
       horsBase: false, nomLibre: '',
       commentairePrep: '',
       prochaineEtape: '',
+      // BLOC 1 — recherche dans le déroulé base commerciale
+      rechercheCompte: '',
     };
   },
 
@@ -258,6 +260,23 @@ window.VueVisites = {
     const f = this.state.formPlanif;
     const nomFinal = f.horsBase ? (f.nomLibre || '').trim() : f.nomCible;
     if (!nomFinal) { Toast.afficher(f.horsBase ? 'Indiquez le nom du compte' : 'Sélectionnez un compte', 'warning'); return; }
+
+    // BLOC 4 — Détection doublon avant enregistrement
+    const idCibleCheck = f.horsBase ? 'HORS_BASE' : f.idCible;
+    const doublon = this.state.visites.find(v =>
+      String(v.deleted || '').toUpperCase() !== 'TRUE' &&
+      (f.horsBase
+        ? (v.Source_Visite === 'HORS_BASE' && normaliserNom(v.Nom_Compte) === normaliserNom(nomFinal))
+        : v.ID_Cible === idCibleCheck) &&
+      (v.Date || v.Date_Planif || '').slice(0, 10) === f.date &&
+      String(v.PIN_CDS) === String(Session.pin) &&
+      v.Type_Visite === f.typeVisite
+    );
+    if (doublon) {
+      Toast.afficher(`⚠️ Visite déjà planifiée pour "${nomFinal}" le ${f.date} (${this._labelStatut(doublon.Statut_Visite)}) — doublon bloqué`, 'warning');
+      return;
+    }
+
     try {
       const visite = {
         ID_Visite:              genId('VIS'),
@@ -365,6 +384,19 @@ window.VueVisites = {
     const d7 = new Date();
     d7.setDate(d7.getDate() + 7);
     const dateDup = dateISOLocale(d7);
+
+    // BLOC 4 — Anti-doublon pour la duplication
+    const doublonDup = this.state.visites.find(x =>
+      String(x.deleted || '').toUpperCase() !== 'TRUE' &&
+      x.ID_Cible === (v.ID_Cible || '') &&
+      (x.Date || x.Date_Planif || '').slice(0, 10) === dateDup &&
+      String(x.PIN_CDS) === String(Session.pin)
+    );
+    if (doublonDup) {
+      Toast.afficher(`⚠️ Une visite pour "${v.Nom_Compte}" le ${dateDup} existe déjà — duplication annulée`, 'warning');
+      return;
+    }
+
     const dup = {
       ID_Visite:              genId('VIS'),
       Date:                   dateDup,
@@ -449,6 +481,8 @@ window.VueVisites = {
       Date_Prochain:    v.Date_Prochain_Contact || '',
       Resume_IA:        v.Resume_IA || '',
       Note:             v.Note_Privee || '',
+      Photo_URL:        v.Photo_URL || '',
+      GPS:              (v.GPS_Lat && v.GPS_Lng) ? `${v.GPS_Lat},${v.GPS_Lng}` : '',
       Timestamp:        v.Timestamp || '',
     }));
 
@@ -629,15 +663,29 @@ window.VueVisites = {
                <div style="font-size:11px;color:var(--c-text-2);margin:-6px 0 10px;padding:6px 10px;background:var(--c-bg);border-radius:var(--radius-sm)">
                  💡 Ce compte n'est pas dans la base. La visite sera enregistrée — vous pourrez l'ajouter dans le Tracker après si besoin.
                </div>`
-            : `<label>Compte * <span style="font-size:11px;color:var(--c-text-2);font-weight:400">(triés par score relance — 🔴 urgents en tête)</span>
-                 <select required onchange="VueVisites.setCible(this.value, this.options[this.selectedIndex].dataset.nom)">
+            : (() => {
+              // BLOC 1 — Base commerciale : champ de recherche + déroulé scrollable trié par nom
+              const q = normaliserNom(f.rechercheCompte || '');
+              const comptesFiltres = q.length >= 2
+                ? this.comptesTries.filter(c => normaliserNom(c.Nom_Compte).includes(q) || normaliserNom(c.Ville || '').includes(q))
+                : [...this.state.comptes].sort((a, b) => (a.Nom_Compte || '').localeCompare(b.Nom_Compte || '', 'fr'));
+              return `
+               <label>🔍 Rechercher dans ma base
+                 <input placeholder="Nom du compte ou ville…" value="${f.rechercheCompte || ''}"
+                        oninput="VueVisites.state.formPlanif.rechercheCompte=this.value;VueVisites.render()"
+                        style="margin-bottom:6px"/>
+               </label>
+               <label>Compte * <span style="font-size:11px;color:var(--c-text-2);font-weight:400">${q.length >= 2 ? comptesFiltres.length + ' résultat(s)' : 'trié par nom · 🔴 urgents en tête si filtré'}</span>
+                 <select required size="6" style="height:140px"
+                         onchange="VueVisites.setCible(this.value, this.options[this.selectedIndex].dataset.nom)">
                    <option value="">— sélectionner —</option>
-                   ${this.comptesTries.slice(0, 300).map(c =>
-                     `<option value="${c.ID_Compte}" data-nom="${c.Nom_Compte}">${c.urgent ? '🔴 ' : ''}${c.Nom_Compte}${c.Ville ? ' — ' + c.Ville : ''}${c.silence != null ? ' · ' + c.silence + 's' : ''}</option>`
+                   ${comptesFiltres.map(c =>
+                     `<option value="${c.ID_Compte}" data-nom="${c.Nom_Compte}" ${f.idCible === c.ID_Compte ? 'selected' : ''}>${c.urgent ? '🔴 ' : ''}${c.Nom_Compte}${c.Ville ? ' — ' + c.Ville : ''}${c.silence != null ? ' · ' + c.silence + 's' : ''}</option>`
                    ).join('')}
                  </select>
                </label>
-               ${this._ficheCompteSelectionne(f.idCible)}`
+               ${this._ficheCompteSelectionne(f.idCible)}`;
+            })()
           }
           <div style="display:flex;gap:10px">
             <label style="flex:2">Date *

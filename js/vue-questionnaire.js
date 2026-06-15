@@ -82,6 +82,7 @@ window.VueQuestionnaire = {
 
   state: null,
   _visitePlanifiee: null,
+  _isHorsBase: false,
 
   _etatInitial() {
     const now = new Date();
@@ -90,6 +91,7 @@ window.VueQuestionnaire = {
       comptes: [], prospects: [],
       typeSource: 'EXISTANT',
       cible: null,
+      dernieresVisites: [],
       recherche: '', suggestionsOuvertes: false,
       gps: { lat: '', lng: '' },
       debut: Date.now(),
@@ -151,7 +153,10 @@ window.VueQuestionnaire = {
         const p = !c && prospects.find(x => String(x.ID_Prospect) === String(idCible));
         if (c) { this.state.cible = c; this.state.typeSource = 'EXISTANT'; }
         if (p) { this.state.cible = p; this.state.typeSource = 'PROSPECT'; }
-        if (this.state.cible) this.state.recherche = this.state.cible.Nom_Compte;
+        if (this.state.cible) {
+          this.state.recherche = this.state.cible.Nom_Compte;
+          this._chargerDernieresVisites();
+        }
       }
       // Pré-remplissage depuis visite planifiée
       if (this._visitePlanifiee) {
@@ -200,7 +205,23 @@ window.VueQuestionnaire = {
     this.state.cible = this.suggestions[idx];
     this.state.recherche = this.state.cible.Nom_Compte;
     this.state.suggestionsOuvertes = false;
+    this.state.dernieresVisites = [];
     this.render();
+    this._chargerDernieresVisites();
+  },
+
+  async _chargerDernieresVisites() {
+    const s = this.state;
+    if (!s.cible) { s.dernieresVisites = []; return; }
+    const idCible = s.typeSource === 'PROSPECT' ? s.cible.ID_Prospect : s.cible.ID_Compte;
+    try {
+      const visites = await SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES');
+      s.dernieresVisites = visites
+        .filter(v => String(v.ID_Cible) === String(idCible))
+        .sort((a, b) => new Date(b.Timestamp || b.Date) - new Date(a.Timestamp || a.Date))
+        .slice(0, 3);
+    } catch { s.dernieresVisites = []; }
+    if (s.etape === 0) this.render();
   },
 
   _renderSuggestions() {
@@ -380,7 +401,20 @@ window.VueQuestionnaire = {
         Duree_Minutes:           dureeMin,
         Timestamp:               new Date().toISOString(),
       };
-      await SheetsAPI.ecrire('EMPOWER_MDB', '🗺️_VISITES', visite);
+      // BLOC 3 — Si visite planifiée existante : mettre à jour plutôt que créer un doublon
+      if (this._visitePlanifiee?.ID_Visite) {
+        await SheetsAPI.mettreAJour('EMPOWER_MDB', '🗺️_VISITES', this._visitePlanifiee.ID_Visite, {
+          ...visite,
+          ID_Visite: this._visitePlanifiee.ID_Visite, // conserver l'ID original
+          Statut_Visite: 'réalisée',
+        });
+      } else {
+        await SheetsAPI.ecrire('EMPOWER_MDB', '🗺️_VISITES', visite);
+      }
+
+      // Vider le cache dashboard pour que les vues amont reflètent la visite immédiatement
+      SheetsAPI.viderCache('EMPOWER_MDB', '🗺️_VISITES').catch(() => {});
+      SheetsAPI.viderCache('EMPOWER_MDB', '📊_ACTIONS').catch(() => {});
 
       // Mise à jour fiche compte / prospect
       const champsMaj = { Date_prochaine_action: d.prochaineActionDate, Flag_traite: 'TRUE' };
@@ -432,6 +466,8 @@ window.VueQuestionnaire = {
         Toast.afficher('🔔 Alerte EMPOWER envoyée à Alexandra', 'info', 4000);
       }
 
+      // BLOC 1 — détecter si c'est une visite hors-base pour proposer "Ajouter à ma base"
+      this._isHorsBase = this._visitePlanifiee?.Source_Visite === 'HORS_BASE';
       this._visitePlanifiee = null;
       this._renderSucces(dureeMin, empowerAlerte);
     } catch(e) {
@@ -439,6 +475,42 @@ window.VueQuestionnaire = {
       this.render();
       Toast.afficher('❌ Erreur enregistrement : ' + e.message, 'erreur', 5000);
     }
+  },
+
+  // BLOC 1 — Ajouter le prospect à froid dans la base du commercial
+  async _ajouterAMaBase() {
+    const s = this.state;
+    if (!s?.cible) { Toast.afficher('Aucun compte à ajouter', 'warning'); return; }
+    const nom = s.cible.Nom_Compte || '';
+    if (!nom) { Toast.afficher('Nom du compte manquant', 'warning'); return; }
+    try {
+      // Vérifier s'il existe déjà (anti-doublon par nom normalisé)
+      const existants = await SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS');
+      const dejaDans = existants.find(p =>
+        normaliserNom(p.Nom_Compte) === normaliserNom(nom) &&
+        Number(p.PIN_CDS_Assigne) === Session.pin
+      );
+      if (dejaDans) {
+        Toast.afficher(`"${nom}" est déjà dans votre base`, 'info');
+        return;
+      }
+      await SheetsAPI.ecrire('EMPOWER_MDB', '📋_PROSPECTS', {
+        ID_Prospect:     genId('PROS'),
+        Nom_Compte:      nom,
+        PIN_CDS_Assigne: Session.pin,
+        Nom_CDS:         Session.nom,
+        STATUT_EMPOWER:  'SAISIE',
+        FLAG_ACTION:     'NOUVEAU',
+        Source_Import:   'VISITE_TERRAIN',
+        Date_Import:     dateISOLocale(),
+        Timestamp:       new Date().toISOString(),
+      });
+      Toast.afficher(`✅ "${nom}" ajouté à votre base`, 'succes');
+      // Désactiver le bouton pour éviter le double-clic
+      document.querySelectorAll('.succes-btns button').forEach(b => {
+        if (b.textContent.includes('Ajouter')) { b.disabled = true; b.textContent = '✅ Ajouté'; }
+      });
+    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
   },
 
   _renderSucces(dureeMin, empowerAlerte) {
@@ -457,6 +529,8 @@ window.VueQuestionnaire = {
         <div class="succes-btns">
           <button class="btn-primaire" onclick="Router.aller('#/dashboard')">← Dashboard</button>
           <button class="btn-secondaire" onclick="VueQuestionnaire.init()">📋 Nouvelle visite</button>
+          <button class="btn-secondaire" onclick="VueVisites.synchroniser();Router.aller('#/visites')" style="background:var(--c-primary);color:#fff">🔄 Synchroniser</button>
+          ${this._isHorsBase ? `<button class="btn-secondaire" onclick="VueQuestionnaire._ajouterAMaBase()" style="border-color:var(--c-success);color:var(--c-success)">➕ Ajouter à ma base</button>` : ''}
         </div>
       </div>`;
   },
@@ -523,6 +597,19 @@ window.VueQuestionnaire = {
         <div class="q-recap-ligne"><span>Ville</span><strong>${s.cible.Ville||'—'}</strong></div>
         <div class="q-recap-ligne"><span>Statut</span><strong>${s.cible.STATUT_COMPTE||s.cible.Statut||'—'}</strong></div>
         ${s.cible.CA_FY25 ? `<div class="q-recap-ligne"><span>CA FY25</span><strong>${formatEuro(s.cible.CA_FY25)}</strong></div>` : ''}
+      </div>` : ''}
+      ${s.cible && s.dernieresVisites?.length ? `
+      <div class="q-recap" style="margin-top:8px">
+        <div style="font-size:12px;font-weight:700;color:var(--c-text-2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">📋 Dernières visites</div>
+        ${s.dernieresVisites.map(v => `
+        <div style="border-bottom:1px solid var(--c-border);padding:6px 0;font-size:13px">
+          <div style="display:flex;justify-content:space-between">
+            <strong>${v.Date||'—'}</strong>
+            <span style="color:${v.Resultat_Visite==='Positif'||v.Resultat_Visite==='✅ Positif'?'var(--c-success)':v.Resultat_Visite==='Négatif'||v.Resultat_Visite==='❌ Négatif'?'var(--c-danger)':'var(--c-warning)'}">${v.Resultat_Visite||'—'}</span>
+            <span style="color:var(--c-text-2)">⭐ ${v.Slider_Receptivite||'?'}/5</span>
+          </div>
+          ${v.Prochaine_Action_Texte ? `<div style="font-size:11px;color:var(--c-primary);margin-top:2px">→ ${v.Prochaine_Action_Texte}</div>` : ''}
+        </div>`).join('')}
       </div>` : ''}
       <div style="display:flex;gap:12px">
         <label class="q-label" style="flex:1">Date *

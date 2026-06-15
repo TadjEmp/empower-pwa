@@ -188,6 +188,7 @@ window.VueDashboardCDS = {
     return {
       semaine, quarter, caRealise, caObjectif, pct, pace,
       caFY27Obj, pctAnnuel,
+      caFY26Mes, caFY26Q, // BLOC 5 — référence FY26 pour comparaison
       comptesRouges, nextStepsDepasses, leadsATraiter,
       visitesAujourdhui, comptesAReactiver,
       visitesSem, appelsSem, objVisites, objAppels,
@@ -297,10 +298,15 @@ window.VueDashboardCDS = {
         </div>
         <div class="dash-hero-tuiles">
           <div class="hero-tuile">
-            <div class="hero-tuile-lbl">🎯 Objectif ${d.quarter}</div>
+            <div class="hero-tuile-lbl">🎯 Objectif ${d.quarter} FY27</div>
             <div class="hero-tuile-val">${fmtEUR(d.caRealise)} <span style="font-size:12px;font-weight:400;color:#A8C8FF">/ ${fmtEUR(d.caObjectif)}</span></div>
             <div class="hero-barre"><div class="hero-barre-fill" style="width:${Math.min(d.pct, 100)}%"></div></div>
             <div class="hero-tuile-sous">${PACE.lbl} · ${d.pct}% atteinte · PACE annuel ${d.pctAnnuel}%</div>
+            <!-- BLOC 5 — CA FY26 référence + objectif annuel FY27 -->
+            <div style="margin-top:6px;font-size:11px;color:#A8C8FF;display:flex;gap:12px">
+              <span>📊 Réf. FY26 : <strong style="color:#fff">${fmtEUR(d.caFY26Q)}/trim.</strong></span>
+              <span>🎯 OBJ FY27 : <strong style="color:#fff">${fmtEUR(d.caFY27Obj)}</strong></span>
+            </div>
           </div>
           <div class="hero-tuile">
             <div class="hero-tuile-lbl">📅 Visites aujourd'hui</div>

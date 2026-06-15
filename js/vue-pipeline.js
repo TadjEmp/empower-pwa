@@ -412,11 +412,22 @@ window.VuePipeline = {
           const col = leads
             .filter(l => l._statut === st.id)
             .sort((a, b) => {
-              // Alertes WP en premier, puis tri par date décroissante
+              // BLOC 8 — Tri : 1) alertes WP, 2) score engagement décroissant, 3) date dernière action récente
               const aA = this._retardWelcomePack(a) ? 0 : 1;
               const bA = this._retardWelcomePack(b) ? 0 : 1;
               if (aA !== bA) return aA - bA;
-              return new Date(b.Timestamp || b.Date_Import || 0) - new Date(a.Timestamp || a.Date_Import || 0);
+              // Score engagement : Slider_Receptivite ou SCORE_ENGAGEMENT ou POTENTIEL (Fort=3/Moyen=2/Faible=1)
+              const scoreOf = l => {
+                if (l.Slider_Receptivite) return Number(l.Slider_Receptivite) || 0;
+                if (l.SCORE_ENGAGEMENT)   return Number(l.SCORE_ENGAGEMENT) || 0;
+                const pot = { 'Fort': 3, 'Moyen': 2, 'Faible': 1 };
+                return pot[l.POTENTIEL] || 0;
+              };
+              const scoreDiff = scoreOf(b) - scoreOf(a);
+              if (scoreDiff !== 0) return scoreDiff;
+              // Date dernière action (Date_prochaine_action comme proxy) puis date import
+              const dateOf = l => new Date(l.Date_prochaine_action || l.Timestamp || l.Date_Import || 0).getTime();
+              return dateOf(b) - dateOf(a);
             });
           const etendue = !!this.state.colonnesEtendues[st.id];
           const affichees = etendue ? col : col.slice(0, this.LIMITE_COL);
