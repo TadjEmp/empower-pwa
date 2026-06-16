@@ -488,9 +488,9 @@ window.VueAdmin = {
     const v = document.getElementById('admin-gemini-key').value.trim();
     // Ne pas écraser une clé existante si le champ est vide
     if (!v) { Toast.afficher('Champ vide — la clé existante est conservée', 'warning'); return; }
-    // Validation format Gemini (préfixe AIza) avant envoi
-    if (!v.startsWith('AIza')) {
-      Toast.afficher('Format invalide : une clé Gemini commence par « AIza »', 'warning');
+    // Validation format Gemini (préfixe AIza ou Aq — v5.0) avant envoi
+    if (!v.startsWith('AIza') && !v.startsWith('Aq')) {
+      Toast.afficher('Format invalide : une clé Gemini commence par « AIza » ou « Aq »', 'warning');
       return;
     }
     const btn = document.getElementById('btn-gemini-save');
