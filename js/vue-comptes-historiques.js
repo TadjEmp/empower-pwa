@@ -166,7 +166,10 @@ window.VueComptesHistoriques = {
       <div class="liste-comptes avec-nav">
         ${liste.length === 0
           ? '<div class="vide" style="padding:32px;text-align:center;color:var(--c-text-2)">Aucun compte pour ces critères</div>'
-          : liste.map(c => {
+          : `
+        <!-- MOBILE : fiches empilées -->
+        <div class="mobile-card-list-view">
+          ${liste.map(c => {
             // fmtCA : valeurs corrompues ou nulles → '—' (Bloc 9 #2)
             const caFy26Fmt   = window.fmtCA(c.caFy26);
             const caFy25Fmt   = window.fmtCA(c.caFy25);
@@ -197,6 +200,39 @@ window.VueComptesHistoriques = {
             </div>
           </div>`;
           }).join('')}
+        </div>
+
+        <!-- DESKTOP (≥900px) : tableau dense — CA FY25 / FY26 / Q1FY27 en colonnes -->
+        <div class="desktop-table-wrap">
+          <table class="desktop-table-data-view">
+            <thead><tr>
+              <th>Type</th><th>Compte</th><th>Canal</th>
+              <th class="num">CA FY25</th><th class="num">CA FY26</th><th class="num">CA Q1 FY27</th>
+              <th>Statut</th>${Session.voitTout() ? '<th>CDS</th>' : ''}<th>Actions</th>
+            </tr></thead>
+            <tbody>
+              ${liste.map(c => {
+                const caFy26Fmt   = window.fmtCA(c.caFy26);
+                const caFy25Fmt   = window.fmtCA(c.caFy25);
+                const caQ1Fy27Fmt = window.fmtCA(c.caQ1Fy27);
+                return `<tr>
+                  <td>${this._pillType(c.type)}</td>
+                  <td class="compte-nom" onclick="${c.id ? `Router.aller('#/compte/${c.id}')` : 'void(0)'}">${c.nom !== '—' ? c.nom : '—'}</td>
+                  <td>${c.canal !== '—' ? c.canal : '—'}</td>
+                  <td class="num">${caFy25Fmt !== '—' ? caFy25Fmt + ' €' : '—'}</td>
+                  <td class="num" style="font-weight:700;color:var(--c-title)">${caFy26Fmt !== '—' ? caFy26Fmt + ' €' : '—'}</td>
+                  <td class="num" style="font-weight:600;color:var(--c-success)">${caQ1Fy27Fmt !== '—' ? caQ1Fy27Fmt + ' €' : '—'}</td>
+                  <td>${c.statut && c.statut !== '—' ? `<span class="statut-pill statut-${slugify(c.statut).replace(/-/g,'_')}">${c.statut}</span>` : '—'}</td>
+                  ${Session.voitTout() ? `<td>${c.cdsPrenom !== '—' ? '👤 ' + c.cdsPrenom : '—'}</td>` : ''}
+                  <td>
+                    <button class="btn-visiter" style="padding:4px 10px;font-size:12px" onclick="Router.aller('#/visites?compte=${encodeURIComponent(c.id||c.nom)}')">Visite</button>
+                    <button class="btn-tel-outline" style="padding:4px 8px" onclick="Router.aller('#/phoning${c.id ? '/'+c.id : ''}')" title="Appeler">📞</button>
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>`}
       </div>
 
       ${NavBar('historiques')}

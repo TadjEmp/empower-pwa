@@ -167,8 +167,10 @@ window.VueComptes = {
       </div>
 
       <div class="liste-comptes avec-nav">
-        ${liste.length === 0 ? '<div class="vide">Aucun compte pour ces critères</div>'
-          : liste.map(c => {
+        ${liste.length === 0 ? '<div class="vide">Aucun compte pour ces critères</div>' : `
+        <!-- MOBILE : fiches empilées -->
+        <div class="mobile-card-list-view">
+          ${liste.map(c => {
             // fmtCA : retourne '—' si valeur invalide/nulle/corrompue (date "11/4/1903" → '—')
             const caFY26 = window.fmtCA(c.CA_FY26);
             const caQ1   = window.fmtCA(c.CA_Q1FY27);
@@ -209,6 +211,49 @@ window.VueComptes = {
             </div>` : ''}
           </div>`;
           }).join('')}
+        </div>
+
+        <!-- DESKTOP (≥900px) : tableau dense avec CA en colonnes -->
+        <div class="desktop-table-wrap">
+          <table class="desktop-table-data-view">
+            <thead><tr>
+              <th>Statut</th><th>Compte</th><th>Ville</th><th>Canal</th>
+              <th class="num">CA FY26</th><th class="num">CA Q1 FY27</th>
+              <th>Prochaine action</th><th>CDS</th><th>Actions</th>
+            </tr></thead>
+            <tbody>
+              ${liste.map(c => {
+                const caFY26 = window.fmtCA(c.CA_FY26);
+                const caQ1   = window.fmtCA(c.CA_Q1FY27);
+                const nomCDS = window.resolveCDS(c.PIN_CDS_Assigne) !== '—'
+                  ? window.resolveCDS(c.PIN_CDS_Assigne)
+                  : (c.Nom_CDS ? window.resolveCDS(c.Nom_CDS) : null);
+                const estLectureSeule = Session.role === 'CHANNEL_MANAGER';
+                const pa = c.Date_prochaine_action
+                  ? `<span class="${estDepassee(c.Date_prochaine_action) ? 'prochaine-action alerte' : ''}">⏰ ${dateRelative(c.Date_prochaine_action)}</span>`
+                  : '—';
+                return `<tr>
+                  <td>${badgeStatutCompte(c)}</td>
+                  <td class="compte-nom" onclick="Router.aller('#/compte/${c.ID_Compte}')">${c.Nom_Compte || '—'}</td>
+                  <td>${c.Ville || '—'}</td>
+                  <td>${c.CANAL || '—'}</td>
+                  <td class="num" style="font-weight:700;color:var(--c-title)">${caFY26}</td>
+                  <td class="num" style="font-weight:600;color:var(--c-primary)">${caQ1}</td>
+                  <td>${pa}</td>
+                  <td>${Session.estManager() ? `
+                    <select style="border:1px solid var(--c-border);border-radius:4px;padding:3px 6px;font-size:12px"
+                            onchange="VueComptes.attribuer('${c.ID_Compte}', this.value)">
+                      <option value="">${nomCDS ? '👤 ' + nomCDS : '⚠️ attribuer'}</option>
+                      ${cdsList.map(x => `<option value="${x.pin}" ${Number(c.PIN_CDS_Assigne) === x.pin ? 'selected' : ''}>${x.nom}</option>`).join('')}
+                    </select>` : (nomCDS || '—')}</td>
+                  <td>${estLectureSeule ? '—' : `
+                    <button class="btn-visiter" style="padding:4px 10px;font-size:12px" onclick="Router.aller('#/questionnaire/${c.ID_Compte}')">Visiter</button>
+                    <button class="btn-tel-outline" style="padding:4px 8px" onclick="Router.aller('#/phoning/${c.ID_Compte}')" title="Appeler">📞</button>`}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>`}
       </div>
 
       ${Session.role !== 'CHANNEL_MANAGER' ? `<button class="fab" onclick="Router.aller('#/questionnaire')" title="Nouvelle visite" style="bottom:140px">＋</button>` : ''}

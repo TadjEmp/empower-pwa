@@ -1027,6 +1027,23 @@ function _importTrackerDrive(body, user) {
     if (nouvelles.length > 0) {
       shP.getRange(shP.getLastRow() + 1, 1, nouvelles.length, headers_MDB.length).setValues(nouvelles);
       SpreadsheetApp.flush();
+
+      // v5.0 N2 — notifications individuelles par CDS + alertes managers
+      var pinColIdx  = headers_MDB.indexOf('PIN_CDS_Assigne');
+      var nomColIdx  = headers_MDB.indexOf('Nom_Compte');
+      var uuidColIdx = headers_MDB.indexOf('ID_Prospect');
+      var pinsNotifies = {};
+      nouvelles.forEach(function(ligne) {
+        var pin = ligne[pinColIdx];
+        var nom = ligne[nomColIdx] || 'Inconnu';
+        var uuid = ligne[uuidColIdx] || '';
+        if (pin && !pinsNotifies[pin]) {
+          _notifier(Number(pin), 'NOUVEAU_LEAD', 'Nouveau lead importé dans votre portefeuille : ' + nom, uuid);
+          pinsNotifies[pin] = true;
+        }
+      });
+      _notifier(1000, 'IMPORT_TRACKER', nouvelles.length + ' leads importés depuis le Tracker', '');
+      _notifier(5000, 'IMPORT_TRACKER', nouvelles.length + ' leads importés depuis le Tracker', '');
     }
 
     _log(user.pin, 'importTrackerDrive', nouvelles.length + ' leads importés, ' + skips + ' doublons');
