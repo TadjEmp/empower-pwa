@@ -29,9 +29,13 @@
 })();
 
 // v5.0 N3 — Polling notifications 60 s (non bloquant)
+// Déclaration de fonction (hoistée) → appelable depuis boot() ci-dessus.
+// Ne démarre que pour une session authentifiée (appelée dans la branche else).
 // Lit 🔔_NOTIFS sans cache, filtre par PIN, affiche un Toast sur chaque
 // nouvelle notification non lue depuis le dernier poll.
-(function _initPollingNotifs() {
+function _initPollingNotifs() {
+  if (_initPollingNotifs._demarre) return;   // garde anti double-démarrage
+  _initPollingNotifs._demarre = true;
   const _vus = new Set();
   async function _poll() {
     if (!Session || !Session.pin) return;
@@ -51,4 +55,4 @@
   // Premier poll après 5 s (laisser le temps à la vue de s'afficher)
   setTimeout(_poll, 5000);
   setInterval(_poll, 60000);
-})();
+}
