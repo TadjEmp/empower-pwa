@@ -95,7 +95,7 @@ window.VueDashboardManager = {
       if (prenom === '—') return;           // lead non assigné → exclu du taux
       if (!parCDS[prenom]) parCDS[prenom] = { nom: prenom, assignes: 0, integres: 0 };
       parCDS[prenom].assignes++;
-      if (norm(p.STATUT_EMPOWER) === 'INTEGRE') parCDS[prenom].integres++;
+      if (norm(p.STATUT_EMPOWER) === 'INTEGRE' || norm(p.Flag_converti) === 'TRUE') parCDS[prenom].integres++;
     });
     const tauxParCDS = Object.values(parCDS)
       .map(c => ({ ...c, taux: c.assignes > 0 ? Math.round(c.integres / c.assignes * 100) : 0 }))

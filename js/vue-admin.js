@@ -245,6 +245,8 @@ window.VueAdmin = {
         STATUT_EMPOWER:    f.cdsAssigne ? 'ASSIGNE' : 'SAISIE',
         FLAG_ACTION:       f.cdsAssigne ? 'ASSIGNE' : 'A_TRAITER',
         Flag_traite:       'FALSE',
+        Flag_converti:     'FALSE',
+        Source_Import:     'ESI_PIPELINE',
         Date_Import:       dateISOLocale(),
         Timestamp:         new Date().toISOString(),
         created_by:        Session.nom,
