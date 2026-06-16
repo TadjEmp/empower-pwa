@@ -423,4 +423,79 @@ body {
 .pace-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; margin-left: 6px; }
 .pace-ok    { background: #e6f9f3; color: var(--c-success); }
 .pace-watch { background: #fff7e0; color: var(--c-warning); }
+
+/* ═══════════════════════════════════════
+   v5.0 M5 — Design Hybride Desktop
+   (s'ajoute sans modifier l'existant)
+   ═══════════════════════════════════════ */
+
+/* Skeleton Loader — remplace les spinners bloquants */
+.skeleton-box {
+  background: linear-gradient(90deg, #e8edf5 25%, #d4dce8 50%, #e8edf5 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: 6px;
+}
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* KPI Grid — 1 col mobile, 4 cols desktop >= 1024px */
+.kpi-grid-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+@media (min-width: 1024px) {
+  .kpi-grid-layout { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* Responsive Cards ↔ Tableau */
+.mobile-card-list-view  { display: flex; flex-direction: column; gap: 12px; }
+.desktop-table-data-view { display: none; }
+@media (min-width: 1024px) {
+  .mobile-card-list-view  { display: none !important; }
+  .desktop-table-data-view {
+    display: table; width: 100%;
+    border-collapse: collapse;
+    background: var(--color-surface);
+    border-radius: 8px; overflow: hidden;
+  }
+  .desktop-table-data-view th,
+  .desktop-table-data-view td {
+    padding: 12px 18px;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .desktop-table-data-view th {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--c-text-2);
+    background: rgba(0,0,0,.03);
+  }
+}
+
+/* Status Badges — statuts STATUT_EMPOWER colorés */
+.status-badge {
+  display: inline-block;
+  padding: 3px 9px; border-radius: 99px;
+  font-size: 10px; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.status-a_traiter  { background: rgba(245,158,11,.12); color: #d97706; }
+.status-assigne    { background: rgba(79,130,246,.12);  color: #3b82f6; }
+.status-en_cours   { background: rgba(14,165,233,.12);  color: #0ea5e9; }
+.status-saisie     { background: rgba(168,85,247,.12);  color: #a855f7; }
+.status-integre    { background: rgba(16,185,129,.12);  color: #059669; }
+.status-archive    { background: rgba(239,68,68,.12);   color: #ef4444; }
+
+/* Visites split layout desktop */
+@media (min-width: 1024px) {
+  .visites-split-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+  }
+}
 .pace-risk  { background: #fff0f0; color: var(--c-danger); }

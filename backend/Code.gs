@@ -176,7 +176,7 @@ function _sendResetEmail(email) {
 
     // URL de reset — pointera vers l'application avec token en hash
     const appUrl = ScriptApp.getService().getUrl().replace('/exec', '') + '/exec';
-    const resetUrl = PropertiesService.getScriptProperties().getProperty('APP_URL') || 'https://[VOTRE-APPLI].github.io/empower-pwa';
+    const resetUrl = PropertiesService.getScriptProperties().getProperty('APP_URL') || 'https://TadjEmp.github.io/empower-pwa';
     const lienReset = `${resetUrl}/#/reset-password?token=${resetToken}`;
 
     try {
@@ -241,6 +241,12 @@ function _resetPassword(token, nouveauMotdepasse) {
 
 function _verifierToken(token) {
   if (!token) return null;
+
+  // v5.0 P4 — cache session 30 min pour éviter une lecture Sheets à chaque requête
+  const tokenCache = CacheService.getScriptCache();
+  const cachedUser = tokenCache.get('token_' + token);
+  if (cachedUser) return JSON.parse(cachedUser);
+
   const sh = _getUsersSheet();
   if (!sh) return null;
   const vals = sh.getDataRange().getValues();
@@ -250,7 +256,9 @@ function _verifierToken(token) {
     const row = vals[r];
     if (String(row[col('Token')]) === String(token)) {
       if (Number(row[col('Token_Expiry')]) < Date.now()) return null;
-      return { pin: Number(row[col('PIN')]), nom: row[col('Nom')], role: row[col('Role')] };
+      const userObj = { pin: Number(row[col('PIN')]), nom: row[col('Nom')], role: row[col('Role')] };
+      tokenCache.put('token_' + token, JSON.stringify(userObj), 1800);
+      return userObj;
     }
   }
   return null;
@@ -284,7 +292,7 @@ function initPipelineColonnes() {
 // BASE_PROSPECTS_RELANCER). La source de vérité des non-ADMIN = ESI_PIPELINE
 // + comptes attribués. Les lignes soft-deleted (Flag_traite=DELETED) sont
 // exclues pour tout le monde sur cet onglet.
-function _lire({ fichier, onglet }, user) {
+function _lire({ fichier, onglet, limit = 100, offset = 0 }, user) {
   const ss = _getSpreadsheet(fichier);
   const sh = ss.getSheetByName(onglet);
   if (!sh) return _json({ ok: false, erreur: `Onglet "${onglet}" introuvable dans ${fichier}` });
@@ -330,7 +338,10 @@ function _lire({ fichier, onglet }, user) {
     });
   }
 
-  return _json({ ok: true, data, count: data.length });
+  // v5.0 P6 — pagination côté serveur
+  const total = data.length;
+  const paginatedData = data.slice(offset, offset + limit);
+  return _json({ ok: true, data: paginatedData, count: paginatedData.length, total });
 }
 
 // ── ÉCRIRE ──────────────────────────────────────────────────
@@ -346,6 +357,22 @@ function _ecrire({ fichier, onglet, donnee }) {
   });
 
   sh.appendRow(newRow);
+
+  // v5.0 M3/BUG7 — forçage STATUT_EMPOWER = A_TRAITER + alertes J0
+  if (onglet === '📋_PROSPECTS') {
+    var statIdx = headers.indexOf('STATUT_EMPOWER');
+    if (statIdx >= 0 && !donnee.STATUT_EMPOWER) {
+      sh.getRange(sh.getLastRow(), statIdx + 1).setValue('A_TRAITER');
+    }
+    var nomLead = donnee.NomCompte || donnee.Nom_Compte || 'Inconnu';
+    var idLead  = donnee.ID_Prospect || ('LEAD_' + Date.now());
+    _notifier(1000, 'NOUVEAU_LEAD', 'Nouveau lead créé : ' + nomLead, idLead);
+    _notifier(5000, 'NOUVEAU_LEAD', 'Nouveau lead créé : ' + nomLead, idLead);
+    if (donnee.PIN_CDS_Assigne) {
+      _notifier(Number(donnee.PIN_CDS_Assigne), 'LEAD_ASSIGNE', 'Nouveau lead assigné : ' + nomLead, idLead);
+    }
+  }
+
   SpreadsheetApp.flush();
   return _json({ ok: true, ligneAjoutee: sh.getLastRow() });
 }
@@ -388,16 +415,15 @@ function _mettreAJour({ fichier, onglet, id, champs }, user) {
     }
   }
 
-  // Mettre à jour uniquement les colonnes demandées
+  // v5.0 P2 — batch write : reconstruction de la ligne entière → 1 seul appel Sheets
+  let ligneModifiee = [...vals[rowIdx - 1]];
   Object.entries(champs).forEach(([colName, val]) => {
     const colIdx = headers.indexOf(colName);
     if (colIdx >= 0) {
-      sh.getRange(rowIdx, colIdx + 1).setValue(
-        val instanceof Date ? val.toISOString() : val
-      );
+      ligneModifiee[colIdx] = val instanceof Date ? val.toISOString() : val;
     }
   });
-
+  sh.getRange(rowIdx, 1, 1, headers.length).setValues([ligneModifiee]);
   SpreadsheetApp.flush();
 
   // ── Bloc 6 — déclencheurs temps réel sur transition STATUT_EMPOWER ──
@@ -405,15 +431,17 @@ function _mettreAJour({ fichier, onglet, id, champs }, user) {
   try {
     var nouvStatut = champs && champs.STATUT_EMPOWER;
     if (nouvStatut) {
+      // v5.0 N1 — notifier le CDS assigné sur tout changement de statut
+      var pinCDSLigne = vals[rowIdx - 1][headers.indexOf('PIN_CDS_Assigne')];
+      if (pinCDSLigne) {
+        _notifier(Number(pinCDSLigne), 'STATUT_CHANGE', 'Statut mis à jour → ' + nouvStatut + ' : ' + id, id);
+      }
       if (nouvStatut === 'EN_COURS') {
-        // Passage EN_COURS → Alexandra (5000) [Channel Manager / sourcing]
         _notifier(5000, 'STATUT_EN_COURS', 'Prospect en cours: ' + id, id);
       } else if (nouvStatut === 'INTEGRE') {
-        // Passage INTEGRE → Tadjidine (1000) + Alexandra (5000)
         _notifier(1000, 'STATUT_INTEGRE', 'Prospect intégré: ' + id, id);
         _notifier(5000, 'STATUT_INTEGRE', 'Prospect intégré: ' + id, id);
       } else if (nouvStatut === 'ARCHIVE') {
-        // Passage ARCHIVE (ou blocage) → Alexandra (5000) + Tadjidine (1000)
         _notifier(5000, 'STATUT_ARCHIVE', 'Prospect archivé/bloqué: ' + id, id);
         _notifier(1000, 'STATUT_ARCHIVE', 'Prospect archivé/bloqué: ' + id, id);
       }
@@ -460,22 +488,25 @@ function _notifier(pinDestinataire, typeNotif, message, idCible) {
 
 // ── ATTRIBUER LEAD (Alexandra / Tadjidine) ──────────────────
 // Met à jour CDS assigné + statut pipeline d'un prospect, puis log.
-function _attribuerLead({ id, cdsPin, cdsNom, pin }) {
+function _attribuerLead({ id, cdsPin, cdsNom, pin, statutInitial }) {
+  // v5.0 M4/BUG8 — statut pipeline dynamique au moment de l'assignation
+  var STATUTS_VALIDES = ['ASSIGNE', 'A_TRAITER', 'EN_COURS', 'SAISIE'];
+  var statut = STATUTS_VALIDES.includes(statutInitial) ? statutInitial : 'ASSIGNE';
+
   const r = _mettreAJour({
     fichier: 'EMPOWER_MDB',
     onglet:  '📋_PROSPECTS',
     id,
     champs: {
       PIN_CDS_Assigne: cdsPin,
+      Nom_CDS:         cdsNom || '',
       FLAG_ACTION:     'ASSIGNE',
-      STATUT_EMPOWER:  'ASSIGNE',
+      STATUT_EMPOWER:  statut,
     },
   });
-  _log(pin, 'attribuerLead', `Lead ${id} → ${cdsNom || cdsPin}`);
-  // Bloc 6 — alerte J0 au CDS assigné. Si pas de cdsPin : statut reste
-  // ASSIGNE sans notif (rien à notifier tant que personne n'est assigné).
+  _log(pin, 'attribuerLead', `Lead ${id} → ${cdsNom || cdsPin} [${statut}]`);
   if (cdsPin || cdsPin === 0) {
-    _notifier(cdsPin, 'LEAD_ASSIGNE', 'Nouveau lead assigné: ' + id, id);
+    _notifier(cdsPin, 'LEAD_ASSIGNE', `Nouveau lead assigné [${statut}] : ` + id, id);
   }
   return r;
 }
@@ -560,12 +591,10 @@ const PARAMS_FY27 = [
   ['STATUTS_TERMINAUX','Perdu,Inactif,Converti,FauxNumero,Refus','Statuts bloquant les relances'],
   ['PINS_CDS','4001,4002,4003','PINs CDS actifs'],
   ['PIN_MANAGER','1000','PIN manager (Tadjidine)'],
-  ['PIN_FLAVIE','3000','PIN Flavie (phoning/admin)'],
-  ['PIN_ADMIN','3000','PIN admin système'],
+  ['PIN_ADMIN','1000','PIN admin système (Tadjidine)'],
   ['VERSION_APP','5.0','Version EMPOWER MDB'],
   ['APP_NAME','ESI — Empower Sales Intelligence','Nom application'],
   ['LOCK_TIMEOUT_MS','10000','Timeout verrou écriture (ms)'],
-  ['NOTIF_FLAVIE_PIN','3000','PIN destinataire notifs phoning'],
   ['GROQ_SYSTEM_PROMPT','Tu es l\'assistant IA d\'ESI (Empower Sales Intelligence), l\'outil terrain des CDS Norton/Gen Digital. Tu aides à qualifier des revendeurs IT, résumer des visites/appels et suggérer la prochaine action commerciale. Réponds toujours en français, de façon concise, factuelle et orientée action. Ne jamais inventer de chiffres : si une donnée manque, écris \"—\". Respecte le RGPD : aucune donnée personnelle inutile. Format de sortie : phrases courtes ou JSON si demandé.','System prompt Groq (Bloc 8)'],
 ];
 
@@ -646,7 +675,7 @@ function installerBase() {
   // ── 5. Stocker les IDs (lus par CONFIG au runtime) + utilisateurs ──
   props.setProperty('MDB_ID', mdb.getId());
   props.setProperty('V17_ID', v17.getId());
-  initUtilisateurs();
+  fixUtilisateurs();
 
   Logger.log('✅ INSTALLATION TERMINÉE');
   Logger.log('EMPOWER_MDB : ' + mdb.getUrl());
@@ -1250,6 +1279,10 @@ function _setGeminiKey(body, user) {
   if (!user || user.role !== 'ADMIN') return _json({ ok: false, erreur: 'Accès réservé à l\'administrateur (rôle ADMIN requis)' });
   var cle = String(body.cle || '').trim();
   if (!cle) return _json({ ok: false, erreur: 'Clé Gemini vide — saisissez une clé API valide' });
+  // v5.0 — accepte les deux formats Google AI Studio (historique AIza + nouveau Aq)
+  if (!cle.startsWith('AIza') && !cle.startsWith('Aq')) {
+    return _json({ ok: false, erreur: 'Format de clé invalide. Doit commencer par "AIza" ou "Aq".' });
+  }
   PropertiesService.getScriptProperties().setProperty('GEMINI_API_KEY', cle);
   return _json({ ok: true });
 }
@@ -1595,6 +1628,12 @@ function _lirePermissions(user) {
 // CDS → portefeuille personnel ; ADMIN / CHANNEL_MANAGER → vue globale équipe.
 // Le front choisit quelles cards afficher selon le rôle.
 function _lireDashboard(user) {
+  // v5.0 P1/P5 — cache dashboard 5 min pour éviter 4 lectures Sheets à chaque affichage
+  const cache = CacheService.getScriptCache();
+  const cacheKey = 'dashboard_' + user.pin;
+  const cached = cache.get(cacheKey);
+  if (cached) return _json(JSON.parse(cached));
+
   var ss = _getSpreadsheet('EMPOWER_MDB');
   var pin = Number(user.pin);
   var estManager = (user.role === 'ADMIN' || user.role === 'CHANNEL_MANAGER');
@@ -1662,7 +1701,7 @@ function _lireDashboard(user) {
     if (viPin >= 0 && Number(r[viPin]) === pin) visites++;
   });
 
-  return _json({
+  const result = {
     ok: true,
     role: user.role,
     cards: {
@@ -1677,7 +1716,10 @@ function _lireDashboard(user) {
       phoningEquipe:     phoningEquipe,
       activite265:       { actifs: activite265Actifs, total: activite265Total },
     },
-  });
+  };
+  // v5.0 P1 — mise en cache 5 min
+  cache.put(cacheKey, JSON.stringify(result), 300);
+  return _json(result);
 }
 
 // F3 — saisie manuelle du CA réalisé par quarter, en complément du sync SELL IN.
