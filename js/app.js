@@ -43,13 +43,21 @@ function _initPollingNotifs() {
       const rows = await SheetsAPI.lire('EMPOWER_MDB', '🔔_NOTIFS', { nocache: true });
       if (!Array.isArray(rows)) return;
       const pin = Number(Session.pin);
-      rows.forEach(function(n) {
-        if (Number(n.PIN_Destinataire) !== pin) return;
-        if (String(n.Statut_Lu || '').toUpperCase() !== 'NON') return;
-        if (_vus.has(n.ID_Notif)) return;
-        _vus.add(n.ID_Notif);
-        Toast.afficher('🔔 ' + (n.Message || 'Nouvelle notification'), 'info', 5000);
+      const nouvelles = rows.filter(function(n) {
+        return Number(n.PIN_Destinataire) === pin
+          && String(n.Statut_Lu || '').toUpperCase() === 'NON'
+          && !_vus.has(n.ID_Notif);
       });
+      nouvelles.forEach(function(n) { _vus.add(n.ID_Notif); });
+      if (nouvelles.length === 0) return;
+      // Anti-flood : un seul toast résumé si plusieurs notifs d'un coup
+      if (nouvelles.length > 3) {
+        Toast.afficher('🔔 ' + nouvelles.length + ' nouvelles notifications', 'info', 5000);
+      } else {
+        nouvelles.forEach(function(n) {
+          Toast.afficher('🔔 ' + (n.Message || 'Nouvelle notification'), 'info', 5000);
+        });
+      }
     } catch(e) {}
   }
   // Premier poll après 5 s (laisser le temps à la vue de s'afficher)

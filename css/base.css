@@ -462,7 +462,7 @@ body {
     background: var(--c-surface);
     border: 1px solid var(--c-border);
     border-radius: 16px;
-    overflow: hidden;
+    overflow-x: auto;             /* scroll horizontal si table large (pas de clip des colonnes) */
     box-shadow: 0 1px 3px rgba(20,28,37,.06);
   }
   .desktop-table-data-view {
