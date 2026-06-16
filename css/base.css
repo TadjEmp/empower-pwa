@@ -42,6 +42,24 @@
   --header-h:    56px;
   --nav-h:       68px;
   --font:        'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* ── Tokens DASHBOARD_W09 (premium) ── */
+  --c-secondary:     #FF6D68;
+  --c-norton-red:    #FF5F5A;
+  --c-ism-dark:      #343D46;
+  --c-cream:         #FAF7F2;
+  --c-cream-border:  #F5F0E8;
+  --c-on-bg:         #141c25;
+  --c-muted:         #6b7280;
+  --c-surface-2:     #f8f9fa;
+  --c-outline:       #e2e4ec;
+  --c-primary-light: #b7c4ff;
+  /* statuts tintés (soft bg + texte coloré) façon réf */
+  --st-green-bg:  #d1fae5; --st-green-fg:  #065f46;
+  --st-blue-bg:   #dbeafe; --st-blue-fg:   #1e40af;
+  --st-orange-bg: #ffedd5; --st-orange-fg: #c2410c;
+  --st-red-bg:    #fee2e2; --st-red-fg:    #991b1b;
+  --st-gray-bg:   #f3f4f6; --st-gray-fg:   #374151;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -499,6 +517,54 @@ body {
   letter-spacing: .08em; color: var(--c-title);
   display: flex; align-items: center; gap: 8px;
 }
+
+/* ── Pills premium tintées (soft bg + texte coloré + font-black) façon réf ── */
+.pill-soft {
+  display: inline-block; font-size: 10px; font-weight: 800;
+  padding: 3px 9px; border-radius: 99px; letter-spacing: .03em;
+  text-transform: uppercase; white-space: nowrap;
+}
+.pill-green   { background: var(--st-green-bg);  color: var(--st-green-fg); }
+.pill-blue    { background: var(--st-blue-bg);   color: var(--st-blue-fg); }
+.pill-orange  { background: var(--st-orange-bg); color: var(--st-orange-fg); }
+.pill-red     { background: var(--st-red-bg);    color: var(--st-red-fg); }
+.pill-gray    { background: var(--st-gray-bg);   color: var(--st-gray-fg); }
+.pill-primary { background: rgba(0,80,255,.10);  color: var(--c-primary); }
+.pill-coral   { background: rgba(255,109,104,.14); color: #e85550; }
+
+/* ── Barres de progression premium (animées) façon réf bar-fill ── */
+.bar-track {
+  height: 10px; background: var(--st-gray-bg);
+  border-radius: 99px; overflow: hidden;
+}
+.bar-fill {
+  height: 100%; border-radius: 99px; background: var(--c-primary);
+  transition: width 1s cubic-bezier(.4, 0, .2, 1);
+}
+.bar-fill.coral   { background: var(--c-secondary); }
+.bar-fill.green   { background: var(--c-success); }
+.bar-fill.amber   { background: var(--c-warning); }
+.bar-fill.indigo  { background: #3F51B5; }
+
+/* ── Onglets premium (façon réf tab-btn — rounded-xl, font-black, badge num) ── */
+.tabs-premium { display: flex; gap: 8px; overflow-x: auto; padding: 2px; }
+.tab-btn-premium {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px; border-radius: 12px;
+  font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: .04em;
+  border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text-2);
+  white-space: nowrap; cursor: pointer; transition: all .15s;
+}
+.tab-btn-premium:hover { background: var(--c-cream); }
+.tab-btn-premium.actif {
+  background: var(--c-primary); color: #fff; border-color: var(--c-primary);
+  box-shadow: 0 4px 12px -2px rgba(0,80,255,.30);
+}
+.tab-num {
+  font-size: 10px; padding: 2px 6px; border-radius: 6px;
+  background: var(--st-gray-bg); color: var(--c-text-2); font-weight: 900;
+}
+.tab-btn-premium.actif .tab-num { background: rgba(255,255,255,.20); color: #fff; }
 
 /* Responsive Cards ↔ Tableau — bascule à 900px (= apparition sidebar) */
 .mobile-card-list-view  { display: flex; flex-direction: column; gap: 12px; }

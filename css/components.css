@@ -13,16 +13,22 @@
 
 /* ── Statut pills — Norton ISM Universal ── */
 .statut-pill {
-  font-size: 12px; font-weight: 700;
+  font-size: 11px; font-weight: 800;
   padding: 3px 10px; border-radius: 9999px;
-  color: #fff; white-space: nowrap;
+  white-space: nowrap; text-transform: uppercase; letter-spacing: .03em;
 }
-.statut-actif_fy27  { background: var(--color-nav,#0050FF); }   /* À traiter */
-.statut-reactiver   { background: var(--color-accent,#4D9EFF); } /* En cours  */
-.statut-inactif_fy27{ background: var(--color-error,#FA0000); }  /* Bloqué    */
-.statut-newbiz      { background: var(--color-cta,#FF6D68); }    /* Intégré   */
-.statut-churn       { background: var(--color-error,#FA0000); }
-.statut-fidelise    { background: var(--color-nav,#0050FF); }
+/* Premium tintés (soft bg + texte coloré) façon réf — sémantique couleur alignée */
+.statut-actif_fy27  { background: var(--st-blue-bg);   color: var(--st-blue-fg); }   /* À traiter */
+.statut-reactiver   { background: var(--st-orange-bg); color: var(--st-orange-fg); } /* À réactiver */
+.statut-inactif_fy27{ background: var(--st-red-bg);    color: var(--st-red-fg); }    /* Bloqué/inactif */
+.statut-newbiz      { background: var(--st-green-bg);  color: var(--st-green-fg); }  /* Intégré (success) */
+.statut-churn       { background: var(--st-red-bg);    color: var(--st-red-fg); }
+.statut-fidelise    { background: var(--st-blue-bg);   color: var(--st-blue-fg); }
+/* Alias valeurs de statut brutes (slugify ACTIF/INACTIF/REACTIVER…) — plus de pills sans style */
+.statut-actif       { background: var(--st-green-bg);  color: var(--st-green-fg); }
+.statut-inactif     { background: var(--st-gray-bg);   color: var(--st-gray-fg); }
+.statut-bloque      { background: var(--st-red-bg);    color: var(--st-red-fg); }
+.statut-integre     { background: var(--st-green-bg);  color: var(--st-green-fg); }
 
 /* ── Barre filtres ── */
 .barre-filtres {
@@ -32,12 +38,17 @@
 }
 .filtres-flags { display: flex; gap: 6px; overflow-x: auto; }
 .btn-filtre {
-  padding: 6px 12px; border-radius: 99px;
+  padding: 6px 13px; border-radius: 99px;
   border: 1.5px solid var(--c-border);
-  font-size: 13px; font-weight: 500; white-space: nowrap;
-  background: var(--c-bg); cursor: pointer;
+  font-size: 13px; font-weight: 600; white-space: nowrap;
+  background: var(--c-surface); cursor: pointer;
+  transition: all .15s;
 }
-.btn-filtre.actif { background: var(--c-primary); color: #fff; border-color: var(--c-primary); }
+.btn-filtre:hover { background: var(--c-cream); }
+.btn-filtre.actif {
+  background: var(--c-primary); color: #fff; border-color: var(--c-primary);
+  box-shadow: 0 4px 12px -2px rgba(0,80,255,.25);
+}
 .filtres-statut { display: flex; align-items: center; gap: 10px; }
 .filtres-statut select { border: 1px solid var(--c-border); border-radius: var(--radius-sm); padding: 6px 10px; font-size: 13px; flex: 1; }
 .toggle-label { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
@@ -58,7 +69,7 @@
 .graphique-ca { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
 .barre-ligne  { display: flex; align-items: center; gap: 8px; }
 .barre-label  { font-size: 12px; color: var(--c-text-2); width: 36px; flex-shrink: 0; }
-.barre-ca     { height: 10px; border-radius: 5px; min-width: 4px; flex: 1; max-width: 180px; transition: width .4s ease; }
+.barre-ca     { height: 10px; border-radius: 99px; min-width: 4px; flex: 1; max-width: 180px; transition: width 1s cubic-bezier(.4,0,.2,1); }
 .barre-valeur { font-size: 12px; color: var(--c-text); white-space: nowrap; }
 
 /* ── Barre actions fixe bas ── */
