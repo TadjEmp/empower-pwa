@@ -24,6 +24,7 @@ window.VuePipeline = {
   LIMITE_COL: 20,
 
   state: null,
+  modeAffichage: 'kanban', // 'kanban' | 'table'
 
   // BLOCS 7 & 3.2 — valeurs channel disponibles (calculées à l'init)
   CHANNELS: [],
@@ -334,6 +335,8 @@ window.VuePipeline = {
     this.render();
   },
 
+  setMode(m) { this.modeAffichage = m; this.render(); },
+
   setRecherche: debounce(function(v) {
     VuePipeline.state.recherche = v;
     // Quand on tape une recherche, on affiche tout pour ne rien masquer
@@ -363,6 +366,20 @@ window.VuePipeline = {
         <span class="badge-compteur">${leads.length} leads</span>
         ${lectureSeule ? '<span class="badge-compteur" style="background:var(--c-text-2);color:#fff" title="Vue lecture seule">👁 Lecture seule</span>' : ''}
       </header>
+
+      <!-- Toggle Kanban / Table — tabs premium -->
+      <div style="padding:10px 12px 0;background:var(--c-surface);border-bottom:1px solid var(--c-border)">
+        <div class="tabs-premium">
+          <button class="tab-btn-premium ${this.modeAffichage === 'kanban' ? 'actif' : ''}"
+                  onclick="VuePipeline.setMode('kanban')">
+            📋 Kanban <span class="tab-num">${leads.length}</span>
+          </button>
+          <button class="tab-btn-premium ${this.modeAffichage === 'table' ? 'actif' : ''}"
+                  onclick="VuePipeline.setMode('table')">
+            ☰ Tableau
+          </button>
+        </div>
+      </div>
 
       <div class="barre-filtres">
         <input type="search" placeholder="🔍 Rechercher un prospect…" value="${this.state.recherche}"
@@ -401,6 +418,7 @@ window.VuePipeline = {
         </div>
       </div>
 
+      ${this.modeAffichage === 'kanban' ? `
       <p style="font-size:11px;color:var(--c-text-2);text-align:center;padding:6px">← Glisser pour voir les statuts →</p>
 
       ${this.state.leads.length === 0 ? `
@@ -415,11 +433,9 @@ window.VuePipeline = {
           const col = leads
             .filter(l => l._statut === st.id)
             .sort((a, b) => {
-              // BLOC 8 — Tri : 1) alertes WP, 2) score engagement décroissant, 3) date dernière action récente
               const aA = this._retardWelcomePack(a) ? 0 : 1;
               const bA = this._retardWelcomePack(b) ? 0 : 1;
               if (aA !== bA) return aA - bA;
-              // Score engagement : Slider_Receptivite ou SCORE_ENGAGEMENT ou POTENTIEL (Fort=3/Moyen=2/Faible=1)
               const scoreOf = l => {
                 if (l.Slider_Receptivite) return Number(l.Slider_Receptivite) || 0;
                 if (l.SCORE_ENGAGEMENT)   return Number(l.SCORE_ENGAGEMENT) || 0;
@@ -428,7 +444,6 @@ window.VuePipeline = {
               };
               const scoreDiff = scoreOf(b) - scoreOf(a);
               if (scoreDiff !== 0) return scoreDiff;
-              // Date dernière action (Date_prochaine_action comme proxy) puis date import
               const dateOf = l => new Date(l.Date_prochaine_action || l.Timestamp || l.Date_Import || 0).getTime();
               return dateOf(b) - dateOf(a);
             });
@@ -470,12 +485,63 @@ window.VuePipeline = {
             ${col.length === 0 ? '<div class="kanban-vide">—</div>' : ''}
           </div>`;
         }).join('')}
-      </div>
+      </div>` : this._renderTableau(leads, voitTous)}
 
       ${peutSaisir ? '<button class="fab" onclick="VuePipeline.ouvrirSaisie()" title="Nouveau lead" style="bottom:140px">＋</button>' : ''}
       ${NavBar('tracker')}
       ${this._renderModal()}
     `;
+  },
+
+  _renderTableau(leads, voitTous) {
+    if (leads.length === 0) return `
+      <div class="vide" style="text-align:center;padding:40px 20px;color:var(--c-text-2)">
+        <div style="font-size:32px;margin-bottom:12px">📭</div>
+        <div style="font-weight:700;color:var(--c-title);margin-bottom:6px">Aucun résultat</div>
+      </div>`;
+
+    const statutLabel = id => (this.STATUTS.find(s => s.id === id) || {}).lbl || id;
+    return `
+      <div class="desktop-table-wrap avec-nav" style="margin:12px">
+        <table class="desktop-table-data-view">
+          <thead><tr>
+            <th>Compte</th>
+            <th>Canal</th>
+            <th>Statut</th>
+            <th>Potentiel</th>
+            ${voitTous ? '<th>CDS</th>' : ''}
+            <th>Action</th>
+            <th>Source</th>
+            <th style="min-width:80px">Actions</th>
+          </tr></thead>
+          <tbody>
+            ${leads.map(l => `<tr>
+              <td class="compte-nom" onclick="VuePipeline.ouvrirLead('${l.ID_Prospect}')" style="cursor:pointer">
+                ${l.Nom_Compte}
+                ${this._retardWelcomePack(l) ? '<span style="margin-left:4px;color:var(--c-danger);font-size:11px;font-weight:700">⚠️ WP</span>' : ''}
+              </td>
+              <td style="font-size:12px;color:var(--c-text-2)">${l.CANAL || '—'}</td>
+              <td>
+                <span class="statut-pill statut-${(l._statut||'').toLowerCase()}" style="font-size:10px">
+                  ${statutLabel(l._statut)}
+                </span>
+              </td>
+              <td>
+                ${l.POTENTIEL ? `<span class="pot-pill pot-${(l.POTENTIEL||'').toLowerCase()}">${l.POTENTIEL}</span>` : '—'}
+              </td>
+              ${voitTous ? `<td style="font-size:12px">${this._nomCDS(l.PIN_CDS_Assigne)}</td>` : ''}
+              <td style="font-size:12px;color:${l.Date_prochaine_action && estDepassee(l.Date_prochaine_action) ? 'var(--c-danger)' : 'var(--c-text-2)'}">
+                ${l.Date_prochaine_action ? dateRelative(l.Date_prochaine_action) : '—'}
+              </td>
+              <td style="font-size:11px;color:var(--c-text-2)">${(l.ORIGINE||'—').replace('Import_','').replace(/_/g,' ')}</td>
+              <td>
+                <button class="btn-visiter" style="padding:4px 10px;font-size:12px"
+                        onclick="VuePipeline.ouvrirLead('${l.ID_Prospect}')">Voir →</button>
+              </td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
   },
 
   _renderModal() {

@@ -316,6 +316,14 @@ window.VueDashboardCDS = {
         </div>
       </div>
 
+      <!-- KPI grid 4 cartes façon DASHBOARD_W09 -->
+      <div class="kpi-grid-layout">
+        ${kpiCard({ label: 'Comptes', value: d.nbComptes, accent: 'primary' })}
+        ${kpiCard({ label: 'Visites sem.', value: `${d.visitesSem}/${d.objVisites}`, accent: d.visitesSem >= d.objVisites ? 'teal' : 'amber' })}
+        ${kpiCard({ label: 'Appels sem.', value: `${d.appelsSem}/${d.objAppels}`, accent: d.appelsSem >= d.objAppels ? 'teal' : 'coral' })}
+        ${kpiCard({ label: 'Leads actifs', value: d.leadsATraiter.length, accent: d.leadsATraiter.length > 0 ? 'indigo' : 'teal' })}
+      </div>
+
       <div class="dash-body avec-nav">
 
         <!-- GRAPHIQUE ACTIVITÉ 6 SEMAINES -->
