@@ -441,15 +441,63 @@ body {
   100% { background-position: -200% 0; }
 }
 
-/* KPI Grid — 1 col mobile, 4 cols desktop >= 1024px */
+/* KPI Grid — 2 cols mobile, 4 cols desktop ≥900px (réf grid-cols-2 lg:grid-cols-4) */
 .kpi-grid-layout {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-  margin-bottom: 24px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
 }
 @media (min-width: 900px) {
-  .kpi-grid-layout { grid-template-columns: repeat(4, 1fr); }
+  .kpi-grid-layout { grid-template-columns: repeat(4, 1fr); gap: 16px; }
+}
+
+/* ── KPI Cards façon DASHBOARD_W09 (barre d'accent + chiffre font-black) ── */
+.kpi-card {
+  position: relative; overflow: hidden;
+  background: #fff;
+  border: 1px solid var(--c-border);
+  border-radius: 16px;
+  padding: 18px 18px 16px;
+  box-shadow: 0 1px 3px rgba(20,28,37,.06);
+  transition: transform .15s, box-shadow .15s;
+}
+.kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px -4px rgba(0,80,255,.13); }
+.kpi-card .kpi-accent {
+  position: absolute; top: 0; left: 0; width: 5px; height: 100%;
+  border-radius: 16px 0 0 16px; background: var(--c-primary);
+}
+.kpi-accent.acc-primary { background: var(--c-primary); }
+.kpi-accent.acc-coral   { background: #FF6D68; }
+.kpi-accent.acc-indigo  { background: #3F51B5; }
+.kpi-accent.acc-teal    { background: #00897B; }
+.kpi-accent.acc-amber   { background: #f59e0b; }
+.kpi-accent.acc-danger  { background: var(--c-danger); }
+.kpi-card .kpi-label {
+  font-size: 10px; font-weight: 900; color: var(--c-text-2);
+  text-transform: uppercase; letter-spacing: .12em;
+  margin: 0 0 8px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.kpi-card .kpi-value {
+  font-size: clamp(28px, 7vw, 44px); font-weight: 900; color: var(--c-title);
+  line-height: 1; margin-left: 4px; font-variant-numeric: tabular-nums;
+}
+.kpi-card .kpi-unit { font-size: 13px; font-weight: 700; color: var(--c-text-2); margin-left: 6px; }
+.kpi-card .kpi-pills { margin: 12px 0 0 4px; display: flex; gap: 6px; flex-wrap: wrap; }
+.kpi-card .kpi-pill { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 99px; }
+
+/* ── Carte de section (header + corps) façon réf ── */
+.section-card {
+  background: #fff; border: 1px solid var(--c-border);
+  border-radius: 16px; overflow: hidden;
+  box-shadow: 0 1px 3px rgba(20,28,37,.06); margin-bottom: 16px;
+}
+.section-card-head {
+  padding: 14px 18px; border-bottom: 1px solid var(--c-border);
+  background: rgba(0,0,0,.02);
+  font-size: 11px; font-weight: 900; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--c-title);
+  display: flex; align-items: center; gap: 8px;
 }
 
 /* Responsive Cards ↔ Tableau — bascule à 900px (= apparition sidebar) */

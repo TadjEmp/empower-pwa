@@ -130,12 +130,12 @@ window.VueComptesHistoriques = {
         <span class="badge-compteur">${liste.length}/${total}</span>
       </header>
 
-      <!-- Stats rapides -->
-      <div class="ch-stats">
-        <div class="ch-stat"><div class="ch-stat-val">${total}</div><div class="ch-stat-lbl">Comptes</div></div>
-        <div class="ch-stat bleu"><div class="ch-stat-val">${nbLeclerc}</div><div class="ch-stat-lbl">Leclerc</div></div>
-        <div class="ch-stat coral"><div class="ch-stat-val">${nbRevendeurs}</div><div class="ch-stat-lbl">Revendeurs</div></div>
-        <div class="ch-stat"><div class="ch-stat-val" style="font-size:13px">${window.fmtCA(caTotal) !== '—' ? window.fmtCA(caTotal) + ' €' : '—'}</div><div class="ch-stat-lbl">CA FY26</div></div>
+      <!-- Stats rapides — KPI cards façon DASHBOARD_W09 -->
+      <div class="kpi-grid-layout">
+        ${kpiCard({ label: 'Comptes',    value: total,        accent: 'primary' })}
+        ${kpiCard({ label: 'Leclerc',    value: nbLeclerc,    accent: 'indigo' })}
+        ${kpiCard({ label: 'Revendeurs', value: nbRevendeurs, accent: 'coral' })}
+        ${kpiCard({ label: 'CA FY26',    value: window.fmtCA(caTotal) !== '—' ? window.fmtCA(caTotal) : '—', unit: '€', accent: 'teal' })}
       </div>
 
       <!-- Filtres -->

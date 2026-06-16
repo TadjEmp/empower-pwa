@@ -342,3 +342,20 @@ function statusBadge(statut, label) {
   const s = (statut || '').toLowerCase().replace(/_/g, '_');
   return `<span class="status-badge status-${s}">${label || statut || '—'}</span>`;
 }
+
+// ── v5.0 — KPI Card façon DASHBOARD_W09 (barre d'accent + chiffre font-black) ──
+// opts: { label, value, unit?, accent?('primary'|'coral'|'indigo'|'teal'|'amber'|'danger'), pills?[{txt,bg,color}] }
+function kpiCard(opts = {}) {
+  const { label = '', value = '0', unit = '', accent = 'primary', pills = [] } = opts;
+  const pillsHtml = (pills || []).map(p =>
+    `<span class="kpi-pill" style="background:${p.bg || 'rgba(0,80,255,.10)'};color:${p.color || 'var(--c-primary)'}">${p.txt}</span>`
+  ).join('');
+  return `<div class="kpi-card">
+    <div class="kpi-accent acc-${accent}"></div>
+    <p class="kpi-label">${label}</p>
+    <div style="display:flex;align-items:baseline">
+      <span class="kpi-value">${value}</span>${unit ? `<span class="kpi-unit">${unit}</span>` : ''}
+    </div>
+    ${pillsHtml ? `<div class="kpi-pills">${pillsHtml}</div>` : ''}
+  </div>`;
+}

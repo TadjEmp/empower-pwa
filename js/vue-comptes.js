@@ -107,6 +107,11 @@ window.VueComptes = {
     }
     const liste = this.listeFiltree;
     const total = this.state.comptes.length;
+    // KPI synthèse (façon DASHBOARD_W09) — calculés sur le portefeuille du rôle
+    const _cs       = this.state.comptes;
+    const nbActif   = _cs.filter(c => this._statutCompte(c) === 'actif').length;
+    const nbReact   = _cs.filter(c => this._statutCompte(c) === 'a_reactiver').length;
+    const caTotalP  = _cs.reduce((s, c) => s + (window.parseCA(c.CA_FY26) || 0), 0);
     const cdsList = (this._cdsListe || [
       { pin: 1000, nom: 'Tadjidine' }, { pin: 4001, nom: 'Lyes' },
       { pin: 4002, nom: 'Mehdi' },     { pin: 4003, nom: 'Johanne' },
@@ -119,6 +124,14 @@ window.VueComptes = {
         <h1>Mes comptes</h1>
         <span class="badge-compteur">${liste.length}/${total}</span>
       </header>
+
+      <!-- KPI synthèse façon DASHBOARD_W09 -->
+      <div class="kpi-grid-layout">
+        ${kpiCard({ label: 'Comptes',      value: total,    accent: 'primary' })}
+        ${kpiCard({ label: 'Actifs',       value: nbActif,  accent: 'teal' })}
+        ${kpiCard({ label: 'À réactiver',  value: nbReact,  accent: 'amber' })}
+        ${kpiCard({ label: 'CA FY26',      value: window.fmtCA(caTotalP) !== '—' ? window.fmtCA(caTotalP) : '0', unit: '€', accent: 'indigo' })}
+      </div>
 
       <div class="barre-filtres">
         <input type="search" id="recherche-comptes" placeholder="🔍 Compte, ville ou canal…"
