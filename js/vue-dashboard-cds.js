@@ -266,7 +266,7 @@ window.VueDashboardCDS = {
   render() {
     const app = document.getElementById('app');
     if (this.state.chargement) {
-      app.innerHTML = '<div class="spinner-centre">Chargement du dashboard…</div>';
+      app.innerHTML = `<div style="padding:16px">${skeletonKPI(2)}${skeletonListe(5)}</div>`;
       return;
     }
     if (this.state.erreur) {

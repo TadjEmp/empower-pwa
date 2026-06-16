@@ -538,7 +538,7 @@ window.VueDashboardManager = {
   render() {
     const app = document.getElementById('app');
     if (!this.state || this.state.chargement) {
-      app.innerHTML = '<div class="spinner-centre">Chargement…</div>';
+      app.innerHTML = `<div style="padding:20px">${skeletonKPI(4)}${skeletonListe(4)}</div>`;
       return;
     }
     // BLOC 4 — vue dédiée Alexandra

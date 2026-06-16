@@ -307,3 +307,38 @@ function NavBar(actif) {
   window.parseCA = parseCA;
   window.fmtCA   = fmtCA;
 })();
+
+// ── v5.0 M5 — Skeleton Loaders ──────────────────────────
+// Génère un bloc skeleton shimmer à injecter pendant les chargements API.
+// Utilise les classes CSS .skeleton-box définies dans base.css v5.0.
+function skeletonKanban() {
+  return `<div style="display:flex;gap:12px;overflow-x:auto;padding:8px 0">
+    ${[1,2,3,4].map(() => `
+      <div style="min-width:200px;flex-shrink:0">
+        <div class="skeleton-box" style="height:28px;margin-bottom:10px"></div>
+        ${[1,2,3].map(() => `<div class="skeleton-box" style="height:80px;margin-bottom:8px"></div>`).join('')}
+      </div>`).join('')}
+  </div>`;
+}
+
+function skeletonListe(lignes = 6) {
+  return `<div style="display:flex;flex-direction:column;gap:10px;padding:8px 0">
+    ${Array.from({length: lignes}, () =>
+      `<div class="skeleton-box" style="height:64px;border-radius:8px"></div>`
+    ).join('')}
+  </div>`;
+}
+
+function skeletonKPI(cols = 4) {
+  return `<div class="kpi-grid-layout" style="margin-bottom:20px">
+    ${Array.from({length: cols}, () =>
+      `<div class="skeleton-box" style="height:90px;border-radius:10px"></div>`
+    ).join('')}
+  </div>`;
+}
+
+// Badge statut pipeline avec classe CSS v5.0
+function statusBadge(statut, label) {
+  const s = (statut || '').toLowerCase().replace(/_/g, '_');
+  return `<span class="status-badge status-${s}">${label || statut || '—'}</span>`;
+}

@@ -42,30 +42,38 @@ const SheetsAPI = {
   },
 
   // ── LECTURE ──────────────────────────────────────────
-  async lire(fichier, onglet) {
-    const k = `${fichier}::${onglet}`;
-    if (this._inflight.has(k)) return this._inflight.get(k);
-    const p = this._lireAvecFallback(fichier, onglet, k);
-    this._inflight.set(k, p);
-    p.finally(() => this._inflight.delete(k));
+  // v5.0 P6 — support limit/offset pour la pagination côté serveur.
+  // Sans opts : comportement inchangé (compatible avec tous les callers existants).
+  async lire(fichier, onglet, opts = {}) {
+    const { limit, offset, nocache } = opts;
+    // Clé de cache distincte par page pour ne pas polluer le cache global
+    const k = limit != null ? `${fichier}::${onglet}::${offset||0}:${limit}` : `${fichier}::${onglet}`;
+    if (!limit && this._inflight.has(k)) return this._inflight.get(k);
+    const p = this._lireAvecFallback(fichier, onglet, k, { limit, offset, nocache });
+    if (!limit) { this._inflight.set(k, p); p.finally(() => this._inflight.delete(k)); }
     return p;
   },
 
-  async _lireAvecFallback(fichier, onglet, k) {
+  async _lireAvecFallback(fichier, onglet, k, opts = {}) {
+    const { limit, offset, nocache } = opts;
     const cached = await this._getCached(k);
     if (!this._online) {
       if (cached) return cached;
       throw new Error(`Offline — aucun cache pour ${onglet}`);
     }
-    const frais = cached && !(await this._estExpire(k));
+    const frais = !nocache && cached && !(await this._estExpire(k));
     if (frais) return cached;
     try {
-      const url  = `${this.BASE_URL}?action=lire&fichier=${encodeURIComponent(fichier)}&onglet=${encodeURIComponent(onglet)}&token=${encodeURIComponent(this.TOKEN || '')}`;
+      let url = `${this.BASE_URL}?action=lire&fichier=${encodeURIComponent(fichier)}&onglet=${encodeURIComponent(onglet)}&token=${encodeURIComponent(this.TOKEN || '')}`;
+      if (limit  != null) url += `&limit=${limit}`;
+      if (offset != null) url += `&offset=${offset}`;
       const data = await this._fetchRetry(url, 'GET');
       this._gererAuthExpiree(data);
       if (!data.ok) throw new Error(data.erreur || 'API error');
-      await this._setCached(k, data.data);
-      return data.data;
+      // Pour les appels paginés on retourne l'objet complet {data, total, count}
+      const payload = limit != null ? data : data.data;
+      if (!limit) await this._setCached(k, payload);
+      return payload;
     } catch(e) {
       if (cached) { Toast.afficher('📶 Mode hors-ligne — données en cache', 'warning', 4000); return cached; }
       throw e;

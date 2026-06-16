@@ -117,8 +117,10 @@ window.VuePipeline = {
   },
 
   // Statut pipeline — STATUT_EMPOWER prioritaire, sinon déduit des flags historiques
+  // v5.0 M3 — A_TRAITER (backend) = SAISIE (colonne kanban "À traiter")
   _statutDe(p) {
     const s = String(p.STATUT_EMPOWER || '').toUpperCase();
+    if (s === 'A_TRAITER') return 'SAISIE';
     if (this.STATUTS.some(x => x.id === s)) return s;
     if (String(p.Flag_converti).toUpperCase() === 'TRUE') return 'INTEGRE';
     if (p.PIN_CDS_Assigne) {
@@ -344,7 +346,8 @@ window.VuePipeline = {
   render() {
     const app = document.getElementById('app');
     if (!this.state || this.state.chargement) {
-      app.innerHTML = '<div class="spinner-centre">Chargement du pipeline…</div>';
+      // v5.0 M5 — skeleton kanban remplace le spinner bloquant
+      app.innerHTML = `<div style="padding:16px">${skeletonKanban()}</div>`;
       return;
     }
     const leads = this.leadsFiltres;
@@ -579,7 +582,7 @@ window.VuePipeline = {
           <div style="flex:1">
             <h3 style="margin:0 0 4px">${l.Nom_Compte}</h3>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
-              <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:${statut?.coul||'#888'};color:#fff">${statut?.lbl||l._statut}</span>
+              <span class="status-badge status-${(l._statut||'').toLowerCase()}">${statut?.lbl||l._statut}</span>
               ${l.POTENTIEL ? `<span class="pot-pill pot-${(l.POTENTIEL||'').toLowerCase()}">${l.POTENTIEL}</span>` : ''}
               ${l.CANAL ? `<span style="font-size:11px;padding:2px 8px;border-radius:99px;background:var(--c-bg);border:1px solid var(--c-border);color:var(--c-text-2)">${l.CANAL}</span>` : ''}
             </div>
