@@ -499,3 +499,23 @@ body {
   }
 }
 .pace-risk  { background: #fff0f0; color: var(--c-danger); }
+
+/* ═══════════════════════════════════════
+   v5.0 BUG1 — Anti pinch-zoom & sélection PWA
+   (zoom comme une page web → comportement app natif)
+   ═══════════════════════════════════════ */
+html {
+  touch-action: manipulation;       /* supprime le double-tap-to-zoom */
+  -webkit-text-size-adjust: 100%;   /* iOS : pas de re-scaling auto du texte */
+}
+body {
+  -webkit-user-select: none;
+  user-select: none;                /* pas de sélection de texte hors formulaires */
+  -webkit-touch-callout: none;      /* pas de menu contextuel long-press */
+  overscroll-behavior-y: none;      /* pas de bounce/pull-to-refresh parasite */
+}
+/* Les champs de saisie restent sélectionnables/éditables */
+input, textarea, select, [contenteditable="true"], .selectable {
+  -webkit-user-select: text;
+  user-select: text;
+}

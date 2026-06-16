@@ -257,6 +257,8 @@ window.VueVisites = {
 
   async planifier(e) {
     e.preventDefault();
+    // BUG2 — anti multi-soumission : verrou de ré-entrée immédiat
+    if (this._enCours) return;
     const f = this.state.formPlanif;
     const nomFinal = f.horsBase ? (f.nomLibre || '').trim() : f.nomCible;
     if (!nomFinal) { Toast.afficher(f.horsBase ? 'Indiquez le nom du compte' : 'Sélectionnez un compte', 'warning'); return; }
@@ -266,7 +268,7 @@ window.VueVisites = {
     const doublon = this.state.visites.find(v =>
       String(v.deleted || '').toUpperCase() !== 'TRUE' &&
       (f.horsBase
-        ? (v.Source_Visite === 'HORS_BASE' && normaliserNom(v.Nom_Compte) === normaliserNom(nomFinal))
+        ? ((v.Source_Visite === 'HORS_BASE' || v.Source_Visite === 'ESI_VISITE_FROID') && normaliserNom(v.Nom_Compte) === normaliserNom(nomFinal))
         : v.ID_Cible === idCibleCheck) &&
       (v.Date || v.Date_Planif || '').slice(0, 10) === f.date &&
       String(v.PIN_CDS) === String(Session.pin) &&
@@ -277,7 +279,44 @@ window.VueVisites = {
       return;
     }
 
+    // BUG2 — désactivation du bouton + état de chargement jusqu'à résolution
+    const btn = e.submitter || (e.target && e.target.querySelector('button[type="submit"]'));
+    this._enCours = true;
+    if (btn) { btn.disabled = true; btn.dataset._lbl = btn.textContent; btn.textContent = '⏳ Enregistrement…'; }
+
     try {
+      // BUG3 — prospect à froid : on persiste un VRAI prospect réutilisable
+      // (au lieu d'un simple libellé HORS_BASE perdu) et on l'injecte dans la
+      // liste sélectionnable. La visite est ensuite reliée à son ID réel.
+      let idCibleFinal = f.idCible;
+      let sourceVisite = 'ESI_V21';
+      if (f.horsBase) {
+        sourceVisite = 'ESI_VISITE_FROID';
+        // dédup : réutilise une cible déjà connue portant ce nom (évite les doublons)
+        const dejaLa = this.state.comptes.find(c => normaliserNom(c.Nom_Compte) === normaliserNom(nomFinal));
+        if (dejaLa) {
+          idCibleFinal = dejaLa.ID_Compte;
+        } else {
+          const idProspect = genId('LEAD');
+          // backend _ecrire force STATUT_EMPOWER='A_TRAITER' + alertes J0
+          await SheetsAPI.ecrire('EMPOWER_MDB', '📋_PROSPECTS', {
+            ID_Prospect:     idProspect,
+            Nom_Compte:      nomFinal,
+            PIN_CDS_Assigne: Session.pin,
+            Nom_CDS:         Session.nom,
+            Source_Import:   'ESI_VISITE_FROID',
+            ORIGINE:         'Visite à froid',
+            CANAL:           'EMPOWER',
+            Timestamp:       new Date().toISOString(),
+          });
+          idCibleFinal = idProspect;
+          // injection immédiate dans le <select> pour réutilisation sans rechargement
+          this.state.comptes.push(this._enrichirCompte({
+            ID_Compte: idProspect, Nom_Compte: nomFinal, PIN_CDS_Assigne: Session.pin,
+          }));
+        }
+      }
+
       const visite = {
         ID_Visite:              genId('VIS'),
         Date:                   f.date,
@@ -285,9 +324,9 @@ window.VueVisites = {
         Semaine_ISO:            getISOWeek(new Date(f.date)),
         PIN_CDS:                Session.pin,
         Nom_CDS:                Session.nom,
-        ID_Cible:               f.horsBase ? 'HORS_BASE' : f.idCible,
+        ID_Cible:               idCibleFinal || 'HORS_BASE',
         Nom_Compte:             nomFinal,
-        Source_Visite:          f.horsBase ? 'HORS_BASE' : 'ESI_V21',
+        Source_Visite:          sourceVisite,
         Type_Visite:            f.typeVisite,
         Statut_Visite:          'planifiée',
         Note_Privee:            f.commentairePrep,
@@ -296,11 +335,26 @@ window.VueVisites = {
       };
       await SheetsAPI.ecrire('EMPOWER_MDB', '🗺️_VISITES', visite);
       this.state.visites.unshift(visite);
+      // BUG3 — la cible devient un vrai compte sélectionné (sans perdre la saisie)
+      f.horsBase = false;
+      f.idCible  = idCibleFinal;
+      f.nomCible = nomFinal;
       this.state.dateVue = f.date;
       this.state.modalPlanif = false;
-      Toast.afficher(`✅ Visite planifiée — ${nomFinal} le ${f.date}`, 'succes');
+      Toast.afficher(
+        sourceVisite === 'ESI_VISITE_FROID'
+          ? `✅ Prospect créé + visite planifiée — ${nomFinal} le ${f.date}`
+          : `✅ Visite planifiée — ${nomFinal} le ${f.date}`,
+        'succes'
+      );
       this.render();
-    } catch(err) { Toast.afficher('❌ ' + err.message, 'erreur'); }
+    } catch(err) {
+      Toast.afficher('❌ ' + err.message, 'erreur');
+      // réactive le bouton pour permettre une nouvelle tentative
+      if (btn) { btn.disabled = false; btn.textContent = btn.dataset._lbl || '📅 Planifier'; }
+    } finally {
+      this._enCours = false;
+    }
   },
 
   // ── R5 : Édition ──
