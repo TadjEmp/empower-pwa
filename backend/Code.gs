@@ -292,7 +292,7 @@ function initPipelineColonnes() {
 // BASE_PROSPECTS_RELANCER). La source de vérité des non-ADMIN = ESI_PIPELINE
 // + comptes attribués. Les lignes soft-deleted (Flag_traite=DELETED) sont
 // exclues pour tout le monde sur cet onglet.
-function _lire({ fichier, onglet, limit = 100, offset = 0 }, user) {
+function _lire({ fichier, onglet, limit = 10000, offset = 0 }, user) {
   const ss = _getSpreadsheet(fichier);
   const sh = ss.getSheetByName(onglet);
   if (!sh) return _json({ ok: false, erreur: `Onglet "${onglet}" introuvable dans ${fichier}` });
