@@ -22,6 +22,9 @@ window.VueObjectifs = {
     modalSaisie: false,
     formSaisie: {},
     saving: false,
+    modalCA: false,
+    formCA: { quarter: null, montant: '' },
+    savingCA: false,
   },
 
   async init() {
@@ -130,6 +133,37 @@ window.VueObjectifs = {
     this.render();
   },
   fermerModalSaisie() { this.state.modalSaisie = false; this.render(); },
+
+  ouvrirModalCA() {
+    this.state.formCA = { quarter: this.state.quarter, montant: '' };
+    this.state.modalCA = true;
+    this.render();
+  },
+  fermerModalCA() { this.state.modalCA = false; this.render(); },
+
+  async sauvegarderCA(e) {
+    e.preventDefault();
+    if (this.state.savingCA) return;
+    const { quarter, montant } = this.state.formCA;
+    const val = window.parseCA(montant);
+    if (val === null || !isFinite(val) || val < 0) {
+      Toast.afficher('Montant invalide', 'erreur');
+      return;
+    }
+    this.state.savingCA = true;
+    this.render();
+    try {
+      await SheetsAPI.mettreAJourCA(quarter, val);
+      SheetsAPI.viderCache('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES');
+      Toast.afficher('✅ CA déclaré avec succès', 'succes');
+      this.state.modalCA = false;
+      await this.init();
+    } catch(err) {
+      Toast.afficher(`Erreur : ${err.message}`, 'erreur');
+      this.state.savingCA = false;
+      this.render();
+    }
+  },
 
   async sauvegarderSaisie(e) {
     e.preventDefault();
@@ -269,8 +303,14 @@ window.VueObjectifs = {
         ${CDS.map(c => renderCDS(c.pin, c.nom)).join('')}
       `;
     } else {
-      // CDS : lecture seule — filtré sur son propre PIN
+      // CDS : vue personnelle + bouton déclaration CA
       corps = renderCDS(Session.pin, null);
+      corps += `
+        <div style="margin-top:12px">
+          <button class="btn-primaire" style="width:100%" onclick="VueObjectifs.ouvrirModalCA()">
+            📝 Déclarer mon CA
+          </button>
+        </div>`;
     }
 
     app.innerHTML = `
@@ -287,7 +327,45 @@ window.VueObjectifs = {
       </div>
       ${NavBar('objectifs')}
       ${this._renderModal()}
+      ${this._renderModalCA()}
     `;
+  },
+
+  _renderModalCA() {
+    if (!this.state.modalCA) return '';
+    const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+    return `
+    <div class="modal-overlay" onclick="if(event.target===this)VueObjectifs.fermerModalCA()">
+      <div class="modal">
+        <h3>📝 Déclarer mon CA</h3>
+        <p style="font-size:12px;color:var(--c-text-2);margin-bottom:14px">
+          Saisissez votre CA réalisé cumulé pour le quarter sélectionné.
+        </p>
+        <form onsubmit="VueObjectifs.sauvegarderCA(event)">
+          <div style="margin-bottom:12px">
+            <label style="font-size:12px;color:var(--c-text-2);display:block;margin-bottom:4px">Quarter</label>
+            <select onchange="VueObjectifs.state.formCA.quarter=this.value"
+                    style="width:100%;padding:8px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);font-size:13px;background:var(--c-surface);color:var(--c-title)">
+              ${quarters.map(qt => `<option value="${qt}" ${this.state.formCA.quarter === qt ? 'selected' : ''}>${qt} FY27</option>`).join('')}
+            </select>
+          </div>
+          <div style="margin-bottom:16px">
+            <label style="font-size:12px;color:var(--c-text-2);display:block;margin-bottom:4px">CA réalisé cumulé (€)</label>
+            <input type="number" min="0" step="0.01" placeholder="0.00"
+                   value="${this.state.formCA.montant}"
+                   oninput="VueObjectifs.state.formCA.montant=this.value"
+                   style="width:100%;padding:8px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);font-size:15px;font-weight:700;box-sizing:border-box;color:var(--c-title);background:var(--c-surface)"
+                   autofocus/>
+          </div>
+          <div class="modal-btns">
+            <button type="button" onclick="VueObjectifs.fermerModalCA()">Annuler</button>
+            <button type="submit" class="btn-primaire" ${this.state.savingCA ? 'disabled' : ''}>
+              ${this.state.savingCA ? '⏳ Envoi…' : '💾 Enregistrer'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>`;
   },
 
   _renderModal() {
