@@ -63,11 +63,12 @@ window.VueDashboardManager = {
     const paramMap = Object.fromEntries((params || []).map(p => [p.Parametre, p.Valeur]));
     const quarter  = paramMap.QuarterActif || 'Q1';
 
-    // BUG 1 — seuls les leads ESI_PIPELINE non supprimés comptent (pas la base 📋_PROSPECTS entière)
-    const leads = prospects.filter(p =>
-      norm(p.Source_Import) === 'ESI_PIPELINE' &&
-      norm(p.Flag_traite) !== 'DELETED'
-    );
+    // Exclure imports base Flavie/BASE_PROSPECTS_RELANCER + hors-base Visites, non supprimés.
+    const leads = prospects.filter(p => {
+      const src = norm(p.Source_Import);
+      return norm(p.Flag_traite) !== 'DELETED' &&
+        !src.includes('FLAVIE') && src !== 'BASE_PROSPECTS_RELANCER' && src !== 'ESI_VISITE_FROID';
+    });
 
     // ── Compteurs pipeline par STATUT_EMPOWER (vocabulaire réel) ──
     // Traiter = ASSIGNE + SAISIE · En cours = EN_COURS (+ COMPTE_CREE) · Intégré = INTEGRE · Archivé = ARCHIVE
@@ -185,6 +186,14 @@ window.VueDashboardManager = {
     const semaine    = getISOWeek();
     const seuilRouge = Number(paramMap.SEUIL_ROUGE_JOURS || 5);
 
+    // Périmètre pipeline : exclure imports base + hors-base Visites + supprimés
+    const norm = v => String(v || '').trim().toUpperCase();
+    const leadsTracker = prospects.filter(p => {
+      const src = norm(p.Source_Import);
+      return norm(p.Flag_traite) !== 'DELETED' &&
+        !src.includes('FLAVIE') && src !== 'BASE_PROSPECTS_RELANCER' && src !== 'ESI_VISITE_FROID';
+    });
+
     // Le manager est aussi commercial terrain : il figure dans la perf équipe.
     const equipe = objectifs.map(o => {
       const pin    = Number(o.PIN_CDS);
@@ -199,7 +208,7 @@ window.VueDashboardManager = {
         pace:       pct >= 100 ? 'ON_TRACK' : pct >= 80 ? 'WATCH' : 'AT_RISK',
         visitesSem: visites.filter(v => Number(v.PIN_CDS) === pin && v.Semaine_ISO === semaine).length,
         appelsSem:  appels.filter(a => Number(a.PIN_CDS) === pin && a.Semaine_ISO === semaine).length,
-        leadsEnCours: prospects.filter(p =>
+        leadsEnCours: leadsTracker.filter(p =>
           Number(p.PIN_CDS_Assigne) === pin &&
           !['ARCHIVE','INTEGRE'].includes(String(p.STATUT_EMPOWER||'').toUpperCase())
         ).length,
@@ -208,7 +217,7 @@ window.VueDashboardManager = {
 
     // ── Alertes équipe ──
     const now = Date.now();
-    const leadsBloques = prospects.filter(p => {
+    const leadsBloques = leadsTracker.filter(p => {
       if (['ARCHIVE','INTEGRE'].includes(String(p.STATUT_EMPOWER||'').toUpperCase())) return false;
       const ref = p.Date_prochaine_action || p.Timestamp || p.Date_Import;
       return p.PIN_CDS_Assigne && ref && (now - new Date(ref).getTime()) / 86400000 > 7;
@@ -218,8 +227,8 @@ window.VueDashboardManager = {
       return d && (now - d) / 86400000 > seuilRouge;
     });
 
-    const integres        = prospects.filter(p => String(p.Flag_converti).toUpperCase() === 'TRUE').length;
-    const assignes        = prospects.filter(p => p.PIN_CDS_Assigne).length;
+    const integres        = leadsTracker.filter(p => String(p.Flag_converti).toUpperCase() === 'TRUE').length;
+    const assignes        = leadsTracker.filter(p => p.PIN_CDS_Assigne).length;
     const tauxIntegration = assignes > 0 ? Math.round(integres / assignes * 100) : 0;
     const caTotal         = equipe.reduce((s, e) => s + e.ca, 0);
     const objTotal        = equipe.reduce((s, e) => s + e.obj, 0);
@@ -236,7 +245,7 @@ window.VueDashboardManager = {
     };
     const pipelineStages = Object.entries(STAT_LABELS).map(([id, lbl]) => ({
       id, lbl, coul: STAT_COULEURS[id],
-      n: prospects.filter(p => String(p.STATUT_EMPOWER || '').toUpperCase() === id).length,
+      n: leadsTracker.filter(p => String(p.STATUT_EMPOWER || '').toUpperCase() === id).length,
     }));
 
     // ── Activité semaine par CDS (6 dernières semaines) ──
