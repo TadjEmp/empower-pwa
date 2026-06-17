@@ -529,7 +529,7 @@ window.VueQuestionnaire = {
         <div class="succes-btns">
           <button class="btn-primaire" onclick="Router.aller('#/dashboard')">← Dashboard</button>
           <button class="btn-secondaire" onclick="VueQuestionnaire.init()">📋 Nouvelle visite</button>
-          <button class="btn-secondaire" onclick="VueVisites.synchroniser();Router.aller('#/visites')" style="background:var(--c-primary);color:#fff">🔄 Synchroniser</button>
+          <button class="btn-secondaire" onclick="VueVisites.state.modeVue='historique';VueVisites.synchroniser();Router.aller('#/visites')" style="background:var(--c-primary);color:#fff">🔄 Synchroniser</button>
           ${this._isHorsBase ? `<button class="btn-secondaire" onclick="VueQuestionnaire._ajouterAMaBase()" style="border-color:var(--c-success);color:var(--c-success)">➕ Ajouter à ma base</button>` : ''}
         </div>
       </div>`;
@@ -705,7 +705,7 @@ window.VueQuestionnaire = {
           return `
           <div style="border:1.5px solid ${actif?'var(--c-cta)':'var(--c-border)'};border-radius:var(--radius);overflow:hidden;background:var(--c-surface)">
             <button type="button" class="q-arbre-btn" style="border:none;border-radius:0;width:100%;${actif?'background:#fff5f4':''}"
-                    onclick="VueQuestionnaire.toggleListe('freins',${JSON.stringify(f.id)})">
+                    onclick="VueQuestionnaire.toggleListe('freins','${f.id.replace(/'/g, "\\'")}')" >
               ${actif?'☑':'☐'} ${f.id}
             </button>
             ${actif?`<div style="padding:12px 16px;border-top:1px solid var(--c-border);font-size:13px;line-height:1.5">
