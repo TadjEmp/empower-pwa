@@ -178,9 +178,10 @@ window.VueDashboardCDS = {
       appels:  appels.filter(a => this._estMoi(a.PIN_CDS) && a.Semaine_ISO === sem).length,
     }));
 
-    // ── Ma base prospects (assignés, non archivés) ──
+    // ── Ma base prospects (assignés, non archivés, hors imports base) ──
     const POT = { Fort: 0, Moyen: 1, Faible: 2 };
     const mesProspects = prospects
+      .filter(p => { const src = String(p.Source_Import || '').toUpperCase(); return !src.includes('FLAVIE') && src !== 'BASE_PROSPECTS_RELANCER' && src !== 'ESI_VISITE_FROID'; })
       .filter(p => this._estMoi(p.PIN_CDS_Assigne))
       .filter(p => !['ARCHIVE', 'INTEGRE'].includes(String(p.STATUT_EMPOWER || '').toUpperCase()))
       .sort((a, b) => (POT[a.POTENTIEL] ?? 1) - (POT[b.POTENTIEL] ?? 1));
