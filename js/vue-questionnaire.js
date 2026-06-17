@@ -365,6 +365,7 @@ window.VueQuestionnaire = {
         ID_Cible:                idCible,
         Nom_Compte:              s.cible.Nom_Compte,
         Type_Visite:             typeVisite,
+        Statut_Visite:           'réalisée',
         Source_Visite:           'ESI_V21',
         Type_Revendeur:          d.typeRevendeur.join(', '),
         Clientele_Principale:    JSON.stringify(d.clientelePrincipale),
