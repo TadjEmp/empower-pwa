@@ -53,8 +53,8 @@ window.VuePipeline = {
   _voitTous()    { return Session.voitTout(); },
   // Attribuer / avancer / éditer un lead : ADMIN uniquement. Alexandra (CHANNEL_MANAGER) = lecture seule.
   _peutAssigner(){ return Session.estManager() || Session.estChannel(); },
-  // Saisir un nouveau lead : ADMIN + CHANNEL_MANAGER (Alexandra) + EXTERNE (Flavie).
-  _peutSaisir()  { return Session.estManager() || Session.estChannel(); },
+  // Saisir un nouveau lead : ADMIN + CHANNEL_MANAGER (Alexandra) + CDS (commercial terrain).
+  _peutSaisir()  { return Session.estManager() || Session.estChannel() || Session.estCDS(); },
   // Lecture seule (Alexandra) : voit tout mais ne peut rien modifier hormis la saisie.
   _lectureSeule(){ return Session.estChannel(); },
 
@@ -85,8 +85,12 @@ window.VuePipeline = {
 
       // TRACKER : tous les leads attribués au CDS (ou tous pour ADMIN/CHANNEL_MANAGER)
       this.state.leads = raw
-        // V4.2 — Source unique ESI_PIPELINE. Les ~1674 imports base (BASE_PROSPECTS_RELANCER) sont exclus.
-        .filter(p => String(p.Source_Import || '').trim() === 'ESI_PIPELINE')
+        // Exclure imports base Flavie + BASE_PROSPECTS_RELANCER + prospects hors-base Visites.
+        // Le backend exclut déjà FLAVIE/BASE pour non-admin ; ce filtre couvre aussi l'admin.
+        .filter(p => {
+          const src = String(p.Source_Import || '').toUpperCase();
+          return !src.includes('FLAVIE') && src !== 'BASE_PROSPECTS_RELANCER' && src !== 'ESI_VISITE_FROID';
+        })
         // BLOC 4.2 : exclure les leads soft-deleted
         .filter(p => String(p.Flag_traite || '').toUpperCase() !== 'DELETED'
                   && String(p.deleted   || '').toUpperCase() !== 'TRUE')
@@ -251,10 +255,16 @@ window.VuePipeline = {
     if (this.state.envoiEnCours) return;
     const v = id => document.getElementById(id)?.value?.trim() || '';
     if (!v('nl-nom')) { Toast.afficher('Nom du prospect requis', 'warning'); return; }
-    this.state.envoiEnCours = true;
-    this.render();
 
+    // Capturer TOUS les champs AVANT render() — render() vide les inputs du DOM
     const nomSaisi = v('nl-nom').toUpperCase();
+    const vals = {
+      ville: v('nl-ville'), cp: v('nl-cp'), tel: v('nl-tel'), email: v('nl-email'),
+      canal: v('nl-canal'), note: v('nl-note'), dateAction: v('nl-date-action'),
+      potentiel: v('nl-potentiel'), origine: v('nl-origine'),
+      contact: v('nl-contact'), fonction: v('nl-fonction'),
+      cdsSelect: v('nl-cds-assigne'),
+    };
 
     // GEM-T02 — Détection doublon avant création
     try {
@@ -265,32 +275,35 @@ window.VuePipeline = {
         const confirmer = confirm(
           `⚠️ Doublon probable détecté !\n\nCompte similaire existant : "${res.nom_similaire}"\nSimilarité : ${res.score}%\n${res.explication||''}\n\nContinuer quand même la création ?`
         );
-        if (!confirmer) {
-          this.state.envoiEnCours = false;
-          this.render();
-          return;
-        }
+        if (!confirmer) { return; }
       }
     } catch { /* GEM-T02 optionnel — on continue si erreur */ }
 
-    // BLOC 4.1 — attribution directe à la création (ADMIN + CHANNEL_MANAGER)
-    const cdsAssignePin = this._peutAssigner() ? (v('nl-cds-assigne') || '') : '';
+    // BLOC 4.1 — attribution directe à la création
+    // Admin/Channel : choisit dans le select. CDS : auto-assigné à lui-même.
+    const cdsAssignePin = this._peutAssigner() ? (vals.cdsSelect || '')
+                        : Session.estCDS()      ? String(Session.pin)
+                        : '';
     const statutInit    = cdsAssignePin ? 'ASSIGNE' : 'SAISIE';
 
     const lead = {
       ID_Prospect: genId('PROS'),
-      Nom_Compte: nomSaisi, Ville: v('nl-ville'), Code_Postal: v('nl-cp'),
-      Tel: v('nl-tel'), Email: v('nl-email'),
+      Nom_Compte: nomSaisi, Ville: vals.ville, Code_Postal: vals.cp,
+      Tel: vals.tel, Email: vals.email,
       PIN_CDS_Assigne: cdsAssignePin ? Number(cdsAssignePin) : '',
       Source_Import: 'ESI_PIPELINE',
-      FLAG_ACTION: statutInit, CANAL: v('nl-canal'),
-      Note_initiale: v('nl-note'), Date_prochaine_action: v('nl-date-action'),
+      FLAG_ACTION: statutInit, CANAL: vals.canal,
+      Note_initiale: vals.note, Date_prochaine_action: vals.dateAction,
       Flag_traite: 'FALSE', Flag_converti: 'FALSE',
       Date_Import: dateISOLocale(),
       Timestamp: new Date().toISOString(),
-      STATUT_EMPOWER: statutInit, POTENTIEL: v('nl-potentiel'),
-      ORIGINE: v('nl-origine'), CONTACT_NOM: v('nl-contact'), CONTACT_FONCTION: v('nl-fonction'),
+      STATUT_EMPOWER: statutInit, POTENTIEL: vals.potentiel,
+      ORIGINE: vals.origine, CONTACT_NOM: vals.contact, CONTACT_FONCTION: vals.fonction,
     };
+
+    this.state.envoiEnCours = true;
+    this.render();
+
     try {
       await SheetsAPI.ecrire('EMPOWER_MDB', '📋_PROSPECTS', lead);
       this.state.leads.unshift({ ...lead, _statut: statutInit });
