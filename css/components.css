@@ -88,3 +88,58 @@
 .btn-visite   { background: var(--c-primary); color: #fff; }
 .btn-appel    { background: var(--c-success);  color: #fff; }
 .btn-planning { background: var(--c-warning);  color: #fff; }
+
+/* ═══ Centre de notifications (N3-2/N3-3/N3-4) ═══ */
+.nc-cloche {
+  position: fixed; bottom: 78px; right: 16px; z-index: 140;
+  width: 48px; height: 48px; border-radius: 50%;
+  background: var(--c-surface); border: 1px solid var(--c-border);
+  box-shadow: var(--shadow-lg); cursor: pointer;
+  font-size: 22px; line-height: 1; display: flex; align-items: center; justify-content: center;
+  transition: transform .12s ease;
+}
+.nc-cloche:hover   { transform: scale(1.06); }
+.nc-cloche:active  { transform: scale(.94); }
+.nc-badge {
+  position: absolute; top: -3px; right: -3px; min-width: 18px; height: 18px;
+  padding: 0 4px; border-radius: 9px; background: var(--c-danger); color: #fff;
+  font-size: 11px; font-weight: 800; line-height: 18px; text-align: center;
+  box-shadow: 0 0 0 2px var(--c-surface);
+}
+.nc-overlay {
+  position: fixed; inset: 0; z-index: 9000; background: rgba(14,13,48,.28);
+  display: flex; align-items: flex-end; justify-content: flex-end;
+}
+.nc-panneau {
+  background: var(--c-surface); width: 100%; max-width: 400px;
+  max-height: 72vh; margin: 0 8px 76px; border-radius: var(--radius);
+  box-shadow: var(--shadow-lg); display: flex; flex-direction: column; overflow: hidden;
+  animation: nc-slide .16s ease;
+}
+@keyframes nc-slide { from { transform: translateY(12px); opacity: .6; } to { transform: none; opacity: 1; } }
+.nc-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; border-bottom: 1px solid var(--c-border); font-size: 15px;
+}
+.nc-tout {
+  background: none; border: none; color: var(--c-primary);
+  font-size: 12px; font-weight: 600; cursor: pointer; padding: 4px 6px;
+}
+.nc-liste { overflow-y: auto; }
+.nc-vide  { padding: 28px 16px; text-align: center; color: var(--c-text-2); font-size: 14px; }
+.nc-item  {
+  padding: 11px 14px; border-bottom: 1px solid var(--c-border); cursor: pointer;
+  transition: background .1s ease;
+}
+.nc-item:hover { background: var(--c-bg); }
+.nc-item-type { font-size: 11px; font-weight: 700; color: var(--c-text-2); text-transform: uppercase; letter-spacing: .02em; }
+.nc-item-msg  { font-size: 14px; color: var(--c-text); margin: 2px 0; line-height: 1.35; }
+.nc-item-date { font-size: 11px; color: var(--c-text-2); }
+
+/* Desktop (≥1024px) — la cloche rejoindra la topbar en Sprint 4 ; pour l'instant on la
+   remonte en haut à droite et on ancre le panneau dessous. */
+@media (min-width: 1024px) {
+  .nc-cloche  { top: 14px; bottom: auto; right: 20px; }
+  .nc-overlay { align-items: flex-start; }
+  .nc-panneau { margin: 70px 20px 0; }
+}

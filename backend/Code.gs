@@ -62,6 +62,7 @@ function _router(params, body) {
       case 'mettreAJourCA':   return _mettreAJourCA(body, user);
       case 'purgerProspectsBase': return _purgerProspectsBase(body, user);
       case 'mettreAJour':    return _mettreAJour(body, user);
+      case 'synchroniserVisite': return _synchroniserVisite(body, user);
       case 'attribuerLead':  return _attribuerLead({ ...body, pin: user.pin });
       case 'uploadPhoto':    return _uploadPhoto(body, user);
       case 'gemini':         return _gemini(body, user);
@@ -373,8 +374,40 @@ function _ecrire({ fichier, onglet, donnee }) {
     }
   }
 
+  // v5.1 M6/V1 — forçage Statut_Visite = planifiée si absent (colonne réelle = Statut_Visite)
+  if (onglet === '🗺️_VISITES') {
+    var svIdx = headers.indexOf('Statut_Visite');
+    if (svIdx >= 0 && !donnee.Statut_Visite) {
+      sh.getRange(sh.getLastRow(), svIdx + 1).setValue('planifiée');
+    }
+  }
+
   SpreadsheetApp.flush();
   return _json({ ok: true, ligneAjoutee: sh.getLastRow() });
+}
+
+// ── SYNCHRONISER VISITE ─────────────────────────────────────
+// v5.1 M6/V2 — passe une visite planifiée à 'réalisée' + compte rendu terrain.
+// Colonnes RÉELLES du schéma 🗺️_VISITES (avec underscores) — pas celles du CDC.
+function _synchroniserVisite({ id, resultat, note, duree, photoUrl }, user) {
+  if (!id) return _json({ ok: false, erreur: 'ID_Visite manquant' });
+  var r = _mettreAJour({
+    fichier: 'EMPOWER_MDB',
+    onglet:  '🗺️_VISITES',
+    id:      id,
+    champs: {
+      Statut_Visite:   'réalisée',
+      Resultat_Visite: resultat || '',
+      Note_Privee:     note     || '',
+      Duree_Minutes:   duree    || 0,
+      Photo_URL:       photoUrl || '',
+    },
+  }, user);
+  // Notifier les managers (Tadjidine 1000 + Alexandra 5000)
+  _notifier(1000, 'VISITE_REALISEE', 'Visite réalisée : ' + id, id);
+  _notifier(5000, 'VISITE_REALISEE', 'Visite réalisée : ' + id, id);
+  _log(user.pin, 'synchroniserVisite', id);
+  return r;
 }
 
 // ── METTRE À JOUR ───────────────────────────────────────────
@@ -1711,11 +1744,25 @@ function _lireDashboard(user) {
 
   // ── 🗺️_VISITES ──
   var VI = lignes('🗺️_VISITES');
-  var viPin = idx(VI.headers, 'PIN_CDS');
-  var visites = 0, visitesEquipe = 0;
+  var viPin  = idx(VI.headers, 'PIN_CDS');
+  var viDate = idx(VI.headers, 'Date');
+  var viStat = idx(VI.headers, 'Statut_Visite');
+  var today  = Utilities.formatDate(new Date(), 'Europe/Paris', 'yyyy-MM-dd');
+  var visites = 0, visitesEquipe = 0, visitesAujourdhui = 0;
   VI.rows.forEach(function(r) {
     visitesEquipe++;
+    var dansPortef = estManager || (viPin >= 0 && Number(r[viPin]) === pin);
     if (viPin >= 0 && Number(r[viPin]) === pin) visites++;
+    // v5.1 M6/V3 — visites planifiées du jour (portefeuille du rôle)
+    if (dansPortef && viDate >= 0 && viStat >= 0) {
+      var dv = r[viDate];
+      var dateStr = dv instanceof Date
+        ? Utilities.formatDate(dv, 'Europe/Paris', 'yyyy-MM-dd')
+        : String(dv).slice(0, 10);
+      if (dateStr === today && String(r[viStat]).toLowerCase() === 'planifiée') {
+        visitesAujourdhui++;
+      }
+    }
   });
 
   const result = {
@@ -1726,6 +1773,7 @@ function _lireDashboard(user) {
       comptesActifs:     comptesActifs,
       suiviPhoning:      suiviPhoning,
       visites:           visites,
+      visitesAujourdhui: visitesAujourdhui,
       leadsOnboarding:   leadsOnboarding,
       comptesOnboardes:  comptesOnboardes,
       onboardingTerrain: onboardingTerrain,

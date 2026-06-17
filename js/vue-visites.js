@@ -7,12 +7,13 @@
 
 window.VueVisites = {
 
-  // Bloc 3 : vocabulaire statuts aligné spec — Planifiée / En cours / Réalisée / Annulée
-  STATUTS: ['planifiée', 'en cours', 'réalisée', 'annulée'],
+  // Bloc 3 + M6/P6-2 : vocabulaire statuts — Planifiée / En cours / Réalisée / Manquée / Annulée
+  STATUTS: ['planifiée', 'en cours', 'réalisée', 'manquée', 'annulée'],
   STATUT_COULEURS: {
-    'planifiée': 'var(--c-primary)',
-    'en cours':  'var(--c-warning)',
-    'réalisée':  'var(--c-success)',
+    'planifiée': 'var(--c-primary)',   // 🟡 jaune
+    'en cours':  'var(--c-warning)',   // 🔵 bleu
+    'réalisée':  'var(--c-success)',   // 🟢 vert
+    'manquée':   'var(--c-danger)',    // 🔴 rouge — date passée sans synchro
     'annulée':   'var(--c-text-2)',
     // tolérance ancien libellé en base
     'reportée':  'var(--c-warning)',
@@ -22,9 +23,22 @@ window.VueVisites = {
     const v = (s || 'planifiée').toLowerCase();
     const map = {
       'planifiée': 'Planifiée', 'en cours': 'En cours',
-      'réalisée': 'Réalisée', 'annulée': 'Annulée', 'reportée': 'Reportée',
+      'réalisée': 'Réalisée', 'manquée': 'Manquée', 'annulée': 'Annulée', 'reportée': 'Reportée',
     };
     return map[v] || (v.charAt(0).toUpperCase() + v.slice(1)) || '—';
+  },
+
+  // ── M6/P6-3 : statut EFFECTIF affiché ──
+  // Une visite encore "planifiée" mais dont la date est passée est affichée
+  // "manquée" (🔴) au chargement — détection à la volée, SANS écrire en base
+  // (réversible : si on replanifie à une date future, elle redevient planifiée).
+  _statutEffectif(v) {
+    const s = (v.Statut_Visite || 'planifiée').toLowerCase();
+    if (s === 'planifiée') {
+      const d = (v.Date || v.Date_Planif || '').slice(0, 10);
+      if (d && d < dateISOLocale()) return 'manquée';
+    }
+    return s;
   },
 
   state: {
@@ -81,6 +95,24 @@ window.VueVisites = {
 
   _trouverVisite(id) {
     return (this.state.visites || []).find(v => v.ID_Visite === id) || null;
+  },
+
+  // ── M6/P6-5 : prospects "à froid" mémorisés en localStorage UNIQUEMENT ──
+  // Jamais écrits dans 📋_PROSPECTS. Réutilisables d'une visite à l'autre via
+  // datalist, sans polluer la base prospects ni déclencher les alertes managers.
+  _CLE_FROID: 'esi_prospects_froid',
+  _lireProspectsFroid() {
+    try { return JSON.parse(localStorage.getItem(this._CLE_FROID) || '[]'); }
+    catch { return []; }
+  },
+  _memoriserProspectFroid(nom) {
+    const n = (nom || '').trim();
+    if (!n) return;
+    const liste = this._lireProspectsFroid();
+    if (!liste.some(x => normaliserNom(x) === normaliserNom(n))) {
+      liste.push(n);
+      try { localStorage.setItem(this._CLE_FROID, JSON.stringify(liste.slice(-100))); } catch {}
+    }
   },
 
   // ── Bloc 3 : SCORE RELANCE (URGENT → STANDARD) + données fiche compte ──
@@ -165,7 +197,8 @@ window.VueVisites = {
     const d = new Date(this.state.dateVue);
     const lundi = new Date(d);
     lundi.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-    const jours = Array.from({ length: 7 }, (_, i) => {
+    // M6/P6-1 — grille semaine = 5 colonnes Lun→Ven (week-end exclu)
+    const jours = Array.from({ length: 5 }, (_, i) => {
       const j = new Date(lundi);
       j.setDate(lundi.getDate() + i);
       return dateISOLocale(j);
@@ -285,36 +318,17 @@ window.VueVisites = {
     if (btn) { btn.disabled = true; btn.dataset._lbl = btn.textContent; btn.textContent = '⏳ Enregistrement…'; }
 
     try {
-      // BUG3 — prospect à froid : on persiste un VRAI prospect réutilisable
-      // (au lieu d'un simple libellé HORS_BASE perdu) et on l'injecte dans la
-      // liste sélectionnable. La visite est ensuite reliée à son ID réel.
+      // M6/P6-5 — prospect à froid : mémorisé en localStorage UNIQUEMENT,
+      // jamais écrit dans 📋_PROSPECTS (évite de polluer la base + alertes managers).
+      // Si le nom correspond déjà à un compte connu de la base, on relie la visite
+      // à ce compte réel ; sinon la cible reste HORS_BASE.
       let idCibleFinal = f.idCible;
       let sourceVisite = 'ESI_V21';
       if (f.horsBase) {
         sourceVisite = 'ESI_VISITE_FROID';
-        // dédup : réutilise une cible déjà connue portant ce nom (évite les doublons)
         const dejaLa = this.state.comptes.find(c => normaliserNom(c.Nom_Compte) === normaliserNom(nomFinal));
-        if (dejaLa) {
-          idCibleFinal = dejaLa.ID_Compte;
-        } else {
-          const idProspect = genId('LEAD');
-          // backend _ecrire force STATUT_EMPOWER='A_TRAITER' + alertes J0
-          await SheetsAPI.ecrire('EMPOWER_MDB', '📋_PROSPECTS', {
-            ID_Prospect:     idProspect,
-            Nom_Compte:      nomFinal,
-            PIN_CDS_Assigne: Session.pin,
-            Nom_CDS:         Session.nom,
-            Source_Import:   'ESI_VISITE_FROID',
-            ORIGINE:         'Visite à froid',
-            CANAL:           'EMPOWER',
-            Timestamp:       new Date().toISOString(),
-          });
-          idCibleFinal = idProspect;
-          // injection immédiate dans le <select> pour réutilisation sans rechargement
-          this.state.comptes.push(this._enrichirCompte({
-            ID_Compte: idProspect, Nom_Compte: nomFinal, PIN_CDS_Assigne: Session.pin,
-          }));
-        }
+        idCibleFinal = dejaLa ? dejaLa.ID_Compte : 'HORS_BASE';
+        this._memoriserProspectFroid(nomFinal);
       }
 
       const visite = {
@@ -343,7 +357,7 @@ window.VueVisites = {
       this.state.modalPlanif = false;
       Toast.afficher(
         sourceVisite === 'ESI_VISITE_FROID'
-          ? `✅ Prospect créé + visite planifiée — ${nomFinal} le ${f.date}`
+          ? `✅ Visite à froid planifiée — ${nomFinal} le ${f.date}`
           : `✅ Visite planifiée — ${nomFinal} le ${f.date}`,
         'succes'
       );
@@ -496,7 +510,7 @@ window.VueVisites = {
     if (f.debut && date < f.debut) return false;
     if (f.fin   && date > f.fin)   return false;
     if (f.statut !== 'TOUS' &&
-        (v.Statut_Visite || 'planifiée').toLowerCase() !== f.statut.toLowerCase()) return false;
+        this._statutEffectif(v) !== f.statut.toLowerCase()) return false;
     if (f.cds !== 'TOUS' && String(v.PIN_CDS) !== f.cds) return false;
     return true;
   },
@@ -548,9 +562,14 @@ window.VueVisites = {
   // ── Carte visite (R5 : boutons edit/delete/dupliquer) ──
   _carteVisite(v) {
     const statut = (v.Statut_Visite || 'planifiée').toLowerCase();
-    const coul   = this.STATUT_COULEURS[statut] || 'var(--c-text-2)';
+    // M6/P6-3 — couleur + libellé sur le statut EFFECTIF (planifiée passée → manquée 🔴),
+    // mais les actions restent pilotées par le statut RÉEL (une visite manquée
+    // reste démarrable / replanifiable).
+    const statutEff = this._statutEffectif(v);
+    const coul   = this.STATUT_COULEURS[statutEff] || 'var(--c-text-2)';
     const isPlanif    = statut === 'planifiée' || statut === 'reportée';
     const isEnCours   = statut === 'en cours';
+    const estManquee  = statutEff === 'manquée';
     const peutModif   = Session.voitTout() || Number(v.PIN_CDS) === Session.pin;
     const cdsNom = Session.voitTout() ? resolveCDS(v.PIN_CDS || v.Nom_CDS) : '';
 
@@ -558,7 +577,7 @@ window.VueVisites = {
       <div class="carte-visite" style="border-left:4px solid ${coul}">
         <div class="cv-head">
           <span class="cv-heure">${v.Heure || '—'}</span>
-          <span class="cv-statut" style="color:${coul}">${this._labelStatut(statut)}</span>
+          <span class="cv-statut" style="color:${coul}">${estManquee ? '🔴 ' : ''}${this._labelStatut(statutEff)}</span>
         </div>
         <div class="cv-nom">${v.Nom_Compte || '—'}</div>
         ${v.Type_Visite ? `<div class="cv-type">${String(v.Type_Visite).replace(/_/g,' ')}</div>` : ''}
@@ -566,9 +585,9 @@ window.VueVisites = {
         ${(v.Note_Privee || v.Commentaire_Prep) ? `<div class="cv-note">📝 ${(v.Note_Privee || v.Commentaire_Prep).slice(0, 80)}</div>` : ''}
         <div class="cv-actions" style="gap:6px;flex-wrap:wrap">
           ${isPlanif ? `
-            <button class="btn-primaire" style="padding:8px 14px;font-size:13px;width:auto"
+            <button class="btn-primaire" style="padding:8px 14px;font-size:13px;width:auto${estManquee ? ';background:var(--c-danger)' : ''}"
                     onclick="VueVisites.demarrerVisite('${v.ID_Visite}')">
-              ▶️ Démarrer
+              ${estManquee ? '▶️ Rattraper' : '▶️ Démarrer'}
             </button>` : ''}
           ${isEnCours ? `
             <button class="btn-primaire" style="padding:8px 14px;font-size:13px;width:auto"
@@ -639,7 +658,7 @@ window.VueVisites = {
               <div class="pj-label">${j.label}</div>
               <div class="pj-count">${j.visites.length ? j.visites.length + 'v' : ''}</div>
               ${j.visites.slice(0, 3).map(v => `
-                <div class="pj-item" style="border-left:3px solid ${this.STATUT_COULEURS[v.Statut_Visite || 'planifiée']}">
+                <div class="pj-item" style="border-left:3px solid ${this.STATUT_COULEURS[this._statutEffectif(v)] || 'var(--c-text-2)'}">
                   <span class="pj-heure">${v.Heure || '—'}</span>
                   <span class="pj-nom">${(v.Nom_Compte || '').slice(0, 14)}</span>
                 </div>`).join('')}
@@ -712,10 +731,14 @@ window.VueVisites = {
           ${f.horsBase
             ? `<label>Nom du compte *
                  <input required placeholder="ex : MICRO PLUS INFORMATIQUE" value="${f.nomLibre || ''}"
+                        list="froid-suggestions" autocomplete="off"
                         oninput="VueVisites.state.formPlanif.nomLibre=this.value"/>
+                 <datalist id="froid-suggestions">
+                   ${this._lireProspectsFroid().map(n => `<option value="${n}">`).join('')}
+                 </datalist>
                </label>
                <div style="font-size:11px;color:var(--c-text-2);margin:-6px 0 10px;padding:6px 10px;background:var(--c-bg);border-radius:var(--radius-sm)">
-                 💡 Ce compte n'est pas dans la base. La visite sera enregistrée — vous pourrez l'ajouter dans le Tracker après si besoin.
+                 💡 Compte hors base : mémorisé sur cet appareil uniquement (pas ajouté à la base prospects). Réutilisable via la liste de suggestions.
                </div>`
             : (() => {
               // BLOC 1 — Base commerciale : champ de recherche + déroulé scrollable trié par nom

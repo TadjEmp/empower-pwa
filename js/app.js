@@ -24,6 +24,7 @@
   if (!sessionOk) {
     Router.aller('#/login');
   } else {
+    if (window.NotifCenter) NotifCenter._render();   // cloche visible dès le boot
     _initPollingNotifs();
   }
 })();
@@ -42,6 +43,8 @@ function _initPollingNotifs() {
     try {
       const rows = await SheetsAPI.lire('EMPOWER_MDB', '🔔_NOTIFS', { nocache: true });
       if (!Array.isArray(rows)) return;
+      // N3-2/N3-3 — alimente le centre notifs (badge compteur + panneau)
+      if (window.NotifCenter) NotifCenter.majDepuisRows(rows);
       const pin = Number(Session.pin);
       const nouvelles = rows.filter(function(n) {
         return Number(n.PIN_Destinataire) === pin
