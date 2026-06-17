@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="fr">
+<!-- ════════════════════════════════════════════════════════════════════
+     EMPOWER 360 — Module CRM & Financier (Zero-Backend / Client-Side)
+     Impact Sales Marketing × Norton
+     Fichier autonome : double-clic pour ouvrir. Aucun backend, aucun build.
+     Charte graphique inspirée de DASHBOARD_W09_ISM_NORTON (night + accents).
+     ════════════════════════════════════════════════════════════════════ -->
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EMPOWER 360 — CRM & Financier</title>
+
+  <!-- ─────────────────────────────────────────────────────────────────
+       BLOC 1.1 — HEAD : Stack Zero-Backend (CDN uniquement)
+       ───────────────────────────────────────────────────────────────── -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0">
+  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Tailwind config — palette night façon DASHBOARD_W09 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            night: '#020617',           // fond global ultra sombre
+            brand: {
+              yellow: '#FCD34D',        // accent énergie / scoring chaud
+              coral:  '#FF6D68',        // ISM Coral — CTA primaires
+              blue:   '#0050FF',        // Norton Blue — navigation / focus
+              sky:    '#4D9EFF',        // accent clair
+            },
+          },
+          boxShadow: {
+            card: '0 4px 24px rgba(0,0,0,0.35)',
+            glow: '0 0 0 1px rgba(255,255,255,0.06), 0 8px 32px rgba(0,0,0,0.45)',
+          },
+          borderRadius: { xl2: '1.25rem' },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+    /* Scrollbar discrète façon dashboard premium */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 8px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
+    /* Card glass façon W09 */
+    .card-w09 {
+      background: linear-gradient(160deg, rgba(15,23,42,0.95), rgba(2,6,23,0.95));
+      border: 1px solid rgba(148,163,184,0.10);
+      backdrop-filter: blur(6px);
+    }
+    .pill { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 9999px; text-transform: uppercase; letter-spacing: .03em; white-space: nowrap; }
+    /* Slide-over Live Call */
+    #live-call-panel { transition: transform .32s cubic-bezier(.4,0,.2,1); }
+    .nav-btn.active { background: rgba(0,80,255,.18); color: #fff; box-shadow: inset 3px 0 0 #0050FF; }
+    .fade-in { animation: fadeIn .35s ease both; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .hidden-imp { display: none !important; }
+    input, select, textarea { color-scheme: dark; }
+  </style>
+</head>
+
+<body class="bg-slate-950 text-slate-50 min-h-screen antialiased">
+
+<div id="app-root">
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       BLOC 2.2 — ÉCRAN LOGIN / COVER
+       ═══════════════════════════════════════════════════════════════════ -->
+  <section id="screen-login" class="min-h-screen grid lg:grid-cols-2">
+
+    <!-- Colonne gauche : branding -->
+    <div class="relative hidden lg:flex flex-col justify-between p-12 overflow-hidden"
+         style="background: radial-gradient(120% 120% at 0% 0%, #0b1b3f 0%, #020617 55%);">
+      <div class="absolute -top-24 -right-24 w-96 h-96 rounded-full blur-3xl opacity-30"
+           style="background: radial-gradient(circle, #0050FF, transparent 70%);"></div>
+      <div class="relative">
+        <div class="flex items-center gap-3 text-sm font-semibold tracking-widest text-slate-400 uppercase">
+          <span class="material-symbols-outlined text-brand-coral">hub</span>
+          Impact Sales Marketing <span class="text-slate-600">×</span> Norton
+        </div>
+        <h1 class="mt-10 text-6xl font-black leading-none">
+          EMPOWER<span class="text-brand-blue">360</span>
+        </h1>
+        <p class="mt-4 text-lg text-slate-400 max-w-md">
+          Cockpit CRM &amp; Financier autonome. Pilotez votre session phoning,
+          vos leads et votre CA FY27 — 100&nbsp;% dans le navigateur.
+        </p>
+      </div>
+      <ul class="relative space-y-4 text-slate-300">
+        <li class="flex items-start gap-3"><span class="material-symbols-outlined text-brand-yellow">table_view</span>
+          <span><b class="text-white">Lecture Excel native</b> — Sell-In &amp; Tracker via SheetJS, sans serveur.</span></li>
+        <li class="flex items-start gap-3"><span class="material-symbols-outlined text-brand-coral">bolt</span>
+          <span><b class="text-white">Smart Scoring 0–100</b> — priorisation IA des relances à fort potentiel.</span></li>
+        <li class="flex items-start gap-3"><span class="material-symbols-outlined text-brand-sky">picture_as_pdf</span>
+          <span><b class="text-white">Exports Excel &amp; PDF</b> — reporting Manager en un clic.</span></li>
+      </ul>
+      <div class="relative text-xs text-slate-600">© 2026 ISM × Norton — EMPOWER 360 · Zero-Backend Edition</div>
+    </div>
+
+    <!-- Colonne droite : carte upload + PIN -->
+    <div class="flex items-center justify-center p-6 sm:p-12">
+      <div class="card-w09 w-full max-w-md rounded-xl2 shadow-glow p-8">
+        <div class="lg:hidden mb-6">
+          <h1 class="text-4xl font-black">EMPOWER<span class="text-brand-blue">360</span></h1>
+          <p class="text-sm text-slate-400">CRM &amp; Financier · ISM × Norton</p>
+        </div>
+
+        <h2 class="text-xl font-bold">Démarrer une session</h2>
+        <p class="text-sm text-slate-400 mt-1">Importez le fichier <b>SELL-IN</b> pour initialiser les données.</p>
+
+        <!-- Dropzone -->
+        <div id="dropzone"
+             class="mt-6 cursor-pointer rounded-xl border-2 border-dashed border-slate-700 hover:border-brand-blue
+                    bg-slate-900/40 px-6 py-10 text-center transition-colors">
+          <span class="material-symbols-outlined text-4xl text-slate-500">cloud_upload</span>
+          <p class="mt-2 text-sm font-semibold text-slate-200">Glissez le fichier SELL-IN ici</p>
+          <p class="text-xs text-slate-500">ou cliquez pour parcourir (.xlsx)</p>
+          <input id="file-input" type="file" accept=".xlsx,.xls" class="hidden"/>
+        </div>
+
+        <!-- Statut upload -->
+        <div id="upload-status" class="mt-4 text-sm hidden-imp"></div>
+
+        <!-- Bloc PIN -->
+        <div id="pin-wrapper" class="mt-6 hidden-imp fade-in">
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Code PIN</label>
+          <div class="flex gap-3">
+            <input id="pin-code" type="password" inputmode="numeric" maxlength="4" placeholder="••••"
+                   class="flex-1 rounded-lg bg-slate-900 border border-slate-700 px-4 py-3 text-center text-2xl tracking-[0.5em]
+                          focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/40 outline-none"/>
+            <button id="btn-login"
+                    class="rounded-lg bg-brand-coral hover:bg-[#e85550] px-6 font-bold text-white transition-colors">
+              Entrer
+            </button>
+          </div>
+          <p id="pin-error" class="mt-2 text-xs text-red-400 hidden-imp">Code PIN invalide.</p>
+          <p class="mt-3 text-[11px] text-slate-600">Manager&nbsp;: <b>1234</b> · Commercial&nbsp;: <b>4321</b></p>
+        </div>
+
+        <!-- Mode démo : continuer sans fichier -->
+        <button id="btn-demo" class="mt-6 w-full text-xs text-slate-500 hover:text-brand-sky underline underline-offset-2">
+          Continuer en mode démonstration (données embarquées)
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       BLOC 2.3 — SHELL APP (caché avant PIN)
+       ═══════════════════════════════════════════════════════════════════ -->
+  <section id="screen-app" class="hidden-imp min-h-screen lg:grid" style="grid-template-columns: 264px 1fr;">
+
+    <!-- Sidebar -->
+    <aside class="hidden lg:flex flex-col bg-slate-950 border-r border-slate-800/80 p-5">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="material-symbols-outlined text-brand-blue">insights</span>
+        <span class="text-lg font-black">EMPOWER<span class="text-brand-blue">360</span></span>
+      </div>
+      <p class="text-[11px] uppercase tracking-widest text-slate-500 mb-6">Session Phoning</p>
+
+      <div class="card-w09 rounded-xl p-3 mb-6">
+        <span id="role-badge" class="pill bg-brand-blue/20 text-brand-sky">—</span>
+        <p id="user-label" class="mt-2 text-sm font-semibold">—</p>
+      </div>
+
+      <nav class="flex flex-col gap-1">
+        <button class="nav-btn flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors" data-view="view-phoning">
+          <span class="material-symbols-outlined text-[20px]">call</span> Ma session phoning</button>
+        <button class="nav-btn flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors" data-view="view-leads">
+          <span class="material-symbols-outlined text-[20px]">person_add</span> Nouveaux leads</button>
+        <button class="nav-btn flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors" data-view="view-ca">
+          <span class="material-symbols-outlined text-[20px]">payments</span> Déclaration CA FY27</button>
+        <button class="nav-btn flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors" data-view="view-manager" id="nav-manager">
+          <span class="material-symbols-outlined text-[20px]">monitoring</span> Vue Manager</button>
+      </nav>
+
+      <button id="btn-logout"
+              class="mt-auto flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+        <span class="material-symbols-outlined text-[20px]">logout</span> Déconnexion
+      </button>
+    </aside>
+
+    <!-- Zone principale -->
+    <div class="flex flex-col min-h-screen">
+
+      <!-- Top bar -->
+      <header class="sticky top-0 z-30 bg-slate-950/85 backdrop-blur border-b border-slate-800/80 px-5 sm:px-8 py-4">
+        <div class="flex items-center justify-between gap-4 flex-wrap">
+          <div class="flex items-center gap-3">
+            <!-- nav mobile -->
+            <select id="mobile-nav" class="lg:hidden rounded-lg bg-slate-900 border border-slate-700 px-2 py-1.5 text-sm">
+              <option value="view-phoning">Phoning</option>
+              <option value="view-leads">Leads</option>
+              <option value="view-ca">CA FY27</option>
+              <option value="view-manager">Manager</option>
+            </select>
+            <h2 id="view-title" class="text-xl font-bold">Ma session phoning</h2>
+            <span id="week-badge" class="pill bg-slate-800 text-slate-300">Semaine —</span>
+          </div>
+          <!-- KPI placeholders -->
+          <div class="flex items-center gap-2 sm:gap-3">
+            <div class="card-w09 rounded-lg px-3 py-2 text-center min-w-[78px]">
+              <div id="kpi-calls" class="text-lg font-black text-brand-sky leading-none">0</div>
+              <div class="text-[10px] uppercase tracking-wider text-slate-500 mt-0.5">Appels</div>
+            </div>
+            <div class="card-w09 rounded-lg px-3 py-2 text-center min-w-[78px]">
+              <div id="kpi-deals" class="text-lg font-black text-brand-yellow leading-none">0</div>
+              <div class="text-[10px] uppercase tracking-wider text-slate-500 mt-0.5">Signés</div>
+            </div>
+            <div class="card-w09 rounded-lg px-3 py-2 text-center min-w-[96px]">
+              <div id="kpi-ca" class="text-lg font-black text-emerald-400 leading-none">0&nbsp;€</div>
+              <div class="text-[10px] uppercase tracking-wider text-slate-500 mt-0.5">CA FY27</div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Container de vues -->
+      <main id="view-container" class="flex-1 p-5 sm:p-8 overflow-y-auto">
+
+        <!-- VIEW : PHONING -->
+        <div id="view-phoning" class="view">
+          <div class="flex items-center justify-between mb-5">
+            <p class="text-sm text-slate-400">Backlog priorisé par <b class="text-white">Smart Score</b> — appelez d'abord les fiches en haut.</p>
+            <span id="phoning-count" class="pill bg-slate-800 text-slate-300">0 fiches</span>
+          </div>
+          <div id="phoning-list" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3"></div>
+        </div>
+
+        <!-- VIEW : LEADS -->
+        <div id="view-leads" class="view hidden-imp">
+          <div class="flex items-center justify-between mb-5">
+            <p class="text-sm text-slate-400">Leads créés manuellement (persistés en local).</p>
+            <button id="btn-new-lead" class="flex items-center gap-2 rounded-lg bg-brand-coral hover:bg-[#e85550] px-4 py-2 text-sm font-bold text-white transition-colors">
+              <span class="material-symbols-outlined text-[20px]">add</span> Nouveau Lead</button>
+          </div>
+          <div id="leads-list" class="grid gap-4 md:grid-cols-2 xl:grid-cols-3"></div>
+        </div>
+
+        <!-- VIEW : CA FY27 -->
+        <div id="view-ca" class="view hidden-imp">
+          <p class="text-sm text-slate-400 mb-5">Saisie du CA déclaré par revendeur et par quarter. Le total se calcule automatiquement.</p>
+          <div class="card-w09 rounded-xl overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="bg-slate-900/70 text-slate-400 text-xs uppercase tracking-wider">
+                  <tr>
+                    <th class="text-left px-4 py-3">Revendeur</th>
+                    <th class="px-3 py-3">Q1</th><th class="px-3 py-3">Q2</th>
+                    <th class="px-3 py-3">Q3</th><th class="px-3 py-3">Q4</th>
+                    <th class="px-4 py-3 text-right">Total FY27</th>
+                  </tr>
+                </thead>
+                <tbody id="ca-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <p class="text-xs text-slate-500 mt-3">💾 Sauvegarde automatique à chaque saisie.</p>
+        </div>
+
+        <!-- VIEW : MANAGER -->
+        <div id="view-manager" class="view hidden-imp">
+          <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
+            <div class="flex items-center gap-3">
+              <label class="text-sm text-slate-400">Semaine&nbsp;:</label>
+              <select id="global-week-filter" class="rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm"></select>
+            </div>
+            <div class="flex gap-2">
+              <button id="btn-export-excel" class="flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-sm font-bold transition-colors">
+                <span class="material-symbols-outlined text-[20px]">grid_on</span> Export Excel</button>
+              <button id="btn-export-pdf" class="flex items-center gap-2 rounded-lg bg-brand-blue hover:bg-[#0040d8] px-4 py-2 text-sm font-bold transition-colors">
+                <span class="material-symbols-outlined text-[20px]">picture_as_pdf</span> Export PDF</button>
+            </div>
+          </div>
+
+          <!-- KPI manager -->
+          <div id="manager-kpis" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6"></div>
+
+          <div class="grid gap-6 lg:grid-cols-2">
+            <div class="card-w09 rounded-xl p-5">
+              <h3 class="font-bold mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-brand-sky">bar_chart</span> CA par commercial</h3>
+              <canvas id="chart-manager" height="220"></canvas>
+            </div>
+            <div class="card-w09 rounded-xl p-5">
+              <h3 class="font-bold mb-4 flex items-center gap-2"><span class="material-symbols-outlined text-brand-coral">warning</span> Alertes Churn / Relances dépassées</h3>
+              <div id="manager-alerts" class="space-y-2 max-h-[260px] overflow-y-auto"></div>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+
+    <!-- ─────────────────────────────────────────────────────────────────
+         BLOC 6 — LIVE CALL PANEL (slide-over droite, caché)
+         ───────────────────────────────────────────────────────────────── -->
+    <aside id="live-call-panel"
+           class="fixed top-0 right-0 z-50 h-full w-full sm:w-[440px] bg-slate-950 border-l border-slate-800 shadow-2xl overflow-y-auto translate-x-full">
+      <div id="live-call-content"></div>
+    </aside>
+    <div id="live-call-overlay" class="fixed inset-0 z-40 bg-black/50 hidden-imp"></div>
+  </section>
+
+</div>
+
+<!-- Backdrop modales -->
+<div id="modal-root"></div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     BLOC 1.2 — STATE GLOBAL + LOGIQUE (script unique en bas de page)
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script>
+/* ─────────────────────────────────────────────────────────────────────────
+   BLOC 1.2 — STATE GLOBAL
+   ───────────────────────────────────────────────────────────────────────── */
+window.appState = {
+  currentUser: null,
+  role: null,
+  selectedWeek: null,
+  rawTracker: [],
+  rawSellIn: [],      // sera enrichi en { referentiel:[], data:[] }
+  customLeads: [],
+  customCA: [],
+  callLogs: [],
+  masterData: []
+};
+
+/* Helpers persistance ------------------------------------------------------ */
+const LS = {
+  get:  (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } },
+  set:  (k, v) => localStorage.setItem(k, JSON.stringify(v)),
+};
+const SS = {
+  get:  (k, fb) => { try { return JSON.parse(sessionStorage.getItem(k)) ?? fb; } catch { return fb; } },
+  set:  (k, v) => sessionStorage.setItem(k, JSON.stringify(v)),
+};
+const fmtEUR = n => (Number(n)||0).toLocaleString('fr-FR') + ' €';
+const todayISO = () => new Date().toISOString().slice(0,10);
+const $  = sel => document.querySelector(sel);
+const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+/* Restauration business depuis localStorage -------------------------------- */
+appState.customLeads = LS.get('EMPOWER_CustomLeads', []);
+appState.customCA    = LS.get('EMPOWER_CustomCA', []);
+appState.callLogs    = LS.get('EMPOWER_CallLogs', []);
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   BLOC 4.2 — DB_TRACKER_INITIALE (base embarquée, simulation onglet "1 - Saisie")
+   ───────────────────────────────────────────────────────────────────────── */
+const DB_TRACKER_INITIALE = [
+  {
+    Revendeur: 'IBB SOLUTION', CDS: 'Tadjidine', Actif: 'En discussion',
+    Potentiel: 'Fort (>100 lic/mois)', DerniereAction: 'RDV TEL',
+    ProchaineAction: 'Relancer devis', ProchaineDate: '2026-04-07',
+    Notes: 'Spécialiste flotte IT, e-commerce, 200 lic/trim. Devis en attente, sensible au prix.'
+  },
+  {
+    Revendeur: 'NEXARYS DISTRIBUTION', CDS: 'Mehdi', Actif: 'Positif',
+    Potentiel: 'Fort (>100 lic/mois)', DerniereAction: 'Démo produit',
+    ProchaineAction: 'Closing EMPOWER', ProchaineDate: '2026-06-15',
+    Notes: 'Accord oral obtenu, urgence côté client, concurrent ESET en embuscade.'
+  },
+  {
+    Revendeur: 'COMPTOIR DU LOGICIEL', CDS: 'Mehdi', Actif: 'À activer',
+    Potentiel: 'Moyen', DerniereAction: 'Mail intro',
+    ProchaineAction: 'Premier appel', ProchaineDate: '2026-06-20',
+    Notes: 'Cible grossiste Ingram, pas encore qualifié.'
+  },
+  {
+    Revendeur: 'DIGIT STORE 92', CDS: 'Tadjidine', Actif: 'Réticent',
+    Potentiel: 'Faible', DerniereAction: 'Appel',
+    ProchaineAction: 'Relance trimestrielle', ProchaineDate: '2026-09-01',
+    Notes: 'Travaille avec un concurrent, peu réceptif.'
+  },
+  {
+    Revendeur: 'PRO INFORMATIQUE SUD', CDS: 'Mehdi', Actif: 'En cours',
+    Potentiel: 'Fort (>100 lic/mois)', DerniereAction: 'RDV TEL',
+    ProchaineAction: 'Envoyer proposition', ProchaineDate: '2026-06-10',
+    Notes: 'Relance dépassée. Volume important via TD SYNNEX, demande un geste prix.'
+  },
+  {
+    Revendeur: 'MEGABYTE RESELLER', CDS: 'Tadjidine', Actif: 'Signé',
+    Potentiel: 'Moyen', DerniereAction: 'Signature',
+    ProchaineAction: 'Onboarding', ProchaineDate: '2026-07-01',
+    Notes: 'EMPOWER signé, à intégrer.'
+  },
+  {
+    Revendeur: 'CLOUD & CO', CDS: 'Mehdi', Actif: 'À activer',
+    Potentiel: 'Moyen', DerniereAction: '',
+    ProchaineAction: 'Qualification', ProchaineDate: '',
+    Notes: 'Lead dormant, aucune action depuis 45 jours.'
+  },
+  {
+    Revendeur: 'SYNTHESE IT', CDS: 'NON SUIVI', Actif: 'En cours',
+    Potentiel: 'Moyen', DerniereAction: 'Mail', ProchaineAction: '', ProchaineDate: '',
+    Notes: 'Compte exclu du suivi (commercial NON SUIVI).'
+  }
+];
+
+/* Référentiel & data de démo (si pas de fichier Sell-In chargé) ------------ */
+const REFERENTIEL_DEMO = [
+  { RESELLER: 'IBB SOLUTION',          COMMERCIAL: 'Tadjidine', STORE: 'Paris 11',  CANAL: 'Ingram' },
+  { RESELLER: 'NEXARYS DISTRIBUTION',  COMMERCIAL: 'Mehdi',     STORE: 'Lyon',      CANAL: 'TD SYNNEX' },
+  { RESELLER: 'COMPTOIR DU LOGICIEL',  COMMERCIAL: 'Mehdi',     STORE: 'Lille',     CANAL: 'Ingram' },
+  { RESELLER: 'DIGIT STORE 92',        COMMERCIAL: 'Tadjidine', STORE: 'Nanterre',  CANAL: 'Direct' },
+  { RESELLER: 'PRO INFORMATIQUE SUD',  COMMERCIAL: 'Mehdi',     STORE: 'Marseille', CANAL: 'TD SYNNEX' },
+  { RESELLER: 'MEGABYTE RESELLER',     COMMERCIAL: 'Tadjidine', STORE: 'Toulouse',  CANAL: 'Direct' },
+  { RESELLER: 'CLOUD & CO',            COMMERCIAL: 'Mehdi',     STORE: 'Nantes',    CANAL: 'Ingram' },
+  { RESELLER: 'SYNTHESE IT',           COMMERCIAL: 'NON SUIVI', STORE: 'Rennes',    CANAL: 'Direct' }
+];
+const DATA_DEMO = [
+  { QUARTER: 'Q1', FY: 27, WEEK: 8, RESELLER: 'IBB SOLUTION',         CA_EUR: 42000 },
+  { QUARTER: 'Q1', FY: 27, WEEK: 8, RESELLER: 'NEXARYS DISTRIBUTION', CA_EUR: 88000 },
+  { QUARTER: 'Q1', FY: 27, WEEK: 8, RESELLER: 'PRO INFORMATIQUE SUD', CA_EUR: 65000 },
+  { QUARTER: 'Q1', FY: 27, WEEK: 8, RESELLER: 'MEGABYTE RESELLER',    CA_EUR: 23000 },
+  { QUARTER: 'Q1', FY: 27, WEEK: 9, RESELLER: 'IBB SOLUTION',         CA_EUR: 15000 },
+  { QUARTER: 'Q1', FY: 27, WEEK: 9, RESELLER: 'COMPTOIR DU LOGICIEL', CA_EUR: 12000 },
+  { QUARTER: 'Q1', FY: 26, WEEK: 8, RESELLER: 'IBB SOLUTION',         CA_EUR: 30000 },
+  { QUARTER: 'Q1', FY: 26, WEEK: 8, RESELLER: 'NEXARYS DISTRIBUTION', CA_EUR: 70000 }
+];
+
+
+/* ═════════════════════════════════════════════════════════════════════════
+   BLOC 3 — INGESTION EXCEL SELL-IN (SheetJS)
+   ═════════════════════════════════════════════════════════════════════════ */
+const dropzone   = $('#dropzone');
+const fileInput  = $('#file-input');
+const uploadStat = $('#upload-status');
+
+function setUploadStatus(msg, type='info') {
+  uploadStat.classList.remove('hidden-imp');
+  const color = type === 'error' ? 'text-red-400' : type === 'ok' ? 'text-emerald-400' : 'text-slate-300';
+  const icon  = type === 'error' ? 'error' : type === 'ok' ? 'check_circle' : 'info';
+  uploadStat.innerHTML = `<span class="material-symbols-outlined text-[18px] align-middle ${color}">${icon}</span>
+                          <span class="${color}">${msg}</span>`;
+}
+
+// Click → input
+dropzone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+// Drag & drop
+['dragenter','dragover'].forEach(ev => dropzone.addEventListener(ev, e => {
+  e.preventDefault(); dropzone.classList.add('border-brand-blue','bg-slate-900/70');
+}));
+['dragleave','drop'].forEach(ev => dropzone.addEventListener(ev, e => {
+  e.preventDefault(); dropzone.classList.remove('border-brand-blue','bg-slate-900/70');
+}));
+dropzone.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) handleFile(f); });
+
+/* Lecture + extraction stricte --------------------------------------------- */
+function handleFile(file) {
+  if (!/\.(xlsx|xls)$/i.test(file.name)) {
+    return setUploadStatus('Format invalide — déposez un fichier .xlsx', 'error');
+  }
+  setUploadStatus('Lecture du fichier…');
+  const reader = new FileReader();
+  reader.onerror = () => setUploadStatus('Erreur de lecture du fichier.', 'error');
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+
+      // Recherche tolérante des feuilles (emoji / accents / casse)
+      const findSheet = (...needles) => wb.SheetNames.find(n =>
+        needles.some(kw => n.toUpperCase().replace(/\s+/g,'').includes(kw)));
+
+      const refSheetName  = findSheet('RÉFÉRENTIEL','REFERENTIEL');
+      const dataSheetName = findSheet('DATAFY25','DATA','FY27');
+
+      if (!refSheetName)  throw new Error('Feuille « ⚙️ RÉFÉRENTIEL » introuvable.');
+      if (!dataSheetName) throw new Error('Feuille « 📥 DATA FY25-FY26-FY27 » introuvable.');
+
+      // Référentiel
+      const refRows = XLSX.utils.sheet_to_json(wb.Sheets[refSheetName], { defval: '' });
+      const referentiel = refRows.map(r => ({
+        RESELLER:   String(pick(r,'RESELLER','REVENDEUR','RESELLER NAME')).trim(),
+        COMMERCIAL: String(pick(r,'COMMERCIAL','CDS','VENDEUR')).trim(),
+        STORE:      String(pick(r,'STORE','MAGASIN','POINT DE VENTE')).trim(),
+        CANAL:      String(pick(r,'CANAL','GROSSISTE','CHANNEL')).trim()
+      })).filter(x => x.RESELLER);
+
+      // Data
+      const dataRows = XLSX.utils.sheet_to_json(wb.Sheets[dataSheetName], { defval: '' });
+      const data = dataRows.map(r => ({
+        QUARTER:  String(pick(r,'QUARTER','Q','TRIMESTRE')).trim(),
+        FY:       Number(String(pick(r,'FY','FISCAL YEAR','ANNEE')).replace(/\D/g,'')) || '',
+        WEEK:     Number(String(pick(r,'WEEK','SEMAINE','W')).replace(/\D/g,'')) || '',
+        RESELLER: String(pick(r,'RESELLER','REVENDEUR')).trim(),
+        CA_EUR:   Number(String(pick(r,'CA_EUR','CA','CHIFFRE AFFAIRES','SELL IN','SELL-IN')).replace(/[^\d.-]/g,'')) || 0
+      })).filter(x => x.RESELLER);
+
+      if (!referentiel.length) throw new Error('Référentiel vide ou colonnes non reconnues.');
+
+      // Stockage state + sessionStorage
+      appState.rawSellIn = { referentiel, data };
+      SS.set('EMPOWER_Referentiel', referentiel);
+      SS.set('EMPOWER_Data', data);
+
+      setUploadStatus(`Fichier chargé — ${referentiel.length} revendeurs, ${data.length} lignes CA.`, 'ok');
+      $('#pin-wrapper').classList.remove('hidden-imp');
+
+    } catch (err) {
+      console.error(err);
+      setUploadStatus(err.message || 'Fichier illisible. Vérifiez le modèle SELL-IN.', 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// Lecture tolérante d'une clé parmi plusieurs alias (colonnes Excel)
+function pick(row, ...keys) {
+  const norm = s => String(s).toUpperCase().replace(/\s+/g,'').replace(/[_-]/g,'');
+  for (const k of keys) {
+    const hit = Object.keys(row).find(rk => norm(rk) === norm(k));
+    if (hit !== undefined) return row[hit];
+  }
+  return '';
+}
+
+/* Mode démo : injecter les données embarquées ------------------------------ */
+$('#btn-demo').addEventListener('click', () => {
+  appState.rawSellIn = { referentiel: REFERENTIEL_DEMO, data: DATA_DEMO };
+  SS.set('EMPOWER_Referentiel', REFERENTIEL_DEMO);
+  SS.set('EMPOWER_Data', DATA_DEMO);
+  setUploadStatus('Mode démonstration activé — données embarquées chargées.', 'ok');
+  $('#pin-wrapper').classList.remove('hidden-imp');
+});
+
+
+/* ═════════════════════════════════════════════════════════════════════════
+   BLOC 4 — PIN, AUTH & buildMasterData
+   ═════════════════════════════════════════════════════════════════════════ */
+const PIN_MAP = {
+  '1234': { role: 'MANAGER',    user: 'Manager'   },
+  '4321': { role: 'COMMERCIAL', user: 'Mehdi'     },
+  // Extensible : ajoutez d'autres PIN ici
+  '1000': { role: 'MANAGER',    user: 'Tadjidine' },
+};
+
+$('#btn-login').addEventListener('click', tryLogin);
+$('#pin-code').addEventListener('keydown', e => { if (e.key === 'Enter') tryLogin(); });
+
+function tryLogin() {
+  const code = $('#pin-code').value.trim();
+  const auth = PIN_MAP[code];
+  if (!auth) {
+    $('#pin-error').classList.remove('hidden-imp');
+    $('#pin-code').value = '';
+    return;
+  }
+  $('#pin-error').classList.add('hidden-imp');
+  appState.role = auth.role;
+  appState.currentUser = auth.user;
+  SS.set('EMPOWER_Session', { role: auth.role, user: auth.user });
+
+  showAppShell();
+  buildMasterData();
+  initApp();
+}
+
+function showAppShell() {
+  $('#screen-login').classList.add('hidden-imp');
+  $('#screen-app').classList.remove('hidden-imp');
+  $('#role-badge').textContent = appState.role;
+  $('#user-label').textContent = appState.currentUser;
+  // Manager-only nav
+  const isManager = appState.role === 'MANAGER';
+  $('#nav-manager').classList.toggle('hidden-imp', !isManager);
+  $('[value="view-manager"]', )?.toggleAttribute('hidden', !isManager);
+}
+
+$('#btn-logout').addEventListener('click', () => {
+  sessionStorage.removeItem('EMPOWER_Session');
+  location.reload();
+});
+
+/* ── BLOC 4.3 — Fusion en base unique masterData ─────────────────────────── */
+function buildMasterData() {
+  // 1. Charger référentiel + data Sell-In (state, sinon sessionStorage)
+  const referentiel = appState.rawSellIn.referentiel || SS.get('EMPOWER_Referentiel', []);
+  const data        = appState.rawSellIn.data        || SS.get('EMPOWER_Data', []);
+
+  const refByReseller = {};
+  referentiel.forEach(r => { refByReseller[normName(r.RESELLER)] = r; });
+
+  // Index CA par revendeur
+  const caByReseller = {};
+  data.forEach(d => {
+    const k = normName(d.RESELLER);
+    (caByReseller[k] = caByReseller[k] || []).push({
+      quarter: d.QUARTER, fy: d.FY, week: d.WEEK, ca: d.CA_EUR
+    });
+  });
+
+  // 2. Fusionner tracker embarqué + référentiel
+  const merged = DB_TRACKER_INITIALE.map(t => {
+    const ref = refByReseller[normName(t.Revendeur)] || {};
+    return assembleEntry({
+      reseller: t.Revendeur,
+      cds: t.CDS,
+      commercial: ref.COMMERCIAL || t.CDS,
+      store: ref.STORE || '',
+      canal: ref.CANAL || '',
+      statut: t.Actif,
+      potentiel: t.Potentiel,
+      derniereAction: t.DerniereAction,
+      prochaineAction: t.ProchaineAction,
+      prochaineDate: t.ProchaineDate,
+      notes: t.Notes,
+      caHistory: caByReseller[normName(t.Revendeur)] || []
+    });
+  });
+
+  // Ajouter les revendeurs présents au référentiel mais absents du tracker
+  referentiel.forEach(r => {
+    if (!merged.find(m => normName(m.reseller) === normName(r.RESELLER))) {
+      merged.push(assembleEntry({
+        reseller: r.RESELLER, cds: r.COMMERCIAL, commercial: r.COMMERCIAL,
+        store: r.STORE, canal: r.CANAL, statut: 'À activer', potentiel: 'Moyen',
+        derniereAction: '', prochaineAction: 'Qualification', prochaineDate: '',
+        notes: '', caHistory: caByReseller[normName(r.RESELLER)] || []
+      }));
+    }
+  });
+
+  // 3. Ajouter les customLeads (localStorage)
+  appState.customLeads.forEach(l => {
+    if (!merged.find(m => normName(m.reseller) === normName(l.reseller))) {
+      merged.push(assembleEntry({
+        reseller: l.reseller, cds: appState.currentUser, commercial: appState.currentUser,
+        store: l.store, canal: '', statut: 'À activer', potentiel: l.potentiel,
+        derniereAction: '', prochaineAction: 'Premier contact', prochaineDate: todayISO(),
+        notes: (l.comment||'') + (l.phone ? ` · ☎ ${l.phone}` : ''),
+        caHistory: [], isLead: true
+      }));
+    }
+  });
+
+  // 4. Exclure les commerciaux NON SUIVI
+  let result = merged.filter(m => String(m.commercial).toUpperCase() !== 'NON SUIVI'
+                                && String(m.cds).toUpperCase() !== 'NON SUIVI');
+
+  // Filtrage par rôle : un commercial ne voit que son portefeuille
+  if (appState.role === 'COMMERCIAL') {
+    result = result.filter(m => normName(m.commercial) === normName(appState.currentUser)
+                             || normName(m.cds) === normName(appState.currentUser));
+  }
+
+  // 5. Rattacher les callLogs existants à chaque entrée
+  result.forEach(m => {
+    m.callLogs = appState.callLogs.filter(c => normName(c.reseller) === normName(m.reseller));
+    if (m.callLogs.length) {
+      const last = m.callLogs[m.callLogs.length - 1];
+      if (last.nextDate) m.prochaineDate = last.nextDate;
+    }
+  });
+
+  appState.masterData = result;
+}
+
+function assembleEntry(o) {
+  return Object.assign({
+    reseller:'', cds:'', commercial:'', store:'', canal:'', statut:'', potentiel:'',
+    derniereAction:'', prochaineAction:'', prochaineDate:'', notes:'',
+    caHistory:[], localLeads:[], callLogs:[], isLead:false
+  }, o);
+}
+function normName(s){ return String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
+
+
+/* ═════════════════════════════════════════════════════════════════════════
+   BLOC 5 — SMART SCORING ENGINE
+   ═════════════════════════════════════════════════════════════════════════ */
+function calculateSmartScore(p) {
+  let score = 0;
+  const tags = [];
+
+  // Potentiel (max 40)
+  const pot = (p.potentiel || '').toLowerCase();
+  if (pot.includes('fort'))       score += 40;
+  else if (pot.includes('moyen')) score += 25;
+  else                            score += 10;
+
+  // Statut (max 30)
+  const st = (p.statut || '').toLowerCase();
+  if (st.includes('positif'))                    score += 30;
+  else if (st.includes('cours') || st.includes('discussion')) score += 20;
+  else if (st.includes('activer') || st === '')  score += 15;
+  else if (st.includes('réticent') || st.includes('reticent')) score += 5;
+  else if (st.includes('signé') || st.includes('signe')) score += 0;
+  else score += 15;
+
+  // Urgence (max 30)
+  const now = todayISO();
+  if (p.prochaineDate) {
+    if (p.prochaineDate < now)      { score += 30; tags.push('🚨 Relance dépassée'); }
+    else if (p.prochaineDate === now){ score += 25; tags.push('⏰ À relancer aujourd’hui'); }
+  } else {
+    // Aucune action programmée
+    score += 20; tags.push('💤 Aucune action planifiée');
+  }
+
+  // Grossiste stratégique (+30)
+  const canal = (p.canal || '').toUpperCase();
+  if (canal.includes('INGRAM') || canal.includes('TD SYNNEX')) {
+    score += 30; tags.push('🏢 Grossiste stratégique');
+  }
+
+  // Booster IA (+15) — signaux faibles dans les notes
+  if (/(concurrent|urgence|prix|devis|bloqué|bloque)/i.test(p.notes || '')) {
+    score += 15; tags.push('🤖 Signal IA détecté');
+  }
+
+  score = Math.min(100, score);
+
+  // Badge UI selon palier
+  let uiBadge;
+  if (score >= 80)      uiBadge = { label: '🔥 Priorité Absolue', colorClass: 'bg-red-500 text-white' };
+  else if (score >= 60) uiBadge = { label: '⚡ Priorité Haute',    colorClass: 'bg-orange-500 text-white' };
+  else if (score >= 40) uiBadge = { label: '📌 À suivre',          colorClass: 'bg-brand-blue text-white' };
+  else                  uiBadge = { label: '🧊 Basse priorité',    colorClass: 'bg-slate-600 text-white' };
+
+  return { ...p, score, uiBadge, uiTags: tags };
+}
+
+/* Statut → pill couleur ---------------------------------------------------- */
+function statutPill(st) {
+  const s = (st||'').toLowerCase();
+  if (s.includes('positif') || s.includes('signé') || s.includes('signe')) return 'bg-emerald-500/20 text-emerald-300';
+  if (s.includes('cours') || s.includes('discussion')) return 'bg-blue-500/20 text-blue-300';
+  if (s.includes('réticent')|| s.includes('reticent')) return 'bg-red-500/20 text-red-300';
+  return 'bg-amber-500/20 text-amber-300';
+}
+
+
+/* ═════════════════════════════════════════════════════════════════════════
+   BLOC 5.2 — BACKLOG PHONING (UI)
+   ═════════════════════════════════════════════════════════════════════════ */
+function renderPhoning() {
+  const list = $('#phoning-list');
+  const scored = appState.masterData
+    .filter(p => !((p.statut||'').toLowerCase().includes('signé') || (p.statut||'').toLowerCase().includes('signe')))
+    .map(calculateSmartScore)
+    .sort((a,b) => b.score - a.score);
+
+  $('#phoning-count').textContent = `${scored.length} fiches`;
+
+  if (!scored.length) {
+    list.innerHTML = `<p class="text-slate-500 col-span-full text-center py-16">Aucune fiche à appeler. 🎉</p>`;
+    return;
+  }
+
+  list.innerHTML = scored.map(p => `
+    <article class="card-w09 rounded-xl p-5 flex flex-col gap-3 fade-in">
+      <div class="flex items-start justify-between gap-2">
+        <div>
+          <h3 class="font-bold text-base leading-tight">${esc(p.reseller)}</h3>
+          <p class="text-xs text-slate-500">${esc(p.commercial)} · ${esc(p.canal||'—')}</p>
+        </div>
+        <div class="text-right">
+          <div class="text-2xl font-black ${p.score>=80?'text-red-400':p.score>=60?'text-orange-400':'text-slate-300'}">${p.score}</div>
+          <div class="text-[10px] uppercase tracking-wider text-slate-600">score</div>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap gap-1.5">
+        <span class="pill ${p.uiBadge.colorClass}">${p.uiBadge.label}</span>
+        <span class="pill ${statutPill(p.statut)}">${esc(p.statut||'—')}</span>
+        <span class="pill bg-slate-800 text-slate-300">${esc(p.potentiel||'—')}</span>
+      </div>
+
+      ${p.uiTags.length ? `<div class="flex flex-wrap gap-1 text-[11px] text-slate-400">
+        ${p.uiTags.map(t=>`<span class="bg-slate-800/60 rounded px-2 py-0.5">${esc(t)}</span>`).join('')}</div>` : ''}
+
+      <div class="text-sm text-slate-300 border-t border-slate-800 pt-3">
+        <p><span class="text-slate-500">Prochaine action&nbsp;:</span> ${esc(p.prochaineAction||'—')}</p>
+        <p class="text-xs ${p.prochaineDate && p.prochaineDate < todayISO() ? 'text-red-400 font-semibold':'text-slate-500'}">
+          ${p.prochaineDate ? '📅 '+frDate(p.prochaineDate) : 'Pas de date'}</p>
+      </div>
+
+      <button data-call="${esc(p.reseller)}"
+              class="btn-call mt-auto flex items-center justify-center gap-2 rounded-lg bg-brand-coral hover:bg-[#e85550] py-2.5 font-bold text-white transition-colors">
+        <span class="material-symbols-outlined text-[20px]">call</span> Lancer l’appel
+      </button>
+    </article>`).join('');
+
+  $$('.btn-call').forEach(b => b.addEventListener('click', () => openLiveCall(b.dataset.call)));
+}
+
+function esc(s){ return String(s??'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function frDate(iso){ if(!iso) return '—'; const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; }
+
+
+/* ═════════════════════════════════════════════════════════════════════════
+   BLOC 6 — LIVE CALL PANEL & CALL LOGS
+   ═════════════════════════════════════════════════════════════════════════ */
+function openLiveCall(reseller) {
+  const p = appState.masterData.find(m => m.reseller === reseller);
+  if (!p) return;
+
+  const lastCA = p.caHistory.length ? p.caHistory.reduce((a,c)=>a+c.ca,0) : 0;
+  const scripts = scriptFor(p.statut);
+
+  $('#live-call-content').innerHTML = `
+    <div class="p-5 border-b border-slate-800 sticky top-0 bg-slate-950 z-10">
+      <div class="flex items-center justify-between">
+        <span class="pill bg-brand-coral/20 text-brand-coral">📞 Appel en cours</span>
+        <button id="close-call" class="text-slate-500 hover:text-white"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <h3 class="mt-3 text-xl font-black">${esc(p.reseller)}</h3>
+      <div class="mt-2 flex flex-wrap gap-2 text-xs">
+        <span class="pill bg-slate-800 text-slate-300">CA hist. ${fmtEUR(lastCA)}</span>
+        <span class="pill bg-slate-800 text-slate-300">${esc(p.potentiel||'—')}</span>
+        <span class="pill ${statutPill(p.statut)}">${esc(p.statut||'—')}</span>
+      </div>
+    </div>
+
+    <div class="p-5 space-y-5">
+      <!-- Script d'aide -->
+      <div class="card-w09 rounded-lg p-4">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-brand-yellow mb-2">🎯 Script d’aide</h4>
+        <p class="text-sm text-slate-300">${esc(scripts)}</p>
+      </div>
+
+      <!-- Historique -->
+      <div>
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Historique d’appels (${p.callLogs.length})</h4>
+        <div class="space-y-2 max-h-40 overflow-y-auto">
+          ${p.callLogs.length ? p.callLogs.slice().reverse().map(c=>`
+            <div class="text-xs bg-slate-900/60 rounded p-2">
+              <div class="flex justify-between"><b class="text-slate-200">${esc(c.outcome)}</b>
+                <span class="text-slate-500">${new Date(c.timestamp).toLocaleDateString('fr-FR')}</span></div>
+              ${c.notes ? `<p class="text-slate-400 mt-1">${esc(c.notes)}</p>`:''}
+            </div>`).join('') : '<p class="text-xs text-slate-600">Aucun appel enregistré.</p>'}
+        </div>
+      </div>
+
+      <!-- Formulaire fin d'appel -->
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Résultat de l’appel</label>
+          <select id="call-outcome" class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2.5 text-sm">
+            <option value="NRP">NRP (ne répond pas)</option>
+            <option value="Refus">Refus</option>
+            <option value="Argumentation">Argumentation</option>
+            <option value="Accord oral">Accord oral</option>
+            <option value="EMPOWER Signé">EMPOWER Signé</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Notes</label>
+          <textarea id="call-notes" rows="3" placeholder="Compte-rendu de l’échange…"
+                    class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2.5 text-sm resize-none"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Prochaine action — date</label>
+          <input id="call-next-date" type="date" value="${p.prochaineDate||''}"
+                 class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2.5 text-sm"/>
+        </div>
+        <button id="end-call" data-reseller="${esc(p.reseller)}"
+                class="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 py-3 font-bold transition-colors">
+          ✅ Terminer l’appel
+        </button>
+      </div>
+    </div>`;
+
+  // Slide-in
+  $('#live-call-panel').classList.remove('translate-x-full');
+  $('#live-call-overlay').classList.remove('hidden-imp');
+  $('#close-call').addEventListener('click', closeLiveCall);
+  $('#end-call').addEventListener('click', () => endCall(reseller));
+}
+
+function closeLiveCall() {
+  $('#live-call-panel').classList.add('translate-x-full');
+  $('#live-call-overlay').classList.add('hidden-imp');
+}
+$('#live-call-overlay').addEventListener('click', closeLiveCall);
+
+function scriptFor(statut) {
+  const s = (statut||'').toLowerCase();
+  if (s.includes('positif') || s.includes('cours')) return 'Le contact est chaud : confirmez les volumes, levez la dernière objection prix et proposez un closing daté.';
+  if (s.includes('réticent')|| s.includes('reticent')) return 'Réticent : écoutez l’objection, valorisez le ROI EMPOWER vs concurrent, proposez un test pilote sans engagement.';
+  if (s.includes('activer')) return 'Premier contact : présentez EMPOWER 360, qualifiez le potentiel licences et fixez un RDV de démo.';
+  return 'Faites le point sur la relation, identifiez le besoin actif et programmez la prochaine étape concrète.';
+}
+
+/* BLOC 6.2 — Fin d'appel --------------------------------------------------- */
+function endCall(reseller) {
+  const p = appState.masterData.find(m => m.reseller === reseller);
+  if (!p) return;
+
+  const outcome  = $('#call-outcome').value;
+  const notes    = $('#call-notes').value.trim();
+  const nextDate = $('#call-next-date').value;
+
+  // Mise à jour statut selon résultat
+  const statutMap = {
+    'NRP': p.statut, 'Refus': 'Réticent', 'Argumentation': 'En cours',
+    'Accord oral': 'Positif', 'EMPOWER Signé': 'Signé'
+  };
+  p.statut = statutMap[outcome] || p.statut;
+  if (nextDate) p.prochaineDate = nextDate;
+  if (notes)    p.notes = notes + ' · ' + (p.notes||'');
+
+  // Log
+  const log = {
+    reseller: p.reseller, cds: p.cds, commercial: p.commercial,
+    outcome, notes, nextDate, timestamp: Date.now()
+  };
+  p.callLogs.push(log);
+  appState.callLogs.push(log);
+  LS.set('EMPOWER_CallLogs', appState.callLogs);
+
+  closeLiveCall();
+  refreshAll();        // recalcule scores, KPI, re-tri
+}
+
+
+/* ═════════════════════════════════════════════════════════════════════════
+   BLOC 7.1 — LEADS (view-leads)
+   ═════════════════════════════════════════════════════════════════════════ */
+function renderLeads() {
+  const list = $('#leads-list');
+  const leads = appState.customLeads;
+  if (!leads.length) {
+    list.innerHTML = `<p class="text-slate-500 col-span-full text-center py-16">Aucun lead manuel. Cliquez sur « Nouveau Lead ».</p>`;
+    return;
+  }
+  list.innerHTML = leads.map((l,i) => `
+    <article class="card-w09 rounded-xl p-5 fade-in">
+      <div class="flex items-start justify-between">
+        <h3 class="font-bold">${esc(l.reseller)}</h3>
+        <button data-del-lead="${i}" class="text-slate-600 hover:text-red-400"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+      </div>
+      <p class="text-xs text-slate-500">${esc(l.store||'—')}</p>
+      <div class="mt-3 flex flex-wrap gap-1.5">
+        <span class="pill bg-slate-800 text-slate-300">${esc(l.potentiel||'—')}</span>
+        ${l.phone ? `<span class="pill bg-blue-500/20 text-blue-300">☎ ${esc(l.phone)}</span>`:''}
+      </div>
+      ${l.comment ? `<p class="mt-3 text-sm text-slate-400">${esc(l.comment)}</p>`:''}
+    </article>`).join('');
+  $$('[data-del-lead]').forEach(b => b.addEventListener('click', () => {
+    appState.customLeads.splice(+b.dataset.delLead, 1);
+    LS.set('EMPOWER_CustomLeads', appState.customLeads);
+    buildMasterData(); renderLeads(); renderPhoning();
+  }));
+}
+
+$('#btn-new-lead').addEventListener('click', openLeadModal);
+function openLeadModal() {
+  $('#modal-root').innerHTML = `
+    <div class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60">
+      <div class="card-w09 rounded-xl2 w-full max-w-md p-6 fade-in">
+        <h3 class="text-lg font-bold mb-4">➕ Nouveau Lead</h3>
+        <div class="space-y-3">
+          ${field('lead-reseller','Revendeur','text','Nom du revendeur')}
+          ${field('lead-store','Store','text','Ville / point de vente')}
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Potentiel</label>
+            <select id="lead-potentiel" class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2.5 text-sm">
+              <option>Fort (>100 lic/mois)</option><option>Moyen</option><option>Faible</option>
+            </select>
+          </div>
+          ${field('lead-phone','Téléphone','tel','06 …')}
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Commentaire</label>
+            <textarea id="lead-comment" rows="2" class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2.5 text-sm resize-none"></textarea>
+          </div>
+        </div>
+        <div class="flex gap-2 mt-5">
+          <button id="lead-cancel" class="flex-1 rounded-lg bg-slate-800 hover:bg-slate-700 py-2.5 font-semibold">Annuler</button>
+          <button id="lead-save" class="flex-1 rounded-lg bg-brand-coral hover:bg-[#e85550] py-2.5 font-bold">Enregistrer</button>
+        </div>
+      </div>
+    </div>`;
+  $('#lead-cancel').addEventListener('click', () => $('#modal-root').innerHTML='');
+  $('#lead-save').addEventListener('click', () => {
+    const reseller = $('#lead-reseller').value.trim();
+    if (!reseller) { $('#lead-reseller').focus(); return; }
+    appState.customLeads.push({
+      reseller, store: $('#lead-store').value.trim(),
+      potentiel: $('#lead-potentiel').value,
+      phone: $('#lead-phone').value.trim(),
+      comment: $('#lead-comment').value.trim()
+    });
+    LS.set('EMPOWER_CustomLeads', appState.customLeads);
+    $('#modal-root').innerHTML='';
+    buildMasterData(); refreshAll();
+  });
+}
+function field(id,label,type,ph){
+  return `<div><label class="block text-xs font-semibold text-slate-400 mb-1">${label}</label>
+    <input id="${id}" type="${type}" placeholder="${ph}" class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2.5 text-sm"/></div>`;
+}
+
+
+/* ═════════════════════════════════════════════════════════════════════════
+   BLOC 7.2 — CA FY27 (view-ca)
+   ═════════════════════════════════════════════════════════════════════════ */
+function renderCA() {
+  const tbody = $('#ca-tbody');
+  // Liste des revendeurs (master + customCA déjà saisis)
+  const resellers = appState.masterData.map(m => m.reseller);
+  const stored = {};
+  appState.customCA.forEach(c => stored[c.reseller] = c);
+
+  tbody.innerHTML = resellers.map(r => {
+    const v = stored[r] || { q1:'', q2:'', q3:'', q4:'' };
+    const total = ['q1','q2','q3','q4'].reduce((a,q)=>a+(Number(v[q])||0),0);
+    return `<tr class="border-t border-slate-800/60 hover:bg-slate-900/40" data-reseller="${esc(r)}">
+      <td class="px-4 py-2 font-semibold">${esc(r)}</td>
+      ${['q1','q2','q3','q4'].map(q=>`<td class="px-2 py-2">
+        <input type="number" data-q="${q}" value="${v[q]||''}" placeholder="0"
+          class="ca-input w-24 rounded bg-slate-900 border border-slate-700 px-2 py-1.5 text-sm text-right"/></td>`).join('')}
+      <td class="px-4 py-2 text-right font-black text-emerald-400 ca-total">${fmtEUR(total)}</td>
+    </tr>`;
+  }).join('');
+
+  $$('.ca-input').forEach(inp => inp.addEventListener('input', onCAInput));
+}
+function onCAInput(e) {
+  const tr = e.target.closest('tr');
+  const reseller = tr.dataset.reseller;
+  const vals = {};
+  tr.querySelectorAll('.ca-input').forEach(i => vals[i.dataset.q] = Number(i.value)||0);
+  const total = vals.q1+vals.q2+vals.q3+vals.q4;
+  tr.querySelector('.ca-total').textContent = fmtEUR(total);
+
+  // Persistance
+  const idx = appState.customCA.findIndex(c => c.reseller === reseller);
+  const entry = { reseller, ...vals, total };
+  if (idx >= 0) appState.customCA[idx] = entry; else appState.customCA.push(entry);
+  LS.set('EMPOWER_CustomCA', appState.customCA);
+  updateKPIs();
+}
+
+
+/* ═════════════════════════════════════════════════════════════════════════
+   BLOC 8 — VUE MANAGER & EXPORTS
+   ═════════════════════════════════════════════════════════════════════════ */
+let managerChart = null;
+
+function getWeeks() {
+  const data = appState.rawSellIn.data || [];
+  return [...new Set(data.map(d => d.week).filter(Boolean))].sort((a,b)=>a-b);
+}
+
+function renderManager() {
+  // Time picker
+  const sel = $('#global-week-filter');
+  const weeks = getWeeks();
+  sel.innerHTML = `<option value="">Toutes</option>` + weeks.map(w=>`<option value="${w}">W${w}</option>`).join('');
+  sel.value = appState.selectedWeek || '';
+  sel.onchange = () => filterDataByWeek(sel.value);
+
+  renderManagerKPIs();
+  renderManagerChart();
+  renderManagerAlerts();
+}
+
+function filterDataByWeek(week) {
+  appState.selectedWeek = week || null;
+  SS.set('EMPOWER_SelectedWeek', appState.selectedWeek);
+  $('#week-badge').textContent = week ? `Semaine W${week}` : 'Toutes semaines';
+  renderManagerKPIs();
+  renderManagerChart();
+  updateKPIs();
+}
+
+function caForWeek() {
+  const data = appState.rawSellIn.data || [];
+  return data.filter(d => d.fy === 27 && (!appState.selectedWeek || d.week == appState.selectedWeek));
+}
+
+function renderManagerKPIs() {
+  const caFY27 = caForWeek().reduce((a,d)=>a+d.ca,0)
+               + appState.customCA.reduce((a,c)=>a+(c.total||0),0);
+  const calls  = appState.callLogs.length;
+  const signed = appState.callLogs.filter(c => c.outcome === 'EMPOWER Signé').length;
+  const argued = appState.callLogs.filter(c => ['Accord oral','EMPOWER Signé','Argumentation'].includes(c.outcome)).length || 1;
+  const tauxSign = Math.round((signed / argued) * 100);
+
+  $('#manager-kpis').innerHTML = [
+    kpiCard('CA total FY27', fmtEUR(caFY27), 'payments', 'text-emerald-400'),
+    kpiCard('Appels / visites', calls, 'call', 'text-brand-sky'),
+    kpiCard('EMPOWER signés', signed, 'verified', 'text-brand-yellow'),
+    kpiCard('Taux de signature', tauxSign+' %', 'percent', 'text-brand-coral'),
+  ].join('');
+}
+function kpiCard(lbl,val,icon,color){
+  return `<div class="card-w09 rounded-xl p-5">
+    <div class="flex items-center justify-between">
+      <span class="material-symbols-outlined ${color}">${icon}</span>
+    </div>
+    <div class="mt-2 text-3xl font-black ${color}">${val}</div>
+    <div class="text-xs uppercase tracking-wider text-slate-500 mt-1">${lbl}</div>
+  </div>`;
+}
+
+function renderManagerChart() {
+  const byCommercial = {};
+  appState.masterData.forEach(m => {
+    const ca = m.caHistory
+      .filter(c => c.fy === 27 && (!appState.selectedWeek || c.week == appState.selectedWeek))
+      .reduce((a,c)=>a+c.ca,0);
+    byCommercial[m.commercial] = (byCommercial[m.commercial]||0) + ca;
+  });
+  const labels = Object.keys(byCommercial);
+  const values = labels.map(l => byCommercial[l]);
+
+  if (managerChart) managerChart.destroy();
+  managerChart = new Chart($('#chart-manager'), {
+    type: 'bar',
+    data: { labels, datasets: [{
+      label: 'CA FY27 (€)', data: values,
+      backgroundColor: '#0050FF', borderRadius: 6, maxBarThickness: 48
+    }]},
+    options: {
+      plugins: { legend: { display:false } },
+      scales: {
+        x: { ticks:{ color:'#94a3b8' }, grid:{ display:false } },
+        y: { ticks:{ color:'#94a3b8', callback:v=>v/1000+'k' }, grid:{ color:'#1e293b' } }
+      }
+    }
+  });
+}
+
+function renderManagerAlerts() {
+  const alerts = appState.masterData
+    .map(calculateSmartScore)
+    .filter(p => p.uiTags.some(t => t.includes('dépassée')) || (p.statut||'').toLowerCase().includes('réticent'))
+    .sort((a,b)=>b.score-a.score);
+
+  $('#manager-alerts').innerHTML = alerts.length ? alerts.map(p=>`
+    <div class="flex items-center justify-between bg-slate-900/60 border-l-4 border-red-500 rounded px-3 py-2">
+      <div><b class="text-sm">${esc(p.reseller)}</b>
+        <span class="text-xs text-slate-500 block">${esc(p.commercial)} · ${esc(p.statut)}</span></div>
+      <span class="text-xs text-red-400">${p.prochaineDate?frDate(p.prochaineDate):'churn'}</span>
+    </div>`).join('') : '<p class="text-sm text-slate-600">Aucune alerte. 👍</p>';
+}
+
+/* BLOC 8.3 — Export Excel -------------------------------------------------- */
+$('#btn-export-excel').addEventListener('click', exportToExcel);
+function exportToExcel() {
+  const dataset = appState.masterData.map(m => {
+    const caFY26 = m.caHistory.filter(c=>c.fy===26).reduce((a,c)=>a+c.ca,0);
+    const caFY27 = m.caHistory.filter(c=>c.fy===27).reduce((a,c)=>a+c.ca,0)
+                 + (appState.customCA.find(c=>c.reseller===m.reseller)?.total || 0);
+    return {
+      Revendeur: m.reseller, CDS: m.cds, Commercial: m.commercial,
+      'CA FY26': caFY26, 'CA FY27': caFY27, Statut: m.statut,
+      'Nb appels': m.callLogs.length,
+      'Prochaine action': m.prochaineAction, 'Date': m.prochaineDate
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(dataset);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'EMPOWER 360');
+  XLSX.writeFile(wb, `EMPOWER360_Export_${todayISO()}.xlsx`);
+}
+
+/* BLOC 8.4 — Export PDF ---------------------------------------------------- */
+$('#btn-export-pdf').addEventListener('click', openPdfModal);
+function openPdfModal() {
+  $('#modal-root').innerHTML = `
+    <div class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60">
+      <div class="card-w09 rounded-xl2 w-full max-w-md p-6 fade-in">
+        <h3 class="text-lg font-bold mb-4">📄 Export PDF — Rapport Manager</h3>
+        <div class="space-y-2 text-sm">
+          ${pdfCheck('pdf-summary','Executive Summary (KPI)',true)}
+          ${pdfCheck('pdf-ranking','Classement équipe',true)}
+          ${pdfCheck('pdf-churn','Alertes Churn',true)}
+          ${pdfCheck('pdf-logs','Logs récents',false)}
+        </div>
+        <div class="flex gap-2 mt-5">
+          <button id="pdf-cancel" class="flex-1 rounded-lg bg-slate-800 hover:bg-slate-700 py-2.5 font-semibold">Annuler</button>
+          <button id="pdf-go" class="flex-1 rounded-lg bg-brand-blue hover:bg-[#0040d8] py-2.5 font-bold">Générer</button>
+        </div>
+      </div>
+    </div>`;
+  $('#pdf-cancel').addEventListener('click', ()=>$('#modal-root').innerHTML='');
+  $('#pdf-go').addEventListener('click', ()=>{
+    generatePDF({
+      summary: $('#pdf-summary').checked, ranking: $('#pdf-ranking').checked,
+      churn: $('#pdf-churn').checked, logs: $('#pdf-logs').checked
+    });
+  });
+}
+function pdfCheck(id,label,checked){
+  return `<label class="flex items-center gap-3 bg-slate-900/50 rounded-lg px-3 py-2.5 cursor-pointer">
+    <input id="${id}" type="checkbox" ${checked?'checked':''} class="w-4 h-4 accent-brand-blue"/>
+    <span>${label}</span></label>`;
+}
+
+function generatePDF(opt) {
+  $('#modal-root').innerHTML='';
+  const c = document.createElement('div');
+  c.style.cssText = 'padding:32px;font-family:Inter,sans-serif;color:#0f172a;background:#fff;width:780px;';
+
+  const caFY27 = (appState.rawSellIn.data||[]).filter(d=>d.fy===27).reduce((a,d)=>a+d.ca,0)
+               + appState.customCA.reduce((a,x)=>a+(x.total||0),0);
+  let html = `<div style="border-bottom:3px solid #0050FF;padding-bottom:12px;margin-bottom:20px;">
+      <h1 style="font-size:26px;font-weight:900;margin:0;">EMPOWER 360 — Rapport Manager</h1>
+      <p style="color:#64748b;margin:4px 0 0;">ISM × Norton · ${frDate(todayISO())} ${appState.selectedWeek?'· Semaine W'+appState.selectedWeek:''}</p>
+    </div>`;
+
+  if (opt.summary) {
+    const calls = appState.callLogs.length;
+    const signed = appState.callLogs.filter(c=>c.outcome==='EMPOWER Signé').length;
+    html += `<h2 style="font-size:16px;color:#0050FF;">Executive Summary</h2>
+      <div style="display:flex;gap:12px;margin:12px 0 24px;">
+        ${pdfStat('CA FY27', fmtEUR(caFY27))}
+        ${pdfStat('Appels', calls)}
+        ${pdfStat('Signés', signed)}
+        ${pdfStat('Fiches', appState.masterData.length)}
+      </div>`;
+  }
+  if (opt.ranking) {
+    const scored = appState.masterData.map(calculateSmartScore).sort((a,b)=>b.score-a.score).slice(0,10);
+    html += `<h2 style="font-size:16px;color:#0050FF;">Classement équipe (Top 10 score)</h2>
+      <table style="width:100%;border-collapse:collapse;margin:12px 0 24px;font-size:13px;">
+        <tr style="background:#f1f5f9;text-align:left;"><th style="padding:8px;">Revendeur</th><th>Commercial</th><th>Statut</th><th>Score</th></tr>
+        ${scored.map(p=>`<tr style="border-bottom:1px solid #e2e8f0;"><td style="padding:8px;">${esc(p.reseller)}</td><td>${esc(p.commercial)}</td><td>${esc(p.statut)}</td><td style="font-weight:800;">${p.score}</td></tr>`).join('')}
+      </table>`;
+  }
+  if (opt.churn) {
+    const al = appState.masterData.map(calculateSmartScore).filter(p=>p.uiTags.some(t=>t.includes('dépassée')));
+    html += `<h2 style="font-size:16px;color:#dc2626;">Alertes Churn / Relances dépassées</h2>
+      <ul style="margin:12px 0 24px;font-size:13px;">
+        ${al.length?al.map(p=>`<li style="margin-bottom:4px;"><b>${esc(p.reseller)}</b> — ${esc(p.commercial)} (échéance ${frDate(p.prochaineDate)})</li>`).join(''):'<li>Aucune alerte.</li>'}
+      </ul>`;
+  }
+  if (opt.logs) {
+    const logs = appState.callLogs.slice(-15).reverse();
+    html += `<h2 style="font-size:16px;color:#0050FF;">Logs récents</h2>
+      <table style="width:100%;border-collapse:collapse;margin-top:12px;font-size:12px;">
+        <tr style="background:#f1f5f9;text-align:left;"><th style="padding:6px;">Date</th><th>Revendeur</th><th>Résultat</th><th>Notes</th></tr>
+        ${logs.map(l=>`<tr style="border-bottom:1px solid #e2e8f0;"><td style="padding:6px;">${new Date(l.timestamp).toLocaleDateString('fr-FR')}</td><td>${esc(l.reseller)}</td><td>${esc(l.outcome)}</td><td>${esc(l.notes||'')}</td></tr>`).join('')}
+      </table>`;
+  }
+  c.innerHTML = html;
+  document.body.appendChild(c);
+  html2pdf().set({ margin:0, filename:'Rapport_Manager.pdf', image:{type:'jpeg',quality:.98},
+    html2canvas:{scale:2}, jsPDF:{unit:'pt',format:'a4',orientation:'portrait'} })
+    .from(c).save().then(()=>c.remove());
+}
+function pdfStat(lbl,val){
+  return `<div style="flex:1;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;text-align:center;">
+    <div style="font-size:22px;font-weight:900;color:#0050FF;">${val}</div>
+    <div style="font-size:11px;color:#64748b;text-transform:uppercase;">${lbl}</div></div>`;
+}
+
+
+/* ═════════════════════════════════════════════════════════════════════════
+   BLOC 9 — NAVIGATION, KPI & ORCHESTRATION UI
+   ═════════════════════════════════════════════════════════════════════════ */
+const VIEW_TITLES = {
+  'view-phoning': 'Ma session phoning',
+  'view-leads':   'Nouveaux leads',
+  'view-ca':      'Déclaration CA FY27',
+  'view-manager': 'Vue Manager'
+};
+
+function switchView(viewId) {
+  $$('.view').forEach(v => v.classList.add('hidden-imp'));
+  $('#'+viewId)?.classList.remove('hidden-imp');
+  $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === viewId));
+  $('#view-title').textContent = VIEW_TITLES[viewId] || '';
+  $('#mobile-nav').value = viewId;
+  SS.set('EMPOWER_ActiveView', viewId);
+
+  if (viewId === 'view-phoning') renderPhoning();
+  if (viewId === 'view-leads')   renderLeads();
+  if (viewId === 'view-ca')      renderCA();
+  if (viewId === 'view-manager') renderManager();
+}
+
+$$('.nav-btn').forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
+$('#mobile-nav').addEventListener('change', e => switchView(e.target.value));
+
+/* KPI top bar -------------------------------------------------------------- */
+function updateKPIs() {
+  $('#kpi-calls').textContent = appState.callLogs.length;
+  $('#kpi-deals').textContent = appState.callLogs.filter(c=>c.outcome==='EMPOWER Signé').length;
+  const caFY27 = (appState.rawSellIn.data||[]).filter(d=>d.fy===27 && (!appState.selectedWeek||d.week==appState.selectedWeek)).reduce((a,d)=>a+d.ca,0)
+               + appState.customCA.reduce((a,c)=>a+(c.total||0),0);
+  $('#kpi-ca').textContent = fmtEUR(caFY27);
+}
+
+/* Rafraîchit tout après un changement de données --------------------------- */
+function refreshAll() {
+  buildMasterData();
+  updateKPIs();
+  const active = SS.get('EMPOWER_ActiveView','view-phoning');
+  switchView(active);
+}
+
+/* Init après login --------------------------------------------------------- */
+function initApp() {
+  appState.selectedWeek = SS.get('EMPOWER_SelectedWeek', null);
+  const weeks = getWeeks();
+  $('#week-badge').textContent = appState.selectedWeek ? `Semaine W${appState.selectedWeek}`
+                               : (weeks.length ? `Semaine W${weeks[weeks.length-1]}` : 'Semaine —');
+  updateKPIs();
+  switchView(SS.get('EMPOWER_ActiveView','view-phoning'));
+}
+
+/* Reprise de session (si déjà loggé dans l'onglet) ------------------------- */
+(function restoreSession() {
+  const sess = SS.get('EMPOWER_Session', null);
+  const ref  = SS.get('EMPOWER_Referentiel', null);
+  if (sess && ref) {
+    appState.role = sess.role;
+    appState.currentUser = sess.user;
+    appState.rawSellIn = { referentiel: ref, data: SS.get('EMPOWER_Data', []) };
+    showAppShell();
+    buildMasterData();
+    initApp();
+  }
+})();
+</script>
+</body>
+</html>
