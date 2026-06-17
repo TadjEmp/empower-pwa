@@ -127,8 +127,9 @@
              class="mt-6 cursor-pointer rounded-xl border-2 border-dashed border-slate-700 hover:border-brand-blue
                     bg-slate-900/40 px-6 py-10 text-center transition-colors">
           <span class="material-symbols-outlined text-4xl text-slate-500">cloud_upload</span>
-          <p class="mt-2 text-sm font-semibold text-slate-200">Glissez le fichier SELL-IN ici</p>
-          <p class="text-xs text-slate-500">ou cliquez pour parcourir (.xlsx)</p>
+          <p class="mt-2 text-sm font-semibold text-slate-200">Glissez un fichier Excel ici</p>
+          <p class="text-xs text-slate-400 mt-1">SELL-IN <span class="text-slate-600">·</span> ou <span class="text-brand-sky">EMPOWER-TRACKER</span></p>
+          <p class="text-xs text-slate-600 mt-0.5">Les deux fichiers sont acceptés</p>
           <input id="file-input" type="file" accept=".xlsx,.xls" class="hidden"/>
         </div>
 
@@ -234,6 +235,15 @@
 
         <!-- VIEW : PHONING -->
         <div id="view-phoning" class="view">
+          <!-- Bannière alertes relances dépassées (visible commercial + manager) -->
+          <div id="phoning-alert-banner" class="hidden-imp mb-5 rounded-xl border border-red-500/30 bg-red-950/40 p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="material-symbols-outlined text-red-400">warning</span>
+              <span class="font-bold text-red-300" id="phoning-alert-title">Relances en retard</span>
+            </div>
+            <div id="phoning-alert-list" class="space-y-1"></div>
+          </div>
+
           <div class="flex items-center justify-between mb-5">
             <p class="text-sm text-slate-400">Backlog priorisé par <b class="text-white">Smart Score</b> — appelez d'abord les fiches en haut.</p>
             <span id="phoning-count" class="pill bg-slate-800 text-slate-300">0 fiches</span>
@@ -463,7 +473,12 @@ fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.
 }));
 dropzone.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) handleFile(f); });
 
-/* Lecture + extraction stricte --------------------------------------------- */
+/* Auto-détection du type de fichier Excel et extraction -------------------
+   Supporte :
+   - SELL-IN (feuilles RÉFÉRENTIEL + DATA FY27)
+   - EMPOWER-TRACKER (feuille « 1 - Saisie » ou ONBOARD / TRACKER / SAISIE)
+   Un même formulaire accepte les deux. Les deux peuvent être chargés l'un après l'autre.
+   -------------------------------------------------------------------------*/
 function handleFile(file) {
   if (!/\.(xlsx|xls)$/i.test(file.name)) {
     return setUploadStatus('Format invalide — déposez un fichier .xlsx', 'error');
@@ -476,14 +491,47 @@ function handleFile(file) {
       const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
 
       // Recherche tolérante des feuilles (emoji / accents / casse)
+      const normSheet = n => n.toUpperCase().replace(/\s+/g,'').replace(/[^A-Z0-9]/g,'');
       const findSheet = (...needles) => wb.SheetNames.find(n =>
-        needles.some(kw => n.toUpperCase().replace(/\s+/g,'').includes(kw)));
+        needles.some(kw => normSheet(n).includes(kw)));
 
-      const refSheetName  = findSheet('RÉFÉRENTIEL','REFERENTIEL');
-      const dataSheetName = findSheet('DATAFY25','DATA','FY27');
+      // Détection : SELL-IN ou TRACKER ?
+      const refSheetName    = findSheet('REFERENTIEL');
+      const dataSheetName   = findSheet('DATAFY25','DATA','FY27','SELLIN');
+      const trackerSheetName = findSheet('1SAISIE','SAISIE','TRACKER','ONBOARD');
 
-      if (!refSheetName)  throw new Error('Feuille « ⚙️ RÉFÉRENTIEL » introuvable.');
-      if (!dataSheetName) throw new Error('Feuille « 📥 DATA FY25-FY26-FY27 » introuvable.');
+      // ─── CAS 1 : EMPOWER-TRACKER ──────────────────────────────────────
+      if (trackerSheetName && !refSheetName) {
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[trackerSheetName], { defval: '' });
+        if (!rows.length) throw new Error('Feuille Saisie vide ou non reconnue.');
+
+        const tracker = rows.map(r => ({
+          Revendeur:       String(pick(r,'REVENDEUR','RESELLER','NOMCOMPTE','NOM COMPTE','COMPTE')).trim(),
+          CDS:             String(pick(r,'CDS','COMMERCIAL','VENDEUR','RESPONSABLE')).trim(),
+          Actif:           String(pick(r,'ACTIF','STATUT','STATUS','ETAT')).trim(),
+          Potentiel:       String(pick(r,'POTENTIEL','POTENTIAL')).trim(),
+          DerniereAction:  String(pick(r,'DERNIEREACTION','DERNIERE ACTION','LAST ACTION','LASTACTION')).trim(),
+          ProchaineAction: String(pick(r,'PROCHAINEACTION','PROCHAINE ACTION','NEXT ACTION','NEXTACTION')).trim(),
+          ProchaineDate:   excelDateToISO(pick(r,'PROCHAINEDATE','PROCHAINE DATE','NEXT DATE','NEXTDATE','DATE')),
+          Notes:           String(pick(r,'NOTES','NOTE','COMMENTAIRE','COMMENTAIRES','REMARQUES')).trim()
+        })).filter(x => x.Revendeur && x.CDS && x.CDS.toUpperCase() !== 'NON SUIVI');
+
+        if (!tracker.length) throw new Error('Aucune ligne valide dans la feuille Saisie.');
+
+        appState.rawTracker = tracker;
+        SS.set('EMPOWER_Tracker', tracker);
+        setUploadStatus(
+          `Tracker chargé — ${tracker.length} revendeurs. ` +
+          (appState.rawSellIn.referentiel?.length ? '' : 'Vous pouvez aussi charger le fichier SELL-IN.'),
+          'ok'
+        );
+        $('#pin-wrapper').classList.remove('hidden-imp');
+        return;
+      }
+
+      // ─── CAS 2 : SELL-IN ──────────────────────────────────────────────
+      if (!refSheetName)  throw new Error('Fichier non reconnu. Déposez le SELL-IN (onglet RÉFÉRENTIEL) ou le TRACKER (onglet 1 - Saisie).');
+      if (!dataSheetName) throw new Error('Feuille DATA FY25-FY26-FY27 introuvable dans le SELL-IN.');
 
       // Référentiel
       const refRows = XLSX.utils.sheet_to_json(wb.Sheets[refSheetName], { defval: '' });
@@ -494,7 +542,7 @@ function handleFile(file) {
         CANAL:      String(pick(r,'CANAL','GROSSISTE','CHANNEL')).trim()
       })).filter(x => x.RESELLER);
 
-      // Data
+      // Data CA
       const dataRows = XLSX.utils.sheet_to_json(wb.Sheets[dataSheetName], { defval: '' });
       const data = dataRows.map(r => ({
         QUARTER:  String(pick(r,'QUARTER','Q','TRIMESTRE')).trim(),
@@ -506,20 +554,37 @@ function handleFile(file) {
 
       if (!referentiel.length) throw new Error('Référentiel vide ou colonnes non reconnues.');
 
-      // Stockage state + sessionStorage
       appState.rawSellIn = { referentiel, data };
       SS.set('EMPOWER_Referentiel', referentiel);
       SS.set('EMPOWER_Data', data);
-
-      setUploadStatus(`Fichier chargé — ${referentiel.length} revendeurs, ${data.length} lignes CA.`, 'ok');
+      setUploadStatus(`SELL-IN chargé — ${referentiel.length} revendeurs, ${data.length} lignes CA.`, 'ok');
       $('#pin-wrapper').classList.remove('hidden-imp');
 
     } catch (err) {
       console.error(err);
-      setUploadStatus(err.message || 'Fichier illisible. Vérifiez le modèle SELL-IN.', 'error');
+      setUploadStatus(err.message || 'Fichier illisible.', 'error');
     }
   };
   reader.readAsArrayBuffer(file);
+}
+
+/* Convertit une date Excel (numérique ou texte ISO/FR) en ISO string -------- */
+function excelDateToISO(val) {
+  if (!val) return '';
+  if (typeof val === 'number') {
+    // Date série Excel
+    const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+    return d.toISOString().slice(0,10);
+  }
+  const s = String(val).trim();
+  // ISO yyyy-mm-dd
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
+  // FR dd/mm/yyyy
+  if (/^\d{2}\/\d{2}\/\d{4}/.test(s)) {
+    const [d,m,y] = s.split('/');
+    return `${y}-${m}-${d}`;
+  }
+  return '';
 }
 
 // Lecture tolérante d'une clé parmi plusieurs alias (colonnes Excel)
@@ -592,8 +657,17 @@ $('#btn-logout').addEventListener('click', () => {
 /* ── BLOC 4.3 — Fusion en base unique masterData ─────────────────────────── */
 function buildMasterData() {
   // 1. Charger référentiel + data Sell-In (state, sinon sessionStorage)
-  const referentiel = appState.rawSellIn.referentiel || SS.get('EMPOWER_Referentiel', []);
-  const data        = appState.rawSellIn.data        || SS.get('EMPOWER_Data', []);
+  const referentiel = (appState.rawSellIn && appState.rawSellIn.referentiel)
+                      || SS.get('EMPOWER_Referentiel', []);
+  const data        = (appState.rawSellIn && appState.rawSellIn.data)
+                      || SS.get('EMPOWER_Data', []);
+
+  // Charger le tracker importé (EMPOWER-TRACKER) ou fallback sur DB embarquée
+  const trackerImport = appState.rawTracker.length
+                        ? appState.rawTracker
+                        : SS.get('EMPOWER_Tracker', []);
+  // Source de vérité pour les entrées CRM : tracker importé > base embarquée
+  const trackerSource = trackerImport.length ? trackerImport : DB_TRACKER_INITIALE;
 
   const refByReseller = {};
   referentiel.forEach(r => { refByReseller[normName(r.RESELLER)] = r; });
@@ -607,8 +681,8 @@ function buildMasterData() {
     });
   });
 
-  // 2. Fusionner tracker embarqué + référentiel
-  const merged = DB_TRACKER_INITIALE.map(t => {
+  // 2. Fusionner tracker (importé ou embarqué) + référentiel
+  const merged = trackerSource.map(t => {
     const ref = refByReseller[normName(t.Revendeur)] || {};
     return assembleEntry({
       reseller: t.Revendeur,
@@ -709,7 +783,7 @@ function calculateSmartScore(p) {
   const now = todayISO();
   if (p.prochaineDate) {
     if (p.prochaineDate < now)      { score += 30; tags.push('🚨 Relance dépassée'); }
-    else if (p.prochaineDate === now){ score += 25; tags.push('⏰ À relancer aujourd’hui'); }
+    else if (p.prochaineDate === now){ score += 25; tags.push("⏰ À relancer aujourd’hui"); }
   } else {
     // Aucune action programmée
     score += 20; tags.push('💤 Aucune action planifiée');
@@ -758,7 +832,24 @@ function renderPhoning() {
     .map(calculateSmartScore)
     .sort((a,b) => b.score - a.score);
 
-  $('#phoning-count').textContent = `${scored.length} fiches`;
+  $('#phoning-count').textContent = `${scored.length} fiche${scored.length>1?'s':''}`;
+
+  // ─── Bannière alertes relances dépassées ─────────────────────────────
+  const overdue = scored.filter(p => p.prochaineDate && p.prochaineDate < todayISO());
+  const banner  = $('#phoning-alert-banner');
+  if (overdue.length) {
+    banner.classList.remove('hidden-imp');
+    $('#phoning-alert-title').textContent =
+      `⚠️ ${overdue.length} relance${overdue.length>1?'s':''} en retard — à traiter en priorité`;
+    $('#phoning-alert-list').innerHTML = overdue.slice(0,5).map(p =>
+      `<div class="flex items-center justify-between text-sm py-1 border-b border-red-900/30">
+        <span class="font-semibold text-red-200">${esc(p.reseller)}</span>
+        <span class="text-xs text-red-400">${esc(p.commercial)} · échéance ${frDate(p.prochaineDate)}</span>
+       </div>`
+    ).join('') + (overdue.length > 5 ? `<p class="text-xs text-red-400 mt-1">…et ${overdue.length-5} autre(s)</p>` : '');
+  } else {
+    banner.classList.add('hidden-imp');
+  }
 
   if (!scored.length) {
     list.innerHTML = `<p class="text-slate-500 col-span-full text-center py-16">Aucune fiche à appeler. 🎉</p>`;
@@ -1323,12 +1414,25 @@ function initApp() {
 
 /* Reprise de session (si déjà loggé dans l'onglet) ------------------------- */
 (function restoreSession() {
-  const sess = SS.get('EMPOWER_Session', null);
-  const ref  = SS.get('EMPOWER_Referentiel', null);
-  if (sess && ref) {
-    appState.role = sess.role;
-    appState.currentUser = sess.user;
+  const sess    = SS.get('EMPOWER_Session', null);
+  const ref     = SS.get('EMPOWER_Referentiel', null);
+  const tracker = SS.get('EMPOWER_Tracker', null);
+
+  if (!sess) return;
+
+  appState.role        = sess.role;
+  appState.currentUser = sess.user;
+
+  if (ref) {
     appState.rawSellIn = { referentiel: ref, data: SS.get('EMPOWER_Data', []) };
+  }
+  if (tracker && tracker.length) {
+    appState.rawTracker = tracker;
+  }
+
+  // Reprise possible dès qu'on a au moins une source de données
+  const hasData = ref || (tracker && tracker.length) || DB_TRACKER_INITIALE.length;
+  if (hasData) {
     showAppShell();
     buildMasterData();
     initApp();
