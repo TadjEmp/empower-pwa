@@ -132,17 +132,23 @@ window.VueVisites = {
     const facteur = urgent ? 2.0 : (statut.includes('REACTIVER') ? 1.0 : 0.5);
     const caFy26  = parseCA(c.CA_FY26);
     const silence = this._semainesSilence(c);
-    // score relance = poids statut + ancienneté silence (relances anciennes prioritaires)
     const score   = facteur * 100 + (silence || 0);
+    // Dériver département depuis Code_Postal si la colonne Departement est vide
+    const dept = c.Departement || c.departement
+      || (c.Code_Postal ? String(c.Code_Postal).slice(0, 2) : '')
+      || (c.code_postal ? String(c.code_postal).slice(0, 2) : '');
     return {
       ID_Compte:     c.ID_Compte || '',
       Nom_Compte:    c.Nom_Compte || '—',
       Ville:         c.Ville || '',
+      Departement:   dept,
+      Tel:           c.Tel || '',
+      Email:         c.Email || '',
       CANAL:         c.CANAL || '',
-      caFy26,                                   // number|null
+      caFy26,
       potentiel:     c.POTENTIEL || c.Priorite || '—',
       hasEmpower:    String(c.HAS_EMPOWER || '').toUpperCase() === 'TRUE',
-      silence,                                  // number|null
+      silence,
       urgent,
       score,
       _raw:          c,
@@ -177,14 +183,99 @@ window.VueVisites = {
     this.state.formPlanif = {
       date:  dateISOLocale(now),
       heure: '09:00',
+      dureeVisite: '60',
+      objectifVisite: '',
       typeVisite: 'SUIVI_ACTIF',
       idCible: '', nomCible: '',
       horsBase: false, nomLibre: '',
+      // Champs prospect à froid (M1 + M7)
+      deptLibre: '', villeLibre: '', telLibre: '', emailLibre: '',
       commentairePrep: '',
       prochaineEtape: '',
-      // BLOC 1 — recherche dans le déroulé base commerciale
       rechercheCompte: '',
+      rechercheDept: '',
     };
+  },
+
+  // ── M7 : Conversion visite à froid → compte actif ──
+  _modalConversion: null,
+
+  ouvrirConversion(idVisite) {
+    const v = this.state.visites.find(x => x.ID_Visite === idVisite);
+    if (!v) return;
+    this._modalConversion = {
+      idVisite,
+      nomCompte: v.Nom_Compte || '',
+      departement: v.Departement || '',
+      ville: v.Ville || '',
+      tel: v.Tel || '',
+      email: v.Email || '',
+      canal: v.Canal || 'REVENDEUR',
+      note: '',
+    };
+    this.render();
+  },
+
+  fermerConversion() { this._modalConversion = null; this.render(); },
+
+  async confirmerConversion() {
+    const m = this._modalConversion;
+    if (!m || !m.nomCompte.trim()) { Toast.afficher('Nom du compte requis', 'warning'); return; }
+    // Anti-doublon
+    const normNom = normaliserNom(m.nomCompte);
+    const dejaLa = this.state.comptes.find(c => normaliserNom(c.Nom_Compte) === normNom);
+    if (dejaLa) {
+      Toast.afficher(`⚠️ "${m.nomCompte}" existe déjà dans la base (${dejaLa.ID_Compte})`, 'warning');
+      return;
+    }
+    if (this._conversionEnCours) return;
+    this._conversionEnCours = true;
+    this.render();
+    try {
+      const idCompte = genId('CPT');
+      const aujourd = dateISOLocale();
+      await SheetsAPI.ecrire('EMPOWER_MDB', '🏢_COMPTES', {
+        ID_Compte:      idCompte,
+        Nom_Compte:     m.nomCompte,
+        Departement:    m.departement,
+        Ville:          m.ville,
+        Tel:            m.tel,
+        Email:          m.email,
+        CANAL:          m.canal,
+        PIN_CDS_Assigne: Session.pin,
+        Nom_CDS:        Session.nom,
+        STATUT_COMPTE:  'ACTIF',
+        Source_Import:  'VISITE_FROID_CONVERTI',
+        ID_Visite_Origine: m.idVisite,
+        Badge_Visite_Froid: 'TRUE',
+        Note_initiale:  m.note,
+        Date_Import:    aujourd,
+        Timestamp:      new Date().toISOString(),
+      });
+      // Marquer la visite comme convertie
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', '🗺️_VISITES', m.idVisite, {
+        Flag_Converti: 'TRUE',
+        ID_Cible: idCompte,
+      });
+      const vLocal = this.state.visites.find(v => v.ID_Visite === m.idVisite);
+      if (vLocal) { vLocal.Flag_Converti = 'TRUE'; vLocal.ID_Cible = idCompte; }
+      // Notifications PIN 1000 (Tadjidine) + PIN 5000 (Alexandra)
+      for (const dest of [1000, 5000]) {
+        SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
+          ID_Notif: genId('NOTIF'), Date_Envoi: new Date().toISOString(),
+          PIN_Destinataire: dest, Type_Notif: 'CONVERSION_FROID',
+          Message: `Nouveau compte actif créé depuis visite à froid : ${m.nomCompte}`,
+          ID_Cible: idCompte, Statut_Lu: 'NON', Timestamp: new Date().toISOString(),
+        }).catch(() => {});
+      }
+      this._modalConversion = null;
+      Toast.afficher(`✅ Compte actif créé : ${m.nomCompte}`, 'succes', 5000);
+      this.render();
+    } catch(e) {
+      Toast.afficher('❌ ' + e.message, 'erreur');
+    } finally {
+      this._conversionEnCours = false;
+    }
   },
 
   get visitesJour() {
@@ -335,6 +426,7 @@ window.VueVisites = {
         ID_Visite:              genId('VIS'),
         Date:                   f.date,
         Heure:                  f.heure,
+        Duree_Prevue:           f.dureeVisite || '60',
         Semaine_ISO:            getISOWeek(new Date(f.date)),
         PIN_CDS:                Session.pin,
         Nom_CDS:                Session.nom,
@@ -342,7 +434,13 @@ window.VueVisites = {
         Nom_Compte:             nomFinal,
         Source_Visite:          sourceVisite,
         Type_Visite:            f.typeVisite,
+        Objectif_Visite:        f.objectifVisite || '',
         Statut_Visite:          'planifiée',
+        // Prospect à froid : infos de contact stockées sur la visite
+        Departement:            f.horsBase ? (f.deptLibre || '') : '',
+        Ville:                  f.horsBase ? (f.villeLibre || '') : '',
+        Tel:                    f.horsBase ? (f.telLibre || '') : '',
+        Email:                  f.horsBase ? (f.emailLibre || '') : '',
         Note_Privee:            f.commentairePrep,
         Prochaine_Action_Texte: f.prochaineEtape,
         Timestamp:              new Date().toISOString(),
@@ -594,6 +692,14 @@ window.VueVisites = {
                     onclick="VueVisites.ouvrirCR('${v.ID_Visite}')">
               ✍️ Compte-rendu
             </button>` : ''}
+          ${statut === 'réalisée' && (v.Source_Visite === 'ESI_VISITE_FROID' || v.Source_Visite === 'HORS_BASE') && String(v.Flag_Converti || '').toUpperCase() !== 'TRUE' ? `
+            <button class="btn-primaire" style="padding:8px 14px;font-size:13px;width:auto;background:var(--c-success)"
+                    onclick="VueVisites.ouvrirConversion('${v.ID_Visite}')">
+              ✨ Créer compte actif
+            </button>` : ''}
+          ${statut === 'réalisée' && String(v.Flag_Converti || '').toUpperCase() === 'TRUE' ? `
+            <span style="font-size:11px;color:var(--c-success);font-weight:700">✅ Converti en compte actif</span>
+          ` : ''}
           ${(!isPlanif && !isEnCours) ? `
             <button class="btn-secondaire" style="padding:6px 12px;font-size:12px;width:auto"
                     onclick="Router.aller('#/compte/${v.ID_Cible || ''}')">
@@ -705,6 +811,7 @@ window.VueVisites = {
       ${this._renderModalEdition()}
       ${this._renderConfirmDelete()}
       ${this._renderExtraction()}
+      ${this._renderModalConversion()}
     `;
   },
 
@@ -729,7 +836,7 @@ window.VueVisites = {
             </button>
           </div>
           ${f.horsBase
-            ? `<label>Nom du compte *
+            ? `<label>Nom de l'enseigne *
                  <input required placeholder="ex : MICRO PLUS INFORMATIQUE" value="${f.nomLibre || ''}"
                         list="froid-suggestions" autocomplete="off"
                         oninput="VueVisites.state.formPlanif.nomLibre=this.value"/>
@@ -737,33 +844,78 @@ window.VueVisites = {
                    ${this._lireProspectsFroid().map(n => `<option value="${n}">`).join('')}
                  </datalist>
                </label>
-               <div style="font-size:11px;color:var(--c-text-2);margin:-6px 0 10px;padding:6px 10px;background:var(--c-bg);border-radius:var(--radius-sm)">
-                 💡 Compte hors base : mémorisé sur cet appareil uniquement (pas ajouté à la base prospects). Réutilisable via la liste de suggestions.
+               <div style="display:flex;gap:8px">
+                 <label style="flex:1">Département *
+                   <input required placeholder="ex : 75" maxlength="3" value="${f.deptLibre || ''}"
+                          oninput="VueVisites.state.formPlanif.deptLibre=this.value"/></label>
+                 <label style="flex:2">Ville *
+                   <input required placeholder="ex : Paris" value="${f.villeLibre || ''}"
+                          oninput="VueVisites.state.formPlanif.villeLibre=this.value"/></label>
+               </div>
+               <label>Téléphone *
+                 <input required type="tel" placeholder="ex : 01 23 45 67 89" value="${f.telLibre || ''}"
+                        oninput="VueVisites.state.formPlanif.telLibre=this.value"/></label>
+               <label>Email <span style="font-weight:400;font-size:11px;color:var(--c-text-2)">(optionnel)</span>
+                 <input type="email" placeholder="contact@enseigne.fr" value="${f.emailLibre || ''}"
+                        oninput="VueVisites.state.formPlanif.emailLibre=this.value"/></label>
+               <div style="font-size:11px;color:var(--c-text-2);margin:-4px 0 10px;padding:6px 10px;background:var(--c-bg);border-radius:var(--radius-sm)">
+                 💡 Hors base : mémorisé sur cet appareil. Après la visite, vous pourrez créer ce compte dans la base.
                </div>`
             : (() => {
-              // BLOC 1 — Base commerciale : champ de recherche + déroulé scrollable trié par nom
-              const q = normaliserNom(f.rechercheCompte || '');
-              const comptesFiltres = q.length >= 2
-                ? this.comptesTries.filter(c => normaliserNom(c.Nom_Compte).includes(q) || normaliserNom(c.Ville || '').includes(q))
+              // Module 2 — Recherche par nom/ville ET par département
+              const q     = normaliserNom(f.rechercheCompte || '');
+              const qDept = (f.rechercheDept || '').trim().toLowerCase();
+              const actif = q.length >= 2 || qDept.length >= 1;
+              const comptesFiltres = actif
+                ? this.comptesTries.filter(c => {
+                    const nomOk  = q.length >= 2 ? (normaliserNom(c.Nom_Compte).includes(q) || normaliserNom(c.Ville || '').includes(q)) : true;
+                    const deptOk = qDept.length >= 1 ? (
+                      (c.Departement || '').startsWith(qDept) ||
+                      normaliserNom(c.Ville || '').includes(qDept)
+                    ) : true;
+                    return nomOk && deptOk;
+                  })
                 : [...this.state.comptes].sort((a, b) => (a.Nom_Compte || '').localeCompare(b.Nom_Compte || '', 'fr'));
+              const aucunDept = qDept.length >= 1 && comptesFiltres.length === 0;
               return `
-               <label>🔍 Rechercher dans ma base
-                 <input placeholder="Nom du compte ou ville…" value="${f.rechercheCompte || ''}"
-                        oninput="VueVisites.state.formPlanif.rechercheCompte=this.value;VueVisites.render()"
-                        style="margin-bottom:6px"/>
-               </label>
-               <label>Compte * <span style="font-size:11px;color:var(--c-text-2);font-weight:400">${q.length >= 2 ? comptesFiltres.length + ' résultat(s)' : 'trié par nom · 🔴 urgents en tête si filtré'}</span>
-                 <select required size="6" style="height:140px"
+               <div style="display:flex;gap:6px;margin-bottom:6px">
+                 <label style="flex:1;margin-bottom:0">🔍 Nom / Ville
+                   <input placeholder="Nom ou ville…" value="${f.rechercheCompte || ''}"
+                          oninput="VueVisites.state.formPlanif.rechercheCompte=this.value;VueVisites.render()"/>
+                 </label>
+                 <label style="flex:0 0 70px;margin-bottom:0">Dept
+                   <input placeholder="75…" maxlength="3" value="${f.rechercheDept || ''}"
+                          oninput="VueVisites.state.formPlanif.rechercheDept=this.value;VueVisites.render()"/>
+                 </label>
+               </div>
+               ${aucunDept ? `
+               <div style="font-size:12px;color:var(--c-text-2);padding:8px;background:var(--c-bg);border-radius:var(--radius-sm);margin-bottom:8px">
+                 Aucun compte dans ce département.
+                 <button type="button" class="btn-secondaire" style="font-size:11px;padding:4px 8px;margin-left:6px;width:auto"
+                         onclick="VueVisites.state.formPlanif.horsBase=true;VueVisites.render()">
+                   ❄️ Créer une visite à froid
+                 </button>
+               </div>` : ''}
+               <label>Compte * <span style="font-size:11px;color:var(--c-text-2);font-weight:400">${actif ? comptesFiltres.length + ' résultat(s)' : 'trié par nom · 🔴 urgents si filtré'}</span>
+                 <select required size="5" style="height:120px"
                          onchange="VueVisites.setCible(this.value, this.options[this.selectedIndex].dataset.nom)">
                    <option value="">— sélectionner —</option>
                    ${comptesFiltres.map(c =>
-                     `<option value="${c.ID_Compte}" data-nom="${c.Nom_Compte}" ${f.idCible === c.ID_Compte ? 'selected' : ''}>${c.urgent ? '🔴 ' : ''}${c.Nom_Compte}${c.Ville ? ' — ' + c.Ville : ''}${c.silence != null ? ' · ' + c.silence + 's' : ''}</option>`
+                     `<option value="${c.ID_Compte}" data-nom="${c.Nom_Compte}" ${f.idCible === c.ID_Compte ? 'selected' : ''}>${c.urgent ? '🔴 ' : ''}${c.Nom_Compte}${c.Departement ? ' [' + c.Departement + ']' : ''}${c.Ville ? ' — ' + c.Ville : ''}${c.silence != null ? ' · ' + c.silence + 's' : ''}</option>`
                    ).join('')}
                  </select>
                </label>
                ${this._ficheCompteSelectionne(f.idCible)}`;
             })()
           }
+          <label>🎯 Objectif de la visite *
+            <select required onchange="VueVisites.state.formPlanif.objectifVisite=this.value">
+              <option value="" ${!f.objectifVisite ? 'selected' : ''}>— choisir —</option>
+              ${['Présentation offre EMPOWER','Suivi commande','Démo produit','Signature contrat','Onboarding EMPOWER','Réactivation','Prospection froide','Récupérer CA perdu','Formation revendeur','Autre'].map(o =>
+                `<option value="${o}" ${f.objectifVisite === o ? 'selected' : ''}>${o}</option>`
+              ).join('')}
+            </select>
+          </label>
           <div style="display:flex;gap:10px">
             <label style="flex:2">Date *
               <input type="date" required value="${f.date}"
@@ -771,21 +923,27 @@ window.VueVisites = {
             <label style="flex:1">Heure
               <input type="time" value="${f.heure}"
                      onchange="VueVisites.state.formPlanif.heure=this.value"/></label>
+            <label style="flex:1">Durée
+              <select onchange="VueVisites.state.formPlanif.dureeVisite=this.value">
+                ${[['30','30 min'],['60','1h'],['90','1h30'],['120','2h']].map(([v,l]) =>
+                  `<option value="${v}" ${(f.dureeVisite||'60')===v?'selected':''}>${l}</option>`
+                ).join('')}
+              </select>
+            </label>
           </div>
           <label>Type de visite
             <select onchange="VueVisites.state.formPlanif.typeVisite=this.value">
-              <option value="SUIVI_ACTIF">Suivi actif</option>
-              <option value="PROSPECTION_FROIDE">Prospection froide</option>
-              <option value="ONBOARDING_EMPOWER">Onboarding EMPOWER</option>
-              <option value="REACTIVER">Réactivation</option>
+              ${[['SUIVI_ACTIF','Suivi actif'],['PROSPECTION_FROIDE','Prospection froide'],['ONBOARDING_EMPOWER','Onboarding EMPOWER'],['REACTIVER','Réactivation']].map(([v,l]) =>
+                `<option value="${v}" ${f.typeVisite===v?'selected':''}>${l}</option>`
+              ).join('')}
             </select>
           </label>
           <label>Préparation / contexte
-            <textarea rows="2" placeholder="Points à aborder, historique, contexte de la visite…"
+            <textarea rows="2" placeholder="Points à aborder, historique, contexte…"
               oninput="VueVisites.state.formPlanif.commentairePrep=this.value">${f.commentairePrep || ''}</textarea>
           </label>
           <label>Prochaine étape prévue
-            <input placeholder="ex : présenter offre NSB, démo produit, signature…" value="${f.prochaineEtape || ''}"
+            <input placeholder="ex : présenter offre NSB, démo produit…" value="${f.prochaineEtape || ''}"
                    oninput="VueVisites.state.formPlanif.prochaineEtape=this.value"/></label>
           <div class="modal-btns">
             <button type="button" onclick="VueVisites.fermerModal()">Annuler</button>
@@ -856,6 +1014,56 @@ window.VueVisites = {
           <button onclick="VueVisites.annulerSuppression()">Annuler</button>
           <button class="btn-primaire" style="background:var(--c-danger)"
                   onclick="VueVisites.confirmerSuppression()">🗑️ Confirmer la suppression</button>
+        </div>
+      </div>
+    </div>`;
+  },
+
+  // ── M7 : Modal conversion visite à froid → compte actif ──
+  _renderModalConversion() {
+    const m = this._modalConversion;
+    if (!m) return '';
+    return `
+    <div class="modal-overlay" onclick="if(event.target===this)VueVisites.fermerConversion()">
+      <div class="modal">
+        <h3>✨ Créer comme compte actif</h3>
+        <p style="font-size:13px;color:var(--c-text-2);margin-bottom:12px">Saisir les informations du compte. Il sera ajouté à votre base avec le statut ACTIF.</p>
+        <label>Nom de l'enseigne *
+          <input required value="${m.nomCompte}"
+                 oninput="VueVisites._modalConversion.nomCompte=this.value"/></label>
+        <div style="display:flex;gap:8px">
+          <label style="flex:1">Département
+            <input placeholder="ex : 75" maxlength="3" value="${m.departement}"
+                   oninput="VueVisites._modalConversion.departement=this.value"/></label>
+          <label style="flex:2">Ville
+            <input placeholder="ex : Paris" value="${m.ville}"
+                   oninput="VueVisites._modalConversion.ville=this.value"/></label>
+        </div>
+        <label>Téléphone
+          <input type="tel" value="${m.tel}"
+                 oninput="VueVisites._modalConversion.tel=this.value"/></label>
+        <label>Email
+          <input type="email" value="${m.email}"
+                 oninput="VueVisites._modalConversion.email=this.value"/></label>
+        <label>Canal
+          <select onchange="VueVisites._modalConversion.canal=this.value">
+            ${['REVENDEUR','VAR','RETAILER','DISTRIBUTEUR','AUTRE'].map(c =>
+              `<option value="${c}" ${m.canal===c?'selected':''}>${c}</option>`
+            ).join('')}
+          </select>
+        </label>
+        <label>Note
+          <textarea rows="2" placeholder="Contexte de la conversion…"
+                    oninput="VueVisites._modalConversion.note=this.value">${m.note}</textarea></label>
+        <div style="font-size:11px;color:var(--c-success);padding:8px;background:color-mix(in srgb,var(--c-success) 10%,transparent);border-radius:var(--radius-sm);margin-bottom:10px">
+          ✅ Un badge "Créé depuis visite à froid" sera attaché à ce compte. Tadjidine + Alexandra seront notifiés.
+        </div>
+        <div class="modal-btns">
+          <button type="button" onclick="VueVisites.fermerConversion()">Annuler</button>
+          <button type="button" class="btn-primaire" style="background:var(--c-success)"
+                  onclick="VueVisites.confirmerConversion()" ${this._conversionEnCours ? 'disabled' : ''}>
+            ${this._conversionEnCours ? '⏳ Création…' : '✨ Créer le compte'}
+          </button>
         </div>
       </div>
     </div>`;
