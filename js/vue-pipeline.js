@@ -66,6 +66,8 @@ window.VuePipeline = {
       filtreChannel: 'TOUS', // BLOC 7
       colonnesEtendues: {},
       modal: null,
+      exportOuvert: false,
+      exportFiltres: { debut: '', fin: '', periode: 'MOIS' },
     };
     this.render();
     try {
@@ -484,6 +486,7 @@ window.VuePipeline = {
                 </div>
                 ${l.Note_initiale ? `<div class="kanban-carte-note">${String(l.Note_initiale).slice(0, 60)}</div>` : ''}
                 ${this._retardWelcomePack(l) ? '<div class="kanban-carte-note" style="color:var(--c-danger);font-weight:600">⚠️ Welcome Pack J+14 dépassé</div>' : ''}
+                ${this._alerteSansActivite(l) ? '<div class="kanban-carte-note" style="color:var(--c-warning);font-weight:600">⏳ Sans activité >7j</div>' : ''}
                 <div class="kanban-carte-pied" style="display:flex;align-items:center;gap:4px">
                   ${l.Date_prochaine_action
                     ? `<span style="color:${estDepassee(l.Date_prochaine_action) ? 'var(--c-danger)' : 'var(--c-text-2)'}">⏰ ${dateRelative(l.Date_prochaine_action)}</span>`
@@ -501,8 +504,10 @@ window.VuePipeline = {
       </div>` : this._renderTableau(leads, voitTous)}
 
       ${peutSaisir ? '<button class="fab" onclick="VuePipeline.ouvrirSaisie()" title="Nouveau lead" style="bottom:140px">＋</button>' : ''}
+      ${(Session.estManager() || Session.estChannel()) ? `<button class="fab" onclick="VuePipeline.ouvrirExport()" title="Export Excel" style="bottom:210px;background:var(--c-success);font-size:18px">📥</button>` : ''}
       ${NavBar('tracker')}
       ${this._renderModal()}
+      ${this._renderPanneauExport()}
     `;
   },
 
@@ -837,4 +842,116 @@ window.VuePipeline = {
       this.render();
     } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
   },
+  // ── Module 8 : Alerte sans activité >7 jours ──
+  _alerteSansActivite(l) {
+    // Alerte uniquement sur les leads EN_COURS ou ASSIGNE (pas ARCHIVE/INTEGRE)
+    if (['ARCHIVE', 'INTEGRE', 'SAISIE'].includes(l._statut)) return false;
+    const ref = l.Date_prochaine_action || l.Timestamp || l.Date_Import;
+    if (!ref) return true;
+    return (Date.now() - new Date(ref).getTime()) / 86400000 > 7;
+  },
+
+  // ── Module 9 : Export Excel ADMIN + CHANNEL_MANAGER ──
+  ouvrirExport()  { this.state.exportOuvert = true; this.render(); },
+  fermerExport()  { this.state.exportOuvert = false; this.render(); },
+
+  _colonnesExport() {
+    return [
+      { key: 'Nom_Compte',          label: 'Nom',          cat: 'Identité' },
+      { key: 'Ville',               label: 'Ville',        cat: 'Identité' },
+      { key: 'CANAL',               label: 'Canal',        cat: 'Identité' },
+      { key: 'POTENTIEL',           label: 'Potentiel',    cat: 'Scoring' },
+      { key: 'STATUT_EMPOWER',      label: 'Statut',       cat: 'Pipeline' },
+      { key: 'FLAG_ACTION',         label: 'Flag action',  cat: 'Pipeline' },
+      { key: '_cdsNom',             label: 'CDS',          cat: 'Pipeline' },
+      { key: 'Date_prochaine_action', label: 'Prochaine action', cat: 'Activité' },
+      { key: 'Note_initiale',       label: 'Notes',        cat: 'Activité' },
+      { key: 'WELCOME_PACK_DATE',   label: 'Welcome Pack', cat: 'Activité' },
+      { key: 'PREMIERE_COMMANDE_DATE', label: 'Première commande', cat: 'Résultats' },
+      { key: 'ORIGINE',             label: 'Origine',      cat: 'Identité' },
+      { key: 'Timestamp',           label: 'Date création', cat: 'Identité' },
+    ];
+  },
+
+  exporterExcel() {
+    if (typeof XLSX === 'undefined') {
+      Toast.afficher('❌ Bibliothèque Excel non chargée (SheetJS)', 'erreur');
+      return;
+    }
+    const f = this.state.exportFiltres;
+    const colonnes = this._colonnesExport();
+    const colonnesActives = document.querySelectorAll('#export-col-chk:checked');
+    const colKeys = new Set(colonnesActives.length
+      ? [...colonnesActives].map(el => el.value)
+      : colonnes.map(c => c.key));
+
+    let data = [...this.state.leads];
+    if (f.debut) data = data.filter(l => (l.Timestamp||l.Date_Import||'').slice(0,10) >= f.debut);
+    if (f.fin)   data = data.filter(l => (l.Timestamp||l.Date_Import||'').slice(0,10) <= f.fin);
+
+    if (!data.length) { Toast.afficher('Aucun lead pour cette période', 'warning'); return; }
+
+    const header = colonnes.filter(c => colKeys.has(c.key)).map(c => c.label);
+    const rows = data.map(l => {
+      const enriched = { ...l, _cdsNom: this._nomCDS(l.PIN_CDS_Assigne) };
+      return colonnes.filter(c => colKeys.has(c.key)).map(c => {
+        const v = enriched[c.key];
+        if (v === undefined || v === null || v === '') return '';
+        if (c.key.startsWith('Date') || c.key.endsWith('_DATE') || c.key === 'Timestamp') {
+          const d = new Date(v);
+          return isNaN(d.getTime()) ? v : d.toLocaleDateString('fr-FR');
+        }
+        return String(v);
+      });
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Leads');
+    const today = new Date().toISOString().slice(0,10);
+    XLSX.writeFile(wb, `EMPOWER_Leads_${today}.xlsx`);
+    this.fermerExport();
+    Toast.afficher('✅ Export Excel téléchargé', 'succes');
+  },
+
+  _renderPanneauExport() {
+    if (!this.state.exportOuvert) return '';
+    const f = this.state.exportFiltres;
+    const colonnes = this._colonnesExport();
+    const cats = [...new Set(colonnes.map(c => c.cat))];
+    return `
+    <div class="modal-overlay" onclick="if(event.target===this)VuePipeline.fermerExport()">
+      <div class="modal" style="max-width:440px">
+        <h3>📥 Export Excel — EMPOWER Leads</h3>
+        <div style="display:flex;gap:10px;margin-bottom:10px">
+          <label style="flex:1">Date début
+            <input type="date" value="${f.debut}" onchange="VuePipeline.state.exportFiltres.debut=this.value;VuePipeline.render()"/></label>
+          <label style="flex:1">Date fin
+            <input type="date" value="${f.fin}" onchange="VuePipeline.state.exportFiltres.fin=this.value;VuePipeline.render()"/></label>
+        </div>
+        <div style="margin-bottom:12px">
+          <div style="font-size:12px;font-weight:700;color:var(--c-text-2);margin-bottom:8px;text-transform:uppercase">Colonnes à exporter</div>
+          ${cats.map(cat => `
+          <div style="margin-bottom:6px">
+            <div style="font-size:11px;color:var(--c-text-2);margin-bottom:4px">${cat}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px">
+              ${colonnes.filter(c => c.cat === cat).map(c => `
+              <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:3px 8px;border:1px solid var(--c-border);border-radius:4px;background:var(--c-bg)">
+                <input type="checkbox" id="export-col-chk" value="${c.key}" checked style="margin:0"/> ${c.label}
+              </label>`).join('')}
+            </div>
+          </div>`).join('')}
+        </div>
+        <div style="font-size:12px;color:var(--c-text-2);margin-bottom:10px;padding:8px;background:var(--c-bg);border-radius:var(--radius-sm)">
+          ${this.state.leads.length} lead(s) total · CDS: non visible dans ce rôle
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-secondaire" style="flex:1" onclick="VuePipeline.fermerExport()">Annuler</button>
+          <button class="btn-primaire" style="flex:2;background:var(--c-success)" onclick="VuePipeline.exporterExcel()">📥 Télécharger .xlsx</button>
+        </div>
+        <p style="font-size:11px;color:var(--c-text-2);margin-top:8px;text-align:center">Export côté client · aucune donnée envoyée au serveur</p>
+      </div>
+    </div>`;
+  },
+
 };
