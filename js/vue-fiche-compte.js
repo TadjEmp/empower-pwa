@@ -99,7 +99,8 @@ window.VueFicheCompte = {
         <div class="bloc-fiche">
           <div class="bloc-titre">Identité</div>
           <div class="grille-identite">
-            <div class="id-ligne"><span>Ville</span><strong>${c.Ville || '—'} ${c.Code_Postal || ''}</strong></div>
+            <div class="id-ligne"><span>Ville</span><strong>${c.Ville || '—'}${c.Code_Postal ? ' (' + c.Code_Postal + ')' : ''}</strong></div>
+            ${(c.Departement || c.Code_Postal) ? '<div class="id-ligne"><span>Département</span><strong>' + (c.Departement || (c.Code_Postal ? String(c.Code_Postal).slice(0,2) : '—')) + '</strong></div>' : ''}
             <div class="id-ligne"><span>Canal / Secteur</span><strong>${c.CANAL || '—'} · ${c.SECTEUR || '—'}</strong></div>
             <div class="id-ligne"><span>Téléphone</span><strong>${c.Tel ? `<a class="lien-tel" href="tel:${c.Tel.replace(/\s/g,'')}">${c.Tel}</a>` : '—'}</strong></div>
             <div class="id-ligne"><span>Email</span><strong>${c.Email ? `<a class="lien-email" href="mailto:${c.Email}">${c.Email}</a>` : '—'}</strong></div>
@@ -173,7 +174,7 @@ window.VueFicheCompte = {
       <div class="barre-actions-fixe">
         <button class="btn-action btn-visite" onclick="Router.aller('#/questionnaire/${c.ID_Compte}')">📋 Visite</button>
         <button class="btn-action btn-appel" onclick="Router.aller('#/phoning/${c.ID_Compte}')">📞 Appeler</button>
-        <button class="btn-action btn-planning" onclick="Toast.afficher('🗓️ Planning — bientôt disponible','info')">🗓️ Planifier</button>
+        <button class="btn-action btn-planning" onclick="VueVisites.state.formPlanif=VueVisites.state.formPlanif||{};VueVisites.ouvrirModal();Router.aller('#/visites')">🗓️ Planifier</button>
       </div>
     `;
   },
