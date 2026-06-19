@@ -19,6 +19,9 @@ window.VuePhoning = {
       filtreListe: 'TOUS',
       recherche: '', rechercheBase: '', script: '', scriptEnCours: false,
       enregistre: false, transcription: '', qualif: null,
+      froidsMode: false,
+      froidsFields: { nom: '', dept: '', ville: '', tel: '', email: '' },
+      brouillonSauvegarde: false,
       d: {
         objectif: '', accroche: '',
         statutAppel: '', interetEmpower: '', frein: '',
@@ -85,6 +88,7 @@ window.VuePhoning = {
           };
         }
       }
+      this._restaurerBrouillon();
       this.state.chargement = false;
       this.render();
     } catch(e) {
@@ -135,6 +139,37 @@ window.VuePhoning = {
       // 3. Par potentiel Fort > Moyen > Faible
       return (potOrdre[a.POTENTIEL] ?? 1) - (potOrdre[b.POTENTIEL] ?? 1);
     });
+  },
+
+  // ── Module 3 : Draft localStorage ──
+  _CLE_BROUILLON: 'esi_phoning_brouillon',
+
+  _sauvegarderBrouillon() {
+    const s = this.state;
+    const b = { objectif: s.d.objectif, accroche: s.d.accroche, recherche: s.recherche,
+                froidsFields: s.froidsFields, froidsMode: s.froidsMode };
+    try { localStorage.setItem(this._CLE_BROUILLON, JSON.stringify(b)); s.brouillonSauvegarde = true; } catch {}
+  },
+
+  _restaurerBrouillon() {
+    try {
+      const raw = localStorage.getItem(this._CLE_BROUILLON);
+      if (!raw) return;
+      const b = JSON.parse(raw);
+      if (b.objectif || b.froidsMode || (b.froidsFields && b.froidsFields.nom)) {
+        this.state.d.objectif = b.objectif || '';
+        this.state.d.accroche = b.accroche || '';
+        this.state.recherche  = b.recherche || '';
+        this.state.froidsFields = b.froidsFields || { nom: '', dept: '', ville: '', tel: '', email: '' };
+        this.state.froidsMode   = !!b.froidsMode;
+        this.state.brouillonSauvegarde = true;
+      }
+    } catch {}
+  },
+
+  _effacerBrouillon() {
+    try { localStorage.removeItem(this._CLE_BROUILLON); } catch {}
+    if (this.state) this.state.brouillonSauvegarde = false;
   },
 
   setSource(s)  { this.state.typeSource = s; this.state.cible = null; this.state.recherche = ''; this.render(); },
@@ -259,12 +294,28 @@ window.VuePhoning = {
   },
 
   demarrerAppel() {
-    // BLOC 3 — ÉTAPE 1 obligatoire : compte + objectif avant de lancer l'appel.
-    if (!this.state.cible) { Toast.afficher('Sélectionnez un compte', 'warning'); return; }
-    if (!String(this.state.d.objectif || '').trim()) {
-      Toast.afficher('Indiquez l\'objectif de l\'appel avant de continuer', 'warning'); return;
+    const s = this.state;
+    if (!String(s.d.objectif || '').trim()) {
+      Toast.afficher("Indiquez l'objectif de l'appel avant de continuer", 'warning'); return;
     }
-    this.state.phase = 'CALL';
+    if (s.froidsMode) {
+      if (!s.froidsFields.nom.trim()) { Toast.afficher('Nom de l\'enseigne requis', 'warning'); return; }
+      if (!s.froidsFields.tel.trim()) { Toast.afficher('Téléphone requis', 'warning'); return; }
+      // Créer une cible virtuelle pour le flux CALL/POST
+      s.cible = {
+        ID_Compte: 'FROID_' + Date.now(),
+        Nom_Compte: s.froidsFields.nom.trim(),
+        Tel: s.froidsFields.tel.trim(),
+        Email: s.froidsFields.email.trim(),
+        Ville: s.froidsFields.ville.trim(),
+        Departement: s.froidsFields.dept.trim(),
+        STATUT_COMPTE: 'FROID',
+        _isFroid: true,
+      };
+    } else {
+      if (!s.cible) { Toast.afficher('Sélectionnez un compte', 'warning'); return; }
+    }
+    s.phase = 'CALL';
     this.render();
   },
 
@@ -453,6 +504,7 @@ window.VuePhoning = {
         A_VISITER:      '📍 Prospect marqué <strong>À VISITER</strong> — planifier une visite terrain',
       }[d.resultatProspect] || '';
 
+      this._effacerBrouillon();
       document.getElementById('app').innerHTML = `
         <div class="visite-succes">
           <div class="succes-icone">📞</div>
@@ -897,6 +949,40 @@ window.VuePhoning = {
     const silence = this._semainesSilence();
 
     return `<div class="q-champs">
+      ${s.brouillonSauvegarde ? `<div style="font-size:11px;color:var(--c-text-2);display:flex;align-items:center;gap:6px;margin-bottom:8px;padding:6px 10px;background:var(--c-bg);border-radius:var(--radius-sm)">
+        💾 Brouillon sauvegardé
+        <button type="button" style="margin-left:auto;font-size:11px;padding:2px 8px;border:1px solid var(--c-border);border-radius:4px;background:none;cursor:pointer;color:var(--c-danger)"
+                onclick="VuePhoning._effacerBrouillon();VuePhoning.render()">Effacer</button>
+      </div>` : ''}
+      <!-- Module 3 : toggle Compte existant / Appel à froid -->
+      <div style="display:flex;gap:6px;margin-bottom:12px">
+        <button type="button" class="btn-filtre ${!s.froidsMode ? 'actif' : ''}"
+                onclick="VuePhoning.state.froidsMode=false;VuePhoning.render()">🏢 Compte existant</button>
+        <button type="button" class="btn-filtre ${s.froidsMode ? 'actif' : ''}"
+                onclick="VuePhoning.state.froidsMode=true;VuePhoning.render()">❄️ Appel à froid</button>
+      </div>
+      ${s.froidsMode ? `
+        <label class="q-label">Nom de l'enseigne *
+          <input class="q-input" required placeholder="ex : MICRO PLUS INFORMATIQUE" value="${s.froidsFields.nom}"
+                 oninput="VuePhoning.state.froidsFields.nom=this.value;VuePhoning._sauvegarderBrouillon()"/></label>
+        <div style="display:flex;gap:8px">
+          <label class="q-label" style="flex:1">Département *
+            <input class="q-input" placeholder="75" maxlength="3" required value="${s.froidsFields.dept}"
+                   oninput="VuePhoning.state.froidsFields.dept=this.value;VuePhoning._sauvegarderBrouillon()"/></label>
+          <label class="q-label" style="flex:2">Ville *
+            <input class="q-input" placeholder="Paris" required value="${s.froidsFields.ville}"
+                   oninput="VuePhoning.state.froidsFields.ville=this.value;VuePhoning._sauvegarderBrouillon()"/></label>
+        </div>
+        <label class="q-label">Téléphone *
+          <input class="q-input" type="tel" required placeholder="01 23 45 67 89" value="${s.froidsFields.tel}"
+                 oninput="VuePhoning.state.froidsFields.tel=this.value;VuePhoning._sauvegarderBrouillon()"/></label>
+        <label class="q-label">Email <span style="font-size:11px;font-weight:400">(optionnel)</span>
+          <input class="q-input" type="email" placeholder="contact@enseigne.fr" value="${s.froidsFields.email}"
+                 oninput="VuePhoning.state.froidsFields.email=this.value;VuePhoning._sauvegarderBrouillon()"/></label>
+        <div style="font-size:11px;color:var(--c-text-2);margin:-4px 0 10px;padding:6px;background:var(--c-bg);border-radius:var(--radius-sm)">
+          ❄️ Appel à froid : non enregistré dans la base prospects. Enregistré uniquement dans le journal phoning.
+        </div>
+      ` : `
       ${s.idPlanifEnCours && s.cible ? `
       <div style="background:var(--c-surface);border:1.5px solid var(--c-primary);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
         <span style="font-size:20px">📋</span>
@@ -919,21 +1005,33 @@ window.VuePhoning = {
         ${s.cible.Tel ? `<div class="q-recap-ligne"><span>Téléphone</span><strong><a class="lien-tel" href="tel:${String(s.cible.Tel).replace(/\s/g, '')}">${s.cible.Tel}</a></strong></div>` : ''}
         ${s.cible.Note_initiale ? `<div style="font-size:12px;color:var(--c-text-2);padding-top:6px;font-style:italic">${String(s.cible.Note_initiale).slice(0, 100)}</div>` : ''}
       </div>` : ''}
-      <label class="q-label">Objectif de l'appel
-        <input class="q-input" placeholder="ex : relancer commande Q2" value="${d.objectif}" oninput="VuePhoning.set('objectif', this.value)"/></label>
+      `}
+      <label class="q-label">Objectif de l'appel *
+        <input class="q-input" placeholder="ex : relancer commande Q2" value="${d.objectif}"
+               oninput="VuePhoning.set('objectif', this.value);VuePhoning._sauvegarderBrouillon()"/></label>
 
+      ${!s.froidsMode ? `
       <button type="button" class="btn-secondaire" onclick="VuePhoning.genererScript()"
               ${s.scriptEnCours ? 'disabled' : ''}>
         ${s.scriptEnCours ? '🤖 Génération…' : '🤖 Générer un script d\'accroche IA'}
       </button>
-      ${s.script ? `<div class="q-recap"><h3>📜 Script suggéré</h3>
-        <p style="font-size:13px;line-height:1.6;white-space:pre-wrap">${s.script}</p></div>` : ''}
+      ${s.script ? '<div class="q-recap"><h3>📜 Script suggéré</h3>' +
+        '<p style="font-size:13px;line-height:1.6;white-space:pre-wrap">' + s.script + '</p></div>' : ''}
+      ` : ''}
 
-      ${!s.cible || !String(d.objectif || '').trim()
-        ? `<div style="font-size:11px;color:var(--c-text-2);text-align:center;margin-top:4px">Sélectionnez un compte et saisissez un objectif pour activer l'appel.</div>`
-        : ''}
+      ${s.froidsMode
+        ? (!s.froidsFields.nom.trim() || !s.froidsFields.tel.trim() || !String(d.objectif||'').trim()
+            ? `<div style="font-size:11px;color:var(--c-text-2);text-align:center;margin-top:4px">Renseignez le nom, téléphone et objectif pour continuer.</div>`
+            : '')
+        : (!s.cible || !String(d.objectif || '').trim()
+            ? `<div style="font-size:11px;color:var(--c-text-2);text-align:center;margin-top:4px">Sélectionnez un compte et saisissez un objectif pour activer l'appel.</div>`
+            : '')
+      }
       <button type="button" class="btn-primaire" onclick="VuePhoning.demarrerAppel()"
-              ${!s.cible || !String(d.objectif || '').trim() ? 'disabled style="opacity:.5;cursor:not-allowed"' : ''}>📞 Démarrer l'appel →</button>
+              ${(s.froidsMode
+                  ? (!s.froidsFields.nom.trim() || !s.froidsFields.tel.trim() || !String(d.objectif||'').trim())
+                  : (!s.cible || !String(d.objectif || '').trim()))
+                ? 'disabled style="opacity:.5;cursor:not-allowed"' : ''}>📞 Démarrer l'appel →</button>
     </div>`;
   },
 
