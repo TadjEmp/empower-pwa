@@ -1,65 +1,79 @@
 /* ═══════════════════════════════════════
-   base.css — Design System EMPOWER v4.1
+   base.css — Design System EMPOWER v5.0
+   Dark theme · Marvesting + Norton tokens
    ═══════════════════════════════════════ */
 
 :root {
-  /* ── Norton ISM Universal — tokens officiels ── */
-  --color-primary:      #ad3131;   /* ISM brand primary */
-  --color-cta:          #FF6D68;   /* ISM Coral — boutons primaires UNIQUEMENT */
-  --color-nav:          #0050FF;   /* Norton Blue — navigation + focus */
-  --color-bg:           #f6faff;   /* Fond global */
-  --color-surface:      #FFFFFF;   /* Cards */
-  --color-surface-alt:  #F5F5F7;   /* Sidebar, blocs secondaires */
-  --color-text:         #121d25;
-  --color-text-premium: #0E0D30;   /* Titres hero */
-  --color-border:       #E8E8ED;
-  --color-accent:       #4D9EFF;
-  --color-error:        #FA0000;
+  /* ── Brand Marvesting — identité principale ── */
+  --brand-marvesting:       #ED2567;
+  --brand-marvesting-soft:  #FF6D68;
+  --brand-marvesting-alert: #FF1209;
+  --brand-marvesting-dark:  #343F48;
 
-  /* ── Aliases internes (rétro-compat) ── */
-  --c-primary:   #0050FF;
-  --c-primary-d: #0037b8;
-  --c-cta:       #FF6D68;
-  --c-cta-d:     #e85550;
-  --c-accent:    #4D9EFF;
-  --c-accent-soft: #A8C8FF;
-  --c-success:   #00b27e;
-  --c-warning:   #f59e0b;
-  --c-danger:    #FA0000;
-  --c-bg:        #f6faff;          /* fond global */
-  --c-surface:   #ffffff;
-  --c-surface-alt: #F5F5F7;
-  --c-text:      #121d25;
-  --c-title:     #0E0D30;
-  --c-text-2:    #626264;
-  --c-border:    #E8E8ED;
-  --radius:      8px;
-  --radius-btn:  6px;
-  --radius-sm:   4px;
-  --shadow:      0 2px 8px rgba(14,13,48,.08);
-  --shadow-lg:   0 4px 20px rgba(14,13,48,.12);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --header-h:    56px;
-  --nav-h:       68px;
-  --font:        'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* ── Brand Norton — validation & confiance ── */
+  --brand-norton:         #FFE01A;
+  --brand-norton-dark:    #000000;
+  --brand-norton-neutral: #9A9A9A;
 
-  /* ── Tokens DASHBOARD_W09 (premium) ── */
+  /* ── Base UI — dark navy ── */
+  --color-bg:           #0F172A;
+  --color-surface:      #1E293B;
+  --color-surface-alt:  #334155;
+  --color-text:         #F8FAFC;
+  --color-text-premium: #E2E8F0;
+  --color-border:       #334155;
+  --color-accent:       #FFE01A;
+  --color-error:        #EF4444;
+  --color-primary:      #ED2567;
+  --color-cta:          #FF6D68;
+  --color-nav:          #ED2567;
+
+  /* ── Aliases internes ── */
+  --c-primary:     #ED2567;   /* Marvesting */
+  --c-primary-d:   #c41d52;
+  --c-cta:         #FF6D68;   /* Coral */
+  --c-cta-d:       #e85550;
+  --c-accent:      #FFE01A;   /* Norton yellow */
+  --c-accent-soft: #FFF176;
+  --c-success:     #10B981;
+  --c-warning:     #F59E0B;
+  --c-danger:      #EF4444;
+  --c-bg:          #0F172A;
+  --c-surface:     #1E293B;
+  --c-surface-alt: #334155;
+  --c-text:        #F8FAFC;
+  --c-title:       #F1F5F9;   /* Titres — clair sur fond sombre */
+  --c-text-2:      #94A3B8;
+  --c-border:      #334155;
+  --radius:        12px;
+  --radius-btn:    8px;
+  --radius-sm:     6px;
+  --shadow:        0 2px 12px rgba(0,0,0,.35);
+  --shadow-lg:     0 4px 24px rgba(0,0,0,.5);
+  --safe-bottom:   env(safe-area-inset-bottom, 0px);
+  --header-h:      56px;
+  --nav-h:         68px;
+  --font:          'Montserrat', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* ── Tokens secondaires (rétro-compat) ── */
   --c-secondary:     #FF6D68;
   --c-norton-red:    #FF5F5A;
-  --c-ism-dark:      #343D46;
-  --c-cream:         #FAF7F2;
-  --c-cream-border:  #F5F0E8;
-  --c-on-bg:         #141c25;
-  --c-muted:         #6b7280;
-  --c-surface-2:     #f8f9fa;
-  --c-outline:       #e2e4ec;
-  --c-primary-light: #b7c4ff;
-  /* statuts tintés (soft bg + texte coloré) façon réf */
-  --st-green-bg:  #d1fae5; --st-green-fg:  #065f46;
-  --st-blue-bg:   #dbeafe; --st-blue-fg:   #1e40af;
-  --st-orange-bg: #ffedd5; --st-orange-fg: #c2410c;
-  --st-red-bg:    #fee2e2; --st-red-fg:    #991b1b;
-  --st-gray-bg:   #f3f4f6; --st-gray-fg:   #374151;
+  --c-ism-dark:      #1E293B;
+  --c-cream:         #1E293B;
+  --c-cream-border:  #334155;
+  --c-on-bg:         #F8FAFC;
+  --c-muted:         #94A3B8;
+  --c-surface-2:     #334155;
+  --c-outline:       #475569;
+  --c-primary-light: #f9a8c4;
+  --c-primary-10:    rgba(237,37,103,.12);
+
+  /* ── Statuts tintés — dark mode ── */
+  --st-green-bg:  rgba(16,185,129,.15);  --st-green-fg:  #34d399;
+  --st-blue-bg:   rgba(59,130,246,.15);  --st-blue-fg:   #93c5fd;
+  --st-orange-bg: rgba(245,158,11,.15);  --st-orange-fg: #fbbf24;
+  --st-red-bg:    rgba(239,68,68,.15);   --st-red-fg:    #f87171;
+  --st-gray-bg:   rgba(148,163,184,.15); --st-gray-fg:   #cbd5e1;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -329,8 +343,9 @@ body {
     top: 0; bottom: 0; right: auto; width: 240px;
     flex-direction: column; justify-content: flex-start;
     overflow: visible; gap: 4px;
-    background: var(--c-title); border-top: none;
-    padding: 20px 12px; box-shadow: none;
+    background: var(--c-surface); border-top: none;
+    border-right: 1px solid var(--c-border);
+    padding: 20px 12px; box-shadow: var(--shadow-lg);
   }
   .nav-logo {
     display: flex; align-items: center; gap: 10px;
@@ -352,11 +367,11 @@ body {
   .nav-item {
     flex-direction: row; gap: 10px; width: 100%; min-width: unset;
     padding: 11px 14px; border-radius: var(--radius-btn);
-    color: #A8C8FF; font-size: 14px; justify-content: flex-start;
+    color: var(--c-text-2); font-size: 14px; justify-content: flex-start;
     white-space: normal;
   }
-  .nav-item:hover { background: rgba(255,255,255,.08); }
-  .nav-item.actif { background: var(--c-cta); color: #fff; }
+  .nav-item:hover { background: rgba(237,37,103,.10); color: var(--c-primary); }
+  .nav-item.actif { background: var(--c-primary); color: #fff; }
   #app:has(.nav-principale) { padding-left: 240px; }
   body:has(.nav-principale) .barre-actions-fixe,
   body:has(.nav-principale) .q-nav-fixe { left: 240px; }
