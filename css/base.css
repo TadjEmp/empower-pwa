@@ -172,9 +172,10 @@ body {
   background: linear-gradient(160deg, #0E0D30 0%, #16233f 55%, #0a1428 100%);
 }
 .login-carte {
-  background: #fff; border-radius: 16px;
+  background: var(--c-surface); border-radius: 16px;
   padding: 32px 24px 24px; width: 100%; max-width: 360px;
-  box-shadow: 0 8px 40px rgba(0,0,0,.40);
+  box-shadow: 0 8px 40px rgba(0,0,0,.60);
+  border: 1px solid var(--c-border);
   display: flex; flex-direction: column; gap: 0;
 }
 /* Norton hero */
@@ -182,10 +183,10 @@ body {
   display: flex; align-items: center; gap: 10px;
   margin-bottom: 14px;
 }
-.login-norton-mark { width: 46px; height: 46px; flex-shrink: 0; color: #272727; }
+.login-norton-mark { width: 46px; height: 46px; flex-shrink: 0; color: var(--c-title); }
 .login-norton-mark .norton-mark { width: 100%; height: 100%; }
 .login-norton-word {
-  font-size: 38px; font-weight: 900; color: #272727;
+  font-size: 38px; font-weight: 900; color: var(--c-title);
   letter-spacing: -1px; line-height: 1;
   font-family: var(--font);
 }
@@ -202,7 +203,7 @@ body {
   background: var(--c-bg); border: 1.5px solid transparent;
   border-radius: var(--radius); padding: 0 14px;
 }
-.login-champ:focus-within { border-color: var(--c-primary); box-shadow: 0 0 0 2px var(--c-accent-soft); background: #fff; }
+.login-champ:focus-within { border-color: var(--c-primary); box-shadow: 0 0 0 3px rgba(237,37,103,.20); background: var(--c-surface-alt); }
 .login-champ .champ-icone { font-size: 16px; color: var(--c-text-2); flex-shrink: 0; }
 .login-champ input {
   flex: 1; border: none; outline: none; background: transparent;
@@ -217,13 +218,15 @@ body {
 .login-oubli { font-size: 12px; color: var(--c-primary); font-weight: 600; text-align: right; text-decoration: none; }
 .login-erreur { color: var(--c-danger); font-size: 13px; text-align: center; }
 .btn-login {
-  background: var(--c-cta); color: #fff;
+  background: var(--c-primary); color: #fff;
   border: none; border-radius: var(--radius);
   padding: 14px; font-size: 15px; font-weight: 700;
   cursor: pointer; margin-top: 4px;
+  transition: background .15s;
 }
+.btn-login:hover { background: var(--c-primary-d); }
 .btn-login:active { transform: scale(.98); }
-.login-marvesting { height: 16px; width: auto; margin: 18px auto 0; display: block; opacity: .55; }
+.login-marvesting { height: 16px; width: auto; margin: 18px auto 0; display: block; opacity: .75; filter: brightness(0) invert(1); }
 .login-aide { margin-top: 20px; text-align: center; color: #8a96ad; font-size: 12px; line-height: 1.8; }
 
 /* ── Spinner centré ── */
@@ -495,7 +498,7 @@ body {
   box-shadow: 0 1px 3px rgba(20,28,37,.06);
   transition: transform .15s, box-shadow .15s;
 }
-.kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px -4px rgba(0,80,255,.13); }
+.kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px -4px rgba(237,37,103,.15); }
 .kpi-card .kpi-accent {
   position: absolute; top: 0; left: 0; width: 5px; height: 100%;
   border-radius: 16px 0 0 16px; background: var(--c-primary);
@@ -544,7 +547,7 @@ body {
 .pill-orange  { background: var(--st-orange-bg); color: var(--st-orange-fg); }
 .pill-red     { background: var(--st-red-bg);    color: var(--st-red-fg); }
 .pill-gray    { background: var(--st-gray-bg);   color: var(--st-gray-fg); }
-.pill-primary { background: rgba(0,80,255,.10);  color: var(--c-primary); }
+.pill-primary { background: rgba(237,37,103,.12); color: var(--c-primary); }
 .pill-coral   { background: rgba(255,109,104,.14); color: #e85550; }
 
 /* ── Barres de progression premium (animées) façon réf bar-fill ── */
@@ -573,7 +576,7 @@ body {
 .tab-btn-premium:hover { background: var(--c-cream); }
 .tab-btn-premium.actif {
   background: var(--c-primary); color: #fff; border-color: var(--c-primary);
-  box-shadow: 0 4px 12px -2px rgba(0,80,255,.30);
+  box-shadow: 0 4px 12px -2px rgba(237,37,103,.30);
 }
 .tab-num {
   font-size: 10px; padding: 2px 6px; border-radius: 6px;
@@ -608,7 +611,7 @@ body {
   }
   .desktop-table-data-view tbody tr:last-child td { border-bottom: none; }
   .desktop-table-data-view tbody tr { transition: background .12s; }
-  .desktop-table-data-view tbody tr:hover { background: rgba(0,80,255,.04); }
+  .desktop-table-data-view tbody tr:hover { background: rgba(237,37,103,.06); }
   .desktop-table-data-view th {
     font-size: 10px; font-weight: 800; text-transform: uppercase;
     letter-spacing: .06em; color: var(--c-text-2);
