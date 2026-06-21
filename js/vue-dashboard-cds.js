@@ -547,6 +547,9 @@ window.VueDashboardCDS = {
           <button class="raccourci" onclick="Router.aller('#/admin')">⚙️<span>Admin</span></button>` : ''}
         </div>
       </div>
+      <button title="Planifier une visite"
+              onclick="VueVisites.ouvrirModal();Router.aller('#/visites')"
+              style="position:fixed;bottom:72px;right:16px;width:52px;height:52px;border-radius:50%;background:var(--c-primary);color:#fff;font-size:26px;border:none;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.35);z-index:999;display:flex;align-items:center;justify-content:center;line-height:1">+</button>
       ${NavBar('home')}
     `;
   },
