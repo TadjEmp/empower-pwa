@@ -20,6 +20,7 @@ window.VueAdmin = {
       importResultat: null,
       syncSellInEnCours: false,
       syncSellInResultat: null,
+      syncSellInNonMatcher: [],
       suivi: { chargement: false, leads: [], filtreStatut: 'TOUS', filtreCDS: 'TOUS' },
       // BLOC 10 — filtre Pickup Date pour exports (manager + channel)
       filtrePickupDe: '',
@@ -412,24 +413,26 @@ window.VueAdmin = {
 
   async syncSellIn() {
     if (this.state.syncSellInEnCours) return;
-    const ok = confirm('📊 Synchroniser les données sell-in depuis Drive ?\n\nCela met à jour les CA (FY25, FY26, Q1FY27) et les canaux dans Comptes Historiques et 🏢_COMPTES.');
+    const ok = confirm('📊 Synchroniser les données Sell-In depuis Google Drive ?\n\nCela met à jour les CA (FY25, FY26, Q1FY27) et les statuts dans Comptes.');
     if (!ok) return;
     this.state.syncSellInEnCours  = true;
     this.state.syncSellInResultat = null;
+    this.state.syncSellInNonMatcher = [];
     this.render();
     try {
-      const data = await SheetsAPI._fetchRetry(SheetsAPI.BASE_URL, 'POST', 2,
-        { action: 'syncSellInDrive', token: SheetsAPI.TOKEN });
-      if (!data.ok) throw new Error(data.erreur || 'Erreur Apps Script');
-      this.state.syncSellInResultat = { ok: true, message: data.message };
-      Toast.afficher(`✅ ${data.revendeurs} revendeurs · ${data.comptesMaj} comptes mis à jour`, 'succes', 6000);
-      await Promise.all([
-        SheetsAPI.viderCache('V17', '📋 COMPTES HISTORIQUES'),
-        SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES'),
-      ]);
+      const { data, error } = await SheetsAPI._sb.functions.invoke('sync-sellin', { method: 'POST' });
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.error || 'Erreur Edge Function sync-sellin');
+      const matched   = data.comptesMisAJour ?? data.sellinLignes ?? '?';
+      const nonMatch  = Array.isArray(data.nonMatcher) ? data.nonMatcher : [];
+      const ts        = data.timestamp ? new Date(data.timestamp).toLocaleString('fr-FR') : '';
+      this.state.syncSellInResultat   = { ok: true, matched, nonMatch: nonMatch.length, ts };
+      this.state.syncSellInNonMatcher = nonMatch;
+      Toast.afficher(`✅ Sell-In synchronisé — ${matched} comptes mis à jour`, 'succes', 6000);
+      await SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES');
     } catch(e) {
-      this.state.syncSellInResultat = { ok: false, message: e.message };
-      Toast.afficher('❌ Sync sell-in : ' + e.message, 'erreur');
+      this.state.syncSellInResultat = { ok: false, message: e.message || String(e) };
+      Toast.afficher('❌ Sync sell-in : ' + (e.message || e), 'erreur');
     }
     this.state.syncSellInEnCours = false;
     this.render();
@@ -907,26 +910,48 @@ window.VueAdmin = {
 
         <!-- SYNC SELL-IN -->
         <div class="bloc-fiche">
-          <div class="bloc-titre">📊 Synchroniser données Sell-In</div>
+          <div class="bloc-titre">📊 Synchronisation Sell-In</div>
           <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">
-            Met à jour les CA (FY25, FY26, Q1FY27) et le canal (Leclerc / Revendeur) dans
-            <strong>Comptes Historiques</strong> et <strong>🏢_COMPTES</strong> à partir du classeur
-            sell-in Drive. À relancer chaque semaine après mise à jour du classeur.
+            Met à jour les CA (FY25, FY26, Q1FY27) et les statuts ACTIF/CHURN/INACTIF dans <strong>Comptes</strong>
+            à partir du Google Drive Sell-In. Sync automatique chaque <strong>lundi à 8h00</strong>.
           </p>
-          ${this.state.syncSellInResultat ? `
-            <div style="padding:10px 14px;border-radius:8px;margin-bottom:10px;font-size:13px;
-              background:${this.state.syncSellInResultat.ok ? 'rgba(26,158,92,.1)' : 'rgba(255,109,104,.1)'};
-              border:1px solid ${this.state.syncSellInResultat.ok ? 'var(--c-success,#1a9e5c)' : 'var(--c-cta,#FF6D68)'}">
-                ${this.state.syncSellInResultat.ok ? '✅' : '❌'} ${this.state.syncSellInResultat.message}
-            </div>` : ''}
+
+          ${this.state.syncSellInResultat ? (() => {
+            const r = this.state.syncSellInResultat;
+            if (!r.ok) return `
+              <div style="padding:10px 14px;border-radius:8px;margin-bottom:12px;font-size:13px;
+                background:rgba(255,109,104,.1);border:1px solid var(--c-danger,#ef4444)">
+                ❌ ${r.message}
+              </div>`;
+            return `
+              <div style="padding:10px 14px;border-radius:8px;margin-bottom:12px;font-size:13px;
+                background:rgba(16,185,129,.1);border:1px solid var(--c-success,#10b981)">
+                <div style="font-weight:700;margin-bottom:4px">✅ Synchronisation réussie${r.ts ? ' · ' + r.ts : ''}</div>
+                <div style="display:flex;gap:16px;font-size:12px">
+                  <span>✅ <strong>${r.matched}</strong> comptes mis à jour</span>
+                  ${r.nonMatch > 0 ? `<span style="color:var(--c-warning)">⚠️ <strong>${r.nonMatch}</strong> revendeurs sans correspondance</span>` : '<span>🎯 Tous les revendeurs matchés</span>'}
+                </div>
+              </div>
+              ${this.state.syncSellInNonMatcher.length > 0 ? `
+              <div style="margin-bottom:12px">
+                <div style="font-size:12px;font-weight:700;color:var(--c-warning);margin-bottom:6px">
+                  ⚠️ Revendeurs Sell-In sans compte correspondant (${this.state.syncSellInNonMatcher.length})
+                </div>
+                <div style="max-height:140px;overflow-y:auto;background:var(--c-bg);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:8px">
+                  ${this.state.syncSellInNonMatcher.map(n => `<div style="font-size:12px;padding:2px 0;color:var(--c-text-2)">• ${n}</div>`).join('')}
+                </div>
+                <p style="font-size:11px;color:var(--c-text-2);margin-top:4px">Ces revendeurs sont dans le Sell-In mais n'ont pas de compte correspondant dans la base. Vérifier l'orthographe ou créer le compte.</p>
+              </div>` : ''}`;
+          })() : ''}
+
           <button class="btn-secondaire"
-                  style="background:#0050FF;color:#fff;border-color:#0050FF;padding:10px 16px"
+                  style="background:var(--c-primary,#0050FF);color:#fff;border-color:var(--c-primary,#0050FF);padding:10px 16px;width:100%"
                   ${this.state.syncSellInEnCours ? 'disabled' : ''}
                   onclick="VueAdmin.syncSellIn()">
-            ${this.state.syncSellInEnCours ? '⏳ Synchronisation…' : '📊 Synchroniser depuis Drive'}
+            ${this.state.syncSellInEnCours ? '⏳ Synchronisation en cours…' : '🔄 Synchroniser maintenant'}
           </button>
           <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">
-            Source : classeur SELL-IN-Q1FY27-W8-DASHBOARD · Feuille "DATA FY25-FY26-FY27".
+            Source : Google Drive · ID classeur configurable via secret <code>SELLIN_SHEET_ID</code> · Edge Function <code>sync-sellin</code>
           </p>
         </div>
 
