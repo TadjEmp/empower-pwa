@@ -218,14 +218,21 @@ window.VueVisites = {
 
   fermerConversion() { this._modalConversion = null; this.render(); },
 
+  forcerConversion() {
+    this._modalConversion.doublonExistant = null;
+    this._modalConversion._forcerDoublon = true;
+    this.confirmerConversion();
+  },
+
   async confirmerConversion() {
     const m = this._modalConversion;
     if (!m || !m.nomCompte.trim()) { Toast.afficher('Nom du compte requis', 'warning'); return; }
     // Anti-doublon
     const normNom = normaliserNom(m.nomCompte);
     const dejaLa = this.state.comptes.find(c => normaliserNom(c.Nom_Compte) === normNom);
-    if (dejaLa) {
-      Toast.afficher(`⚠️ "${m.nomCompte}" existe déjà dans la base (${dejaLa.ID_Compte})`, 'warning');
+    if (dejaLa && !m._forcerDoublon) {
+      this._modalConversion.doublonExistant = dejaLa;
+      this.render();
       return;
     }
     if (this._conversionEnCours) return;
@@ -1027,6 +1034,17 @@ window.VueVisites = {
     <div class="modal-overlay" onclick="if(event.target===this)VueVisites.fermerConversion()">
       <div class="modal">
         <h3>✨ Créer comme compte actif</h3>
+        ${m.doublonExistant ? `
+        <div style="background:color-mix(in srgb,var(--c-warning) 12%,transparent);border:1px solid var(--c-warning);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">
+          <div style="font-weight:700;color:var(--c-warning);margin-bottom:6px">⚠️ Ce compte existe déjà dans la base</div>
+          <div style="font-size:13px;margin-bottom:10px"><strong>${m.doublonExistant.Nom_Compte}</strong> — ${m.doublonExistant.STATUT_COMPTE || '—'} · ${m.doublonExistant.CANAL || '—'}</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn-secondaire" style="flex:1;font-size:12px"
+                    onclick="VueVisites.fermerConversion();Router.aller('#/fiche/${m.doublonExistant.ID_Compte}')">👁️ Voir la fiche</button>
+            <button class="btn-primaire" style="flex:1;font-size:12px"
+                    onclick="VueVisites.forcerConversion()">Créer quand même</button>
+          </div>
+        </div>` : ''}
         <p style="font-size:13px;color:var(--c-text-2);margin-bottom:12px">Saisir les informations du compte. Il sera ajouté à votre base avec le statut ACTIF.</p>
         <label>Nom de l'enseigne *
           <input required value="${m.nomCompte}"
