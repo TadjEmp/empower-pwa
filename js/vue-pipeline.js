@@ -923,6 +923,24 @@ window.VuePipeline = {
     <div class="modal-overlay" onclick="if(event.target===this)VuePipeline.fermerExport()">
       <div class="modal" style="max-width:440px">
         <h3>📥 Export Excel — EMPOWER Leads</h3>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+          ${[
+            ['Cette semaine', () => {
+              const d = new Date(); const lundi = new Date(d); lundi.setDate(d.getDate() - ((d.getDay()+6)%7));
+              return [lundi.toISOString().slice(0,10), d.toISOString().slice(0,10)];
+            }],
+            ['Semaine dern.', () => {
+              const d = new Date(); const lundi = new Date(d); lundi.setDate(d.getDate() - ((d.getDay()+6)%7) - 7);
+              const dim = new Date(lundi); dim.setDate(lundi.getDate() + 6);
+              return [lundi.toISOString().slice(0,10), dim.toISOString().slice(0,10)];
+            }],
+            ['Ce mois', () => {
+              const d = new Date(); const debut = new Date(d.getFullYear(), d.getMonth(), 1);
+              return [debut.toISOString().slice(0,10), d.toISOString().slice(0,10)];
+            }],
+            ['Tout', () => ['', '']],
+          ].map(([lbl]) => `<button class="btn-lien" style="padding:4px 10px;border:1px solid var(--c-border);border-radius:20px;font-size:12px;cursor:pointer;background:var(--c-bg)" onclick="(function(){const fns={'Cette semaine':()=>{const d=new Date();const l=new Date(d);l.setDate(d.getDate()-((d.getDay()+6)%7));return[l.toISOString().slice(0,10),d.toISOString().slice(0,10)];},'Semaine dern.':()=>{const d=new Date();const l=new Date(d);l.setDate(d.getDate()-((d.getDay()+6)%7)-7);const dm=new Date(l);dm.setDate(l.getDate()+6);return[l.toISOString().slice(0,10),dm.toISOString().slice(0,10)];},'Ce mois':()=>{const d=new Date();const db=new Date(d.getFullYear(),d.getMonth(),1);return[db.toISOString().slice(0,10),d.toISOString().slice(0,10)];},'Tout':()=>['','']};const r=fns['${lbl}']();VuePipeline.state.exportFiltres.debut=r[0];VuePipeline.state.exportFiltres.fin=r[1];VuePipeline.render();})()">${lbl}</button>`).join('')}
+        </div>
         <div style="display:flex;gap:10px;margin-bottom:10px">
           <label style="flex:1">Date début
             <input type="date" value="${f.debut}" onchange="VuePipeline.state.exportFiltres.debut=this.value;VuePipeline.render()"/></label>
