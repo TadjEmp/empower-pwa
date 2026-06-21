@@ -6,10 +6,16 @@
 
 window.VueFicheCompte = {
 
-  state: { compte: null, v17: null, visites: [], appels: [], chargement: true },
+  state: {
+    compte: null, v17: null, visites: [], appels: [], chargement: true,
+    editCoord: false,
+    formCoord: { ville: '', code_postal: '', departement: '', tel: '', email: '' },
+    sauvegardeEnCours: false,
+  },
 
   async init(idCompte) {
     this.state.chargement = true;
+    this.state.editCoord  = false;
     this.render();
     try {
       const [comptes, rawV17, visites, appels] = await Promise.all([
@@ -38,14 +44,152 @@ window.VueFicheCompte = {
     }
   },
 
+  ouvrirEditionCoordonnees() {
+    const c = this.state.compte;
+    this.state.formCoord = {
+      ville:       c.Ville       || '',
+      code_postal: c.Code_Postal || '',
+      departement: c.Departement || (c.Code_Postal ? String(c.Code_Postal).slice(0, 2) : ''),
+      tel:         c.Tel         || '',
+      email:       c.Email       || '',
+    };
+    this.state.editCoord = true;
+    this.render();
+  },
+
+  annulerEditionCoordonnees() {
+    this.state.editCoord = false;
+    this.render();
+  },
+
+  _syncDept() {
+    const cp = this.state.formCoord.code_postal.trim();
+    if (cp.length >= 2 && !this.state.formCoord.departement) {
+      this.state.formCoord.departement = cp.slice(0, cp.startsWith('97') ? 3 : 2);
+    }
+    this.render();
+  },
+
+  async sauvegarderCoordonnees() {
+    if (this.state.sauvegardeEnCours) return;
+    const f = this.state.formCoord;
+    const c = this.state.compte;
+
+    const champs = {
+      Ville:       f.ville.trim()       || null,
+      Code_Postal: f.code_postal.trim() || null,
+      Departement: f.departement.trim() || null,
+      Tel:         f.tel.trim()         || null,
+      Email:       f.email.trim()       || null,
+    };
+
+    this.state.sauvegardeEnCours = true;
+    this.render();
+    try {
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', c.ID_Compte, champs);
+      // Update local state
+      Object.assign(this.state.compte, champs);
+      this.state.editCoord = false;
+      Toast.afficher('✅ Coordonnées mises à jour', 'succes');
+    } catch(e) {
+      Toast.afficher('❌ ' + e.message, 'erreur');
+    }
+    this.state.sauvegardeEnCours = false;
+    this.render();
+  },
+
   _barreCA(label, val, max) {
-    // val est déjà un nombre parsé (parseCA) ou 0 — fmtCA protège l'affichage
     const pct = max > 0 ? Math.max(2, Math.round(val / max * 100)) : 2;
     return `
       <div class="barre-ligne">
         <div class="barre-label">${label}</div>
         <div class="barre-ca" style="width:${pct}%;background:var(--c-primary)"></div>
         <div class="barre-valeur">${window.fmtCA(val)}</div>
+      </div>`;
+  },
+
+  _renderBlocIdentite(c) {
+    if (this.state.editCoord) {
+      const f = this.state.formCoord;
+      return `
+        <div class="bloc-fiche">
+          <div class="bloc-titre">
+            Identité
+            <button class="btn-lien" style="margin-left:auto;font-size:12px;color:var(--c-text-2)"
+                    onclick="VueFicheCompte.annulerEditionCoordonnees()">✕ Annuler</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <label style="font-size:13px;font-weight:600">Ville
+              <input value="${f.ville}" placeholder="ex : Paris"
+                     oninput="VueFicheCompte.state.formCoord.ville=this.value"
+                     style="width:100%;margin-top:4px"/>
+            </label>
+            <div style="display:flex;gap:8px">
+              <label style="flex:1;font-size:13px;font-weight:600">Code Postal
+                <input value="${f.code_postal}" placeholder="ex : 75001" maxlength="5"
+                       oninput="VueFicheCompte.state.formCoord.code_postal=this.value;VueFicheCompte._syncDept()"
+                       style="width:100%;margin-top:4px"/>
+              </label>
+              <label style="flex:1;font-size:13px;font-weight:600">Département
+                <input value="${f.departement}" placeholder="ex : 75" maxlength="3"
+                       oninput="VueFicheCompte.state.formCoord.departement=this.value"
+                       style="width:100%;margin-top:4px"/>
+              </label>
+            </div>
+            <label style="font-size:13px;font-weight:600">Téléphone
+              <input type="tel" value="${f.tel}" placeholder="ex : 01 23 45 67 89"
+                     oninput="VueFicheCompte.state.formCoord.tel=this.value"
+                     style="width:100%;margin-top:4px"/>
+            </label>
+            <label style="font-size:13px;font-weight:600">Email
+              <input type="email" value="${f.email}" placeholder="ex : contact@societe.fr"
+                     oninput="VueFicheCompte.state.formCoord.email=this.value"
+                     style="width:100%;margin-top:4px"/>
+            </label>
+            <button class="btn-primaire" style="margin-top:4px"
+                    onclick="VueFicheCompte.sauvegarderCoordonnees()"
+                    ${this.state.sauvegardeEnCours ? 'disabled' : ''}>
+              ${this.state.sauvegardeEnCours ? '⏳ Enregistrement…' : '💾 Enregistrer les coordonnées'}
+            </button>
+          </div>
+        </div>`;
+    }
+
+    const dept = c.Departement || (c.Code_Postal ? String(c.Code_Postal).slice(0, 2) : null);
+    const coordManquantes = !c.Ville && !c.Code_Postal && !c.Tel && !c.Email;
+
+    return `
+      <div class="bloc-fiche">
+        <div class="bloc-titre">
+          Identité
+          <button class="btn-lien" title="Modifier les coordonnées"
+                  style="margin-left:auto;font-size:12px"
+                  onclick="VueFicheCompte.ouvrirEditionCoordonnees()">✏️ Modifier</button>
+        </div>
+        ${coordManquantes ? `
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:10px;border-radius:var(--radius-sm);background:color-mix(in srgb,var(--c-warning) 10%,transparent);border:1px solid color-mix(in srgb,var(--c-warning) 30%,transparent);font-size:12px;color:var(--c-warning)">
+          ⚠️ Coordonnées manquantes —
+          <button class="btn-lien" style="font-size:12px;color:var(--c-primary);font-weight:600"
+                  onclick="VueFicheCompte.ouvrirEditionCoordonnees()">Saisir maintenant →</button>
+        </div>` : ''}
+        <div class="grille-identite">
+          <div class="id-ligne"><span>Ville</span><strong>${c.Ville || '—'}${c.Code_Postal ? ' (' + c.Code_Postal + ')' : ''}</strong></div>
+          <div class="id-ligne"><span>Département</span><strong>${dept || '—'}</strong></div>
+          <div class="id-ligne"><span>Canal / Secteur</span><strong>${c.CANAL || '—'} · ${c.SECTEUR || '—'}</strong></div>
+          <div class="id-ligne"><span>Téléphone</span><strong>${c.Tel ? `<a class="lien-tel" href="tel:${c.Tel.replace(/\s/g,'')}">${c.Tel}</a>` : '—'}</strong></div>
+          <div class="id-ligne"><span>Email</span><strong>${c.Email ? `<a class="lien-email" href="mailto:${c.Email}">${c.Email}</a>` : '—'}</strong></div>
+          <div class="id-ligne"><span>CDS</span><strong>${window.resolveCDS(c.PIN_CDS_Assigne || c.Nom_CDS)}</strong></div>
+          <div class="id-ligne"><span>EMPOWER</span><strong>${c.HAS_EMPOWER || '—'}</strong></div>
+          <div class="id-ligne"><span>CA FY26</span><strong>${window.fmtCA(this.state.v17?.['CA FY26 €'] ?? c.CA_FY26)} €</strong></div>
+          <div class="id-ligne"><span>Dernier Q (Q1·27)</span><strong>${(window.parseCA(this.state.v17?.['CA Q1FY27 €'] ?? c.CA_Q1FY27) !== null ? window.fmtCA(window.parseCA(this.state.v17?.['CA Q1FY27 €'] ?? c.CA_Q1FY27)) : '—')} €</strong></div>
+          <div class="id-ligne"><span>Potentiel</span><strong>${c.POTENTIEL || this.state.v17?.POTENTIEL_UPSELL || '—'}</strong></div>
+          ${this.state.v17?.GROSSISTE_PRINCIPAL ? `<div class="id-ligne"><span>Grossiste</span><strong>${this.state.v17.GROSSISTE_PRINCIPAL}</strong></div>` : ''}
+        </div>
+        ${c.Source_Import === 'VISITE_FROID_CONVERTI' ? `
+        <div style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;background:color-mix(in srgb,var(--c-primary) 12%,transparent);color:var(--c-primary);border:1px solid color-mix(in srgb,var(--c-primary) 30%,transparent)">
+          ❄️ Créé depuis visite à froid
+        </div>` : ''}
+        <div class="statut-fy27">${c.STATUT_COMPTE || '—'} · Priorité ${c.Priorite || '—'}</div>
       </div>`;
   },
 
@@ -57,13 +201,11 @@ window.VueFicheCompte = {
     }
     const c   = this.state.compte;
     const v17 = this.state.v17;
-    // parseCA protège contre les valeurs aberrantes (dates corrompues, NaN, undefined)
     const fy25 = window.parseCA(v17?.['CA FY25 €'] ?? c.CA_FY25) ?? 0;
     const fy26 = window.parseCA(v17?.['CA FY26 €'] ?? c.CA_FY26) ?? 0;
     const fy27 = window.parseCA(v17?.['CA Q1FY27 €'] ?? c.CA_Q1FY27) ?? 0;
     const maxCA = Math.max(fy25, fy26, fy27, 1);
 
-    // Semaines silence : calculé depuis la dernière activité (dernier appel ou visite)
     const _lastActivity = (() => {
       const dates = [
         ...this.state.visites.map(v => v.Date),
@@ -75,17 +217,7 @@ window.VueFicheCompte = {
     const _semainesSilence = _lastActivity
       ? Math.floor((Date.now() - _lastActivity.getTime()) / (7 * 24 * 3600 * 1000))
       : null;
-    const semainesSilenceLabel = _semainesSilence !== null
-      ? `${_semainesSilence} sem.`
-      : '—';
-
-    // Dernier Q : dernier CA trimestriel disponible (v17 ou MDB)
-    const dernierQ = window.parseCA(v17?.['CA Q1FY27 €'] ?? c.CA_Q1FY27);
-    const dernierQLabel = dernierQ !== null ? window.fmtCA(dernierQ) : '—';
-
-    // POTENTIAL (colonne POTENTIEL de MDB ou POTENTIEL_UPSELL de V17)
-    const potentialVal = c.POTENTIEL || v17?.POTENTIEL_UPSELL || null;
-    const potentialLabel = potentialVal ? String(potentialVal) : '—';
+    const semainesSilenceLabel = _semainesSilence !== null ? `${_semainesSilence} sem.` : '—';
 
     app.innerHTML = `
       <header class="header-vue">
@@ -95,29 +227,7 @@ window.VueFicheCompte = {
 
       <div class="fiche-body">
 
-        <!-- IDENTITÉ -->
-        <div class="bloc-fiche">
-          <div class="bloc-titre">Identité</div>
-          <div class="grille-identite">
-            <div class="id-ligne"><span>Ville</span><strong>${c.Ville || '—'}${c.Code_Postal ? ' (' + c.Code_Postal + ')' : ''}</strong></div>
-            ${(c.Departement || c.Code_Postal) ? '<div class="id-ligne"><span>Département</span><strong>' + (c.Departement || (c.Code_Postal ? String(c.Code_Postal).slice(0,2) : '—')) + '</strong></div>' : ''}
-            <div class="id-ligne"><span>Canal / Secteur</span><strong>${c.CANAL || '—'} · ${c.SECTEUR || '—'}</strong></div>
-            <div class="id-ligne"><span>Téléphone</span><strong>${c.Tel ? `<a class="lien-tel" href="tel:${c.Tel.replace(/\s/g,'')}">${c.Tel}</a>` : '—'}</strong></div>
-            <div class="id-ligne"><span>Email</span><strong>${c.Email ? `<a class="lien-email" href="mailto:${c.Email}">${c.Email}</a>` : '—'}</strong></div>
-            <div class="id-ligne"><span>CDS</span><strong>${window.resolveCDS(c.PIN_CDS_Assigne || c.Nom_CDS)}</strong></div>
-            <div class="id-ligne"><span>EMPOWER</span><strong>${c.HAS_EMPOWER || '—'}</strong></div>
-            <div class="id-ligne"><span>CA FY26</span><strong>${window.fmtCA(v17?.['CA FY26 €'] ?? c.CA_FY26)} €</strong></div>
-            <div class="id-ligne"><span>Dernier Q (Q1·27)</span><strong>${dernierQLabel} €</strong></div>
-            <div class="id-ligne"><span>Silence</span><strong>${semainesSilenceLabel}</strong></div>
-            <div class="id-ligne"><span>Potentiel</span><strong>${potentialLabel}</strong></div>
-            ${v17?.GROSSISTE_PRINCIPAL ? `<div class="id-ligne"><span>Grossiste</span><strong>${v17.GROSSISTE_PRINCIPAL}</strong></div>` : ''}
-          </div>
-          ${c.Source_Import === 'VISITE_FROID_CONVERTI' ? `
-          <div style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;background:color-mix(in srgb,var(--c-primary) 12%,transparent);color:var(--c-primary);border:1px solid color-mix(in srgb,var(--c-primary) 30%,transparent)">
-            ❄️ Créé depuis visite à froid
-          </div>` : ''}
-          <div class="statut-fy27">${c.STATUT_COMPTE || '—'} · Priorité ${c.Priorite || '—'}</div>
-        </div>
+        ${this._renderBlocIdentite(c)}
 
         <!-- CA HISTORIQUE -->
         <div class="bloc-fiche">
