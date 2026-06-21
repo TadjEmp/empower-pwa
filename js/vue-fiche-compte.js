@@ -112,6 +112,10 @@ window.VueFicheCompte = {
             <div class="id-ligne"><span>Potentiel</span><strong>${potentialLabel}</strong></div>
             ${v17?.GROSSISTE_PRINCIPAL ? `<div class="id-ligne"><span>Grossiste</span><strong>${v17.GROSSISTE_PRINCIPAL}</strong></div>` : ''}
           </div>
+          ${c.Source_Import === 'VISITE_FROID_CONVERTI' ? `
+          <div style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;background:color-mix(in srgb,var(--c-primary) 12%,transparent);color:var(--c-primary);border:1px solid color-mix(in srgb,var(--c-primary) 30%,transparent)">
+            ❄️ Créé depuis visite à froid
+          </div>` : ''}
           <div class="statut-fy27">${c.STATUT_COMPTE || '—'} · Priorité ${c.Priorite || '—'}</div>
         </div>
 
