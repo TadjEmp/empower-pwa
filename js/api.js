@@ -456,9 +456,13 @@ const SheetsAPI = {
   // ── INDEXEDDB ────────────────────────────────────────
   _ouvrirIDB() {
     return new Promise((res, rej) => {
-      const r = indexedDB.open('EMPOWER_CACHE', 2)
+      const r = indexedDB.open('EMPOWER_CACHE', 3)
       r.onupgradeneeded = e => {
         const db = e.target.result
+        // Purge cache+meta sur upgrade (nouveau mapping colonnes visites v6.5)
+        if (e.oldVersion < 3) {
+          ;['cache','meta'].forEach(s => { if (db.objectStoreNames.contains(s)) db.deleteObjectStore(s) })
+        }
         ;['cache','meta','queue'].forEach(s => {
           if (!db.objectStoreNames.contains(s))
             db.createObjectStore(s, s === 'queue' ? { keyPath:'id', autoIncrement:true } : { keyPath:'key' })
