@@ -536,8 +536,8 @@ window.VueVisites = {
     const id = this.state.confirmDeleteId;
     if (!id) return;
     try {
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '🗺️_VISITES', id, {
-        deleted:    'TRUE',
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', '📅_VISITES', id, {
+        deleted:    true,
         deleted_at: new Date().toISOString(),
         deleted_by: Session.nom,
       });
@@ -852,15 +852,15 @@ window.VueVisites = {
                  </datalist>
                </label>
                <div style="display:flex;gap:8px">
-                 <label style="flex:1">Département *
-                   <input required placeholder="ex : 75" maxlength="3" value="${f.deptLibre || ''}"
+                 <label style="flex:1">Département
+                   <input placeholder="ex : 75" maxlength="3" value="${f.deptLibre || ''}"
                           oninput="VueVisites.state.formPlanif.deptLibre=this.value"/></label>
-                 <label style="flex:2">Ville *
-                   <input required placeholder="ex : Paris" value="${f.villeLibre || ''}"
+                 <label style="flex:2">Ville
+                   <input placeholder="ex : Paris" value="${f.villeLibre || ''}"
                           oninput="VueVisites.state.formPlanif.villeLibre=this.value"/></label>
                </div>
-               <label>Téléphone *
-                 <input required type="tel" placeholder="ex : 01 23 45 67 89" value="${f.telLibre || ''}"
+               <label>Téléphone <span style="font-weight:400;font-size:11px;color:var(--c-text-2)">(optionnel)</span>
+                 <input type="tel" placeholder="ex : 01 23 45 67 89" value="${f.telLibre || ''}"
                         oninput="VueVisites.state.formPlanif.telLibre=this.value"/></label>
                <label>Email <span style="font-weight:400;font-size:11px;color:var(--c-text-2)">(optionnel)</span>
                  <input type="email" placeholder="contact@enseigne.fr" value="${f.emailLibre || ''}"
