@@ -238,12 +238,11 @@ window.VuePipeline = {
     const lead = this.state.leads.find(l => String(l.ID_Prospect) === String(id));
     if (!lead || !pin) return;
     try {
-      const r = await fetch(SheetsAPI.BASE_URL, {
-        method: 'POST', redirect: 'follow',
-        // Pas de Content-Type → requête simple, évite le préflight CORS (Apps Script ne gère pas OPTIONS)
-        body: JSON.stringify({ action: 'attribuerLead', token: SheetsAPI.TOKEN, id, cdsPin: Number(pin), cdsNom: this._nomCDS(pin) }),
-      }).then(x => x.json());
-      if (!r.ok) throw new Error(r.erreur);
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', lead.ID_Prospect, {
+        PIN_CDS_Assigne: Number(pin),
+        STATUT_EMPOWER: 'ASSIGNE',
+        FLAG_ACTION: 'ASSIGNE',
+      });
       await SheetsAPI.viderCache('EMPOWER_MDB', '📋_PROSPECTS');
       Object.assign(lead, { PIN_CDS_Assigne: Number(pin), STATUT_EMPOWER: 'ASSIGNE', _statut: 'ASSIGNE' });
       this.state.modal = null;
@@ -309,13 +308,17 @@ window.VuePipeline = {
     try {
       await SheetsAPI.ecrire('EMPOWER_MDB', '📋_PROSPECTS', lead);
       this.state.leads.unshift({ ...lead, _statut: statutInit });
-      // BLOC 4.3 — si CDS attribué à la création : déclencher alerte J0 (préserve les triggers existants)
+      // BLOC 4.3 — notif in-app au CDS assigné (GAS supprimé — migration Supabase)
       if (cdsAssignePin) {
-        fetch(SheetsAPI.BASE_URL, {
-          method: 'POST', redirect: 'follow',
-          body: JSON.stringify({ action: 'attribuerLead', token: SheetsAPI.TOKEN,
-            id: lead.ID_Prospect, cdsPin: Number(cdsAssignePin),
-            cdsNom: this._nomCDS(cdsAssignePin) }),
+        SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
+          ID_Notif:   genId('NOTIF'),
+          Type:       'LEAD_ASSIGNE',
+          PIN_Dest:   Number(cdsAssignePin),
+          Titre:      `🎯 Nouveau lead assigné`,
+          Message:    `${lead.Nom_Compte} — ${lead.Ville || ''} — Potentiel : ${lead.POTENTIEL || '?'}`,
+          ID_Ref:     lead.ID_Prospect,
+          Lue:        'FALSE',
+          Timestamp:  new Date().toISOString(),
         }).catch(() => {}); // non bloquant
       }
       this.state.modal = null;
