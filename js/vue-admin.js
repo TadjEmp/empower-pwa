@@ -397,14 +397,14 @@ window.VueAdmin = {
     this.state.importResultat = null;
     this.render();
     try {
-      const { data, error } = await SheetsAPI._sb.functions.invoke('sync-tracker', { method: 'POST' });
-      if (error) throw new Error(error.message || 'Erreur réseau Edge Function');
+      const _r2 = await fetch(`${SUPABASE_URL}/functions/v1/sync-tracker`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+      });
+      const data = await _r2.json();
       if (!data?.ok) {
-        // Accès refusé → afficher l'email SA à partager
-        if (data?.sa_email) {
-          throw new Error(`Sheet non partagé. Partagez le Google Sheet avec : ${data.sa_email} (lecteur)`);
-        }
-        throw new Error(data?.error || 'Erreur sync-tracker');
+        if (data?.sa_email) throw new Error(`Sheet non partagé. Partage avec : ${data.sa_email} (lecteur)`);
+        throw new Error(data?.error || `HTTP ${_r2.status}`);
       }
       this.state.importResultat = { ok: true, message: data.message };
       Toast.afficher(`✅ ${data.upserted} lead(s) importés depuis l'onglet '${data.tab}'`, 'succes', 6000);
@@ -428,9 +428,12 @@ window.VueAdmin = {
     this.state.syncSellInNonMatcher = [];
     this.render();
     try {
-      const { data, error } = await SheetsAPI._sb.functions.invoke('sync-sellin', { method: 'POST' });
-      if (error) throw error;
-      if (!data?.ok) throw new Error(data?.error || 'Erreur Edge Function sync-sellin');
+      const _r1 = await fetch(`${SUPABASE_URL}/functions/v1/sync-sellin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+      });
+      const data = await _r1.json();
+      if (!_r1.ok || !data?.ok) throw new Error(data?.error || `HTTP ${_r1.status}`);
       const matched   = data.comptesMisAJour ?? data.sellinLignes ?? '?';
       const nonMatch  = Array.isArray(data.nonMatcher) ? data.nonMatcher : [];
       const ts        = data.timestamp ? new Date(data.timestamp).toLocaleString('fr-FR') : '';
