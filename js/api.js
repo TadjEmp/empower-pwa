@@ -83,6 +83,7 @@ const SheetsAPI = {
     '🔔_NOTIFS': 'notifs', 'NOTIFS': 'notifs',
     '📅_VISITES': 'visites', '🗺️_VISITES': 'visites', 'VISITES': 'visites',
     '📞_PHONING': 'phoning', 'PHONING': 'phoning',
+    '🛒_NSB_COMMANDES': 'nsb_commandes', 'NSB_COMMANDES': 'nsb_commandes',
     '📝_ACTIONS': 'actions', '📊_ACTIONS': 'actions', 'ACTIONS': 'actions',
     '👤_UTILISATEURS': 'utilisateurs', 'UTILISATEURS': 'utilisateurs',
   },
