@@ -78,6 +78,7 @@ const SheetsAPI = {
   // ── TABLE MAPPING : onglet GAS → table Supabase ──────
   _tableMap: {
     '🏢_COMPTES': 'comptes', 'COMPTES': 'comptes',
+    '📋 COMPTES HISTORIQUES': 'comptes', 'COMPTES HISTORIQUES': 'comptes', 'COMPTES_HISTORIQUES': 'comptes',
     '🎯_OBJECTIFS_PRIMES': 'objectifs_primes', 'OBJECTIFS_PRIMES': 'objectifs_primes',
     '📊_PARAMS': 'params', '⚙️_PARAMS': 'params', 'PARAMS': 'params',
     '🔔_NOTIFS': 'notifs', 'NOTIFS': 'notifs',
