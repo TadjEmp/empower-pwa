@@ -84,12 +84,20 @@ const SheetsAPI = {
     '📅_VISITES': 'visites', '🗺️_VISITES': 'visites', 'VISITES': 'visites',
     '📞_PHONING': 'phoning', 'PHONING': 'phoning',
     '📝_ACTIONS': 'actions', '📊_ACTIONS': 'actions', 'ACTIONS': 'actions',
-    '📋_PROSPECTS': 'prospects', 'PROSPECTS': 'prospects',
     '👤_UTILISATEURS': 'utilisateurs', 'UTILISATEURS': 'utilisateurs',
   },
 
+  // Tables volontairement vides — la table physique n'existe pas et ne doit
+  // jamais être interrogée (règle métier : prospects historiques exclus).
+  _tablesVides: ['📋_PROSPECTS', 'PROSPECTS', 'prospects', '_prospects'],
+
   _resolveTable(onglet) {
     return this._tableMap[onglet] || onglet.toLowerCase().replace(/[^a-z_]/g, '')
+  },
+
+  _estTableVide(onglet) {
+    return this._tablesVides.includes(onglet) ||
+           this._tablesVides.includes(this._resolveTable(onglet))
   },
 
   // ── DB → GAS : transformation colonnes lecture ────────
@@ -224,6 +232,7 @@ const SheetsAPI = {
   // ── LECTURE ──────────────────────────────────────────
   async lire(fichier, onglet, opts = {}) {
     const { limit, offset, nocache } = opts
+    if (this._estTableVide(onglet)) return limit != null ? { data: [], total: 0, count: 0 } : []
     const table = this._resolveTable(onglet)
     const k = limit != null ? `${table}::${offset||0}:${limit}` : table
     if (!limit && this._inflight.has(k)) return this._inflight.get(k)
@@ -257,6 +266,7 @@ const SheetsAPI = {
 
   // ── ÉCRITURE ─────────────────────────────────────────
   async ecrire(fichier, onglet, donnee) {
+    if (this._estTableVide(onglet)) return { ok: true, skipped: true }
     const table  = this._resolveTable(onglet)
     const dbRow  = this._toDBRow(table, donnee)
     if (!this._online) {
@@ -273,6 +283,7 @@ const SheetsAPI = {
 
   // ── MISE À JOUR ──────────────────────────────────────
   async mettreAJour(fichier, onglet, id, champs) {
+    if (this._estTableVide(onglet)) return { ok: true, skipped: true }
     const table   = this._resolveTable(onglet)
     const dbChamps = this._toDBRow(table, champs)
     if (!this._online) {
