@@ -84,13 +84,13 @@ const SheetsAPI = {
     '📅_VISITES': 'visites', '🗺️_VISITES': 'visites', 'VISITES': 'visites',
     '📞_PHONING': 'phoning', 'PHONING': 'phoning',
     '🛒_NSB_COMMANDES': 'nsb_commandes', 'NSB_COMMANDES': 'nsb_commandes',
+    '📋_PROSPECTS': 'leads', 'LEADS': 'leads',
     '📝_ACTIONS': 'actions', '📊_ACTIONS': 'actions', 'ACTIONS': 'actions',
     '👤_UTILISATEURS': 'utilisateurs', 'UTILISATEURS': 'utilisateurs',
   },
 
-  // Tables volontairement vides — la table physique n'existe pas et ne doit
-  // jamais être interrogée (règle métier : prospects historiques exclus).
-  _tablesVides: ['📋_PROSPECTS', 'PROSPECTS', 'prospects', '_prospects'],
+  // Tables volontairement vides (table physique absente — ne jamais interroger).
+  _tablesVides: ['PROSPECTS', 'prospects', '_prospects'],
 
   _resolveTable(onglet) {
     return this._tableMap[onglet] || onglet.toLowerCase().replace(/[^a-z_]/g, '')
@@ -154,6 +154,19 @@ const SheetsAPI = {
     params: {
       parametre: 'Parametre', valeur: 'Valeur', description: 'Description', id: '_uuid',
     },
+    leads: {
+      id_prospect_gas: 'ID_Prospect', nom_compte: 'Nom_Compte', ville: 'Ville',
+      code_postal: 'Code_Postal', departement: 'Departement', tel: 'Tel', email: 'Email',
+      canal: 'CANAL', secteur: 'SECTEUR', statut: 'STATUT_EMPOWER', potentiel: 'POTENTIEL',
+      pin_cds_assigne: 'PIN_CDS_Assigne', nom_cds: 'Nom_CDS', pin_channel: 'PIN_Channel',
+      nom_channel: 'Nom_Channel', origine: 'ORIGINE',
+      date_saisie: 'Date_Import', date_attribution: 'Date_Attribution',
+      date_relance: 'Date_Relance', date_creation_compte: 'Date_Creation_Compte',
+      date_integration: 'Date_Integration', date_archive: 'Date_Archive',
+      welcome_pack_envoye: 'Welcome_Pack_Envoye', welcome_pack_date: 'Welcome_Pack_Date',
+      note: 'Note_initiale', flag_alerte: 'FLAG_ALERTE', id_compte_gas: 'ID_Compte_Gas',
+      id: '_uuid',
+    },
   },
 
   _transformRow(table, row) {
@@ -207,6 +220,18 @@ const SheetsAPI = {
       'Type_Notif': 'type_notif', 'Message': 'message', 'ID_Cible': 'id_cible', 'Statut_Lu': 'statut_lu',
     },
     params: { 'Parametre': 'parametre', 'Valeur': 'valeur', 'Description': 'description' },
+    leads: {
+      'ID_Prospect': 'id_prospect_gas', 'Nom_Compte': 'nom_compte', 'Ville': 'ville',
+      'Code_Postal': 'code_postal', 'Departement': 'departement', 'Tel': 'tel', 'Email': 'email',
+      'CANAL': 'canal', 'SECTEUR': 'secteur', 'STATUT_EMPOWER': 'statut', 'POTENTIEL': 'potentiel',
+      'PIN_CDS_Assigne': 'pin_cds_assigne', 'Nom_CDS': 'nom_cds', 'PIN_Channel': 'pin_channel',
+      'Nom_Channel': 'nom_channel', 'ORIGINE': 'origine',
+      'Date_Import': 'date_saisie', 'Date_Attribution': 'date_attribution',
+      'Date_Relance': 'date_relance', 'Date_Creation_Compte': 'date_creation_compte',
+      'Date_Integration': 'date_integration', 'Date_Archive': 'date_archive',
+      'Welcome_Pack_Envoye': 'welcome_pack_envoye', 'Welcome_Pack_Date': 'welcome_pack_date',
+      'Note_initiale': 'note', 'FLAG_ALERTE': 'flag_alerte', 'ID_Compte_Gas': 'id_compte_gas',
+    },
     objectifs_primes: {
       'PIN_CDS': 'pin_cds', 'Nom_CDS': 'nom_cds',
       'Q1_Obj_Initial': 'q1_obj_initial', 'Q1_Obj_Revise': 'q1_obj_revise', 'Q1_CA_Realise': 'q1_ca_realise',
@@ -301,6 +326,7 @@ const SheetsAPI = {
       actions:  'id_action_gas',
       notifs:   'id_notif_gas',
       params:   'parametre',
+      leads:    'id_prospect_gas',
     }
     const gasKey = gasKeyMap[table]
     if (gasKey && typeof id === 'string' && !id.match(/^[0-9a-f-]{36}$/i)) {
