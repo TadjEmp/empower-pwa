@@ -284,7 +284,7 @@ body {
 .app-brand-bar {
   position: fixed; top: 0; left: 0; right: 0; z-index: 200;
   height: 44px;
-  background: #fff;
+  background: var(--c-surface);
   border-bottom: 1px solid var(--c-border);
   display: flex; align-items: center; gap: 8px;
   padding: 0 14px;
@@ -292,14 +292,14 @@ body {
 }
 .app-brand-logo {
   display: flex; align-items: center; gap: 5px;
-  color: #272727; flex-shrink: 0;
+  color: var(--c-title); flex-shrink: 0;
 }
 .app-brand-logo .norton-mark { width: 22px; height: 22px; }
 .brand-norton-txt {
   font-size: 17px; font-weight: 900; letter-spacing: -0.5px;
-  color: #272727; line-height: 1;
+  color: var(--c-title); line-height: 1;
 }
-.brand-tm { font-size: 8px; font-weight: 400; vertical-align: super; color: #272727; margin-left: 1px; }
+.brand-tm { font-size: 8px; font-weight: 400; vertical-align: super; color: var(--c-title); margin-left: 1px; }
 .app-brand-sep { color: var(--c-border); font-size: 14px; margin: 0 4px; }
 .app-brand-esi {
   font-size: 8.5px; font-weight: 800; letter-spacing: 0.1em;
@@ -337,7 +337,7 @@ body {
   transition: background .15s, color .15s;
 }
 .nav-icone { font-size: 18px; line-height: 1; }
-.nav-item.actif { background: var(--c-cta); color: #fff; }
+.nav-item.actif { background: var(--c-primary); color: #fff; }
 /* Réserve la hauteur de la bottom nav */
 .avec-nav { padding-bottom: calc(72px + var(--safe-bottom)) !important; }
 
@@ -407,7 +407,7 @@ body {
   transition: border-color .15s;
 }
 .planning-jour:hover { border-color: var(--c-primary); }
-.planning-jour-today { border-color: var(--c-cta) !important; background: #fff5f4; }
+.planning-jour-today { border-color: var(--c-primary) !important; background: rgba(237,37,103,.10); }
 .pj-label { font-size: 11px; font-weight: 700; text-align: center; margin-bottom: 4px; color: var(--c-title); }
 .pj-count { font-size: 10px; color: var(--c-text-2); text-align: center; margin-bottom: 6px; }
 .pj-item  { font-size: 10px; padding: 3px 4px; margin-bottom: 2px; border-radius: 3px; background: #f8faff; overflow: hidden; }
@@ -436,13 +436,13 @@ body {
   background: var(--c-bg);
 }
 .ch-stat.bleu  { background: #eff4ff; }
-.ch-stat.coral { background: #fff2f1; }
+.ch-stat.coral { background: rgba(237,37,103,.12); }
 .ch-stat-val { font-size: 18px; font-weight: 800; color: var(--c-title); line-height: 1.2; }
 .ch-stat-lbl { font-size: 10px; font-weight: 600; color: var(--c-text-2); text-transform: uppercase; }
 @media (max-width: 380px) { .ch-stats { grid-template-columns: repeat(2, 1fr); } }
 
 /* ── Badge compteur ── */
-.badge-compteur { font-size: 12px; background: #f1f5f9; color: var(--c-text-2); padding: 4px 10px; border-radius: 99px; white-space: nowrap; }
+.badge-compteur { font-size: 12px; background: var(--c-surface-alt); color: var(--c-text-2); padding: 4px 10px; border-radius: 99px; white-space: nowrap; }
 
 /* ── Bouton lien inline ── */
 .btn-lien { background: none; border: none; color: var(--c-primary); font-size: 12px; cursor: pointer; padding: 2px 4px; text-decoration: underline; }
@@ -458,7 +458,7 @@ body {
 /* ── Pace badges ── */
 .pace-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; margin-left: 6px; }
 .pace-ok    { background: #e6f9f3; color: var(--c-success); }
-.pace-watch { background: #fff7e0; color: var(--c-warning); }
+.pace-watch { background: rgba(245,158,11,.15); color: var(--c-warning); }
 
 /* ═══════════════════════════════════════
    v5.0 M5 — Design Hybride Desktop
@@ -491,7 +491,7 @@ body {
 /* ── KPI Cards façon DASHBOARD_W09 (barre d'accent + chiffre font-black) ── */
 .kpi-card {
   position: relative; overflow: hidden;
-  background: #fff;
+  background: var(--c-surface);
   border: 1px solid var(--c-border);
   border-radius: 16px;
   padding: 18px 18px 16px;
@@ -524,13 +524,13 @@ body {
 
 /* ── Carte de section (header + corps) façon réf ── */
 .section-card {
-  background: #fff; border: 1px solid var(--c-border);
+  background: var(--c-surface); border: 1px solid var(--c-border);
   border-radius: 16px; overflow: hidden;
-  box-shadow: 0 1px 3px rgba(20,28,37,.06); margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.2); margin-bottom: 16px;
 }
 .section-card-head {
   padding: 14px 18px; border-bottom: 1px solid var(--c-border);
-  background: rgba(0,0,0,.02);
+  background: rgba(255,255,255,.03);
   font-size: 11px; font-weight: 900; text-transform: uppercase;
   letter-spacing: .08em; color: var(--c-title);
   display: flex; align-items: center; gap: 8px;
@@ -646,7 +646,7 @@ body {
     gap: 32px;
   }
 }
-.pace-risk  { background: #fff0f0; color: var(--c-danger); }
+.pace-risk  { background: rgba(239,68,68,.12); color: var(--c-danger); }
 
 /* ═══════════════════════════════════════
    v5.0 BUG1 — Anti pinch-zoom & sélection PWA
