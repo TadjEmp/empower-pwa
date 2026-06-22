@@ -406,7 +406,7 @@ window.VuePhoning = {
         Prochaine_Action: d.prochaineAction,
         Date_Rappel: d.dateRappel,
         Commande_Annoncee: estProspect ? '' : (d.commandeAnnoncee || ''),
-        Montant_Estime: estProspect ? '' : (parseCA(d.montantEstime) ?? ''),
+        Montant_Estime: estProspect ? '' : ((typeof parseCA !== "undefined" ? parseCA(d.montantEstime) : null) ?? ''),
         Statut_Final: estProspect ? (d.resultatProspect || '') : (d.statutFinal || ''),
         Note: [d.note, s.qualif ? `[IA ${s.qualif.typeappel} · ${s.qualif.score}/5]` : ''].filter(Boolean).join('\n'),
         Timestamp: new Date().toISOString(),
