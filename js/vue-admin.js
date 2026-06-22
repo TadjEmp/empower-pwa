@@ -391,21 +391,29 @@ window.VueAdmin = {
 
   async importerDepuisTracker() {
     if (this.state.importEnCours) return;
-    const ok = confirm('🔄 Synchroniser EMPOWER TRACKER → PROSPECTS ?\n\nLes revendeurs déjà présents en ESI_PIPELINE seront ignorés.\nLes nouveaux seront créés avec Source_Import=ESI_PIPELINE.');
+    const ok = confirm('🔄 Synchroniser EMPOWER TRACKER → base de données ?\n\nLes leads déjà présents seront mis à jour (non destructif).\nLes nouveaux seront créés avec Source_Import=ESI_TRACKER.');
     if (!ok) return;
     this.state.importEnCours  = true;
     this.state.importResultat = null;
     this.render();
     try {
-      const data = await SheetsAPI._fetchRetry(SheetsAPI.BASE_URL, 'POST', 2,
-        { action: 'importTrackerDrive', token: SheetsAPI.TOKEN });
-      if (!data.ok) throw new Error(data.erreur || 'Erreur Apps Script');
+      const { data, error } = await SheetsAPI._sb.functions.invoke('sync-tracker', { method: 'POST' });
+      if (error) throw new Error(error.message || 'Erreur réseau Edge Function');
+      if (!data?.ok) {
+        // Accès refusé → afficher l'email SA à partager
+        if (data?.sa_email) {
+          throw new Error(`Sheet non partagé. Partagez le Google Sheet avec : ${data.sa_email} (lecteur)`);
+        }
+        throw new Error(data?.error || 'Erreur sync-tracker');
+      }
       this.state.importResultat = { ok: true, message: data.message };
-      Toast.afficher(`✅ ${data.crees} lead(s) importés — ${data.skips} doublon(s) ignorés`, 'succes', 6000);
+      Toast.afficher(`✅ ${data.upserted} lead(s) importés depuis l'onglet '${data.tab}'`, 'succes', 6000);
       await SheetsAPI.viderCache('EMPOWER_MDB', '📋_PROSPECTS');
+      this.state.suivi.leads = [];
+      await this._chargerSuivi();
     } catch(e) {
       this.state.importResultat = { ok: false, message: e.message };
-      Toast.afficher('❌ Import : ' + e.message, 'erreur');
+      Toast.afficher('❌ Import : ' + e.message, 'erreur', 8000);
     }
     this.state.importEnCours = false;
     this.render();
