@@ -994,6 +994,7 @@ window.VueAdmin = {
           <button class="btn-secondaire" onclick="VueAdmin.viderCache()">🗑️ Vider le cache local (IndexedDB)</button>
         </div>
       </div>
+      ${NavBar('admin')}
     `;
   },
 };
