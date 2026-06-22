@@ -337,9 +337,9 @@ window.VueDashboardManager = {
       const y    = i * ROW + 2;
       return `
         <rect x="0" y="${y}" width="${barW}" height="24" fill="${s.coul}" rx="3" opacity=".9"/>
-        <text x="${barW + 8}" y="${y + 16}" font-size="12" fill="#0E0D30">
+        <text x="${barW + 8}" y="${y + 16}" font-size="12" fill="var(--c-title)">
           <tspan font-weight="700" fill="${s.coul}">${s.n}</tspan>
-          <tspan fill="#626264"> ${s.lbl}</tspan>
+          <tspan fill="var(--c-text-2)"> ${s.lbl}</tspan>
         </text>`;
     }).join('');
     return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"
@@ -365,10 +365,10 @@ window.VueDashboardManager = {
       const caX      = wCA > 20 ? wCA - 4 : xPct + pctStr.length * 6 + 6;
       const caAnchor = wCA > 20 ? 'end' : 'start';
       return `
-        <text x="0" y="${y + 11}" font-size="11" font-weight="700" fill="#0E0D30">${e.nom.toUpperCase()}</text>
-        <rect x="0" y="${y + 15}" width="${wObj}" height="12" fill="#E8E8ED" rx="3"/>
+        <text x="0" y="${y + 11}" font-size="11" font-weight="700" fill="var(--c-title)">${e.nom.toUpperCase()}</text>
+        <rect x="0" y="${y + 15}" width="${wObj}" height="12" fill="var(--c-border)" rx="3"/>
         <rect x="0" y="${y + 15}" width="${wCA}"  height="12" fill="${col}"   rx="3" opacity=".88"/>
-        <text x="${xPct}" y="${y + 25}" font-size="10" fill="#0E0D30" font-weight="700">${pctStr}</text>
+        <text x="${xPct}" y="${y + 25}" font-size="10" fill="var(--c-title)" font-weight="700">${pctStr}</text>
         <text x="${caX}" y="${y + 24}" font-size="9" fill="${caInside ? '#fff' : '#0E0D30'}" text-anchor="${caAnchor}">${formatEUR(e.ca)}</text>
         ${wFY26 > 0 ? `
         <rect x="0" y="${y + 32}" width="${wFY26}" height="8" fill="none" stroke="#9333ea" stroke-width="1.5" stroke-dasharray="3 2" rx="2"/>
@@ -397,18 +397,18 @@ window.VueDashboardManager = {
       const hV = d.visites > 0 ? Math.max(3, Math.round(d.visites * scl)) : 0;
       const hA = d.appels  > 0 ? Math.max(3, Math.round(d.appels  * scl)) : 0;
       return `
-        <rect x="${x}" y="${BASE - hV}" width="${bw}" height="${hV}" fill="#0050FF" rx="2" opacity=".8"/>
-        <rect x="${x + bw + 2}" y="${BASE - hA}" width="${bw}" height="${hA}" fill="#FF6D68" rx="2" opacity=".8"/>
-        <text x="${x + slotW / 2 - 1}" y="${H - 2}" text-anchor="middle" font-size="9" fill="#0E0D30">${d.sem.replace('S', '')}</text>
+        <rect x="${x}" y="${BASE - hV}" width="${bw}" height="${hV}" fill="var(--c-primary)" rx="2" opacity=".8"/>
+        <rect x="${x + bw + 2}" y="${BASE - hA}" width="${bw}" height="${hA}" fill="var(--c-cta)" rx="2" opacity=".8"/>
+        <text x="${x + slotW / 2 - 1}" y="${H - 2}" text-anchor="middle" font-size="9" fill="var(--c-title)">${d.sem.replace('S', '')}</text>
       `;
     }).join('');
     return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"
                  style="width:100%;height:auto;display:block;margin-top:8px">
       ${bars}
-      <rect x="2" y="2" width="8" height="8" fill="#0050FF" rx="1"/>
-      <text x="13" y="10" font-size="9" fill="#626264">Visites équipe</text>
-      <rect x="90" y="2" width="8" height="8" fill="#FF6D68" rx="1"/>
-      <text x="101" y="10" font-size="9" fill="#626264">Appels équipe</text>
+      <rect x="2" y="2" width="8" height="8" fill="var(--c-primary)" rx="1"/>
+      <text x="13" y="10" font-size="9" fill="var(--c-text-2)">Visites équipe</text>
+      <rect x="90" y="2" width="8" height="8" fill="var(--c-cta)" rx="1"/>
+      <text x="101" y="10" font-size="9" fill="var(--c-text-2)">Appels équipe</text>
     </svg>`;
   },
 
@@ -435,7 +435,7 @@ window.VueDashboardManager = {
       </header>
 
       <div class="dash-body avec-nav">
-        <p class="dash-date">${dateFr} · Pipeline onboarding · Lecture seule</p>
+        <p class="dash-date" style="color:var(--c-text-2);font-family:Montserrat,sans-serif;font-size:13px">${dateFr} · Suivi FY27</p>
 
         <!-- COMPTEURS PIPELINE -->
         <div class="stat-tuiles">
@@ -572,7 +572,7 @@ window.VueDashboardManager = {
           <h1>COPIL ESI — ${d.semaine} FY27</h1>
           <p>${dateFr} · Empower Sales Intelligence · Norton France</p>
         </div>
-        <p class="dash-date">${dateFr} · ${d.semaine} · ${d.quarter} FY27</p>
+        <p class="dash-date" style="color:var(--c-text-2);font-family:Montserrat,sans-serif;font-size:13px">${dateFr} · ${d.semaine} · ${d.quarter} FY27</p>
 
         <!-- TUILES STATS -->
         <div class="stat-tuiles">
