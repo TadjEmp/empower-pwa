@@ -51,6 +51,7 @@
   --shadow:        0 2px 12px rgba(0,0,0,.35);
   --shadow-lg:     0 4px 24px rgba(0,0,0,.5);
   --safe-bottom:   env(safe-area-inset-bottom, 0px);
+  --safe-top:      env(safe-area-inset-top, 0px);
   --header-h:      56px;
   --nav-h:         68px;
   --font:          'Montserrat', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -131,12 +132,17 @@ body {
 /* ── Header ── */
 .header-vue {
   position: sticky; top: 0; z-index: 50;
-  height: var(--header-h);
+  height: calc(var(--header-h) + var(--safe-top));
   display: flex; align-items: center; gap: 12px;
-  padding: 0 16px;
+  padding: var(--safe-top) 16px 0;
   background: var(--c-surface);
   border-bottom: 1px solid var(--c-border);
   box-shadow: var(--shadow);
+}
+/* Quand brand bar présente, le header est déjà décalé — annule le double padding */
+#app:has(.app-brand-bar) .header-vue {
+  height: var(--header-h);
+  padding-top: 0;
 }
 .header-vue h1 {
   flex: 1; font-size: 18px; font-weight: 700;
@@ -283,11 +289,11 @@ body {
 /* ── App brand bar — mobile top header (hidden on desktop) ── */
 .app-brand-bar {
   position: fixed; top: 0; left: 0; right: 0; z-index: 200;
-  height: 44px;
+  height: calc(44px + var(--safe-top));
   background: var(--c-surface);
   border-bottom: 1px solid var(--c-border);
   display: flex; align-items: center; gap: 8px;
-  padding: 0 14px;
+  padding: var(--safe-top) 14px 0;
   box-shadow: 0 1px 6px rgba(14,13,48,.07);
 }
 .app-brand-logo {
@@ -310,7 +316,7 @@ body {
 
 /* Décale le contenu sous la brand bar sur mobile */
 @media (max-width: 899px) {
-  #app:has(.app-brand-bar) { padding-top: 44px; }
+  #app:has(.app-brand-bar) { padding-top: calc(44px + var(--safe-top)); }
 }
 
 /* ── Navigation principale ──
