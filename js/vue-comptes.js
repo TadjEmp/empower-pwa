@@ -52,13 +52,15 @@ window.VueComptes = {
   get listeFiltree() {
     let l = [...this.state.comptes];
 
-    // Recherche texte case-insensitive — inclut CANAL et SECTEUR
+    // Recherche texte case-insensitive — Nom, Ville, CP, Dept, Canal, Secteur
     const q = normaliserNom(this.state.recherche);
     if (q) l = l.filter(c =>
-      normaliserNom(c.Nom_Compte || '').includes(q) ||
-      normaliserNom(c.Ville     || '').includes(q) ||
-      normaliserNom(c.CANAL     || '').includes(q) ||
-      normaliserNom(c.SECTEUR   || '').includes(q)
+      normaliserNom(c.Nom_Compte   || '').includes(q) ||
+      normaliserNom(c.Ville        || '').includes(q) ||
+      (c.Code_Postal  || '').startsWith(this.state.recherche.trim()) ||
+      normaliserNom(c.Departement  || '').includes(q) ||
+      normaliserNom(c.CANAL        || '').includes(q) ||
+      normaliserNom(c.SECTEUR      || '').includes(q)
     );
 
     // Filtre LECLERC / REVENDEURS — case-insensitive inclusif
@@ -134,7 +136,7 @@ window.VueComptes = {
       </div>
 
       <div class="barre-filtres">
-        <input type="search" id="recherche-comptes" placeholder="🔍 Compte, ville ou canal…"
+        <input type="search" id="recherche-comptes" placeholder="🔍 Compte, ville, CP, département…"
                value="${this.state.recherche}"
                style="border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:8px 12px;font-size:14px;width:100%"
                oninput="VueComptes.setRecherche(this.value)"/>
