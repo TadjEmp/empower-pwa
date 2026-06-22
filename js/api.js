@@ -79,11 +79,12 @@ const SheetsAPI = {
   _tableMap: {
     '🏢_COMPTES': 'comptes', 'COMPTES': 'comptes',
     '🎯_OBJECTIFS_PRIMES': 'objectifs_primes', 'OBJECTIFS_PRIMES': 'objectifs_primes',
-    '📊_PARAMS': 'params', 'PARAMS': 'params',
+    '📊_PARAMS': 'params', '⚙️_PARAMS': 'params', 'PARAMS': 'params',
     '🔔_NOTIFS': 'notifs', 'NOTIFS': 'notifs',
-    '📅_VISITES': 'visites', 'VISITES': 'visites',
+    '📅_VISITES': 'visites', '🗺️_VISITES': 'visites', 'VISITES': 'visites',
     '📞_PHONING': 'phoning', 'PHONING': 'phoning',
-    '📝_ACTIONS': 'actions', 'ACTIONS': 'actions',
+    '📝_ACTIONS': 'actions', '📊_ACTIONS': 'actions', 'ACTIONS': 'actions',
+    '📋_PROSPECTS': 'prospects', 'PROSPECTS': 'prospects',
     '👤_UTILISATEURS': 'utilisateurs', 'UTILISATEURS': 'utilisateurs',
   },
 
@@ -170,6 +171,9 @@ const SheetsAPI = {
       'Slider_Receptivite': 'slider_receptivite', 'Note_Initiale': 'note_initiale',
       'Flag_Traite': 'flag_traite', 'Flag_Converti': 'flag_converti',
       'GPS_Lat': 'latitude', 'GPS_Lng': 'longitude',
+      'Source_Import': 'source_import', 'Badge_Visite_Froid': 'badge_visite_froid',
+      'STATUT_COMPTE': 'statut_compte', 'Interet_EMPOWER': 'interet_empower',
+      'FLAG_ALERTE_ALEXANDRA': 'flag_alerte_alexandra',
     },
     visites: {
       'ID_Visite': 'id_visite_gas', 'Date_Visite': 'date_visite', 'Semaine_ISO': 'semaine_iso',
