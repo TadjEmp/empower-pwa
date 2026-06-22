@@ -128,12 +128,18 @@ const SheetsAPI = {
       fy27_obj: 'FY27_Obj', bonus_manager_eligible: 'Bonus_Manager_Eligible', id: '_uuid',
     },
     visites: {
-      id_visite_gas: 'ID_Visite', date_visite: 'Date_Visite', semaine_iso: 'Semaine_ISO',
+      id_visite_gas: 'ID_Visite',
+      date_visite: 'Date',           // vue-visites.js utilise v.Date et v.Date_Planif
+      heure: 'Heure', semaine_iso: 'Semaine_ISO',
       pin_cds: 'PIN_CDS', nom_cds: 'Nom_CDS', nom_compte: 'Nom_Compte',
-      type_visite: 'Type_Visite', note: 'Note_Privee', gps_lat: 'GPS_Lat', gps_lng: 'GPS_Lng',
-      statut: 'Statut', resum_ia: 'Resum_IA', slider_receptivite: 'Slider_Receptivite',
-      photo_url: 'Photo_URL', objectif_visite: 'Objectif_Visite', resultat_visite: 'Resultat_Visite',
-      interlocuteur_nom: 'Interlocuteur_Nom', interlocuteur_fonction: 'Interlocuteur_Fonction',
+      type_visite: 'Type_Visite', source_visite: 'Source_Visite',
+      objectif_visite: 'Objectif_Visite', resultat_visite: 'Resultat_Visite',
+      statut: 'Statut_Visite',       // statut avec valeur traduite (voir _transformRow)
+      interlocuteur_nom: 'Interlocuteur', interlocuteur_fonction: 'Interlocuteur_Fonction',
+      slider_receptivite: 'Slider_Receptivite', resum_ia: 'Resume_IA',
+      photo_url: 'Photo_URL', note: 'Note_Privee',
+      gps_lat: 'GPS_Lat', gps_lng: 'GPS_Lng',
+      created_at: 'Timestamp',       // vue utilise v.Timestamp pour calculs délais
       id: '_uuid',
     },
     phoning: {
@@ -169,12 +175,29 @@ const SheetsAPI = {
     },
   },
 
+  // DB statut → GAS label pour table visites
+  _VISITES_STATUT_DB_TO_GAS: {
+    realisee: 'réalisée', planifiee: 'planifiée',
+    en_cours: 'en cours',  manquee: 'manquée', annulee: 'annulée',
+  },
+  // GAS label → DB statut pour table visites (écriture)
+  _VISITES_STATUT_GAS_TO_DB: {
+    'réalisée': 'realisee', 'planifiée': 'planifiee',
+    'en cours': 'en_cours', 'manquée': 'manquee', 'annulée': 'annulee',
+  },
+
   _transformRow(table, row) {
     const map = this._MAPS_DB_TO_GAS[table]
     if (!map) return row
     const out = {}
     for (const [dbCol, gasCol] of Object.entries(map)) {
       if (row[dbCol] !== undefined) out[gasCol] = row[dbCol]
+    }
+    // Alias Date_Planif = Date pour vue-visites.js (utilise les deux)
+    if (table === 'visites' && out.Date) out.Date_Planif = out.Date
+    // Traduction valeur statut visites (DB sans accent → GAS avec accent)
+    if (table === 'visites' && out.Statut_Visite) {
+      out.Statut_Visite = this._VISITES_STATUT_DB_TO_GAS[out.Statut_Visite] || out.Statut_Visite
     }
     return out
   },
@@ -198,12 +221,15 @@ const SheetsAPI = {
       'FLAG_ALERTE_ALEXANDRA': 'flag_alerte_alexandra',
     },
     visites: {
-      'ID_Visite': 'id_visite_gas', 'Date_Visite': 'date_visite', 'Semaine_ISO': 'semaine_iso',
+      'ID_Visite': 'id_visite_gas', 'Date': 'date_visite', 'Date_Planif': 'date_visite',
+      'Heure': 'heure', 'Semaine_ISO': 'semaine_iso',
       'PIN_CDS': 'pin_cds', 'Nom_CDS': 'nom_cds', 'Nom_Compte': 'nom_compte',
-      'Type_Visite': 'type_visite', 'Note_Privee': 'note', 'GPS_Lat': 'gps_lat', 'GPS_Lng': 'gps_lng',
-      'Statut': 'statut', 'Resum_IA': 'resum_ia', 'Slider_Receptivite': 'slider_receptivite',
-      'Photo_URL': 'photo_url', 'Objectif_Visite': 'objectif_visite', 'Resultat_Visite': 'resultat_visite',
-      'Interlocuteur_Nom': 'interlocuteur_nom', 'Interlocuteur_Fonction': 'interlocuteur_fonction',
+      'Type_Visite': 'type_visite', 'Source_Visite': 'source_visite',
+      'Objectif_Visite': 'objectif_visite', 'Resultat_Visite': 'resultat_visite',
+      'Statut_Visite': 'statut',   // valeur traduite par _toDBRow (voir ci-dessous)
+      'Resume_IA': 'resum_ia', 'Slider_Receptivite': 'slider_receptivite',
+      'Interlocuteur': 'interlocuteur_nom', 'Interlocuteur_Fonction': 'interlocuteur_fonction',
+      'Photo_URL': 'photo_url', 'Note_Privee': 'note', 'GPS_Lat': 'gps_lat', 'GPS_Lng': 'gps_lng',
     },
     phoning: {
       'ID_Appel': 'id_appel_gas', 'Date': 'date_appel', 'Semaine_ISO': 'semaine_iso',
@@ -251,6 +277,10 @@ const SheetsAPI = {
     // Colonnes déjà en snake_case passent directement
     for (const [k, v] of Object.entries(gasRow)) {
       if (!map[k] && k === k.toLowerCase()) out[k] = v
+    }
+    // Traduction inverse statut visites (GAS avec accent → DB sans accent)
+    if (table === 'visites' && out.statut) {
+      out.statut = this._VISITES_STATUT_GAS_TO_DB[out.statut] || out.statut
     }
     return out
   },
