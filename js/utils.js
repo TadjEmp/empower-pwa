@@ -139,16 +139,15 @@ function generateCSV(data, filename) {
 
 function NavBar(actif) {
   const tousItems = [
-    { id: 'home',        hash: '#/dashboard',           icone: '⌂',  lbl: 'Home' },
-    { id: 'tracker',     hash: '#/empower-tracker',     icone: '▤',  lbl: 'Tracker' },
-    { id: 'historiques', hash: '#/comptes-historiques', icone: '🏢', lbl: 'Comptes' },
-    { id: 'phoning',     hash: '#/phoning',             icone: '📞', lbl: 'Phoning' },
-    { id: 'visites',     hash: '#/visites',             icone: '📅', lbl: 'Visites' },
-    { id: 'objectifs',   hash: '#/objectifs',           icone: '🎯', lbl: 'Objectifs' },
-    { id: 'primes',      hash: '#/primes',              icone: '🏆', lbl: 'Primes' },
-    { id: 'comptes',     hash: '#/comptes',             icone: '🗂️', lbl: 'Comptes' },
-    { id: 'reporting',   hash: '#/manager',             icone: '📊', lbl: 'Reporting' },
-    { id: 'admin',       hash: '#/admin',               icone: '⚙', lbl: 'Admin' },
+    { id: 'home',        hash: '#/dashboard',       icone: '⌂',  lbl: 'Home' },
+    { id: 'tracker',     hash: '#/empower-tracker', icone: '▤',  lbl: 'Tracker' },
+    { id: 'comptes',     hash: '#/comptes',         icone: '🏢', lbl: 'Comptes' },
+    { id: 'phoning',     hash: '#/phoning',         icone: '📞', lbl: 'Phoning' },
+    { id: 'visites',     hash: '#/visites',         icone: '📅', lbl: 'Visites' },
+    { id: 'objectifs',   hash: '#/objectifs',       icone: '🎯', lbl: 'Objectifs' },
+    { id: 'primes',      hash: '#/primes',          icone: '🏆', lbl: 'Primes' },
+    { id: 'reporting',   hash: '#/manager',         icone: '📊', lbl: 'Reporting' },
+    { id: 'admin',       hash: '#/admin',           icone: '⚙',  lbl: 'Admin' },
   ];
 
   // Filtrage role-aware : ne rend QUE les onglets autorisés par la matrice RBAC.
