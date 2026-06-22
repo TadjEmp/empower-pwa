@@ -83,6 +83,7 @@ window.VueQuestionnaire = {
   state: null,
   _visitePlanifiee: null,
   _isHorsBase: false,
+  _modeFroid: false, // FIX-B/C : true quand la visite en cours est à froid (HORS_BASE)
 
   _etatInitial() {
     const now = new Date();
@@ -138,6 +139,8 @@ window.VueQuestionnaire = {
   },
 
   async init(idCible = null) {
+    // FIX-B/C : réinitialiser le mode froid sauf si déjà positionné par ouvrirCR
+    this._modeFroid = false;
     this.state = this._etatInitial();
     this.render();
     try {
@@ -148,7 +151,26 @@ window.VueQuestionnaire = {
       this.state.comptes   = comptes.filter(c => Session.voitTout() || Number(c.PIN_CDS_Assigne) === Session.pin);
       this.state.prospects = prospects.filter(p => Session.voitTout() || !p.PIN_CDS_Assigne || Number(p.PIN_CDS_Assigne) === Session.pin);
 
-      if (idCible) {
+      // FIX-B/C : détection visite à froid via _visitePlanifiee (posé par ouvrirCR avant routing)
+      const estFroid = this._visitePlanifiee && (
+        this._visitePlanifiee.ID_Cible === 'HORS_BASE' ||
+        this._visitePlanifiee.Source_Visite === 'ESI_VISITE_FROID'
+      );
+
+      if (estFroid) {
+        // Créer une cible synthétique depuis la visite planifiée — pas de recherche requise
+        const vp = this._visitePlanifiee;
+        this.state.cible = {
+          Nom_Compte:    vp.Nom_Compte || '(Prospect à froid)',
+          ID_Compte:     'HORS_BASE',
+          ID_Prospect:   null,
+          Ville:         '',
+          STATUT_COMPTE: 'Visite à froid',
+        };
+        this.state.typeSource = 'EXISTANT';
+        this.state.recherche  = vp.Nom_Compte || '';
+        this._modeFroid = true;
+      } else if (idCible && idCible !== 'HORS_BASE') {
         const c = comptes.find(x => String(x.ID_Compte) === String(idCible));
         const p = !c && prospects.find(x => String(x.ID_Prospect) === String(idCible));
         if (c) { this.state.cible = c; this.state.typeSource = 'EXISTANT'; }
@@ -158,6 +180,7 @@ window.VueQuestionnaire = {
           this._chargerDernieresVisites();
         }
       }
+
       // Pré-remplissage depuis visite planifiée
       if (this._visitePlanifiee) {
         const vp = this._visitePlanifiee;
@@ -418,18 +441,21 @@ window.VueQuestionnaire = {
       SheetsAPI.viderCache('EMPOWER_MDB', '📊_ACTIONS').catch(() => {});
 
       // Mise à jour fiche compte / prospect
-      const champsMaj = { Date_prochaine_action: d.prochaineActionDate, Flag_traite: 'TRUE' };
-      if (estProspect) {
-        await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', idCible, champsMaj);
-      } else {
-        await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', idCible, {
-          ...champsMaj,
-          Date_Derniere_Action: d.date,
-          Type_Derniere_Action: 'Visite',
-          Prochaine_action: d.prochaineAction,
-          Slider_Receptivite: d.score,
-          ...(empowerAlerte ? { Interet_EMPOWER: 'OUI', Date_Interet_EMPOWER: d.date } : {}),
-        });
+      // FIX-B/C : pas de mise à jour pour les visites à froid (idCible = 'HORS_BASE')
+      if (idCible !== 'HORS_BASE') {
+        const champsMaj = { Date_prochaine_action: d.prochaineActionDate, Flag_traite: 'TRUE' };
+        if (estProspect) {
+          await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', idCible, champsMaj);
+        } else {
+          await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', idCible, {
+            ...champsMaj,
+            Date_Derniere_Action: d.date,
+            Type_Derniere_Action: 'Visite',
+            Prochaine_action: d.prochaineAction,
+            Slider_Receptivite: d.score,
+            ...(empowerAlerte ? { Interet_EMPOWER: 'OUI', Date_Interet_EMPOWER: d.date } : {}),
+          });
+        }
       }
 
       // Log 📊_ACTIONS
@@ -467,8 +493,13 @@ window.VueQuestionnaire = {
         Toast.afficher('🔔 Alerte EMPOWER envoyée à Alexandra', 'info', 4000);
       }
 
-      // BLOC 1 — détecter si c'est une visite hors-base pour proposer "Ajouter à ma base"
-      this._isHorsBase = this._visitePlanifiee?.Source_Visite === 'HORS_BASE';
+      // FIX-B (bug secondaire) : _isHorsBase portait une vérification incorrecte
+      // ('HORS_BASE' vs 'ESI_VISITE_FROID') — le bouton "Ajouter à ma base" n'apparaissait jamais.
+      const _wasHorsBase = this._modeFroid || idCible === 'HORS_BASE' ||
+        this._visitePlanifiee?.Source_Visite === 'ESI_VISITE_FROID' ||
+        this._visitePlanifiee?.ID_Cible === 'HORS_BASE';
+      this._isHorsBase = _wasHorsBase;
+      this._modeFroid  = false;
       this._visitePlanifiee = null;
       this._renderSucces(dureeMin, empowerAlerte);
     } catch(e) {
@@ -580,7 +611,19 @@ window.VueQuestionnaire = {
   // ── BLOC 1 — Identification ──
   _etape0() {
     const s = this.state, d = s.d;
+    // FIX-B/C : en mode froid, afficher la cible pré-remplie sans champ de recherche
+    const bannereFroid = this._modeFroid ? `
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fff8e1;border-radius:var(--radius-sm);border-left:4px solid #ffc107;margin-bottom:14px">
+        <span style="font-size:22px">❄️</span>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#795548">Visite à froid</div>
+          <div style="font-size:15px;font-weight:800">${s.cible?.Nom_Compte || ''}</div>
+          <div style="font-size:11px;color:var(--c-text-2)">Prospect hors base — non référencé dans vos comptes</div>
+        </div>
+      </div>` : '';
     return `<div class="q-champs">
+      ${bannereFroid}
+      ${!this._modeFroid ? `
       <label class="q-label">Statut du compte
         <div style="display:flex;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:4px;background:var(--c-surface)">
           ${[['EXISTANT','✅ Existant'],['PROSPECT','❄️ Prospect']].map(([v,l]) => `
@@ -593,7 +636,7 @@ window.VueQuestionnaire = {
         <input class="q-input" placeholder="🔍 Rechercher…" value="${s.recherche}"
                oninput="VueQuestionnaire.setRecherche(this.value)" autocomplete="off"/>
       </label>
-      <div id="q-suggestions"></div>
+      <div id="q-suggestions"></div>` : '<div id="q-suggestions"></div>'}
       ${s.cible ? `<div class="q-recap">
         <div class="q-recap-ligne"><span>Ville</span><strong>${s.cible.Ville||'—'}</strong></div>
         <div class="q-recap-ligne"><span>Statut</span><strong>${s.cible.STATUT_COMPTE||s.cible.Statut||'—'}</strong></div>

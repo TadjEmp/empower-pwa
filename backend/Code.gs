@@ -339,6 +339,13 @@ function _lire({ fichier, onglet, limit = 10000, offset = 0 }, user) {
     });
   }
 
+  // FIX-A — exclure les visites soft-deleted de 🗺️_VISITES (colonne deleted=TRUE)
+  if (onglet === '🗺️_VISITES') {
+    data = data.filter(function(o) {
+      return String(o.deleted || '').toUpperCase() !== 'TRUE';
+    });
+  }
+
   // v5.0 P6 — pagination côté serveur
   const total = data.length;
   const paginatedData = data.slice(offset, offset + limit);
@@ -597,7 +604,7 @@ const IMPORT_IDS = {
 const HEADERS_MDB = {
   '🏢_COMPTES': ['ID_Compte','Nom_Compte','Ville','Code_Postal','Tel','Email','PIN_CDS_Assigne','Nom_CDS','CANAL','SECTEUR','HAS_EMPOWER','FLAG_ACTION','Priorite','STATUT_COMPTE','CA_FY25','CA_FY26','CA_Q1FY27','Date_Derniere_Action','Type_Derniere_Action','Prochaine_action','Date_prochaine_action','Slider_Receptivite','Note_initiale','Flag_traite','Flag_converti','Latitude','Longitude','Source_Import','Date_Import','Timestamp'],
   '📋_PROSPECTS': ['ID_Prospect','Nom_Compte','Ville','Code_Postal','Tel','Email','PIN_CDS_Assigne','Source_Import','FLAG_ACTION','CANAL','Note_initiale','Date_prochaine_action','Flag_traite','Flag_converti','Date_Import','Timestamp','STATUT_EMPOWER','POTENTIEL','ORIGINE','CONTACT_NOM','CONTACT_FONCTION','WELCOME_PACK_DATE','PREMIERE_COMMANDE_DATE'],
-  '🗺️_VISITES': ['ID_Visite','Date','Heure','Semaine_ISO','PIN_CDS','Nom_CDS','ID_Cible','Nom_Compte','Type_Visite','Statut_Visite','Source_Visite','Type_Revendeur','Nb_Employes','Interlocuteur_Nom','Interlocuteur_Fonction','Contact_Direct','Contact_Data','Concurrent_Actuel','Satisf_Concurrent','Produits_Norton','Canal_Appro','Part_Lineaire','Arbre_EMPOWER_Statut','Freins_JSON','Grossistes_JSON','Marketing_Present','Marketing_Supports','PLV_Installe','Photo_URL','Resultat_Visite','Slider_Receptivite','Note_Privee','Prochaine_Action_Texte','Prochaine_Action_Date','GPS_Lat','GPS_Lng','Duree_Minutes','Timestamp'],
+  '🗺️_VISITES': ['ID_Visite','Date','Heure','Semaine_ISO','PIN_CDS','Nom_CDS','ID_Cible','Nom_Compte','Type_Visite','Statut_Visite','Source_Visite','Type_Revendeur','Nb_Employes','Interlocuteur_Nom','Interlocuteur_Fonction','Contact_Direct','Contact_Data','Concurrent_Actuel','Satisf_Concurrent','Produits_Norton','Canal_Appro','Part_Lineaire','Arbre_EMPOWER_Statut','Freins_JSON','Grossistes_JSON','Marketing_Present','Marketing_Supports','PLV_Installe','Photo_URL','Resultat_Visite','Slider_Receptivite','Note_Privee','Prochaine_Action_Texte','Prochaine_Action_Date','GPS_Lat','GPS_Lng','Duree_Minutes','Timestamp','deleted','deleted_at','deleted_by'],
   '📞_PHONING': ['ID_Appel','Date','Semaine_ISO','PIN_CDS','Nom_CDS','ID_Cible','Reseller','Type_Appel','Statut_Appel','Interet_EMPOWER','Interet_Score','Questionnaire_JSON','Frein_Principal','Prochaine_Action','Date_Rappel','Note','Timestamp'],
   '📊_ACTIONS': ['ID_Action','Date_Action','Type_Action','Source','PIN_CDS','Nom_Compte','Statut_Avant','Statut_Apres','Resum_IA','GPS_Lat','GPS_Lng','Timestamp'],
   '🎯_OBJECTIFS_PRIMES': ['ID_Objectif','Nom_CDS','PIN_CDS','Q1_Obj_Initial','Q2_Obj_Initial','Q3_Obj_Initial','Q4_Obj_Initial','FY27_Obj','Q1_Obj_Revise','Q2_Obj_Revise','Q3_Obj_Revise','Q4_Obj_Revise','Q1_CA_Realise','Q2_CA_Realise','Q3_CA_Realise','Q4_CA_Realise','Prime_Q1','Prime_Q2','Prime_Q3','Prime_Q4','Bonus_Manager_Eligible'],
@@ -766,6 +773,25 @@ function migrerAjouterStatutVisite() {
   if (lastRow > 1) sh.getRange(2, insertAt, lastRow - 1, 1).setValue('planifiée');
   SpreadsheetApp.flush();
   Logger.log('✅ Migration OK — Statut_Visite ajoutée en col ' + insertAt + ' (' + (lastRow - 1) + ' lignes mises à jour)');
+}
+
+// ⚙️ FIX-A — À exécuter UNE FOIS depuis Apps Script si la MDB existe déjà.
+// Ajoute les colonnes deleted / deleted_at / deleted_by à 🗺️_VISITES
+// afin que le soft-delete frontend soit persistant en base.
+function migrerAjouterColonnesDeleted() {
+  var sh = _getSpreadsheet('EMPOWER_MDB').getSheetByName('🗺️_VISITES');
+  if (!sh) throw new Error('Onglet 🗺️_VISITES introuvable');
+  var headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(String);
+  var COLS = ['deleted', 'deleted_at', 'deleted_by'];
+  var added = 0;
+  COLS.forEach(function(col) {
+    if (headers.indexOf(col) === -1) {
+      sh.getRange(1, sh.getLastColumn() + 1).setValue(col).setFontWeight('bold');
+      added++;
+    }
+  });
+  SpreadsheetApp.flush();
+  Logger.log('✅ Migration deleted columns OK — ' + added + ' colonne(s) ajoutée(s)');
 }
 
 // ── Groq proxy (B11) ───────────────────────────────────────

@@ -369,11 +369,16 @@ window.VueVisites = {
       return;
     }
     this.state.visitePlanifiee = v;
+    // FIX-D : _visitePlanifiee posé AVANT Router.aller() ; le router appellera
+    // VueQuestionnaire.init() une seule fois — pas de double-init.
     if (window.VueQuestionnaire) {
-      VueQuestionnaire.init(v.ID_Cible || null);
       VueQuestionnaire._visitePlanifiee = v;
+      VueQuestionnaire._isHorsBase = false; // réinitialiser l'état
     }
-    Router.aller(`#/questionnaire${v.ID_Cible ? '/' + v.ID_Cible : ''}`);
+    // Pour les visites à froid, on passe sans paramètre d'ID pour éviter la
+    // recherche impossible d'un compte 'HORS_BASE' ; l'init détectera _visitePlanifiee.
+    const estFroid = v.ID_Cible === 'HORS_BASE' || v.Source_Visite === 'ESI_VISITE_FROID';
+    Router.aller(estFroid ? '#/questionnaire' : `#/questionnaire/${v.ID_Cible}`);
   },
 
   // ── Planifier ──
