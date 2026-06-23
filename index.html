@@ -12,7 +12,7 @@
   <title>ESI — Empower Sales Intelligence</title>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="icons/icon-192.png"/>
-  <link rel="stylesheet" href="css/base.css?v=9"/>
+  <link rel="stylesheet" href="css/base.css?v=10"/>
   <link rel="stylesheet" href="css/components.css?v=5"/>
   <link rel="stylesheet" href="css/comptes.css?v=3"/>
   <link rel="stylesheet" href="css/questionnaire.css?v=3"/>
@@ -22,6 +22,7 @@
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
+  <div id="drawer-root"></div>
   <div id="app">
     <div class="splash">
       <div class="splash-norton">
@@ -41,7 +42,7 @@
   </div>
 
   <!-- Couche API & utilitaires -->
-  <script src="js/utils.js?v=8"></script>
+  <script src="js/utils.js?v=9"></script>
   <script src="js/helpers.js?v=2"></script>
   <script src="js/session.js?v=3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -49,8 +50,8 @@
   <script src="js/groq.js?v=5"></script>
   <script src="js/gemini.js?v=2"></script>
   <script src="js/toast.js?v=3"></script>
-  <script src="js/permissions.js?v=2"></script>
-  <script src="js/router.js?v=3"></script>
+  <script src="js/permissions.js?v=3"></script>
+  <script src="js/router.js?v=4"></script>
 
   <!-- Vues V2.1 — Navigation 7 modules -->
   <script src="js/vue-login.js?v=4"></script>
@@ -68,6 +69,7 @@
   <!-- SUIVI DES PRIMES -->
   <script src="js/vue-primes.js?v=6"></script>
   <!-- Vues auxiliaires -->
+  <script src="js/vue-photos.js?v=1"></script>
   <script src="js/vue-comptes.js?v=9"></script>
   <script src="js/vue-fiche-compte.js?v=7"></script>
   <script src="js/vue-questionnaire.js?v=8"></script>

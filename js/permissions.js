@@ -15,15 +15,15 @@
     ADMIN: [
       'home', 'tracker', 'historiques', 'phoning', 'visites',
       'objectifs', 'primes', 'comptes', 'manager', 'admin',
-      'questionnaire', 'reporting',
+      'questionnaire', 'reporting', 'photos',
     ],
     CDS: [
       'home', 'tracker', 'historiques', 'phoning', 'visites',
-      'objectifs', 'primes', 'questionnaire', 'comptes',
+      'objectifs', 'primes', 'questionnaire', 'comptes', 'photos',
     ],
     // V5 BUG5 — Alexandra : conserve OBJECTIFS ; jamais Visites/Phoning/Primes.
     CHANNEL_MANAGER: [
-      'home', 'tracker', 'comptes', 'objectifs', 'reporting',
+      'home', 'tracker', 'comptes', 'objectifs', 'reporting', 'photos',
     ],
     EXTERNE: [
       'tracker',
@@ -52,6 +52,7 @@
         /^#\/compte\/[^/]+$/.test(h))          return 'comptes';
     if (/^#\/questionnaire(\/[^/]+)?$/.test(h))return 'questionnaire';
     if (/^#\/admin$/.test(h))                  return 'admin';
+    if (/^#\/photos$/.test(h))                 return 'photos';
 
     return null;
   }
@@ -70,6 +71,7 @@
     reporting:     '#/manager',
     questionnaire: '#/questionnaire',
     admin:         '#/admin',
+    photos:        '#/photos',
   };
 
   function onglets(role) {

@@ -171,6 +171,13 @@ function NavBar(actif) {
       </div>
       <span class="app-brand-sep">|</span>
       <span class="app-brand-esi">EMPOWER SALES INTELLIGENCE</span>
+      <button class="brand-hamburger" onclick="DrawerMenu.ouvrir()" aria-label="Menu">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <line x1="2" y1="5.5" x2="20" y2="5.5"/>
+          <line x1="2" y1="11" x2="20" y2="11"/>
+          <line x1="2" y1="16.5" x2="20" y2="16.5"/>
+        </svg>
+      </button>
     </div>
     <nav class="nav-principale">
       <div class="nav-logo">
@@ -186,6 +193,121 @@ function NavBar(actif) {
         </a>`).join('')}
     </nav>`;
 }
+
+// ═══════════════════════════════════════
+//  DrawerMenu — Volet latéral gauche (non fixe, slide-in)
+//  Rendu dans #drawer-root (hors #app) pour survivre aux navigations.
+// ═══════════════════════════════════════
+const DrawerMenu = (function () {
+
+  // Items de navigation secondaire du drawer
+  const ITEMS = [
+    { id: 'photos',      hash: '#/photos',               ico: '📷', lbl: 'Mes Photos',           roles: ['ADMIN','CDS','CHANNEL_MANAGER'] },
+    { id: 'historiques', hash: '#/comptes-historiques',  ico: '📋', lbl: 'Historique CA',         roles: ['ADMIN','CDS','CHANNEL_MANAGER'] },
+    { id: 'objectifs',   hash: '#/objectifs',            ico: '🎯', lbl: 'Mes Objectifs',         roles: ['ADMIN','CDS'] },
+    { id: 'primes',      hash: '#/primes',               ico: '🏆', lbl: 'Mes Primes',            roles: ['ADMIN','CDS'] },
+    { id: 'admin',       hash: '#/admin',                ico: '⚙️', lbl: 'Administration',        roles: ['ADMIN'] },
+  ];
+
+  function _roleLabel(role) {
+    return { ADMIN: 'Admin', CDS: 'Commercial', CHANNEL_MANAGER: 'Manager', EXTERNE: 'Invité' }[role] || role || '';
+  }
+
+  function _html() {
+    const role    = (typeof Session !== 'undefined') ? Session.role : null;
+    const nom     = (typeof Session !== 'undefined') ? (Session.nom || '') : '';
+    const initiale = nom ? nom.charAt(0).toUpperCase() : '?';
+    const items   = ITEMS.filter(i => !role || i.roles.includes(role));
+
+    return `
+    <div id="drawer-overlay" class="drawer-overlay" onclick="DrawerMenu.fermer()"></div>
+    <div id="drawer-panneau" class="drawer-panneau" role="dialog" aria-modal="true" aria-label="Menu navigation">
+      <div class="drawer-header">
+        <div class="drawer-header-avatar">${initiale}</div>
+        <div class="drawer-header-info">
+          <div class="drawer-header-nom">${nom || 'EMPOWER'}</div>
+          <div class="drawer-header-role">${_roleLabel(role)}</div>
+        </div>
+        <button class="drawer-close" onclick="DrawerMenu.fermer()" aria-label="Fermer">✕</button>
+      </div>
+
+      <nav class="drawer-nav">
+        <div class="drawer-section-lbl">Navigation</div>
+        ${items.map(i => `
+          <a class="drawer-item" href="${i.hash}" onclick="DrawerMenu.fermer()">
+            <div class="drawer-item-ico">${i.ico}</div>
+            ${i.lbl}
+          </a>`).join('')}
+
+        <div class="drawer-sep"></div>
+        <div class="drawer-footer">
+          <button class="drawer-item" onclick="DrawerMenu._synchro()">
+            <div class="drawer-item-ico">🔄</div>
+            Synchroniser
+          </button>
+          <button class="drawer-item drawer-item-danger" onclick="DrawerMenu._deconnecter()">
+            <div class="drawer-item-ico">🚪</div>
+            Déconnexion
+          </button>
+        </div>
+      </nav>
+    </div>`;
+  }
+
+  function _getRoot() {
+    let root = document.getElementById('drawer-root');
+    if (!root) {
+      root = document.createElement('div');
+      root.id = 'drawer-root';
+      document.body.appendChild(root);
+    }
+    return root;
+  }
+
+  function renderToRoot() {
+    _getRoot().innerHTML = _html();
+  }
+
+  function ouvrir() {
+    // Lazy-render si la session vient de démarrer ou si le DOM a été vidé
+    const ov = document.getElementById('drawer-overlay');
+    const pn = document.getElementById('drawer-panneau');
+    if (!ov || !pn) renderToRoot();
+    const overlay = document.getElementById('drawer-overlay');
+    const panneau = document.getElementById('drawer-panneau');
+    if (overlay) overlay.classList.add('ouvert');
+    if (panneau) { panneau.classList.add('ouvert'); panneau.focus(); }
+    document.body.style.overflow = 'hidden';
+  }
+
+  function fermer() {
+    const overlay = document.getElementById('drawer-overlay');
+    const panneau = document.getElementById('drawer-panneau');
+    if (overlay) overlay.classList.remove('ouvert');
+    if (panneau) panneau.classList.remove('ouvert');
+    document.body.style.overflow = '';
+  }
+
+  function _synchro() {
+    fermer();
+    if (typeof SheetsAPI !== 'undefined' && SheetsAPI.viderToutCache) {
+      SheetsAPI.viderToutCache().then(() => {
+        if (typeof Toast !== 'undefined') Toast.afficher('✅ Cache vidé — rechargement…', 'succes', 2000);
+        setTimeout(() => location.reload(), 1800);
+      });
+    } else {
+      location.reload();
+    }
+  }
+
+  function _deconnecter() {
+    fermer();
+    if (typeof Session !== 'undefined' && Session.deconnecter) Session.deconnecter();
+    if (typeof Router !== 'undefined') Router.aller('#/login');
+  }
+
+  return { renderToRoot, ouvrir, fermer, _synchro, _deconnecter };
+})();
 
 // ═══════════════════════════════════════
 //  Bloc 9 #1 — resolveCDS(pinOuLibelle) → prénom EN MAJUSCULES ou '—'

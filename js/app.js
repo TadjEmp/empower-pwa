@@ -26,6 +26,7 @@
   } else {
     if (window.NotifCenter) NotifCenter._render();   // cloche visible dès le boot
     _initPollingNotifs();
+    if (window.DrawerMenu) DrawerMenu.renderToRoot(); // drawer disponible dès le boot
   }
 })();
 

@@ -168,6 +168,7 @@ window.VueLogin = {
 
     const r = await Session.connecter(email, mdp);
     if (r.ok) {
+      if (window.DrawerMenu) DrawerMenu.renderToRoot();
       Router.aller('#/dashboard');
     } else {
       this.state.erreur = `❌ ${r.erreur}`;
