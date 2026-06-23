@@ -292,7 +292,7 @@ window.VueDashboardManager = {
       const ligne = objectifs.find(o => Number(o.PIN_CDS) === pin);
       if (!ligne) throw new Error('CDS introuvable dans objectifs');
       const champ = `${quarter}_CA_Realise`;
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES', ligne.ID_Objectif, {
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES', String(ligne.PIN_CDS), {
         [champ]: val,
         ...(note ? { [`${quarter}_Note_Saisie`]: `[Manuel] ${note}` } : {}),
       });

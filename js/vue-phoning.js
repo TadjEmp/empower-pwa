@@ -417,7 +417,7 @@ window.VuePhoning = {
       const _notif = (dest, type, msg) => SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
         ID_Notif: genId('NOTIF'), Date_Envoi: new Date().toISOString(),
         PIN_Destinataire: dest, Type_Notif: type,
-        Message: msg, ID_Cible: idCible, Statut_Lu: 'NON',
+        Message: msg, ID_Cible: idCible, Statut_Lu: false,
         Timestamp: new Date().toISOString(),
       }).catch(() => {});
       if (_score >= 4) {

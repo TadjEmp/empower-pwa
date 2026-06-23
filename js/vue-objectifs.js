@@ -121,7 +121,7 @@ window.VueObjectifs = {
     const q   = this.state.quarter;
     const frm = {};
     this.state.objectifs.forEach(o => {
-      frm[o.ID_Objectif] = {
+      frm[String(o.PIN_CDS)] = {
         ca:          window.parseCA(o[`${q}_CA_Realise`])  ?? 0,
         obj_ca:      window.parseCA(o[`${q}_Obj_Revise`])  ?? window.parseCA(o[`${q}_Obj_Initial`]) ?? 0,
         obj_nsb:     Number(o[`${q}_Obj_NSB`]              || 0),
@@ -383,7 +383,7 @@ window.VueObjectifs = {
       </div>`;
     };
     const rows = this.state.objectifs.map(o => {
-      const id = o.ID_Objectif;
+      const id = String(o.PIN_CDS);
       if (!this.state.formSaisie[id] || typeof this.state.formSaisie[id] !== 'object')
         this.state.formSaisie[id] = { ca: 0, obj_ca: 0, obj_nsb: 0, obj_onboard: 0 };
       // Nom résolu : jamais de PIN brut ni de Nom_CDS non traité

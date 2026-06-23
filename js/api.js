@@ -166,7 +166,13 @@ const SheetsAPI = {
     phoning: {
       id_appel_gas: 'ID_Appel', date_appel: 'Date', semaine_iso: 'Semaine_ISO',
       pin_cds: 'PIN_CDS', nom_cds: 'Nom_CDS', reseller: 'Reseller',
-      statut_appel: 'Statut_Appel', interet_empower: 'Interet_EMPOWER', note: 'Note', id: '_uuid',
+      id_cible_gas: 'ID_Cible', type_appel: 'Type_Appel',
+      statut_appel: 'Statut_Appel', interet_empower: 'Interet_EMPOWER',
+      interet_score: 'Interet_Score', frein_principal: 'Frein_Principal',
+      prochaine_action: 'Prochaine_Action', date_rappel: 'Date_Rappel',
+      commande_annoncee: 'Commande_Annoncee', montant_estime: 'Montant_Estime',
+      statut_final: 'Statut_Final', questionnaire_json: 'Questionnaire_JSON',
+      note: 'Note', deleted: 'deleted', id: '_uuid',
     },
     actions: {
       id_action_gas: 'ID_Action', date_action: 'Date_Action', type_action: 'Type_Action',
@@ -270,7 +276,13 @@ const SheetsAPI = {
     phoning: {
       'ID_Appel': 'id_appel_gas', 'Date': 'date_appel', 'Semaine_ISO': 'semaine_iso',
       'PIN_CDS': 'pin_cds', 'Nom_CDS': 'nom_cds', 'Reseller': 'reseller',
-      'Statut_Appel': 'statut_appel', 'Interet_EMPOWER': 'interet_empower', 'Note': 'note',
+      'ID_Cible': 'id_cible_gas', 'Type_Appel': 'type_appel',
+      'Statut_Appel': 'statut_appel', 'Interet_EMPOWER': 'interet_empower',
+      'Interet_Score': 'interet_score', 'Frein_Principal': 'frein_principal',
+      'Prochaine_Action': 'prochaine_action', 'Date_Rappel': 'date_rappel',
+      'Commande_Annoncee': 'commande_annoncee', 'Montant_Estime': 'montant_estime',
+      'Statut_Final': 'statut_final', 'Questionnaire_JSON': 'questionnaire_json',
+      'Note': 'note',
     },
     actions: {
       'ID_Action': 'id_action_gas', 'Date_Action': 'date_action', 'Type_Action': 'type_action',
@@ -332,6 +344,12 @@ const SheetsAPI = {
       if (col in out && typeof out[col] !== 'boolean') {
         const v = String(out[col]).toUpperCase().trim()
         out[col] = v === 'OUI' || v === 'TRUE' || v === '1' || v === 'YES'
+      }
+    }
+    // Chaîne vide → null pour colonnes date/timestamp (évite l'erreur PostgreSQL)
+    for (const col of Object.keys(out)) {
+      if (out[col] === '' && (/^date_/.test(col) || /_date$/.test(col) || /_at$/.test(col))) {
+        out[col] = null
       }
     }
     return out
@@ -403,13 +421,14 @@ const SheetsAPI = {
     let q = this._sb.from(table).update(dbChamps)
     // Déterminer la clé métier par table
     const gasKeyMap = {
-      comptes:  'id_compte_gas',
-      visites:  'id_visite_gas',
-      phoning:  'id_appel_gas',
-      actions:  'id_action_gas',
-      notifs:   'id_notif_gas',
-      params:   'parametre',
-      leads:    'id_prospect_gas',
+      comptes:          'id_compte_gas',
+      visites:          'id_visite_gas',
+      phoning:          'id_appel_gas',
+      actions:          'id_action_gas',
+      notifs:           'id_notif_gas',
+      params:           'parametre',
+      leads:            'id_prospect_gas',
+      objectifs_primes: 'pin_cds',
     }
     const gasKey = gasKeyMap[table]
     if (gasKey && typeof id === 'string' && !id.match(/^[0-9a-f-]{36}$/i)) {

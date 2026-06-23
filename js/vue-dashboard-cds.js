@@ -144,8 +144,8 @@ window.VueDashboardCDS = {
     // ── Alertes actives lues depuis 🔔_NOTIFS (PIN_Destinataire = pin) ──
     const mesNotifs = (Array.isArray(notifs) ? notifs : [])
       .filter(n => Number(n.PIN_Destinataire) === pin)
-      // N3-4 — non-lu = Statut_Lu 'NON' (le backend écrit 'NON', le centre notifs écrit 'OUI' au clic)
-      .filter(n => String(n.Statut_Lu || 'NON').toUpperCase() === 'NON')
+      // N3-4 — non-lu = Statut_Lu false (boolean Supabase)
+      .filter(n => !n.Statut_Lu)
       .sort((a, b) => {
         const ta = new Date(a.Timestamp || a.Date_Envoi || 0).getTime() || 0;
         const tb = new Date(b.Timestamp || b.Date_Envoi || 0).getTime() || 0;
