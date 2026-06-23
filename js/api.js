@@ -136,6 +136,7 @@ const SheetsAPI = {
     },
     visites: {
       id_visite_gas: 'ID_Visite',
+      id_cible_gas: 'ID_Cible',      // identifiant GAS du compte/prospect visité (COMP-xxx ou PROS-xxx)
       date_visite: 'Date',           // vue-visites.js utilise v.Date et v.Date_Planif
       heure: 'Heure', semaine_iso: 'Semaine_ISO',
       pin_cds: 'PIN_CDS', nom_cds: 'Nom_CDS', nom_compte: 'Nom_Compte',
@@ -243,7 +244,8 @@ const SheetsAPI = {
       'FLAG_ALERTE_ALEXANDRA': 'flag_alerte_alexandra',
     },
     visites: {
-      'ID_Visite': 'id_visite_gas', 'Date': 'date_visite', 'Date_Planif': 'date_visite',
+      'ID_Visite': 'id_visite_gas', 'ID_Cible': 'id_cible_gas',
+      'Date': 'date_visite', 'Date_Planif': 'date_visite',
       'Heure': 'heure', 'Semaine_ISO': 'semaine_iso',
       'PIN_CDS': 'pin_cds', 'Nom_CDS': 'nom_cds', 'Nom_Compte': 'nom_compte',
       'Type_Visite': 'type_visite', 'Source_Visite': 'source_visite',
