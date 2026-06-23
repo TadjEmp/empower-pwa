@@ -78,7 +78,7 @@ const SheetsAPI = {
   // ── TABLE MAPPING : onglet GAS → table Supabase ──────
   _tableMap: {
     '🏢_COMPTES': 'comptes', 'COMPTES': 'comptes',
-    '📋 COMPTES HISTORIQUES': 'comptes', 'COMPTES HISTORIQUES': 'comptes', 'COMPTES_HISTORIQUES': 'comptes',
+    '📋 COMPTES HISTORIQUES': 'sellin_agregats', 'COMPTES HISTORIQUES': 'sellin_agregats', 'COMPTES_HISTORIQUES': 'sellin_agregats',
     '🎯_OBJECTIFS_PRIMES': 'objectifs_primes', 'OBJECTIFS_PRIMES': 'objectifs_primes',
     '📊_PARAMS': 'params', '⚙️_PARAMS': 'params', 'PARAMS': 'params',
     '🔔_NOTIFS': 'notifs', 'NOTIFS': 'notifs',
@@ -118,6 +118,12 @@ const SheetsAPI = {
       latitude: 'GPS_Lat', longitude: 'GPS_Lng',
       date_sync_sellin: 'Date_Sync_SelIn', semaine_sync: 'Semaine_Sync',
       badge_visite_froid: 'Badge_Visite_Froid', id: '_uuid',
+    },
+    sellin_agregats: {
+      reseller: 'RESELLER', canal: 'CANAL',
+      ca_fy25: 'CA FY25 €', ca_fy26: 'CA FY26 €', ca_q1fy27: 'CA Q1FY27 €',
+      flag_brut: 'Flag_Brut', compte_id: 'Compte_ID',
+      semaine_sync: 'Semaine_Sync', id: '_uuid',
     },
     objectifs_primes: {
       pin_cds: 'PIN_CDS', nom_cds: 'Nom_CDS',

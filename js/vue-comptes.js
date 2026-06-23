@@ -187,6 +187,7 @@ window.VueComptes = {
         <div class="mobile-card-list-view">
           ${liste.map(c => {
             // fmtCA : retourne '—' si valeur invalide/nulle/corrompue (date "11/4/1903" → '—')
+            const caFY25 = window.fmtCA(c.CA_FY25);
             const caFY26 = window.fmtCA(c.CA_FY26);
             const caQ1   = window.fmtCA(c.CA_Q1FY27);
             // resolveCDS (utils.js) : retourne '—' si PIN inconnu — jamais de PIN brut dans l'UI
@@ -200,7 +201,8 @@ window.VueComptes = {
             <div class="cc-pills" onclick="Router.aller('#/compte/${c.ID_Compte}')">
               ${badgeStatutCompte(c)}
               ${this._badgePriorite(c.Priorite)}
-              <span style="margin-left:auto;font-size:13px;font-weight:700;color:var(--c-title)">FY26 ${caFY26}</span>
+              <span style="margin-left:auto;font-size:12px;color:var(--c-muted)">FY25 ${caFY25}</span>
+              <span style="font-size:13px;font-weight:700;color:var(--c-title)">FY26 ${caFY26}</span>
             </div>
             <div class="cc-nom" onclick="Router.aller('#/compte/${c.ID_Compte}')">${c.Nom_Compte || '—'}</div>
             <div class="cc-infos" onclick="Router.aller('#/compte/${c.ID_Compte}')">
@@ -233,11 +235,12 @@ window.VueComptes = {
           <table class="desktop-table-data-view">
             <thead><tr>
               <th>Statut</th><th>Compte</th><th>Ville</th><th>Canal</th>
-              <th class="num">CA FY26</th><th class="num">CA Q1 FY27</th>
+              <th class="num">CA FY25</th><th class="num">CA FY26</th><th class="num">CA Q1 FY27</th>
               <th>Prochaine action</th><th>CDS</th><th>Actions</th>
             </tr></thead>
             <tbody>
               ${liste.map(c => {
+                const caFY25 = window.fmtCA(c.CA_FY25);
                 const caFY26 = window.fmtCA(c.CA_FY26);
                 const caQ1   = window.fmtCA(c.CA_Q1FY27);
                 const nomCDS = window.resolveCDS(c.PIN_CDS_Assigne) !== '—'
@@ -252,6 +255,7 @@ window.VueComptes = {
                   <td class="compte-nom" onclick="Router.aller('#/compte/${c.ID_Compte}')">${c.Nom_Compte || '—'}</td>
                   <td>${c.Ville || '—'}</td>
                   <td>${c.CANAL || '—'}</td>
+                  <td class="num" style="color:var(--c-muted)">${caFY25}</td>
                   <td class="num" style="font-weight:700;color:var(--c-title)">${caFY26}</td>
                   <td class="num" style="font-weight:600;color:var(--c-primary)">${caQ1}</td>
                   <td>${pa}</td>

@@ -180,6 +180,7 @@ window.VueFicheCompte = {
           <div class="id-ligne"><span>Email</span><strong>${c.Email ? `<a class="lien-email" href="mailto:${c.Email}">${c.Email}</a>` : '—'}</strong></div>
           <div class="id-ligne"><span>CDS</span><strong>${window.resolveCDS(c.PIN_CDS_Assigne || c.Nom_CDS)}</strong></div>
           <div class="id-ligne"><span>EMPOWER</span><strong>${c.HAS_EMPOWER || '—'}</strong></div>
+          <div class="id-ligne"><span>CA FY25</span><strong>${window.fmtCA(this.state.v17?.['CA FY25 €'] ?? c.CA_FY25)} €</strong></div>
           <div class="id-ligne"><span>CA FY26</span><strong>${window.fmtCA(this.state.v17?.['CA FY26 €'] ?? c.CA_FY26)} €</strong></div>
           <div class="id-ligne"><span>Dernier Q (Q1·27)</span><strong>${(window.parseCA(this.state.v17?.['CA Q1FY27 €'] ?? c.CA_Q1FY27) !== null ? window.fmtCA(window.parseCA(this.state.v17?.['CA Q1FY27 €'] ?? c.CA_Q1FY27)) : '—')} €</strong></div>
           <div class="id-ligne"><span>Potentiel</span><strong>${c.POTENTIEL || this.state.v17?.POTENTIEL_UPSELL || '—'}</strong></div>
