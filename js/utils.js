@@ -138,16 +138,12 @@ function generateCSV(data, filename) {
 }
 
 function NavBar(actif) {
+  // Bandeau du bas : 4 onglets fixes — les autres sont dans le volet gauche (DrawerMenu)
   const tousItems = [
-    { id: 'home',        hash: '#/dashboard',       icone: '⌂',  lbl: 'Home' },
-    { id: 'tracker',     hash: '#/empower-tracker', icone: '▤',  lbl: 'Tracker' },
-    { id: 'comptes',     hash: '#/comptes',         icone: '🏢', lbl: 'Comptes' },
-    { id: 'phoning',     hash: '#/phoning',         icone: '📞', lbl: 'Phoning' },
-    { id: 'visites',     hash: '#/visites',         icone: '📅', lbl: 'Visites' },
-    { id: 'objectifs',   hash: '#/objectifs',       icone: '🎯', lbl: 'Objectifs' },
-    { id: 'primes',      hash: '#/primes',          icone: '🏆', lbl: 'Primes' },
-    { id: 'reporting',   hash: '#/manager',         icone: '📊', lbl: 'Reporting' },
-    { id: 'admin',       hash: '#/admin',           icone: '⚙',  lbl: 'Admin' },
+    { id: 'home',      hash: '#/dashboard',       icone: '⌂',  lbl: 'Home' },
+    { id: 'tracker',   hash: '#/empower-tracker', icone: '▤',  lbl: 'Tracker' },
+    { id: 'comptes',   hash: '#/comptes',         icone: '🏢', lbl: 'Comptes' },
+    { id: 'reporting', hash: '#/manager',         icone: '📊', lbl: 'Reporting' },
   ];
 
   // Filtrage role-aware : ne rend QUE les onglets autorisés par la matrice RBAC.
@@ -202,7 +198,9 @@ const DrawerMenu = (function () {
 
   // Items de navigation secondaire du drawer
   const ITEMS = [
-    { id: 'photos',      hash: '#/photos',               ico: '📷', lbl: 'Mes Photos',           roles: ['ADMIN','CDS','CHANNEL_MANAGER'] },
+    { id: 'visites',     hash: '#/visites',              ico: '📅', lbl: 'Mon Planning',          roles: ['ADMIN','CDS'] },
+    { id: 'phoning',     hash: '#/phoning',              ico: '📞', lbl: 'Phoning',               roles: ['ADMIN','CDS'] },
+    { id: 'photos',      hash: '#/photos',               ico: '📷', lbl: 'Mes Photos',            roles: ['ADMIN','CDS','CHANNEL_MANAGER'] },
     { id: 'historiques', hash: '#/comptes-historiques',  ico: '📋', lbl: 'Historique CA',         roles: ['ADMIN','CDS','CHANNEL_MANAGER'] },
     { id: 'objectifs',   hash: '#/objectifs',            ico: '🎯', lbl: 'Mes Objectifs',         roles: ['ADMIN','CDS'] },
     { id: 'primes',      hash: '#/primes',               ico: '🏆', lbl: 'Mes Primes',            roles: ['ADMIN','CDS'] },

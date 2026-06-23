@@ -90,7 +90,8 @@ window.VueComptes = {
     if (this.state.triPar === 'PRIORITE')
       l.sort((a, b) => (this.PRIORITE_ORDRE[a.Priorite] ?? 9) - (this.PRIORITE_ORDRE[b.Priorite] ?? 9));
     if (this.state.triPar === 'CA')
-      l.sort((a, b) => (window.parseCA(b.CA_FY26) || 0) - (window.parseCA(a.CA_FY26) || 0));
+      l.sort((a, b) => (window.parseCA(b.CA_Q1FY27) || window.parseCA(b.CA_FY26) || 0)
+                     - (window.parseCA(a.CA_Q1FY27) || window.parseCA(a.CA_FY26) || 0));
     if (this.state.triPar === 'NOM')
       l.sort((a, b) => String(a.Nom_Compte || '').localeCompare(String(b.Nom_Compte || '')));
     return l;
@@ -113,7 +114,7 @@ window.VueComptes = {
     const _cs       = this.state.comptes;
     const nbActif   = _cs.filter(c => this._statutCompte(c) === 'actif').length;
     const nbReact   = _cs.filter(c => this._statutCompte(c) === 'a_reactiver').length;
-    const caTotalP  = _cs.reduce((s, c) => s + (window.parseCA(c.CA_FY26) || 0), 0);
+    const caTotalP  = _cs.reduce((s, c) => s + (window.parseCA(c.CA_Q1FY27) || window.parseCA(c.CA_FY26) || 0), 0);
     const cdsList = (this._cdsListe || [
       { pin: 1000, nom: 'Tadjidine' }, { pin: 4001, nom: 'Lyes' },
       { pin: 4002, nom: 'Mehdi' },     { pin: 4003, nom: 'Johanne' },
@@ -132,7 +133,7 @@ window.VueComptes = {
         ${kpiCard({ label: 'Comptes',      value: total,    accent: 'primary' })}
         ${kpiCard({ label: 'Actifs',       value: nbActif,  accent: 'teal' })}
         ${kpiCard({ label: 'À réactiver',  value: nbReact,  accent: 'amber' })}
-        ${kpiCard({ label: 'CA FY26',      value: window.fmtCA(caTotalP) !== '—' ? window.fmtCA(caTotalP) : '0', unit: '€', accent: 'indigo' })}
+        ${kpiCard({ label: 'CA FY27',      value: window.fmtCA(caTotalP) !== '—' ? window.fmtCA(caTotalP) : '0', unit: '€', accent: 'indigo' })}
       </div>
 
       <div class="barre-filtres">
@@ -169,7 +170,7 @@ window.VueComptes = {
         <div class="filtres-statut" style="display:flex;gap:8px;flex-wrap:wrap">
           <select onchange="VueComptes.setTri(this.value)">
             <option value="PRIORITE" ${this.state.triPar === 'PRIORITE' ? 'selected' : ''}>Priorité</option>
-            <option value="CA"       ${this.state.triPar === 'CA'       ? 'selected' : ''}>CA FY26 ↓</option>
+            <option value="CA"       ${this.state.triPar === 'CA'       ? 'selected' : ''}>CA FY27 ↓</option>
             <option value="NOM"      ${this.state.triPar === 'NOM'      ? 'selected' : ''}>Nom A→Z</option>
           </select>
           ${Session.voitTout() ? `
@@ -214,14 +215,13 @@ window.VueComptes = {
               ${badgeStatutCompte(c)}
               ${badgeDernier}
               ${this._badgePriorite(c.Priorite)}
-              <span style="margin-left:auto;font-size:12px;color:var(--c-muted)">FY25 ${caFY25}</span>
-              <span style="font-size:13px;font-weight:700;color:var(--c-title)">FY26 ${caFY26}</span>
+              <span style="margin-left:auto;font-size:12px;color:var(--c-muted)">FY26 ${caFY26}</span>
+              <span style="font-size:13px;font-weight:700;color:var(--c-title)">FY27 Q1 ${caQ1 !== '—' ? caQ1 : '—'}</span>
             </div>
             <div class="cc-nom" onclick="Router.aller('#/compte/${c.ID_Compte}')">${c.Nom_Compte || '—'}</div>
             <div class="cc-infos" onclick="Router.aller('#/compte/${c.ID_Compte}')">
               <span>📍 ${c.Ville || '—'}</span>
               <span>${c.CANAL || '—'}</span>
-              <span style="font-weight:600;color:var(--c-primary)">Q1 : ${caQ1}</span>
               ${c.Date_prochaine_action ? `
                 <span class="${estDepassee(c.Date_prochaine_action) ? 'prochaine-action alerte' : ''}">⏰ ${dateRelative(c.Date_prochaine_action)}</span>` : ''}
             </div>
@@ -248,7 +248,7 @@ window.VueComptes = {
           <table class="desktop-table-data-view">
             <thead><tr>
               <th>Statut</th><th>Compte</th><th>Ville</th><th>Canal</th>
-              <th class="num">CA FY25</th><th class="num">CA FY26</th><th class="num">CA Q1 FY27</th>
+              <th class="num">CA FY26</th><th class="num">CA Q1 FY27</th>
               <th>Prochaine action</th><th>CDS</th><th>Actions</th>
             </tr></thead>
             <tbody>
@@ -268,9 +268,8 @@ window.VueComptes = {
                   <td class="compte-nom" onclick="Router.aller('#/compte/${c.ID_Compte}')">${c.Nom_Compte || '—'}</td>
                   <td>${c.Ville || '—'}</td>
                   <td>${c.CANAL || '—'}</td>
-                  <td class="num" style="color:var(--c-muted)">${caFY25}</td>
-                  <td class="num" style="font-weight:700;color:var(--c-title)">${caFY26}</td>
-                  <td class="num" style="font-weight:600;color:var(--c-primary)">${caQ1}</td>
+                  <td class="num" style="color:var(--c-muted)">${caFY26}</td>
+                  <td class="num" style="font-weight:700;color:var(--c-title)">${caQ1 !== '—' ? caQ1 : caFY26}</td>
                   <td>${pa}</td>
                   <td>${Session.estManager() ? `
                     <select style="border:1px solid var(--c-border);border-radius:4px;padding:3px 6px;font-size:12px"
