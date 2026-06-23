@@ -541,10 +541,10 @@ window.VueVisites = {
     const id = this.state.confirmDeleteId;
     if (!id) return;
     try {
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '📅_VISITES', id, {
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', '🗺️_VISITES', id, {
         deleted:    true,
         deleted_at: new Date().toISOString(),
-        deleted_by: Session.nom,
+        deleted_by: Session.pin,
       });
       this.state.visites = this.state.visites.filter(v => v.ID_Visite !== id);
       this.state.confirmDeleteId = null;

@@ -141,6 +141,7 @@ const SheetsAPI = {
       photo_url: 'Photo_URL', note: 'Note_Privee',
       gps_lat: 'GPS_Lat', gps_lng: 'GPS_Lng',
       created_at: 'Timestamp',       // vue utilise v.Timestamp pour calculs délais
+      deleted: 'deleted', deleted_at: 'deleted_at', deleted_by: 'deleted_by',
       id: '_uuid',
     },
     phoning: {
@@ -309,6 +310,7 @@ const SheetsAPI = {
     if (frais) return cached
     try {
       let q = this._sb.from(table).select('*')
+      if (table === 'visites') q = q.neq('deleted', true)
       if (limit != null) q = q.range(offset || 0, (offset || 0) + limit - 1)
       const { data, error, count } = await q
       if (error) throw new Error(error.message)
