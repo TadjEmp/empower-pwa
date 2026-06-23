@@ -346,9 +346,9 @@ const SheetsAPI = {
         out[col] = v === 'OUI' || v === 'TRUE' || v === '1' || v === 'YES'
       }
     }
-    // Chaîne vide → null pour colonnes date/timestamp (évite l'erreur PostgreSQL)
+    // Chaîne vide → null pour colonnes date/timestamp/numeric (évite l'erreur PostgreSQL)
     for (const col of Object.keys(out)) {
-      if (out[col] === '' && (/^date_/.test(col) || /_date$/.test(col) || /_at$/.test(col))) {
+      if (out[col] === '' && (/^date_/.test(col) || /_date$/.test(col) || /_at$/.test(col) || /_lat$/.test(col) || /_lng$/.test(col))) {
         out[col] = null
       }
     }

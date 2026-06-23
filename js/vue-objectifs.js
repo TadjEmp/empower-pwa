@@ -97,7 +97,7 @@ window.VueObjectifs = {
     const o = this.state.objectifs.find(x => Number(x.PIN_CDS) === pin) || {};
     // parseCA (Bloc 9) : rejette les dates corrompues et NaN, retourne null
     const ca  = window.parseCA(o[`${q}_CA_Realise`])  ?? 0;
-    const obj = window.parseCA(o[`${q}_Obj_Revise`])  ?? window.parseCA(o[`${q}_Obj_Initial`]) ?? 0;
+    const obj = window.parseCA(o[`${q}_Obj_Revise`] || o[`${q}_Obj_Initial`]) ?? 0;
     const pct = (obj > 0 && isFinite(ca) && isFinite(obj)) ? Math.round(ca / obj * 100) : 0;
     const numSem   = parseInt((this.state.semaine || 'S01').replace('S', ''), 10) || 1;
     const semDansQ = Math.min(Math.max(numSem, 1), 13);
