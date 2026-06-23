@@ -272,7 +272,7 @@ window.VueVisites = {
           ID_Notif: genId('NOTIF'), Date_Envoi: new Date().toISOString(),
           PIN_Destinataire: dest, Type_Notif: 'CONVERSION_FROID',
           Message: `Nouveau compte actif créé depuis visite à froid : ${m.nomCompte}`,
-          ID_Cible: idCompte, Statut_Lu: 'NON', Timestamp: new Date().toISOString(),
+          ID_Cible: idCompte, Statut_Lu: false, Timestamp: new Date().toISOString(),
         }).catch(() => {});
       }
       this._modalConversion = null;
@@ -1050,7 +1050,7 @@ window.VueVisites = {
           <div style="font-size:13px;margin-bottom:10px"><strong>${m.doublonExistant.Nom_Compte}</strong> — ${m.doublonExistant.STATUT_COMPTE || '—'} · ${m.doublonExistant.CANAL || '—'}</div>
           <div style="display:flex;gap:8px">
             <button class="btn-secondaire" style="flex:1;font-size:12px"
-                    onclick="VueVisites.fermerConversion();Router.aller('#/fiche/${m.doublonExistant.ID_Compte}')">👁️ Voir la fiche</button>
+                    onclick="VueVisites.fermerConversion();Router.aller('#/compte/${m.doublonExistant.ID_Compte}')">👁️ Voir la fiche</button>
             <button class="btn-primaire" style="flex:1;font-size:12px"
                     onclick="VueVisites.forcerConversion()">Créer quand même</button>
           </div>

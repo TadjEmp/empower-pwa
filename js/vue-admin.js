@@ -460,7 +460,7 @@ window.VueAdmin = {
     try {
       await SheetsAPI.mettreAJour('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES', idObjectif, champs);
       Toast.afficher('✅ Objectifs révisés enregistrés', 'succes');
-      const o = this.state.objectifs.find(x => x.ID_Objectif === idObjectif);
+      const o = this.state.objectifs.find(x => String(x.PIN_CDS) === String(idObjectif));
       if (o) Object.assign(o, champs);
     } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
     this.state.envoiEnCours = false;
@@ -822,12 +822,12 @@ window.VueAdmin = {
               <div style="display:flex;gap:6px;margin-top:8px">
                 ${['Q1', 'Q2', 'Q3', 'Q4'].map(q => `
                   <label style="flex:1;font-size:11px;color:var(--c-text-2)">${q}
-                    <input id="obj-${o.ID_Objectif}-${q}" type="number" class="q-input" style="padding:6px 8px;font-size:13px"
+                    <input id="obj-${o.PIN_CDS}-${q}" type="number" class="q-input" style="padding:6px 8px;font-size:13px"
                            placeholder="${o[`${q}_Obj_Initial`] ?? '—'}" value="${o[`${q}_Obj_Revise`] || ''}"/>
                   </label>`).join('')}
               </div>
               <button class="btn-secondaire" style="margin-top:8px;padding:8px"
-                      onclick="VueAdmin.sauverObjectif('${o.ID_Objectif}')">💾 Enregistrer ${o.Nom_CDS}</button>
+                      onclick="VueAdmin.sauverObjectif('${o.PIN_CDS}')">💾 Enregistrer ${o.Nom_CDS}</button>
             </div>`).join('')}
           <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">Vide = objectif initial conservé. Les % pace utilisent le révisé s'il existe.</p>
         </div>
