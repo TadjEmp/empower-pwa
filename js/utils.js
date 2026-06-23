@@ -290,11 +290,13 @@ const DrawerMenu = (function () {
 
   function _synchro() {
     fermer();
-    if (typeof SheetsAPI !== 'undefined' && SheetsAPI.viderToutCache) {
-      SheetsAPI.viderToutCache().then(() => {
-        if (typeof Toast !== 'undefined') Toast.afficher('✅ Cache vidé — rechargement…', 'succes', 2000);
-        setTimeout(() => location.reload(), 1800);
-      });
+    if (typeof SheetsAPI !== 'undefined' && typeof SheetsAPI.viderCache === 'function') {
+      SheetsAPI.viderCache()
+        .then(() => {
+          if (typeof Toast !== 'undefined') Toast.afficher('✅ Cache vidé — rechargement…', 'succes', 2000);
+          setTimeout(() => location.reload(), 1800);
+        })
+        .catch(() => location.reload());
     } else {
       location.reload();
     }

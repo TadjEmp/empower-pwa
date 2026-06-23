@@ -86,29 +86,23 @@ window.VuePhotos = {
   },
 
   // ── Téléchargement ──
-  async telecharger(idx) {
+  // Synchrone : <a click> évite le blocage popup iOS après await.
+  // Pour URLs cross-origin (Supabase storage), le navigateur ouvre dans un nouvel onglet
+  // où l'utilisateur peut sauvegarder nativement.
+  telecharger(idx) {
     const item = this._flat[idx];
     if (!item) return;
     const url = item.url;
-    const nom = (item.visite.Nom_Compte || 'visite').replace(/[^a-zA-Z0-9]/g, '_');
+    const nom  = (item.visite.Nom_Compte || 'visite').replace(/[^a-zA-Z0-9]/g, '_');
     const date = (item.visite.Date || '').slice(0, 10).replace(/-/g, '');
-    const filename = `photo_${nom}_${date}.jpg`;
-
-    // Sur mobile, ouvrir dans nouvel onglet (Safari/Chrome permettent Save Image)
-    // Sur desktop, déclencher un download via fetch+blob
-    try {
-      const resp = await fetch(url);
-      const blob = await resp.blob();
-      const burl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = burl; a.download = filename;
-      document.body.appendChild(a); a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(burl);
-    } catch {
-      // Fallback : ouvrir dans un nouvel onglet
-      window.open(url, '_blank', 'noopener,noreferrer');
-    }
+    const a = document.createElement('a');
+    a.href     = url;
+    a.download = `photo_${nom}_${date}.jpg`;
+    a.target   = '_blank';
+    a.rel      = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   },
 
   // ── Render ──
