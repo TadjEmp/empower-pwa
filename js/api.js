@@ -179,6 +179,8 @@ const SheetsAPI = {
       date_integration: 'Date_Integration', date_archive: 'Date_Archive',
       welcome_pack_envoye: 'Welcome_Pack_Envoye', welcome_pack_date: 'Welcome_Pack_Date',
       note: 'Note_initiale', flag_alerte: 'FLAG_ALERTE', id_compte_gas: 'ID_Compte_Gas',
+      date_prochaine_action: 'Date_prochaine_action',
+      contact_nom: 'CONTACT_NOM', contact_fonction: 'CONTACT_FONCTION',
       id: '_uuid',
     },
   },
@@ -265,6 +267,8 @@ const SheetsAPI = {
       'Date_Integration': 'date_integration', 'Date_Archive': 'date_archive',
       'Welcome_Pack_Envoye': 'welcome_pack_envoye', 'Welcome_Pack_Date': 'welcome_pack_date',
       'Note_initiale': 'note', 'FLAG_ALERTE': 'flag_alerte', 'ID_Compte_Gas': 'id_compte_gas',
+      'Date_prochaine_action': 'date_prochaine_action',
+      'CONTACT_NOM': 'contact_nom', 'CONTACT_FONCTION': 'contact_fonction',
     },
     objectifs_primes: {
       'PIN_CDS': 'pin_cds', 'Nom_CDS': 'nom_cds',

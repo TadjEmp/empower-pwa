@@ -264,7 +264,7 @@ window.VuePipeline = {
       canal: v('nl-canal'), note: v('nl-note'), dateAction: v('nl-date-action'),
       potentiel: v('nl-potentiel'), origine: v('nl-origine'),
       contact: v('nl-contact'), fonction: v('nl-fonction'),
-      cdsSelect: v('nl-cds-assigne'),
+      cdsSelect: v('nl-cds-assigne'), statutSelect: v('nl-statut'),
     };
 
     // GEM-T02 — Détection doublon avant création
@@ -285,7 +285,10 @@ window.VuePipeline = {
     const cdsAssignePin = this._peutAssigner() ? (vals.cdsSelect || '')
                         : Session.estCDS()      ? String(Session.pin)
                         : '';
-    const statutInit    = cdsAssignePin ? 'ASSIGNE' : 'SAISIE';
+    // ADMIN/CHANNEL_MANAGER peuvent choisir explicitement ; sinon logique auto
+    const statutInit = this._peutAssigner() && vals.statutSelect
+                     ? vals.statutSelect
+                     : (cdsAssignePin ? 'ASSIGNE' : 'SAISIE');
 
     const lead = {
       ID_Prospect: genId('PROS'),
@@ -636,6 +639,12 @@ window.VuePipeline = {
               <select id="nl-cds-assigne">
                 <option value="">— Non attribué pour l'instant —</option>
                 ${(this.CDS.length ? this.CDS : this.CDS_FALLBACK).map(c => `<option value="${c.pin}">${this._nomCDS(c.pin)}</option>`).join('')}
+              </select>
+            </label>
+            <label>Statut initial du lead
+              <select id="nl-statut">
+                <option value="SAISIE">📥 À traiter — sans CDS assigné</option>
+                <option value="ASSIGNE">🎯 Assigné — CDS désigné</option>
               </select>
             </label>` : ''}
             <label>Notes de qualification
