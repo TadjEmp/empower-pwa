@@ -718,11 +718,11 @@ window.VueVisites = {
               📋 Fiche compte
             </button>` : ''}
           ${peutModif ? `
-            <button class="btn-secondaire" title="Modifier" style="padding:6px 11px;font-size:13px;width:auto"
+            <button class="btn-secondaire" title="Modifier" style="padding:10px 14px;font-size:15px;width:auto"
                     onclick="VueVisites.ouvrirEdition('${v.ID_Visite}')">✏️</button>
-            <button class="btn-secondaire" title="Dupliquer (J+7)" style="padding:6px 11px;font-size:13px;width:auto"
+            <button class="btn-secondaire" title="Dupliquer (J+7)" style="padding:10px 14px;font-size:15px;width:auto"
                     onclick="VueVisites.dupliquerVisite('${v.ID_Visite}')">📋+</button>
-            <button class="btn-secondaire" title="Supprimer" style="padding:6px 11px;font-size:13px;width:auto;color:var(--c-danger);border-color:var(--c-danger)"
+            <button class="btn-secondaire" title="Supprimer" style="padding:10px 14px;font-size:15px;width:auto;color:var(--c-danger);border-color:var(--c-danger)"
                     onclick="VueVisites.demanderSuppression('${v.ID_Visite}')">🗑️</button>
           ` : ''}
         </div>
@@ -836,7 +836,8 @@ window.VueVisites = {
       <div class="modal">
         <h3>📅 Planifier une visite</h3>
         <form onsubmit="VueVisites.planifier(event)">
-          <!-- Toggle compte existant / à froid -->
+          <!-- D3 — Section Enseigne / Cible -->
+          <div class="modal-section-sep">🏢 Enseigne / Cible</div>
           <div style="display:flex;gap:6px;margin-bottom:10px">
             <button type="button" class="btn-filtre ${!f.horsBase ? 'actif' : ''}"
                     onclick="VueVisites.state.formPlanif.horsBase=false;VueVisites.render()">
@@ -909,7 +910,7 @@ window.VueVisites = {
                  </button>
                </div>` : ''}
                <label>Compte * <span style="font-size:11px;color:var(--c-text-2);font-weight:400">${actif ? comptesFiltres.length + ' résultat(s)' : 'trié par nom · 🔴 urgents si filtré'}</span>
-                 <select required size="5" style="height:120px"
+                 <select required size="7" style="height:180px"
                          onchange="VueVisites.setCible(this.value, this.options[this.selectedIndex].dataset.nom)">
                    <option value="">— sélectionner —</option>
                    ${comptesFiltres.map(c =>
@@ -920,6 +921,8 @@ window.VueVisites = {
                ${this._ficheCompteSelectionne(f.idCible)}`;
             })()
           }
+          <!-- D3 — Section Planification -->
+          <div class="modal-section-sep">📅 Planification</div>
           <label>🎯 Objectif de la visite *
             <select required onchange="VueVisites.state.formPlanif.objectifVisite=this.value">
               <option value="" ${!f.objectifVisite ? 'selected' : ''}>— choisir —</option>
@@ -950,6 +953,8 @@ window.VueVisites = {
               ).join('')}
             </select>
           </label>
+          <!-- D3 — Section Préparation -->
+          <div class="modal-section-sep">📝 Préparation</div>
           <label>Préparation / contexte
             <textarea rows="2" placeholder="Points à aborder, historique, contexte…"
               oninput="VueVisites.state.formPlanif.commentairePrep=this.value">${f.commentairePrep || ''}</textarea>

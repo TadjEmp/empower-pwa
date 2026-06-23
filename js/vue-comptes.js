@@ -196,10 +196,23 @@ window.VueComptes = {
               : (c.Nom_CDS ? window.resolveCDS(c.Nom_CDS) : null);
             // Alexandra (CHANNEL_MANAGER) : vue lecture seule — pas d'actions terrain
             const estLectureSeule = Session.role === 'CHANNEL_MANAGER';
+            // D1 — Badge "Dernière visite" façon Marvin Sales
+            const dernActDate = c.Date_Derniere_Action || c.date_derniere_action || '';
+            const dernActSem  = dernActDate
+              ? Math.max(0, Math.floor((Date.now() - new Date(dernActDate).getTime()) / (7*86400000)))
+              : null;
+            const badgeDernier = dernActSem !== null
+              ? (dernActSem === 0
+                  ? `<span style="font-size:11px;font-weight:700;color:var(--c-success);background:color-mix(in srgb,var(--c-success) 12%,transparent);padding:2px 8px;border-radius:99px;border:1px solid color-mix(in srgb,var(--c-success) 30%,transparent)">✅ Cette semaine</span>`
+                  : dernActSem <= 4
+                  ? `<span style="font-size:11px;font-weight:700;color:var(--c-warning);background:color-mix(in srgb,var(--c-warning) 12%,transparent);padding:2px 8px;border-radius:99px;border:1px solid color-mix(in srgb,var(--c-warning) 30%,transparent)">⏱ il y a ${dernActSem} sem.</span>`
+                  : `<span style="font-size:11px;font-weight:700;color:var(--c-danger);background:color-mix(in srgb,var(--c-danger) 12%,transparent);padding:2px 8px;border-radius:99px;border:1px solid color-mix(in srgb,var(--c-danger) 30%,transparent)">⚠️ ${dernActSem} sem.</span>`)
+              : '';
             return `
           <div class="carte-compte-v2">
             <div class="cc-pills" onclick="Router.aller('#/compte/${c.ID_Compte}')">
               ${badgeStatutCompte(c)}
+              ${badgeDernier}
               ${this._badgePriorite(c.Priorite)}
               <span style="margin-left:auto;font-size:12px;color:var(--c-muted)">FY25 ${caFY25}</span>
               <span style="font-size:13px;font-weight:700;color:var(--c-title)">FY26 ${caFY26}</span>
