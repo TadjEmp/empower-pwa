@@ -49,7 +49,7 @@ function _initPollingNotifs() {
       const pin = Number(Session.pin);
       const nouvelles = rows.filter(function(n) {
         return Number(n.PIN_Destinataire) === pin
-          && String(n.Statut_Lu || '').toUpperCase() === 'NON'
+          && !n.Statut_Lu
           && !_vus.has(n.ID_Notif);
       });
       nouvelles.forEach(function(n) { _vus.add(n.ID_Notif); });

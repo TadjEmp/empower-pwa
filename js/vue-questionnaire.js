@@ -443,17 +443,19 @@ window.VueQuestionnaire = {
       // Mise à jour fiche compte / prospect
       // FIX-B/C : pas de mise à jour pour les visites à froid (idCible = 'HORS_BASE')
       if (idCible !== 'HORS_BASE') {
-        const champsMaj = { Date_prochaine_action: d.prochaineActionDate, Flag_traite: 'TRUE' };
         if (estProspect) {
-          await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', idCible, champsMaj);
+          await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', idCible, {
+            Date_prochaine_action: d.prochaineActionDate, Flag_traite: 'TRUE',
+          });
         } else {
           await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', idCible, {
-            ...champsMaj,
-            Date_Derniere_Action: d.date,
-            Type_Derniere_Action: 'Visite',
-            Prochaine_action: d.prochaineAction,
-            Slider_Receptivite: d.score,
-            ...(empowerAlerte ? { Interet_EMPOWER: 'OUI', Date_Interet_EMPOWER: d.date } : {}),
+            Date_Prochaine_Action: d.prochaineActionDate,
+            Flag_Traite:           'TRUE',
+            Date_Derniere_Action:  d.date,
+            Type_Derniere_Action:  'Visite',
+            Prochaine_Action:      d.prochaineAction,
+            Slider_Receptivite:    d.score,
+            ...(empowerAlerte ? { Interet_EMPOWER: 'OUI' } : {}),
           });
         }
       }

@@ -3,7 +3,7 @@
 //  Cloche flottante + badge compteur + panneau déroulant + marquage lu.
 //  Autonome : se rend dans #notif-center (ajouté au <body>), indépendant
 //  du système de vues — survit aux re-render des écrans.
-//  Convention non-lu : Statut_Lu = 'NON' (backend) ; marquage = 'OUI'.
+//  Convention non-lu : Statut_Lu = false (boolean Supabase) ; marquage = true.
 // ═══════════════════════════════════════
 
 window.NotifCenter = {
@@ -17,22 +17,21 @@ window.NotifCenter = {
     if (!window.Session || !Session.pin) { this.liste = []; this._render(); return; }
     const pin = Number(Session.pin);
     this.liste = (Array.isArray(rows) ? rows : [])
-      .filter(n => Number(n.PIN_Destinataire) === pin
-                && String(n.Statut_Lu || 'NON').toUpperCase() === 'NON')
-      .sort((a, b) => String(b.Timestamp || b.Date_Envoi || '')
-                        .localeCompare(String(a.Timestamp || a.Date_Envoi || '')));
+      .filter(n => Number(n.PIN_Destinataire) === pin && !n.Statut_Lu)
+      .sort((a, b) => String(b.Date_Envoi || b.Timestamp || '')
+                        .localeCompare(String(a.Date_Envoi || a.Timestamp || '')));
     this._render();
   },
 
   basculer() { this._ouvert = !this._ouvert; this._render(); },
   fermer()   { this._ouvert = false; this._render(); },
 
-  // N3-4 — clic notif → Statut_Lu = 'OUI'. Optimiste : retrait local immédiat.
+  // N3-4 — clic notif → Statut_Lu = true. Optimiste : retrait local immédiat.
   async marquerLue(id) {
     if (!id) return;
     this.liste = this.liste.filter(n => n.ID_Notif !== id);
     this._render();
-    try { await SheetsAPI.mettreAJour('EMPOWER_MDB', '🔔_NOTIFS', id, { Statut_Lu: 'OUI' }); }
+    try { await SheetsAPI.mettreAJour('EMPOWER_MDB', '🔔_NOTIFS', id, { Statut_Lu: true }); }
     catch (e) { /* silencieux : non bloquant */ }
   },
 
@@ -42,7 +41,7 @@ window.NotifCenter = {
     this._ouvert = false;
     this._render();
     for (const id of ids) {
-      try { await SheetsAPI.mettreAJour('EMPOWER_MDB', '🔔_NOTIFS', id, { Statut_Lu: 'OUI' }); }
+      try { await SheetsAPI.mettreAJour('EMPOWER_MDB', '🔔_NOTIFS', id, { Statut_Lu: true }); }
       catch (e) {}
     }
   },

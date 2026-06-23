@@ -147,6 +147,18 @@ const SheetsAPI = {
       photo_url: 'Photo_URL', note: 'Note_Privee',
       gps_lat: 'GPS_Lat', gps_lng: 'GPS_Lng',
       created_at: 'Timestamp',       // vue utilise v.Timestamp pour calculs délais
+      // Données terrain questionnaire
+      type_revendeur: 'Type_Revendeur', contact_direct: 'Contact_Direct',
+      concurrent_actuel: 'Concurrent_Actuel', arbre_empower_statut: 'Arbre_EMPOWER_Statut',
+      freins_json: 'Freins_JSON', grossistes_json: 'Grossistes_JSON',
+      marketing_present: 'Marketing_Present', marketing_supports: 'Marketing_Supports',
+      prochaine_action_texte: 'Prochaine_Action_Texte', prochaine_action_date: 'Prochaine_Action_Date',
+      flag_alerte_alexandra: 'FLAG_ALERTE_ALEXANDRA', duree_minutes: 'Duree_Minutes',
+      clientele_principale: 'Clientele_Principale', canal_vente: 'Canal_Vente',
+      activites_principales: 'Activites_Principales', situation_geo: 'Situation_Geo',
+      empower_partenaire: 'Empower_Partenaire', empower_interesse: 'Empower_Interesse',
+      decideur_rencontre: 'Decideur_Rencontre', decideur_nom: 'Decideur_Nom',
+      decideur_fonction: 'Decideur_Fonction', concurrents_json: 'Concurrents_JSON',
       deleted: 'deleted', deleted_at: 'deleted_at', deleted_by: 'deleted_by',
       id: '_uuid',
     },
@@ -235,11 +247,23 @@ const SheetsAPI = {
       'Heure': 'heure', 'Semaine_ISO': 'semaine_iso',
       'PIN_CDS': 'pin_cds', 'Nom_CDS': 'nom_cds', 'Nom_Compte': 'nom_compte',
       'Type_Visite': 'type_visite', 'Source_Visite': 'source_visite',
-      'Objectif_Visite': 'objectif_visite', 'Resultat_Visite': 'resultat_visite',
-      'Statut_Visite': 'statut',   // valeur traduite par _toDBRow (voir ci-dessous)
+      'Objectifs_Visite': 'objectif_visite', 'Resultat_Visite': 'resultat_visite',
+      'Statut_Visite': 'statut',   // valeur traduite par _toDBRow
       'Resume_IA': 'resum_ia', 'Slider_Receptivite': 'slider_receptivite',
-      'Interlocuteur': 'interlocuteur_nom', 'Interlocuteur_Fonction': 'interlocuteur_fonction',
+      'Interlocuteur_Nom': 'interlocuteur_nom', 'Interlocuteur_Fonction': 'interlocuteur_fonction',
       'Photo_URL': 'photo_url', 'Note_Privee': 'note', 'GPS_Lat': 'gps_lat', 'GPS_Lng': 'gps_lng',
+      // Données terrain questionnaire
+      'Type_Revendeur': 'type_revendeur', 'Contact_Direct': 'contact_direct',
+      'Concurrent_Actuel': 'concurrent_actuel', 'Arbre_EMPOWER_Statut': 'arbre_empower_statut',
+      'Freins_JSON': 'freins_json', 'Grossistes_JSON': 'grossistes_json',
+      'Marketing_Present': 'marketing_present', 'Marketing_Supports': 'marketing_supports',
+      'Prochaine_Action_Texte': 'prochaine_action_texte', 'Prochaine_Action_Date': 'prochaine_action_date',
+      'FLAG_ALERTE_ALEXANDRA': 'flag_alerte_alexandra', 'Duree_Minutes': 'duree_minutes',
+      'Clientele_Principale': 'clientele_principale', 'Canal_Vente': 'canal_vente',
+      'Activites_Principales': 'activites_principales', 'Situation_Geo': 'situation_geo',
+      'Empower_Partenaire': 'empower_partenaire', 'Empower_Interesse': 'empower_interesse',
+      'Decideur_Rencontre': 'decideur_rencontre', 'Decideur_Nom': 'decideur_nom',
+      'Decideur_Fonction': 'decideur_fonction', 'Concurrents_JSON': 'concurrents_json',
     },
     phoning: {
       'ID_Appel': 'id_appel_gas', 'Date': 'date_appel', 'Semaine_ISO': 'semaine_iso',
@@ -253,7 +277,8 @@ const SheetsAPI = {
     },
     notifs: {
       'ID_Notif': 'id_notif_gas', 'Date_Envoi': 'date_envoi', 'PIN_Destinataire': 'pin_destinataire',
-      'Type_Notif': 'type_notif', 'Message': 'message', 'ID_Cible': 'id_cible', 'Statut_Lu': 'statut_lu',
+      'Type_Notif': 'type_notif', 'Message': 'message', 'ID_Cible': 'id_cible',
+      'Statut_Lu': 'statut_lu',  // boolean en DB : true=lu / false=non lu
     },
     params: { 'Parametre': 'parametre', 'Valeur': 'valeur', 'Description': 'description' },
     leads: {
@@ -293,6 +318,19 @@ const SheetsAPI = {
     // Traduction inverse statut visites (GAS avec accent → DB sans accent)
     if (table === 'visites' && out.statut) {
       out.statut = this._VISITES_STATUT_GAS_TO_DB[out.statut] || out.statut
+    }
+    // Conversion OUI/NON → boolean pour colonnes boolean Supabase
+    const _BOOL_COLS = {
+      visites: ['marketing_present', 'plv_installe'],
+      notifs:  ['statut_lu'],
+      leads:   ['welcome_pack_envoye'],
+    }
+    const boolCols = _BOOL_COLS[table] || []
+    for (const col of boolCols) {
+      if (col in out && typeof out[col] !== 'boolean') {
+        const v = String(out[col]).toUpperCase().trim()
+        out[col] = v === 'OUI' || v === 'TRUE' || v === '1' || v === 'YES'
+      }
     }
     return out
   },

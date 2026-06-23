@@ -311,17 +311,16 @@ window.VuePipeline = {
     try {
       await SheetsAPI.ecrire('EMPOWER_MDB', '📋_PROSPECTS', lead);
       this.state.leads.unshift({ ...lead, _statut: statutInit });
-      // BLOC 4.3 — notif in-app au CDS assigné (GAS supprimé — migration Supabase)
+      // BLOC 4.3 — notif in-app au CDS assigné
       if (cdsAssignePin) {
         SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
-          ID_Notif:   genId('NOTIF'),
-          Type:       'LEAD_ASSIGNE',
-          PIN_Dest:   Number(cdsAssignePin),
-          Titre:      `🎯 Nouveau lead assigné`,
-          Message:    `${lead.Nom_Compte} — ${lead.Ville || ''} — Potentiel : ${lead.POTENTIEL || '?'}`,
-          ID_Ref:     lead.ID_Prospect,
-          Lue:        'FALSE',
-          Timestamp:  new Date().toISOString(),
+          ID_Notif:         genId('NOTIF'),
+          PIN_Destinataire: Number(cdsAssignePin),
+          Type_Notif:       'LEAD_ASSIGNE',
+          Message:          `🎯 Lead assigné : ${lead.Nom_Compte}${lead.Ville ? ' — ' + lead.Ville : ''} — Potentiel : ${lead.POTENTIEL || '?'}`,
+          ID_Cible:         lead.ID_Prospect,
+          Statut_Lu:        false,
+          Date_Envoi:       new Date().toISOString(),
         }).catch(() => {}); // non bloquant
       }
       this.state.modal = null;
