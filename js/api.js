@@ -304,7 +304,7 @@ const SheetsAPI = {
       'Date_Import': 'date_saisie', 'Date_Attribution': 'date_attribution',
       'Date_Relance': 'date_relance', 'Date_Creation_Compte': 'date_creation_compte',
       'Date_Integration': 'date_integration', 'Date_Archive': 'date_archive',
-      'Welcome_Pack_Envoye': 'welcome_pack_envoye', 'Welcome_Pack_Date': 'welcome_pack_date',
+      'Welcome_Pack_Envoye': 'welcome_pack_envoye', 'Welcome_Pack_Date': 'welcome_pack_date', 'WELCOME_PACK_DATE': 'welcome_pack_date',
       'Note_initiale': 'note', 'FLAG_ALERTE': 'flag_alerte', 'ID_Compte_Gas': 'id_compte_gas',
       'Date_prochaine_action': 'date_prochaine_action',
       'CONTACT_NOM': 'contact_nom', 'CONTACT_FONCTION': 'contact_fonction',

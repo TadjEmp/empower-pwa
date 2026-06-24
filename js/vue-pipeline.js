@@ -145,7 +145,7 @@ window.VuePipeline = {
     if (this.state.filtreStatut !== 'TOUS') l = l.filter(p => p._statut === this.state.filtreStatut);
     if (this.state.filtreOrigine !== 'TOUS') l = l.filter(p => String(p.ORIGINE || '').toLowerCase() === String(this.state.filtreOrigine).toLowerCase());
     if (this.state.filtreAlerte === 'WP_RETARD') l = l.filter(p => this._retardWelcomePack(p));
-    if (this.state.filtreAlerte === 'WP_ENVOYE') l = l.filter(p => !!p.WELCOME_PACK_DATE);
+    if (this.state.filtreAlerte === 'WP_ENVOYE') l = l.filter(p => !!p.Welcome_Pack_Date);
     if (this.state.filtreAlerte === 'ACTION_DUE') l = l.filter(p => p.Date_prochaine_action && estDepassee(p.Date_prochaine_action));
     // BLOC 7 — filtre channel
     if (this.state.filtreChannel !== 'TOUS') l = l.filter(p => String(p.CANAL || '').trim() === this.state.filtreChannel);
@@ -180,7 +180,7 @@ window.VuePipeline = {
   },
 
   _retardWelcomePack(p) {
-    if (p._statut !== 'COMPTE_CREE' || p.WELCOME_PACK_DATE) return false;
+    if (p._statut !== 'COMPTE_CREE' || p.Welcome_Pack_Date) return false;
     const ref = p.Timestamp || p.Date_Import;
     return ref && (Date.now() - new Date(ref).getTime()) / 86400000 > 14;
   },
@@ -220,17 +220,23 @@ window.VuePipeline = {
     const lead = this.state.leads.find(l => String(l.ID_Prospect) === String(id));
     if (!lead) return;
     const champs = { STATUT_EMPOWER: statut };
-    if (statut === 'COMPTE_CREE' && !lead.WELCOME_PACK_DATE) champs.WELCOME_PACK_DATE = dateISOLocale();
+    if (statut === 'COMPTE_CREE') {
+      if (!lead.Welcome_Pack_Date) champs.Welcome_Pack_Date = dateISOLocale();
+      if (!lead.Date_Creation_Compte) champs.Date_Creation_Compte = dateISOLocale();
+    }
     if (statut === 'INTEGRE') {
       champs.Flag_converti = 'TRUE';
-      if (!lead.PREMIERE_COMMANDE_DATE) champs.PREMIERE_COMMANDE_DATE = dateISOLocale();
+      if (!lead.Date_Integration) champs.Date_Integration = dateISOLocale();
+      if (!lead.Date_Creation_Compte) champs.Date_Creation_Compte = dateISOLocale();
     }
+    const doCreerCompte = statut === 'COMPTE_CREE' || statut === 'INTEGRE';
     try {
       await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', id, champs);
       Object.assign(lead, champs, { _statut: statut });
       this.state.modal = null;
       Toast.afficher(`✅ ${lead.Nom_Compte} → ${this.STATUTS.find(s => s.id === statut).lbl}`, 'succes');
       this.render();
+      if (doCreerCompte) this._creerCompteDepuisLead(lead).catch(() => {});
     } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
   },
 
@@ -694,8 +700,8 @@ window.VuePipeline = {
           <div class="q-recap-ligne"><span>Dernière relance</span><strong>${l.Date_prochaine_action ? dateRelative(l.Date_prochaine_action) : (l.Date_Import ? dateRelative(l.Date_Import) : '—')}</strong></div>
           <div class="q-recap-ligne"><span>Action en cours</span><strong>${this._labelFlag(l.FLAG_ACTION)}</strong></div>
           ${l.ORIGINE ? `<div class="q-recap-ligne"><span>Source</span><strong style="font-size:11px">${l.ORIGINE.replace('Import_','').replace(/_/g,' ')}</strong></div>` : ''}
-          ${l.WELCOME_PACK_DATE ? `<div class="q-recap-ligne"><span>Welcome Pack</span><strong>${l.WELCOME_PACK_DATE}</strong></div>` : ''}
-          ${l.PREMIERE_COMMANDE_DATE ? `<div class="q-recap-ligne"><span>1ère commande</span><strong>${l.PREMIERE_COMMANDE_DATE}</strong></div>` : ''}
+          ${l.Welcome_Pack_Date ? `<div class="q-recap-ligne"><span>Welcome Pack</span><strong>${l.Welcome_Pack_Date}</strong></div>` : ''}
+          ${l.Date_Integration ? `<div class="q-recap-ligne"><span>Intégré le</span><strong>${l.Date_Integration}</strong></div>` : ''}
           <div class="q-recap-ligne"><span>Créé le</span><strong>${l.Date_Import ? dateRelative(l.Date_Import) : '—'}</strong></div>
         </div>
 
@@ -806,12 +812,19 @@ window.VuePipeline = {
       FLAG_ACTION: flag,
     };
 
+    const doCreerCompte = nouveauStatut && nouveauStatut !== lead._statut &&
+                          (nouveauStatut === 'COMPTE_CREE' || nouveauStatut === 'INTEGRE');
+
     if (nouveauStatut && nouveauStatut !== lead._statut) {
       champs.STATUT_EMPOWER = nouveauStatut;
-      if (nouveauStatut === 'COMPTE_CREE' && !lead.WELCOME_PACK_DATE) champs.WELCOME_PACK_DATE = dateISOLocale();
+      if (nouveauStatut === 'COMPTE_CREE') {
+        if (!lead.Welcome_Pack_Date) champs.Welcome_Pack_Date = dateISOLocale();
+        if (!lead.Date_Creation_Compte) champs.Date_Creation_Compte = dateISOLocale();
+      }
       if (nouveauStatut === 'INTEGRE') {
         champs.Flag_converti = 'TRUE';
-        if (!lead.PREMIERE_COMMANDE_DATE) champs.PREMIERE_COMMANDE_DATE = dateISOLocale();
+        if (!lead.Date_Integration) champs.Date_Integration = dateISOLocale();
+        if (!lead.Date_Creation_Compte) champs.Date_Creation_Compte = dateISOLocale();
       }
     }
 
@@ -822,6 +835,7 @@ window.VuePipeline = {
       this.state.modal = null;
       Toast.afficher(`✅ ${lead.Nom_Compte} mis à jour`, 'succes');
       this.render();
+      if (doCreerCompte) this._creerCompteDepuisLead(lead).catch(() => {});
     } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
   },
 
@@ -853,6 +867,57 @@ window.VuePipeline = {
       this.render();
     } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
   },
+  // ── Module 7 : Création compte depuis pipeline ──────────────────────
+  async _creerCompteDepuisLead(lead) {
+    // Anti-doublon : vérifier si le compte existe déjà dans la base comptes
+    try {
+      const comptes = await SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES');
+      const nomNorm = normaliserNom(lead.Nom_Compte || '');
+      if ((comptes || []).some(c => normaliserNom(c.Nom_Compte || '') === nomNorm)) return;
+    } catch { /* si lecture échoue, on tente quand même l'insert */ }
+
+    const idCompte = genId('COMP');
+    const priorite = lead.POTENTIEL === 'Fort' ? 'HAUTE' : lead.POTENTIEL === 'Moyen' ? 'MOYENNE' : 'BASSE';
+
+    await SheetsAPI.ecrire('EMPOWER_MDB', '🏢_COMPTES', {
+      ID_Compte:       idCompte,
+      Nom_Compte:      lead.Nom_Compte || '',
+      Ville:           lead.Ville || '',
+      Code_Postal:     lead.Code_Postal || '',
+      Departement:     lead.Departement || '',
+      Tel:             lead.Tel || '',
+      Email:           lead.Email || '',
+      CANAL:           lead.CANAL || '',
+      SECTEUR:         lead.SECTEUR || '',
+      PIN_CDS_Assigne: lead.PIN_CDS_Assigne || '',
+      Nom_CDS:         this._nomCDS(lead.PIN_CDS_Assigne),
+      Note_Initiale:   lead.Note_initiale || '',
+      Statut:          'ACTIF',
+      Source_Import:   'PIPELINE',
+      Flag_Traite:     'NON',
+      Has_EMPOWER:     'Non',
+      Priorite:        priorite,
+    });
+
+    await SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES');
+
+    // Notifs pour Tadjidine (1000) et Alexandra (5000)
+    const msg = `🏢 Nouveau compte pipeline : ${lead.Nom_Compte}${lead.Ville ? ' — ' + lead.Ville : ''} (CDS : ${this._nomCDS(lead.PIN_CDS_Assigne)})`;
+    for (const pin of [1000, 5000]) {
+      SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
+        ID_Notif:         genId('NOTIF'),
+        PIN_Destinataire: pin,
+        Type_Notif:       'COMPTE_CREE',
+        Message:          msg,
+        ID_Cible:         idCompte,
+        Statut_Lu:        false,
+        Date_Envoi:       new Date().toISOString(),
+      }).catch(() => {});
+    }
+
+    Toast.afficher(`🏢 ${lead.Nom_Compte} ajouté à la base comptes`, 'succes');
+  },
+
   // ── Module 8 : Alerte sans activité >7 jours ──
   _alerteSansActivite(l) {
     // Alerte uniquement sur les leads EN_COURS ou ASSIGNE (pas ARCHIVE/INTEGRE)
@@ -877,8 +942,8 @@ window.VuePipeline = {
       { key: '_cdsNom',             label: 'CDS',          cat: 'Pipeline' },
       { key: 'Date_prochaine_action', label: 'Prochaine action', cat: 'Activité' },
       { key: 'Note_initiale',       label: 'Notes',        cat: 'Activité' },
-      { key: 'WELCOME_PACK_DATE',   label: 'Welcome Pack', cat: 'Activité' },
-      { key: 'PREMIERE_COMMANDE_DATE', label: 'Première commande', cat: 'Résultats' },
+      { key: 'Welcome_Pack_Date',   label: 'Welcome Pack', cat: 'Activité' },
+      { key: 'Date_Integration', label: 'Date intégration', cat: 'Résultats' },
       { key: 'ORIGINE',             label: 'Origine',      cat: 'Identité' },
       { key: 'Timestamp',           label: 'Date création', cat: 'Identité' },
     ];
