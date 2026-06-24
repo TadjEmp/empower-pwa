@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════
-//  groq.js — IA Groq : Whisper STT + LLM (B11 — proxy Apps Script)
-//  SÉCURITÉ : clé GROQ_API_KEY dans PropertiesService côté Apps Script.
+//  groq.js — IA Groq : Whisper STT + LLM (B11 — proxy Edge Function ai-proxy)
+//  SÉCURITÉ : clé GROQ_API_KEY dans la table params (côté serveur).
 //  Audio jamais stocké côté serveur — traité en mémoire uniquement.
 // ═══════════════════════════════════════
 
@@ -71,14 +71,13 @@ RÉPONSE — FORMAT JSON STRICT (aucun texte en dehors du JSON) :
   "alertenextstep": false
 }`,
 
-  // ── La clé est côté Apps Script — jamais dans le navigateur ──
+  // ── La clé est côté serveur (params table) — jamais dans le navigateur ──
   estConfigure() { return Session.estConnecte(); },
 
   async sauverCle(cle) {
     const r = await fetch(SheetsAPI.BASE_URL, {
-      method: 'POST', redirect: 'follow',
-      // Pas de header Content-Type → requête "simple", évite le préflight CORS
-      // (Apps Script Web App ne répond pas aux OPTIONS ; le body texte est parsé par doPost)
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + SUPABASE_ANON },
       body: JSON.stringify({ action: 'setGroqKey', token: SheetsAPI.TOKEN, cle }),
     });
     if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -107,8 +106,8 @@ RÉPONSE — FORMAT JSON STRICT (aucun texte en dehors du JSON) :
     }
   },
 
-  // ── STT Whisper via proxy Apps Script ──
-  // Audio converti en base64 côté client → Apps Script appelle Groq
+  // ── STT Whisper via proxy Edge Function ──
+  // Audio converti en base64 côté client → Edge Function appelle Groq
   // → seule la transcription est retournée, l'audio n'est jamais stocké
   async transcrire(blob) {
     if (!this.estConfigure()) throw new Error('Non connecté');
@@ -119,9 +118,8 @@ RÉPONSE — FORMAT JSON STRICT (aucun texte en dehors du JSON) :
       reader.readAsDataURL(blob);
     });
     const r = await fetch(SheetsAPI.BASE_URL, {
-      method: 'POST', redirect: 'follow',
-      // Pas de header Content-Type → requête "simple", évite le préflight CORS
-      // (Apps Script Web App ne répond pas aux OPTIONS ; le body texte est parsé par doPost)
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + SUPABASE_ANON },
       body: JSON.stringify({
         action:   'groqSTT',
         token:    SheetsAPI.TOKEN,
@@ -135,13 +133,12 @@ RÉPONSE — FORMAT JSON STRICT (aucun texte en dehors du JSON) :
     return data.texte || '';
   },
 
-  // ── LLM via proxy Apps Script ──
+  // ── LLM via proxy Edge Function ──
   async _chat(messages, jsonMode = true) {
     if (!this.estConfigure()) throw new Error('Non connecté');
     const r = await fetch(SheetsAPI.BASE_URL, {
-      method: 'POST', redirect: 'follow',
-      // Pas de header Content-Type → requête "simple", évite le préflight CORS
-      // (Apps Script Web App ne répond pas aux OPTIONS ; le body texte est parsé par doPost)
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + SUPABASE_ANON },
       body: JSON.stringify({
         action:      'groqLLM',
         token:       SheetsAPI.TOKEN,

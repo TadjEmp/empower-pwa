@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════
-//  gemini.js — Proxy Gemini via Apps Script (B10)
-//  SÉCURITÉ : la clé GEMINI_API_KEY est dans PropertiesService côté Apps Script.
+//  gemini.js — Proxy Gemini via Edge Function ai-proxy (B10)
+//  SÉCURITÉ : la clé GEMINI_API_KEY est dans la table params (côté serveur).
 //  Le frontend n'appelle jamais l'API Gemini directement.
 // ═══════════════════════════════════════
 
@@ -8,10 +8,8 @@ window.GeminiAPI = {
 
   async _appeler(prompt, contexte) {
     const r = await fetch(SheetsAPI.BASE_URL, {
-      method:   'POST',
-      redirect: 'follow',
-      // Pas de header Content-Type → requête "simple", évite le préflight CORS
-      // (Apps Script ne répond pas aux OPTIONS ; doPost parse le body texte en JSON)
+      method:  'POST',
+      headers: { 'Authorization': 'Bearer ' + SUPABASE_ANON },
       body: JSON.stringify({
         action:   'gemini',
         token:    SheetsAPI.TOKEN,
@@ -130,13 +128,11 @@ Français professionnel, concis.`;
     return this._appeler(prompt, ctx);
   },
 
-  // Stocker la clé Gemini côté Apps Script (admin uniquement)
+  // Stocker la clé Gemini (admin uniquement) — upsert dans params via ai-proxy
   async sauverCle(cle) {
     const r = await fetch(SheetsAPI.BASE_URL, {
-      method:   'POST',
-      redirect: 'follow',
-      // Pas de header Content-Type → requête "simple", évite le préflight CORS
-      // (Apps Script ne répond pas aux OPTIONS ; doPost parse le body texte en JSON)
+      method:  'POST',
+      headers: { 'Authorization': 'Bearer ' + SUPABASE_ANON },
       body: JSON.stringify({ action: 'setGeminiKey', token: SheetsAPI.TOKEN, cle }),
     });
     if (!r.ok) throw new Error('HTTP ' + r.status);

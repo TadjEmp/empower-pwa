@@ -11,6 +11,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 const SheetsAPI = {
   TOKEN:       null,
+  BASE_URL:    'https://osqwtonwomhalxeidayp.supabase.co/functions/v1/ai-proxy',
   TTL:         1800,
   MAX_RETRY:   3,
   RETRY_BASE_MS: 800,
