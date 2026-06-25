@@ -36,11 +36,11 @@
 .kanban-carte-note { font-size: 12px; color: var(--c-text-2); line-height: 1.4; }
 .kanban-carte-pied { font-size: 11px; color: var(--c-text-2); border-top: 1px solid var(--c-border); padding-top: 6px; }
 
-/* Pills potentiel pastel — design pipeline_norton_fy27 */
+/* Pills potentiel — PHONE OS statut teinté */
 .pot-pill { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 99px; }
-.pot-fort   { background: #FAECE7; color: #C0392B; }
-.pot-moyen  { background: #E6F1FB; color: #0050FF; }
-.pot-faible { background: #F1EFE8; color: #5F5E5A; }
+.pot-fort   { background: var(--status-chaud-bg);    color: var(--status-inactif); }
+.pot-moyen  { background: var(--status-arappeler-bg); color: var(--status-arappeler); }
+.pot-faible { background: var(--st-gray-bg);          color: var(--st-gray-fg); }
 .kanban-voir {
   font-size: 12px; font-weight: 700; color: var(--c-primary);
   margin-left: auto;
@@ -82,7 +82,7 @@
   cursor: pointer;
   transition: background .15s;
 }
-.kanban-voir-plus:hover { background: #E6F1FB; }
+.kanban-voir-plus:hover { background: var(--bg-surface); }
 .kanban-voir-plus:active { transform: scale(.98); }
 
 /* ── Cartes visites (vue-visites.js) ── */
@@ -112,7 +112,7 @@
   border: 1.5px solid transparent; transition: border-color .15s;
 }
 .planning-jour:active { border-color: var(--c-primary); }
-.planning-jour-today  { border-color: var(--c-primary); background: #eff4ff; }
+.planning-jour-today  { border-color: var(--c-primary); background: rgba(168,132,255,.10); }
 .pj-label { font-size: 10px; font-weight: 600; color: var(--c-text-2); text-align: center; }
 .pj-count { font-size: 11px; font-weight: 700; color: var(--c-primary); text-align: center; min-height: 14px; }
 .pj-item  { font-size: 10px; border-radius: 3px; padding: 2px 4px; background: var(--c-bg); display: flex; gap: 3px; align-items: center; overflow: hidden; }

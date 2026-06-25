@@ -1,26 +1,28 @@
 /* ═══════════════════════════════════════
    dashboard.css — Dashboard CDS / Manager
+   PHONE OS v4.1
    ═══════════════════════════════════════ */
 
-/* Héro navy — design interface_cds_norton_fy27 */
+/* Héro anchor — section structurante */
 .dash-hero {
-  background: linear-gradient(150deg, #0E0D30, #1B2A4A);
-  color: #fff; padding: 18px 16px 20px;
+  background: var(--bg-anchor);
+  color: var(--text-on-anchor);
+  padding: 18px 16px 20px;
   border-radius: 0 0 20px 20px;
 }
-.dash-hero-cycle { font-size: 11px; color: #A8C8FF; margin-bottom: 2px; }
-.dash-hero-titre { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; display: flex; justify-content: space-between; align-items: center; }
-.dash-hero-titre .btn-deco { background: rgba(255,255,255,.12); border: none; color: #fff; width: 34px; height: 34px; border-radius: 50%; font-size: 15px; cursor: pointer; }
+.dash-hero-cycle { font-size: 11px; color: var(--text-on-anchor-muted); margin-bottom: 2px; }
+.dash-hero-titre { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; display: flex; justify-content: space-between; align-items: center; color: var(--text-on-anchor); }
+.dash-hero-titre .btn-deco { background: rgba(229,225,211,.12); border: none; color: var(--text-on-anchor); width: 34px; height: 34px; border-radius: 50%; font-size: 15px; cursor: pointer; }
 .dash-hero-tuiles { display: flex; gap: 10px; margin-top: 14px; }
 .hero-tuile {
-  flex: 1; background: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.14);
+  flex: 1; background: rgba(229,225,211,.08);
+  border: 1px solid var(--border-anchor);
   border-radius: 12px; padding: 12px 14px;
 }
-.hero-tuile-lbl { font-size: 11px; color: #A8C8FF; margin-bottom: 4px; }
-.hero-tuile-val { font-size: 20px; font-weight: 800; }
-.hero-tuile-sous { font-size: 10px; color: #51dea6; margin-top: 3px; }
-.hero-barre { height: 6px; background: rgba(255,255,255,.15); border-radius: 3px; margin-top: 8px; overflow: hidden; }
+.hero-tuile-lbl { font-size: 11px; color: var(--text-on-anchor-muted); margin-bottom: 4px; }
+.hero-tuile-val { font-size: 20px; font-weight: 800; color: var(--text-on-anchor); }
+.hero-tuile-sous { font-size: 10px; color: var(--sync-online); margin-top: 3px; }
+.hero-barre { height: 6px; background: rgba(229,225,211,.15); border-radius: 3px; margin-top: 8px; overflow: hidden; }
 .hero-barre-fill { height: 100%; border-radius: 3px; background: var(--c-cta); transition: width .5s ease; }
 
 .dash-body {
@@ -33,13 +35,13 @@
 /* Pace */
 .dash-pace .bloc-titre { display: flex; justify-content: space-between; align-items: center; }
 .pace-badge { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 99px; }
-.pace-ok    { background: #dcfce7; color: #16a34a; }
-.pace-watch { background: #fef9c3; color: #854d0e; }
-.pace-risk  { background: #fee2e2; color: var(--c-danger); }
+.pace-ok    { background: rgba(45,158,107,.12); color: #16a34a; }
+.pace-watch { background: rgba(245,158,11,.12);  color: #854d0e; }
+.pace-risk  { background: rgba(217,48,37,.08);   color: var(--c-danger); }
 .pace-chiffres { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
 .pace-chiffres strong { font-size: 26px; font-weight: 800; color: var(--c-title); }
 .pace-chiffres span   { font-size: 13px; color: var(--c-text-2); }
-.pace-barre { height: 10px; border-radius: 5px; background: var(--c-bg); overflow: hidden; }
+.pace-barre { height: 10px; border-radius: 5px; background: var(--bg-surface); overflow: hidden; }
 .pace-barre-fill { height: 100%; border-radius: 5px; transition: width .5s ease; }
 .pace-barre-fill.pace-ok    { background: var(--c-success); }
 .pace-barre-fill.pace-watch { background: var(--c-warning); }
@@ -47,14 +49,13 @@
 
 /* Alertes */
 .dash-alertes { display: flex; flex-direction: column; gap: 8px; }
-/* Alertes — bord gauche rouge (design dashboard_norton_fy27) */
 .alerte-ligne {
   padding: 10px 12px; border-radius: 0 var(--radius-btn) var(--radius-btn) 0;
   background: var(--c-surface); font-size: 13px; cursor: pointer;
   border: 1px solid var(--c-border); border-left: 4px solid var(--c-danger);
 }
 
-/* Tuiles stats à bord supérieur coloré (design dashboard_norton_fy27) */
+/* Tuiles stats à bord supérieur coloré */
 .stat-tuiles { display: flex; gap: 10px; overflow-x: auto; }
 .stat-tuile {
   flex: 1; min-width: 100px; background: var(--c-surface);
@@ -66,10 +67,10 @@
 .stat-tuile-lbl { font-size: 10px; font-weight: 700; color: var(--c-text-2); text-transform: uppercase; letter-spacing: .04em; }
 .stat-tuile-val { font-size: 24px; font-weight: 800; color: var(--c-title); margin-top: 2px; }
 
-/* Barres performance CDS (design dashboard_norton_fy27) */
+/* Barres performance CDS */
 .perf-cds { display: flex; flex-direction: column; gap: 12px; }
 .perf-ligne-lbl { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: var(--c-title); margin-bottom: 4px; }
-.perf-barre { height: 8px; background: #E6F1FB; border-radius: 4px; overflow: hidden; }
+.perf-barre { height: 8px; background: var(--bg-surface); border-radius: 4px; overflow: hidden; }
 .perf-barre-fill { height: 100%; border-radius: 4px; background: var(--c-primary); transition: width .5s ease; }
 .alerte-ligne:active { opacity: .7; }
 
@@ -124,5 +125,6 @@
 .q-input {
   padding: 8px 12px; border: 1.5px solid var(--c-border);
   border-radius: var(--radius-sm); font-size: 14px;
+  background: var(--bg-warm-white); color: var(--c-title);
   width: 100%; box-sizing: border-box;
 }
