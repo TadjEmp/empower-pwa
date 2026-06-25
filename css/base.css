@@ -445,7 +445,8 @@ body {
   min-width: 50px; flex-shrink: 0; white-space: nowrap;
   transition: background .15s, color .15s;
 }
-.nav-icone { font-size: 18px; line-height: 1; }
+.nav-icone { font-size: 18px; line-height: 1; display: flex; align-items: center; justify-content: center; }
+.nav-icone svg { width: 20px; height: 20px; }
 .nav-item:hover  { background: var(--bg-anchor-hover); color: var(--text-on-anchor); }
 .nav-item.actif  { background: var(--bg-anchor-active); color: var(--text-on-anchor); }
 /* Réserve la hauteur de la bottom nav */
@@ -847,6 +848,7 @@ input, textarea, select, [contenteditable="true"], .selectable {
   justify-content: center; font-size: 18px; flex-shrink: 0;
   transition: background .12s;
 }
+.drawer-item-ico svg { width: 20px; height: 20px; }
 .drawer-item-danger { color: var(--c-danger); }
 .drawer-item-danger .drawer-item-ico { background: color-mix(in srgb,var(--c-danger) 10%,transparent); }
 

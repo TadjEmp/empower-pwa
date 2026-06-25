@@ -1,5 +1,6 @@
 /* ═══════════════════════════════════════
    components.css — Composants partagés
+   PHONE OS v4.1
    ═══════════════════════════════════════ */
 
 /* ── Badges priorité ── */
@@ -7,9 +8,32 @@
   font-size: 12px; font-weight: 700;
   padding: 2px 8px; border-radius: 9999px; white-space: nowrap;
 }
-.badge-rouge  { background: var(--color-error,#FA0000); color: #fff; }
-.badge-orange { background: #f59e0b; color: #fff; }
-.badge-vert   { background: #00b27e; color: #fff; }
+.badge-rouge  { background: var(--status-inactif-bg);   color: var(--status-inactif); }
+.badge-orange { background: var(--status-interesse-bg); color: #B45309; }
+.badge-vert   { background: var(--status-converti-bg);  color: var(--status-converti); }
+
+/* ── Badge CRM PHONE OS §4.3 ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font: 600 11px/1 var(--font-ui);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.badge-converti    { background: var(--status-converti-bg);   color: var(--status-converti); }
+.badge-arappeler   { background: var(--status-arappeler-bg);  color: var(--status-arappeler); }
+.badge-chaud       { background: var(--status-chaud-bg);      color: var(--status-chaud); }
+.badge-inactif     { background: var(--status-inactif-bg);    color: var(--status-inactif); }
+.badge-interesse   { background: var(--status-interesse-bg);  color: #B45309; }
+.badge-nonappele   { background: rgba(203,213,224,0.4);       color: var(--text-muted); }
+.badge-nrp         { background: rgba(138,155,176,0.15);      color: var(--text-muted); }
+.badge-score-haute   { background: rgba(255,109,104,0.12); color: var(--accent-primary); }
+.badge-score-moyenne { background: rgba(245,158,11,0.10);  color: #B45309; }
+.badge-score-basse   { background: rgba(138,155,176,0.15); color: var(--text-muted); }
 
 /* ── Statut pills — Norton ISM Universal ── */
 .statut-pill {
@@ -17,18 +41,140 @@
   padding: 3px 10px; border-radius: 9999px;
   white-space: nowrap; text-transform: uppercase; letter-spacing: .03em;
 }
-/* Premium tintés (soft bg + texte coloré) façon réf — sémantique couleur alignée */
-.statut-actif_fy27  { background: var(--st-blue-bg);   color: var(--st-blue-fg); }   /* À traiter */
-.statut-reactiver   { background: var(--st-orange-bg); color: var(--st-orange-fg); } /* À réactiver */
-.statut-inactif_fy27{ background: var(--st-red-bg);    color: var(--st-red-fg); }    /* Bloqué/inactif */
-.statut-newbiz      { background: var(--st-green-bg);  color: var(--st-green-fg); }  /* Intégré (success) */
+.statut-actif_fy27  { background: var(--st-blue-bg);   color: var(--st-blue-fg); }
+.statut-reactiver   { background: var(--st-orange-bg); color: var(--st-orange-fg); }
+.statut-inactif_fy27{ background: var(--st-red-bg);    color: var(--st-red-fg); }
+.statut-newbiz      { background: var(--st-green-bg);  color: var(--st-green-fg); }
 .statut-churn       { background: var(--st-red-bg);    color: var(--st-red-fg); }
 .statut-fidelise    { background: var(--st-blue-bg);   color: var(--st-blue-fg); }
-/* Alias valeurs de statut brutes (slugify ACTIF/INACTIF/REACTIVER…) — plus de pills sans style */
 .statut-actif       { background: var(--st-green-bg);  color: var(--st-green-fg); }
 .statut-inactif     { background: var(--st-gray-bg);   color: var(--st-gray-fg); }
 .statut-bloque      { background: var(--st-red-bg);    color: var(--st-red-fg); }
 .statut-integre     { background: var(--st-green-bg);  color: var(--st-green-fg); }
+
+/* ── Avatar PHONE OS §4.5 ── */
+.avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font: 600 12px/1 var(--font-ui);
+  flex-shrink: 0;
+}
+.avatar-sm { width: 24px; height: 24px; font-size: 10px; }
+.avatar-lg { width: 40px; height: 40px; font-size: 14px; }
+.avatar-johanne   { background: #A884FF; color: #fff; }
+.avatar-lyes      { background: #3B82F6; color: #fff; }
+.avatar-mehdi     { background: #2D9E6B; color: #fff; }
+.avatar-tadjidine { background: #FF6D68; color: #fff; }
+.avatar-alexandra { background: #ED2567; color: #fff; }
+
+/* ── SyncIndicator PHONE OS §4.8 ── */
+.sync-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font: 500 12px/1 var(--font-mono);
+  transition: all 200ms ease;
+  white-space: nowrap;
+  cursor: default;
+}
+.sync-indicator.online  { color: var(--sync-online);  background: rgba(45,158,107,0.12); }
+.sync-indicator.pending { color: var(--sync-pending); background: var(--sync-pending-bg); }
+.sync-indicator.syncing { color: var(--sync-syncing); background: rgba(59,130,246,0.10); }
+.sync-indicator.error   { color: var(--sync-error);   background: var(--sync-error-bg); }
+.sync-indicator.offline { color: var(--sync-offline); background: var(--sync-offline-bg); }
+.sync-indicator svg { flex-shrink: 0; }
+.icon-syncing { animation: spin-sync .8s linear infinite; display: inline-flex; }
+@keyframes spin-sync { to { transform: rotate(360deg); } }
+
+/* ── Offline banner PHONE OS §4.8 ── */
+.offline-banner {
+  background: var(--sync-offline-bg);
+  border-bottom: 1px solid rgba(138,155,176,0.20);
+  padding: 8px var(--space-4);
+  font: 500 13px/1 var(--font-ui);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  z-index: 49;
+}
+.offline-banner strong { color: var(--text-primary); }
+.offline-banner .btn-ghost { padding: 5px 12px; font-size: 12px; border-radius: 6px; margin-left: auto; }
+
+/* ── Card dirty indicator PHONE OS §4.8 ── */
+.card-dirty { position: relative; }
+.card-dirty::after {
+  content: '';
+  position: absolute;
+  top: 8px; right: 8px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--sync-pending);
+  box-shadow: 0 0 0 2px var(--bg-surface);
+  pointer-events: none;
+}
+
+/* ── Filter bar PHONE OS §5.5 ── */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  background: var(--bg-warm-white);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-lg);
+  flex-wrap: wrap;
+}
+.filter-chip {
+  background: var(--accent-violet);
+  color: #fff;
+  padding: 4px 10px 4px 12px;
+  border-radius: 999px;
+  font: 600 11px/1 var(--font-ui);
+  display: flex; align-items: center; gap: 6px;
+  white-space: nowrap;
+}
+.filter-chip-remove { cursor: pointer; opacity: 0.7; font-size: 14px; line-height: 1; }
+.filter-chip-remove:hover { opacity: 1; }
+
+/* ── Phoning Card PHONE OS §5.1 ── */
+.phoning-card {
+  background: var(--bg-warm-white);
+  border: 1px solid var(--border-medium);
+  border-radius: 16px;
+  padding: var(--space-6);
+  box-shadow: var(--shadow-card);
+  position: relative;
+}
+
+/* ── Boutons PHONE OS §4.1 ── */
+.btn-ghost {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-medium);
+  font: 500 14px/1 var(--font-ui);
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+.btn-ghost:hover { background: var(--bg-surface); border-color: var(--border-strong); }
+.btn-danger {
+  background: var(--status-inactif);
+  color: #ffffff;
+  border: none;
+  font: 600 14px/1 var(--font-ui);
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+.btn-danger:hover { background: #b52820; }
+.btn-sm { padding: 6px 14px;  font-size: 12px !important; border-radius: 6px !important; }
+.btn-lg { padding: 14px 28px; font-size: 16px !important; border-radius: 10px !important; }
 
 /* ── Barre filtres ── */
 .barre-filtres {
@@ -50,7 +196,11 @@
   box-shadow: 0 4px 12px -2px rgba(255,109,104,.25);
 }
 .filtres-statut { display: flex; align-items: center; gap: 10px; }
-.filtres-statut select { border: 1px solid var(--c-border); border-radius: var(--radius-sm); padding: 6px 10px; font-size: 13px; flex: 1; }
+.filtres-statut select {
+  border: 1px solid var(--c-border); border-radius: var(--radius-sm);
+  padding: 6px 10px; font-size: 13px; flex: 1;
+  background: var(--bg-warm-white); color: var(--c-title);
+}
 .toggle-label { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
 
 /* ── FAB ── */
@@ -60,10 +210,13 @@
   font-size: 28px; line-height: 1;
   background: var(--c-primary); color: #fff;
   border: none;
-  box-shadow: 0 4px 16px rgba(0,80,255,.30);
+  box-shadow: 0 4px 16px rgba(255,109,104,.35);
   cursor: pointer; z-index: 101;
   display: flex; align-items: center; justify-content: center;
+  transition: transform 150ms ease, box-shadow 150ms ease;
 }
+.fab:hover  { transform: scale(1.05); }
+.fab:active { transform: scale(.95); }
 
 /* ── Graphique CA barres ── */
 .graphique-ca { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
@@ -78,7 +231,8 @@
   display: flex; gap: 8px; padding: 12px 16px;
   padding-bottom: calc(12px + var(--safe-bottom));
   background: var(--c-surface);
-  box-shadow: 0 -2px 12px rgba(0,0,0,.1); z-index: 100;
+  border-top: 1px solid var(--c-border);
+  box-shadow: 0 -2px 12px rgba(26,26,46,.08); z-index: 100;
 }
 .btn-action {
   flex: 1; padding: 12px 6px; border-radius: var(--radius);
@@ -89,12 +243,12 @@
 .btn-appel    { background: var(--c-success);  color: #fff; }
 .btn-planning { background: var(--c-warning);  color: #fff; }
 
-/* ═══ Centre de notifications (N3-2/N3-3/N3-4) ═══ */
+/* ── Centre de notifications ── */
 .nc-cloche {
   position: fixed; bottom: 78px; right: 16px; z-index: 140;
   width: 48px; height: 48px; border-radius: 50%;
   background: var(--c-surface); border: 1px solid var(--c-border);
-  box-shadow: var(--shadow-lg); cursor: pointer;
+  box-shadow: var(--shadow-card); cursor: pointer;
   font-size: 22px; line-height: 1; display: flex; align-items: center; justify-content: center;
   transition: transform .12s ease;
 }
@@ -107,19 +261,20 @@
   box-shadow: 0 0 0 2px var(--c-surface);
 }
 .nc-overlay {
-  position: fixed; inset: 0; z-index: 9000; background: rgba(14,13,48,.28);
+  position: fixed; inset: 0; z-index: 9000; background: rgba(26,26,46,.35);
   display: flex; align-items: flex-end; justify-content: flex-end;
 }
 .nc-panneau {
   background: var(--c-surface); width: 100%; max-width: 400px;
   max-height: 72vh; margin: 0 8px 76px; border-radius: var(--radius);
-  box-shadow: var(--shadow-lg); display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: var(--shadow-modal); display: flex; flex-direction: column; overflow: hidden;
   animation: nc-slide .16s ease;
 }
 @keyframes nc-slide { from { transform: translateY(12px); opacity: .6; } to { transform: none; opacity: 1; } }
 .nc-head {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 14px; border-bottom: 1px solid var(--c-border); font-size: 15px;
+  color: var(--c-title);
 }
 .nc-tout {
   background: none; border: none; color: var(--c-primary);
@@ -131,15 +286,22 @@
   padding: 11px 14px; border-bottom: 1px solid var(--c-border); cursor: pointer;
   transition: background .1s ease;
 }
-.nc-item:hover { background: var(--c-bg); }
+.nc-item:hover { background: var(--bg-surface); }
 .nc-item-type { font-size: 11px; font-weight: 700; color: var(--c-text-2); text-transform: uppercase; letter-spacing: .02em; }
 .nc-item-msg  { font-size: 14px; color: var(--c-text); margin: 2px 0; line-height: 1.35; }
 .nc-item-date { font-size: 11px; color: var(--c-text-2); }
 
-/* Desktop (≥1024px) — la cloche rejoindra la topbar en Sprint 4 ; pour l'instant on la
-   remonte en haut à droite et on ancre le panneau dessous. */
 @media (min-width: 1024px) {
   .nc-cloche  { top: 14px; bottom: auto; right: 20px; }
   .nc-overlay { align-items: flex-start; }
   .nc-panneau { margin: 70px 20px 0; }
+}
+
+/* ── prefers-reduced-motion PHONE OS §6.4 ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  .icon-syncing { animation: none; }
 }

@@ -140,10 +140,10 @@ function generateCSV(data, filename) {
 function NavBar(actif) {
   // Bandeau du bas : 4 onglets fixes — les autres sont dans le volet gauche (DrawerMenu)
   const tousItems = [
-    { id: 'home',      hash: '#/dashboard',       icone: '⌂',  lbl: 'Home' },
-    { id: 'tracker',   hash: '#/empower-tracker', icone: '▤',  lbl: 'Tracker' },
-    { id: 'comptes',   hash: '#/comptes',         icone: '🏢', lbl: 'Comptes' },
-    { id: 'reporting', hash: '#/manager',         icone: '📊', lbl: 'Reporting' },
+    { id: 'home',      hash: '#/dashboard',       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>', lbl: 'Home' },
+    { id: 'tracker',   hash: '#/empower-tracker', icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/></svg>', lbl: 'Tracker' },
+    { id: 'comptes',   hash: '#/comptes',         icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v8h4"/><path d="M18 9h2a2 2 0 0 1 2 2v11h-4"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>', lbl: 'Comptes' },
+    { id: 'reporting', hash: '#/manager',         icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="4" height="12" x="2" y="6" rx="1"/><rect width="4" height="16" x="9" y="2" rx="1"/><rect width="4" height="8" x="16" y="10" rx="1"/></svg>', lbl: 'Reporting' },
   ];
 
   // Filtrage role-aware : ne rend QUE les onglets autorisés par la matrice RBAC.
@@ -198,13 +198,13 @@ const DrawerMenu = (function () {
 
   // Items de navigation secondaire du drawer
   const ITEMS = [
-    { id: 'visites',     hash: '#/visites',              ico: '📅', lbl: 'Mon Planning',          roles: ['ADMIN','CDS'] },
-    { id: 'phoning',     hash: '#/phoning',              ico: '📞', lbl: 'Phoning',               roles: ['ADMIN','CDS'] },
-    { id: 'photos',      hash: '#/photos',               ico: '📷', lbl: 'Mes Photos',            roles: ['ADMIN','CDS','CHANNEL_MANAGER'] },
-    { id: 'historiques', hash: '#/comptes-historiques',  ico: '📋', lbl: 'Historique CA',         roles: ['ADMIN','CDS','CHANNEL_MANAGER'] },
-    { id: 'objectifs',   hash: '#/objectifs',            ico: '🎯', lbl: 'Mes Objectifs',         roles: ['ADMIN','CDS'] },
-    { id: 'primes',      hash: '#/primes',               ico: '🏆', lbl: 'Mes Primes',            roles: ['ADMIN','CDS'] },
-    { id: 'admin',       hash: '#/admin',                ico: '⚙️', lbl: 'Administration',        roles: ['ADMIN'] },
+    { id: 'visites',     hash: '#/visites',              ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', lbl: 'Mon Planning',   roles: ['ADMIN','CDS'] },
+    { id: 'phoning',     hash: '#/phoning',              ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>', lbl: 'Phoning',          roles: ['ADMIN','CDS'] },
+    { id: 'photos',      hash: '#/photos',               ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>', lbl: 'Mes Photos',        roles: ['ADMIN','CDS','CHANNEL_MANAGER'] },
+    { id: 'historiques', hash: '#/comptes-historiques',  ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>', lbl: 'Historique CA',   roles: ['ADMIN','CDS','CHANNEL_MANAGER'] },
+    { id: 'objectifs',   hash: '#/objectifs',            ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', lbl: 'Mes Objectifs',    roles: ['ADMIN','CDS'] },
+    { id: 'primes',      hash: '#/primes',               ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>', lbl: 'Mes Primes',        roles: ['ADMIN','CDS'] },
+    { id: 'admin',       hash: '#/admin',                ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>', lbl: 'Administration', roles: ['ADMIN'] },
   ];
 
   function _roleLabel(role) {
@@ -226,7 +226,7 @@ const DrawerMenu = (function () {
           <div class="drawer-header-nom">${nom || 'EMPOWER'}</div>
           <div class="drawer-header-role">${_roleLabel(role)}</div>
         </div>
-        <button class="drawer-close" onclick="DrawerMenu.fermer()" aria-label="Fermer">✕</button>
+        <button class="drawer-close" onclick="DrawerMenu.fermer()" aria-label="Fermer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
 
       <nav class="drawer-nav">
@@ -240,11 +240,11 @@ const DrawerMenu = (function () {
         <div class="drawer-sep"></div>
         <div class="drawer-footer">
           <button class="drawer-item" onclick="DrawerMenu._synchro()">
-            <div class="drawer-item-ico">🔄</div>
+            <div class="drawer-item-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></div>
             Synchroniser
           </button>
           <button class="drawer-item drawer-item-danger" onclick="DrawerMenu._deconnecter()">
-            <div class="drawer-item-ico">🚪</div>
+            <div class="drawer-item-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div>
             Déconnexion
           </button>
         </div>
