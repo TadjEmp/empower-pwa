@@ -284,9 +284,9 @@ window.VueDashboardCDS = {
     };
     const dateFr = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     const PACE = {
-      ON_TRACK: { lbl: '🟢 ON TRACK', cls: 'pace-ok' },
-      WATCH:    { lbl: '🟡 WATCH',    cls: 'pace-watch' },
-      AT_RISK:  { lbl: '🔴 AT RISK',  cls: 'pace-risk' },
+      ON_TRACK: { lbl: 'ON TRACK', cls: 'pace-ok' },
+      WATCH:    { lbl: 'WATCH',    cls: 'pace-watch' },
+      AT_RISK:  { lbl: 'AT RISK',  cls: 'pace-risk' },
     }[d.pace];
     const nbAlertes = d.comptesRouges.length + d.nextStepsDepasses.length + d.leadsATraiter.length;
     const potCoul   = { Fort: '#00b27e', Moyen: '#f59e0b', Faible: '#626264' };
@@ -295,25 +295,25 @@ window.VueDashboardCDS = {
       <!-- Héro navy -->
       <div class="dash-hero">
         <div class="dash-hero-cycle">Cycle FY27 · ${d.semaine} · ${dateFr}</div>
-        <div class="dash-hero-titre">Bonjour ${Session.nom || '—'} 👋
-          <button class="btn-deco" onclick="Session.deconnecter();Router.aller('#/login')" title="Déconnexion">⏻</button>
+        <div class="dash-hero-titre">Bonjour ${Session.nom || '—'}
+          <button class="btn-deco" onclick="Session.deconnecter();Router.aller('#/login')" title="Déconnexion"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg></button>
         </div>
         <div class="dash-hero-tuiles">
           <div class="hero-tuile">
-            <div class="hero-tuile-lbl">🎯 Objectif ${d.quarter} FY27</div>
+            <div class="hero-tuile-lbl">Objectif ${d.quarter} FY27</div>
             <div class="hero-tuile-val">${fmtEUR(d.caRealise)} <span style="font-size:12px;font-weight:400;color:#A8C8FF">/ ${fmtEUR(d.caObjectif)}</span></div>
             <div class="hero-barre"><div class="hero-barre-fill" style="width:${Math.min(d.pct, 100)}%"></div></div>
             <div class="hero-tuile-sous">${PACE.lbl} · ${d.pct}% atteinte · PACE annuel ${d.pctAnnuel}%</div>
             <!-- BLOC 5 — CA FY26 référence + objectif annuel FY27 -->
             <div style="margin-top:6px;font-size:11px;color:#A8C8FF;display:flex;gap:12px">
-              <span>📊 Réf. FY26 : <strong style="color:#fff">${fmtEUR(d.caFY26Q)}/trim.</strong></span>
-              <span>🎯 OBJ FY27 : <strong style="color:#fff">${fmtEUR(d.caFY27Obj)}</strong></span>
+              <span>Réf. FY26 : <strong style="color:#fff">${fmtEUR(d.caFY26Q)}/trim.</strong></span>
+              <span>OBJ FY27 : <strong style="color:#fff">${fmtEUR(d.caFY27Obj)}</strong></span>
             </div>
           </div>
           <div class="hero-tuile">
-            <div class="hero-tuile-lbl">📅 Visites aujourd'hui</div>
+            <div class="hero-tuile-lbl">Visites aujourd'hui</div>
             <div class="hero-tuile-val">${d.visitesAujourdhui.length} <span style="font-size:12px;font-weight:400;color:#A8C8FF">planifiée(s)</span></div>
-            <div class="hero-tuile-sous">📈 ${d.visitesSem}/${d.objVisites} cette semaine · ${d.nbComptes} comptes</div>
+            <div class="hero-tuile-sous">${d.visitesSem}/${d.objVisites} cette semaine · ${d.nbComptes} comptes</div>
           </div>
         </div>
       </div>
@@ -330,7 +330,7 @@ window.VueDashboardCDS = {
 
         <!-- GRAPHIQUE ACTIVITÉ 6 SEMAINES -->
         <div class="bloc-fiche">
-          <div class="bloc-titre">📊 Activité — 6 dernières semaines</div>
+          <div class="bloc-titre">Activité — 6 dernières semaines</div>
           ${this._svgActivite(d.activiteSemaines)}
           <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--c-text-2);margin-top:4px;padding:0 2px">
             <span>Semaine ${d.activiteSemaines[0]?.sem || '—'}</span>
@@ -340,7 +340,7 @@ window.VueDashboardCDS = {
 
         <!-- GRAPHIQUE CA HEBDO FY27 vs FY26 (W1→W13) -->
         <div class="bloc-fiche">
-          <div class="bloc-titre">📈 CA cumulé ${d.quarter} FY27 vs FY26</div>
+          <div class="bloc-titre">CA cumulé ${d.quarter} FY27 vs FY26</div>
           ${this._svgCAHebdo(d.caHebdo)}
           <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--c-text-2);margin-top:2px;padding:0 2px">
             <span>W1 → W13</span>
@@ -352,7 +352,7 @@ window.VueDashboardCDS = {
         ${d.top5Actifs.length > 0 ? `
         <div class="bloc-fiche">
           <div class="bloc-titre">
-            🔝 Top 5 comptes actifs ${d.quarter}FY27
+            Top 5 comptes actifs ${d.quarter}FY27
             <span class="badge-compteur">${d.top5Actifs.length}</span>
             <button class="btn-lien" onclick="Router.aller('#/comptes-historiques')" style="margin-left:auto;font-size:12px">Base comptes →</button>
           </div>
@@ -360,7 +360,7 @@ window.VueDashboardCDS = {
             <div class="relance-ligne" onclick="Router.aller('#/comptes-historiques')">
               <div class="relance-nom">${c.nom}</div>
               <div class="relance-meta">
-                ${c.ville ? `<span style="font-size:11px;color:var(--c-text-2)">📍 ${c.ville}</span>` : ''}
+                ${c.ville ? `<span style="font-size:11px;color:var(--c-text-2)">${c.ville}</span>` : ''}
                 <span style="font-size:10px;color:var(--c-text-2)">${c.statut}</span>
                 <strong style="margin-left:auto;color:var(--c-success)">${fmtEUR(c.caQ1)}</strong>
               </div>
@@ -371,7 +371,7 @@ window.VueDashboardCDS = {
         ${d.top5.length > 0 ? `
         <div class="bloc-fiche">
           <div class="bloc-titre">
-            🔥 Top 5 relances urgentes
+            Top 5 relances urgentes
             <span class="badge-rouge badge-priorite">${d.top5.length}</span>
             <button class="btn-lien" onclick="Router.aller('#/reactiver')" style="margin-left:auto;font-size:12px">Réactiver →</button>
           </div>
@@ -389,7 +389,7 @@ window.VueDashboardCDS = {
         <!-- ALERTES ACTIVES (🔔_NOTIFS) -->
         ${d.mesNotifs.length > 0 ? `
         <div class="bloc-fiche">
-          <div class="bloc-titre">🔔 Alertes actives <span class="badge-rouge badge-priorite">${d.mesNotifs.length}</span></div>
+          <div class="bloc-titre">Alertes actives <span class="badge-rouge badge-priorite">${d.mesNotifs.length}</span></div>
           <div class="dash-alertes">
             ${d.mesNotifs.map(n => `
               <div class="alerte-ligne"${n.cible ? ` onclick="Router.aller('#/empower-tracker')"` : ''}>
@@ -402,7 +402,7 @@ window.VueDashboardCDS = {
         <!-- VISITES PLANIFIÉES AUJOURD'HUI -->
         <div class="bloc-fiche">
           <div class="bloc-titre">
-            📅 Planning visites aujourd'hui
+            Planning visites aujourd'hui
             ${d.visitesAujourdhui.length ? `<span class="badge-compteur">${d.visitesAujourdhui.length}</span>` : ''}
             <button class="btn-lien" onclick="Router.aller('#/visites')" style="margin-left:auto;font-size:12px">Planning complet →</button>
           </div>
@@ -416,7 +416,7 @@ window.VueDashboardCDS = {
                 <div class="relance-meta">
                   <span class="statut-pill" style="background:var(--c-primary-10,#e6eeff);color:var(--c-primary)">planifiée</span>
                   ${v.Heure ? `<span style="font-size:12px;color:var(--c-text-2)">${v.Heure}</span>` : ''}
-                  <button class="btn-lien" onclick="event.stopPropagation();VueVisites.ouvrirCR('${v.ID_Visite}');Router.aller('#/questionnaire')" style="font-size:11px;margin-left:auto">✍️ CR →</button>
+                  <button class="btn-lien" onclick="event.stopPropagation();VueVisites.ouvrirCR('${v.ID_Visite}');Router.aller('#/questionnaire')" style="font-size:11px;margin-left:auto">CR →</button>
                 </div>
               </div>`).join('')
           }
@@ -426,7 +426,7 @@ window.VueDashboardCDS = {
         ${d.leadsATraiter.length > 0 ? `
         <div class="bloc-fiche">
           <div class="bloc-titre">
-            🎯 Leads EMPOWER à traiter
+            Leads EMPOWER à traiter
             <span class="badge-rouge badge-priorite">${d.leadsATraiter.length}</span>
             <button class="btn-lien" onclick="Router.aller('#/empower-tracker')" style="margin-left:auto;font-size:12px">Tracker →</button>
           </div>
@@ -445,7 +445,7 @@ window.VueDashboardCDS = {
         ${d.mesProspects.length > 0 ? `
         <div class="bloc-fiche">
           <div class="bloc-titre">
-            📋 Ma base prospects
+            Ma base prospects
             <span class="badge-compteur">${d.mesProspects.length}</span>
             <button class="btn-lien" onclick="Router.aller('#/phoning');setTimeout(()=>VuePhoning.setMode&&VuePhoning.setMode('LISTE'),600)" style="margin-left:auto;font-size:12px">Phoning liste →</button>
           </div>
@@ -454,10 +454,10 @@ window.VueDashboardCDS = {
               <div class="relance-nom">${p.Nom_Compte || p.Nom_Prospect || p.ID_Prospect || '—'}</div>
               <div class="relance-meta">
                 ${p.POTENTIEL ? `<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;background:${potCoul[p.POTENTIEL]||'#888'};color:#fff">${p.POTENTIEL}</span>` : ''}
-                ${p.Ville ? `<span style="font-size:11px;color:var(--c-text-2)">📍 ${p.Ville}</span>` : ''}
+                ${p.Ville ? `<span style="font-size:11px;color:var(--c-text-2)">${p.Ville}</span>` : ''}
                 <span style="margin-left:auto;display:flex;gap:6px">
-                  <button class="btn-lien" style="font-size:11px" onclick="Router.aller('#/phoning/${p.ID_Prospect}')">📞</button>
-                  <button class="btn-lien" style="font-size:11px" onclick="Router.aller('#/empower-tracker')">📋</button>
+                  <button class="btn-lien" style="font-size:11px;display:flex;align-items:center;gap:3px" onclick="Router.aller('#/phoning/${p.ID_Prospect}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></button>
+                  <button class="btn-lien" style="font-size:11px;display:flex;align-items:center;gap:3px" onclick="Router.aller('#/empower-tracker')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button>
                 </span>
               </div>
             </div>`).join('')}
@@ -472,7 +472,7 @@ window.VueDashboardCDS = {
         ${d.comptesAReactiver.length > 0 ? `
         <div class="bloc-fiche">
           <div class="bloc-titre">
-            🏢 Comptes à réactiver
+            Comptes à réactiver
             <span class="badge-compteur">${d.comptesAReactiver.length}</span>
             <button class="btn-lien" onclick="Router.aller('#/comptes-historiques')" style="margin-left:auto;font-size:12px">Voir historiques →</button>
           </div>

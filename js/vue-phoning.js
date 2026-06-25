@@ -497,31 +497,31 @@ window.VuePhoning = {
       });
 
       const msgResultat = {
-        INTERESSE:      '✅ Lead avancé <strong>EN COURS</strong> dans le Tracker',
-        NON_INTERESSE:  '🗄️ Prospect <strong>archivé</strong> (non intéressé)',
-        NON_JOIGNABLE:  '📵 Rappel planifié · prospect non joignable',
-        RAPPELER:       '🔔 Rappel planifié',
-        A_VISITER:      '📍 Prospect marqué <strong>À VISITER</strong> — planifier une visite terrain',
+        INTERESSE:      'Lead avancé <strong>EN COURS</strong> dans le Tracker',
+        NON_INTERESSE:  'Prospect <strong>archivé</strong> (non intéressé)',
+        NON_JOIGNABLE:  'Rappel planifié · prospect non joignable',
+        RAPPELER:       'Rappel planifié',
+        A_VISITER:      'Prospect marqué <strong>À VISITER</strong> — planifier une visite terrain',
       }[d.resultatProspect] || '';
 
       this._effacerBrouillon();
       document.getElementById('app').innerHTML = `
         <div class="visite-succes">
-          <div class="succes-icone">📞</div>
+          <div class="succes-icone"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
           <h2>Appel enregistré</h2>
           <p class="succes-duree">${c.Nom_Compte}</p>
           <div class="succes-recap">
             <div>${d.statutAppel} · Intérêt EMPOWER : ${d.interetEmpower || '—'}</div>
             ${msgResultat ? `<div>${msgResultat}</div>` : ''}
             ${!estProspect && d.commandeAnnoncee && d.commandeAnnoncee !== 'Non'
-              ? `<div>🛒 Commande ${d.commandeAnnoncee.toLowerCase()}${parseCA(d.montantEstime) !== null ? ' · ≈ ' + fmtCA(d.montantEstime) + ' €' : ''}</div>` : ''}
-            ${!estProspect && d.statutFinal ? `<div>📌 Statut final : ${d.statutFinal}</div>` : ''}
-            ${d.prochaineAction ? `<div>🎯 ${d.prochaineAction}${d.dateRappel ? ' — ' + dateRelative(d.dateRappel) : ''}</div>` : ''}
-            ${s.qualif?.resume ? `<div>🤖 ${s.qualif.resume}</div>` : ''}
+              ? `<div>Commande ${d.commandeAnnoncee.toLowerCase()}${parseCA(d.montantEstime) !== null ? ' · ≈ ' + fmtCA(d.montantEstime) + ' €' : ''}</div>` : ''}
+            ${!estProspect && d.statutFinal ? `<div>Statut final : ${d.statutFinal}</div>` : ''}
+            ${d.prochaineAction ? `<div>${d.prochaineAction}${d.dateRappel ? ' — ' + dateRelative(d.dateRappel) : ''}</div>` : ''}
+            ${s.qualif?.resume ? `<div>${s.qualif.resume}</div>` : ''}
           </div>
           <div class="succes-btns">
             <button class="btn-primaire" onclick="Router.aller('#/dashboard')">← Dashboard</button>
-            <button class="btn-secondaire" onclick="VuePhoning.init()">📋 Retour au planning</button>
+            <button class="btn-secondaire" onclick="VuePhoning.init()">Retour au planning</button>
           </div>
         </div>`;
     } catch(e) {
@@ -537,12 +537,12 @@ window.VuePhoning = {
     const _tabs = () => `
       <div style="display:flex;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:4px;background:var(--c-surface);margin-bottom:14px">
         <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:transparent;color:var(--c-text-2)"
-                onclick="VuePhoning.setMode('PLANNING')">📋 Planning</button>
+                onclick="VuePhoning.setMode('PLANNING')">Planning</button>
         <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:var(--c-title);color:#fff">
-          📂 Base (${s.comptes.length})
+          Base (${s.comptes.length})
         </button>
         <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:transparent;color:var(--c-text-2)"
-                onclick="VuePhoning.setMode('HISTORIQUE')">📖 Journal</button>
+                onclick="VuePhoning.setMode('HISTORIQUE')">Journal</button>
       </div>`;
 
     if (!s.comptes.length) {
@@ -569,12 +569,12 @@ window.VuePhoning = {
               ${c.CANAL ? `<span style="font-size:10px;padding:1px 6px;border-radius:99px;background:var(--c-bg);border:1px solid var(--c-border);color:var(--c-text-2)">${c.CANAL}</span>` : ''}
             </div>
             <div style="font-size:12px;color:var(--c-text-2);margin-bottom:8px">
-              ${c.Ville ? `📍 ${c.Ville}` : ''}
+              ${c.Ville ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:2px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${c.Ville}` : ''}
               ${statut !== '—' ? ` · ${statut}` : ''}
-              ${silence !== null ? ` · <span style="color:${silence > 4 ? 'var(--c-danger)' : 'var(--c-text-2)'}">⏱ ${silence}s silence</span>` : ''}
+              ${silence !== null ? ` · <span style="color:${silence > 4 ? 'var(--c-danger)' : 'var(--c-text-2)'}">${silence}s silence</span>` : ''}
             </div>
             <div style="display:flex;gap:8px">
-              ${c.Tel ? `<a class="btn-secondaire" style="flex:1;font-size:12px;text-decoration:none;text-align:center;padding:8px" href="tel:${String(c.Tel).replace(/\s/g,'')}">📞 ${c.Tel}</a>` : ''}
+              ${c.Tel ? `<a class="btn-secondaire" style="flex:1;font-size:12px;text-decoration:none;text-align:center;padding:8px" href="tel:${String(c.Tel).replace(/\s/g,'')}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${c.Tel}</a>` : ''}
               <button class="btn-primaire" style="flex:2;font-size:12px;padding:8px"
                       onclick="VuePhoning.demarrerAppelCompte('${c.ID_Compte}')">▶ Appeler</button>
             </div>
@@ -738,11 +738,11 @@ window.VuePhoning = {
     const tabs = `
       <div style="display:flex;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:4px;background:var(--c-surface);margin-bottom:14px">
         <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:transparent;color:var(--c-text-2)"
-                onclick="VuePhoning.setMode('PLANNING')">📋 Planning</button>
+                onclick="VuePhoning.setMode('PLANNING')">Planning</button>
         <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:transparent;color:var(--c-text-2)"
-                onclick="VuePhoning.setMode('BASE')">📂 Base (${s.comptes.length})</button>
+                onclick="VuePhoning.setMode('BASE')">Base (${s.comptes.length})</button>
         <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:var(--c-title);color:#fff">
-          📖 Journal
+          Journal
         </button>
       </div>`;
     if (s.journalChargement) {
@@ -785,7 +785,7 @@ window.VuePhoning = {
     return `
     <div class="modal-overlay" onclick="if(event.target===this)VuePhoning.fermerEditAppel()">
       <div class="modal">
-        <h3>✏️ Modifier l'appel — ${m.compte}</h3>
+        <h3>Modifier l'appel — ${m.compte}</h3>
         <form onsubmit="VuePhoning.sauvegarderEditAppel(event)">
           <label>Statut appel
             <div class="q-chips">
@@ -817,7 +817,7 @@ window.VuePhoning = {
                       oninput="VuePhoning.state.modalEditAppel.note=this.value">${m.note}</textarea></label>
           <div class="modal-btns">
             <button type="button" onclick="VuePhoning.fermerEditAppel()">Annuler</button>
-            <button type="submit" class="btn-primaire">💾 Enregistrer</button>
+            <button type="submit" class="btn-primaire">Enregistrer</button>
           </div>
         </form>
       </div>
@@ -897,7 +897,7 @@ window.VuePhoning = {
         <div style="display:flex;gap:8px">
           <button class="btn-secondaire" style="flex:1" onclick="VuePhoning.fermerExtraction()">Fermer</button>
           <button class="btn-primaire" style="flex:2" onclick="VuePhoning.exporterPhoning()"
-                  ${cnt === 0 ? 'disabled' : ''}>📥 Exporter CSV</button>
+                  ${cnt === 0 ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exporter CSV</button>
         </div>
       </div>
     </div>`;
@@ -923,9 +923,9 @@ window.VuePhoning = {
     app.innerHTML = `
       <header class="header-vue">
         <button onclick="${backAction}" class="btn-retour">←</button>
-        <h1>📞 ${titre}</h1>
+        <h1>${titre}</h1>
         <div style="display:flex;gap:6px">
-          ${peutExtraire ? `<button class="btn-retour" title="Extraction CSV" onclick="VuePhoning.ouvrirExtraction()">📤</button>` : ''}
+          ${peutExtraire ? `<button class="btn-retour" title="Extraction CSV" onclick="VuePhoning.ouvrirExtraction()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>` : ''}
           ${s.cible && s.mode === 'APPEL' ? `<span class="badge-compteur">${s.cible.Nom_Compte.slice(0, 14)}</span>` : ''}
         </div>
       </header>
@@ -950,14 +950,14 @@ window.VuePhoning = {
 
     return `<div class="q-champs">
       ${s.brouillonSauvegarde ? `<div style="font-size:11px;color:var(--c-text-2);display:flex;align-items:center;gap:6px;margin-bottom:8px;padding:6px 10px;background:var(--c-bg);border-radius:var(--radius-sm)">
-        💾 Brouillon sauvegardé
+        Brouillon sauvegardé
         <button type="button" style="margin-left:auto;font-size:11px;padding:2px 8px;border:1px solid var(--c-border);border-radius:4px;background:none;cursor:pointer;color:var(--c-danger)"
                 onclick="VuePhoning._effacerBrouillon();VuePhoning.render()">Effacer</button>
       </div>` : ''}
       <!-- Module 3 : toggle Compte existant / Appel à froid -->
       <div style="display:flex;gap:6px;margin-bottom:12px">
         <button type="button" class="btn-filtre ${!s.froidsMode ? 'actif' : ''}"
-                onclick="VuePhoning.state.froidsMode=false;VuePhoning.render()">🏢 Compte existant</button>
+                onclick="VuePhoning.state.froidsMode=false;VuePhoning.render()">Compte existant</button>
         <button type="button" class="btn-filtre ${s.froidsMode ? 'actif' : ''}"
                 onclick="VuePhoning.state.froidsMode=true;VuePhoning.render()">❄️ Appel à froid</button>
       </div>
@@ -985,7 +985,7 @@ window.VuePhoning = {
       ` : `
       ${s.idPlanifEnCours && s.cible ? `
       <div style="background:var(--c-surface);border:1.5px solid var(--c-primary);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
-        <span style="font-size:20px">📋</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--c-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         <div>
           <div style="font-weight:700;font-size:14px;color:var(--c-title)">${s.cible.Nom_Compte}</div>
           <div style="font-size:12px;color:var(--c-text-2)">Appel planifié — objectif : ${d.objectif || '—'}</div>
@@ -1031,7 +1031,7 @@ window.VuePhoning = {
               ${(s.froidsMode
                   ? (!s.froidsFields.nom.trim() || !s.froidsFields.tel.trim() || !String(d.objectif||'').trim())
                   : (!s.cible || !String(d.objectif || '').trim()))
-                ? 'disabled style="opacity:.5;cursor:not-allowed"' : ''}>📞 Démarrer l'appel →</button>
+                ? 'disabled style="opacity:.5;cursor:not-allowed"' : ''}>Démarrer l'appel →</button>
     </div>`;
   },
 
@@ -1089,13 +1089,13 @@ window.VuePhoning = {
               ${nonTraite ? `<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;background:var(--c-primary);color:#fff;flex-shrink:0">À appeler</span>` : ''}
             </div>
             <div style="font-size:12px;color:var(--c-text-2);margin-bottom:6px">
-              ${p.Ville ? `📍 ${p.Ville}` : ''}${origineLabel ? ` · ${origineLabel}` : ''}
-              ${rappelDu && p.Date_prochaine_action ? ` · ⏰ <span style="color:var(--c-danger);font-weight:600">${dateRelative(p.Date_prochaine_action)}</span>` : ''}
+              ${p.Ville ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:2px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${p.Ville}` : ''}${origineLabel ? ` · ${origineLabel}` : ''}
+              ${rappelDu && p.Date_prochaine_action ? ` · <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--c-danger)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:2px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span style="color:var(--c-danger);font-weight:600">${dateRelative(p.Date_prochaine_action)}</span>` : ''}
             </div>
             ${p.Note_initiale ? `<div style="font-size:12px;color:var(--c-text-2);margin-bottom:8px;font-style:italic">${String(p.Note_initiale).slice(0, 80)}${String(p.Note_initiale).length > 80 ? '…' : ''}</div>` : ''}
-            ${p.Tel ? `<div style="font-size:13px;margin-bottom:8px"><a class="lien-tel" href="tel:${String(p.Tel).replace(/\s/g,'')}">📞 ${p.Tel}</a></div>` : ''}
+            ${p.Tel ? `<div style="font-size:13px;margin-bottom:8px"><a class="lien-tel" href="tel:${String(p.Tel).replace(/\s/g,'')}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${p.Tel}</a></div>` : ''}
             <button class="btn-primaire" style="width:100%;font-size:13px;padding:10px"
-                    onclick="VuePhoning.choisirEtDemarrer(${i})">📞 Démarrer l'appel</button>
+                    onclick="VuePhoning.choisirEtDemarrer(${i})">Démarrer l'appel</button>
           </div>`;
           }).join('')
       }
@@ -1108,12 +1108,12 @@ window.VuePhoning = {
   _phaseCALL() {
     const s = this.state;
     return `<div class="q-champs" style="align-items:center;text-align:center;padding-top:24px">
-      <div style="font-size:48px">${s.enregistre ? '🔴' : '🎙️'}</div>
+      <div style="font-size:48px;line-height:1">${s.enregistre ? '<span style="display:inline-block;width:20px;height:20px;background:var(--c-danger);border-radius:50%"></span>' : '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>'}</div>
       <p class="q-intro">${s.enregistre
         ? 'Enregistrement en cours… (30s max — résumez l\'échange à voix haute)'
         : 'Pendant ou juste après l\'appel, enregistrez un résumé vocal de 30s.\nL\'IA transcrira et qualifiera automatiquement.'}</p>
       ${s.cible?.Tel ? `<a class="btn-secondaire" style="text-decoration:none;text-align:center"
-        href="tel:${String(s.cible.Tel).replace(/\s/g, '')}">📞 Composer ${s.cible.Tel}</a>` : ''}
+        href="tel:${String(s.cible.Tel).replace(/\s/g, '')}">Appeler ${s.cible.Tel}</a>` : ''}
       <button type="button" class="btn-primaire" style="${s.enregistre ? 'background:var(--c-danger)' : ''}"
               onclick="VuePhoning.toggleEnregistrement()">
         ${s.enregistre ? '⏹ Arrêter l\'enregistrement' : '⏺ Enregistrer le résumé (30s)'}
@@ -1127,10 +1127,10 @@ window.VuePhoning = {
     const estProspect = s.typeSource === 'PROSPECT';
     const estFroid = d.typeAppel === 'Appel_Froid';
     const infoResultat = {
-      INTERESSE:     '✅ Le lead sera avancé <strong>EN COURS</strong> dans le Tracker',
-      NON_INTERESSE: '🗄️ Le prospect sera <strong>archivé</strong> définitivement',
-      NON_JOIGNABLE: '📵 Rappel planifié · statut conservé',
-      RAPPELER:      '🔔 Rappel planifié à la date choisie',
+      INTERESSE:     'Le lead sera avancé <strong>EN COURS</strong> dans le Tracker',
+      NON_INTERESSE: 'Le prospect sera <strong>archivé</strong> définitivement',
+      NON_JOIGNABLE: 'Rappel planifié · statut conservé',
+      RAPPELER:      'Rappel planifié à la date choisie',
     }[d.resultatProspect] || 'Sélectionnez un résultat pour archiver automatiquement';
 
     const statutsAppel = estFroid
@@ -1192,7 +1192,7 @@ window.VuePhoning = {
         <!-- Analyse Gemini -->
         ${s.geminiAnalyse ? `
         <div style="background:linear-gradient(135deg,var(--c-bg) 0%,rgba(0,80,255,.04) 100%);border:1.5px solid var(--c-primary);border-radius:var(--radius-sm);padding:12px;margin-top:10px">
-          <div style="font-size:11px;font-weight:700;color:var(--c-primary);margin-bottom:8px">✨ Analyse Gemini</div>
+          <div style="font-size:11px;font-weight:700;color:var(--c-primary);margin-bottom:8px">Analyse Gemini</div>
           <div style="font-size:13px;line-height:1.65;white-space:pre-wrap;color:var(--c-text)">${s.geminiAnalyse}</div>
         </div>` : ''}
 
@@ -1200,8 +1200,8 @@ window.VuePhoning = {
                 onclick="VuePhoning.analyserAvecGemini()"
                 ${s.geminiEnCours ? 'disabled' : ''}>
           ${s.geminiEnCours
-            ? '<span style="animation:spin 1s linear infinite;display:inline-block">🔄</span> Analyse Gemini…'
-            : (s.geminiAnalyse ? '🔄 Relancer l\'analyse Gemini' : '✨ Analyser avec Gemini')}
+            ? 'Analyse Gemini…'
+            : (s.geminiAnalyse ? 'Relancer l\'analyse Gemini' : 'Analyser avec Gemini')}
         </button>
       </div>` : ''}
 
@@ -1210,12 +1210,12 @@ window.VuePhoning = {
 
       ${estProspect ? `
       <div style="background:var(--c-surface);border:1.5px solid var(--c-primary);border-radius:var(--radius-sm);padding:12px;margin-bottom:4px">
-        <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.04em;margin-bottom:8px">📋 RÉSULTAT DU PROSPECT</div>
+        <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.04em;margin-bottom:8px">RÉSULTAT DU PROSPECT</div>
         ${this._r('resultatProspect', ['INTERESSE', 'RAPPELER', 'NON_JOIGNABLE', 'NON_INTERESSE', 'A_VISITER'])}
         <div style="font-size:11px;color:var(--c-text-2);margin-top:6px">${infoResultat}</div>
       </div>` : `
       <div style="background:var(--c-surface);border:1.5px solid var(--c-primary);border-radius:var(--radius-sm);padding:12px;margin-bottom:4px">
-        <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.04em;margin-bottom:8px">🛒 SUITE COMMERCIALE</div>
+        <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.04em;margin-bottom:8px">SUITE COMMERCIALE</div>
         <label class="q-label" style="margin-top:0">Commande annoncée ${this._r('commandeAnnoncee', ['Oui', 'À confirmer', 'Non'])}</label>
         ${d.commandeAnnoncee && d.commandeAnnoncee !== 'Non' ? `
         <label class="q-label">Montant estimé (€)
@@ -1288,23 +1288,23 @@ window.VuePhoning = {
       <!-- Tabs navigation -->
       <div style="display:flex;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:4px;background:var(--c-surface);margin-bottom:14px">
         <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:var(--c-title);color:#fff">
-          📋 Planning
+          Planning
         </button>
         <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:transparent;color:var(--c-text-2)"
-                onclick="VuePhoning.setMode('BASE')">📂 Base (${s.comptes.length})</button>
+                onclick="VuePhoning.setMode('BASE')">Base (${s.comptes.length})</button>
         <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:transparent;color:var(--c-text-2)"
-                onclick="VuePhoning.setMode('HISTORIQUE')">📖 Journal</button>
+                onclick="VuePhoning.setMode('HISTORIQUE')">Journal</button>
       </div>
 
       <!-- Actions rapides -->
       <div style="display:flex;gap:8px;margin-bottom:14px">
         <button class="btn-primaire" style="flex:1"
                 onclick="VuePhoning.ouvrirFormPlanif()">
-          📅 Planifier un appel
+          Planifier un appel
         </button>
         <button class="btn-secondaire" style="flex:1"
                 onclick="VuePhoning.demarrerAppelDirect()">
-          📞 Appel direct
+          Appel direct
         </button>
       </div>
 
@@ -1332,7 +1332,7 @@ window.VuePhoning = {
               <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;background:${badge.bg};color:#fff;flex-shrink:0">${badge.lbl}</span>
             </div>
             <div style="font-size:12px;color:var(--c-text-2);margin-bottom:8px">
-              📅 ${a.Date_Planifiee ? a.Date_Planifiee.slice(0, 16).replace('T', ' ') : '—'}
+              ${a.Date_Planifiee ? a.Date_Planifiee.slice(0, 16).replace('T', ' ') : '—'}
               ${estPasse ? ' <span style="color:var(--c-danger);font-weight:700">· En retard</span>' : ''}
               ${a.Objectif_Appel ? ` · ${a.Objectif_Appel}` : ''}
             </div>
@@ -1340,7 +1340,7 @@ window.VuePhoning = {
             <div style="display:flex;gap:8px">
               <button class="btn-primaire" style="flex:2;font-size:13px;padding:9px"
                       onclick="VuePhoning.lancerAppelPlanifie('${a.ID_Appel}')">
-                📞 Lancer l'appel
+                Lancer l'appel
               </button>
               <button class="btn-secondaire" style="flex:1;font-size:13px;padding:9px"
                       onclick="VuePhoning.supprimerPlanif('${a.ID_Appel}')">🗑</button>
@@ -1359,7 +1359,7 @@ window.VuePhoning = {
     return `
     <div class="modal-overlay" onclick="if(event.target===this)VuePhoning.fermerFormPlanif()">
       <div class="modal" style="max-width:440px">
-        <h3>📋 Planifier un appel</h3>
+        <h3>Planifier un appel</h3>
 
         <label class="q-label">Compte à appeler
           ${f.idCompte
@@ -1394,7 +1394,7 @@ window.VuePhoning = {
           <button class="btn-secondaire" style="flex:1" onclick="VuePhoning.fermerFormPlanif()">Annuler</button>
           <button class="btn-primaire" style="flex:2" onclick="VuePhoning.sauvegarderPlanif()"
                   ${s.envoiEnCours ? 'disabled' : ''}>
-            ${s.envoiEnCours ? 'Enregistrement…' : '✅ Planifier l\'appel'}
+            ${s.envoiEnCours ? 'Enregistrement…' : 'Planifier l\'appel'}
           </button>
         </div>
       </div>

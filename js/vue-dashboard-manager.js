@@ -429,8 +429,8 @@ window.VueDashboardManager = {
         <h1>Onboarding EMPOWER</h1>
         <div style="display:flex;gap:6px">
           <button class="btn-retour" title="Actualiser"
-                  onclick="SheetsAPI.viderCache('EMPOWER_MDB','📋_PROSPECTS').then(()=>VueDashboardManager.initChannel())">🔄</button>
-          <button class="btn-deco" onclick="Session.deconnecter();Router.aller('#/login')" title="Déconnexion">⏻</button>
+                  onclick="SheetsAPI.viderCache('EMPOWER_MDB','📋_PROSPECTS').then(()=>VueDashboardManager.initChannel())"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></button>
+          <button class="btn-deco" onclick="Session.deconnecter();Router.aller('#/login')" title="Déconnexion"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></button>
         </div>
       </header>
 
@@ -448,7 +448,7 @@ window.VueDashboardManager = {
 
         <!-- TAUX INTÉGRATION GLOBAL -->
         <div class="bloc-fiche">
-          <div class="bloc-titre">📋 Pipeline onboarding</div>
+          <div class="bloc-titre">Pipeline onboarding</div>
           <p style="font-size:13px;color:var(--c-text-2);margin:0">
             <strong style="color:var(--c-text)">${dc.totalPipeline}</strong> lead(s) au total ·
             taux d'intégration global : <strong style="color:var(--c-success)">${dc.tauxIntegration}%</strong>
@@ -459,7 +459,7 @@ window.VueDashboardManager = {
 
         <!-- TAUX INTÉGRATION PAR CDS -->
         <div class="bloc-fiche">
-          <div class="bloc-titre">🎯 Taux d'intégration par CDS</div>
+          <div class="bloc-titre">Taux d'intégration par CDS</div>
           ${dc.tauxParCDS.length ? `
           <div class="tableau-equipe">
             <div class="te-ligne te-head" style="grid-template-columns:1.4fr 1.4fr 0.7fr"><span>CDS</span><span>Intégrés / Assignés</span><span>Taux</span></div>
@@ -477,7 +477,7 @@ window.VueDashboardManager = {
 
         <!-- CA RÉALISÉ (label source visible) -->
         <div class="bloc-fiche">
-          <div class="bloc-titre">💶 CA réalisé par CDS</div>
+          <div class="bloc-titre">CA réalisé par CDS</div>
           <p style="font-size:11px;color:var(--c-text-2);margin:0 0 10px">
             Valeur saisie par Tadjidine — source indiquée pour chaque CDS.
           </p>
@@ -494,7 +494,7 @@ window.VueDashboardManager = {
 
         <!-- 10 DERNIERS LEADS INTÉGRÉS -->
         <div class="bloc-fiche">
-          <div class="bloc-titre">✅ 10 derniers leads intégrés</div>
+          <div class="bloc-titre">10 derniers leads intégrés</div>
           ${dc.derniersIntegres.length ? `
           <div class="tableau-equipe">
             <div class="te-ligne te-head" style="grid-template-columns:1.5fr 1fr 1fr"><span>Compte</span><span>CDS</span><span>Origine</span></div>
@@ -509,19 +509,19 @@ window.VueDashboardManager = {
 
         <!-- ALERTE WELCOME PACK -->
         <div class="bloc-fiche">
-          <div class="bloc-titre">📦 Welcome Pack non envoyé (≥ J14)</div>
+          <div class="bloc-titre">Welcome Pack non envoyé (≥ J14)</div>
           ${dc.alerteWelcome.length ? `
           <div class="dash-alertes">
             ${dc.alerteWelcome.map(l => `
               <div class="alerte-ligne">
-                📦 <strong>${l.nom}</strong> — ${l.cds} · <span style="color:var(--c-danger)">${l.jours} j sans Welcome Pack</span>
+                <strong>${l.nom}</strong> — ${l.cds} · <span style="color:var(--c-danger)">${l.jours} j sans Welcome Pack</span>
               </div>`).join('')}
           </div>` : '<div class="pas-de-donnees">Aucun lead en alerte Welcome Pack 🎉</div>'}
         </div>
 
         <!-- LEADS ARCHIVÉS / BLOCAGE -->
         <div class="bloc-fiche">
-          <div class="bloc-titre">🗄️ Leads archivés / bloqués</div>
+          <div class="bloc-titre">Leads archivés / bloqués</div>
           ${dc.leadsArchive.length ? `
           <div class="tableau-equipe">
             <div class="te-ligne te-head" style="grid-template-columns:1.5fr 1fr 1.5fr"><span>Compte</span><span>CDS</span><span>Motif</span></div>
@@ -536,8 +536,8 @@ window.VueDashboardManager = {
 
         <!-- RACCOURCIS LECTURE SEULE -->
         <div class="dash-raccourcis no-print">
-          <button class="raccourci" onclick="Router.aller('#/empower-tracker')">📊<span>Tracker</span></button>
-          <button class="raccourci" onclick="Router.aller('#/comptes')">🏢<span>Comptes</span></button>
+          <button class="raccourci" onclick="Router.aller('#/empower-tracker')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Tracker</span></button>
+          <button class="raccourci" onclick="Router.aller('#/comptes')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><line x1="10" y1="6" x2="10" y2="6.01"/><line x1="14" y1="6" x2="14" y2="6.01"/><line x1="10" y1="10" x2="10" y2="10.01"/><line x1="14" y1="10" x2="14" y2="10.01"/><line x1="10" y1="14" x2="10" y2="14.01"/><line x1="14" y1="14" x2="14" y2="14.01"/><line x1="10" y1="18" x2="10" y2="18.01"/><line x1="14" y1="18" x2="14" y2="18.01"/></svg><span>Comptes</span></button>
         </div>
       </div>
       ${NavBar('home')}
@@ -554,9 +554,9 @@ window.VueDashboardManager = {
     if (this.state.dc) { return this.renderChannel(); }
     const d      = this.state.d;
     const PACE   = {
-      ON_TRACK: { lbl: '🟢', cls: 'pace-ok' },
-      WATCH:    { lbl: '🟡', cls: 'pace-watch' },
-      AT_RISK:  { lbl: '🔴', cls: 'pace-risk' },
+      ON_TRACK: { lbl: '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--c-success);margin-right:4px;vertical-align:middle"></span>', cls: 'pace-ok' },
+      WATCH:    { lbl: '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--c-warning);margin-right:4px;vertical-align:middle"></span>', cls: 'pace-watch' },
+      AT_RISK:  { lbl: '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--c-danger);margin-right:4px;vertical-align:middle"></span>', cls: 'pace-risk' },
     };
     const dateFr = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -564,7 +564,7 @@ window.VueDashboardManager = {
       <header class="header-vue no-print">
         <button onclick="Router.aller('#/dashboard')" class="btn-retour">←</button>
         <h1>Vue équipe</h1>
-        <button class="btn-retour" onclick="VueDashboardManager.exporterCOPIL()" title="Export COPIL PDF">🖨️</button>
+        <button class="btn-retour" onclick="VueDashboardManager.exporterCOPIL()" title="Export COPIL PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg></button>
       </header>
 
       <div class="dash-body copil-print avec-nav">
@@ -583,7 +583,7 @@ window.VueDashboardManager = {
           </div>
           ${d.caFY26Total > 0 ? `
           <div class="stat-tuile" style="border-top:3px solid #9333ea">
-            <div class="stat-tuile-lbl" style="color:#9333ea">📊 Réf. FY26/trim.</div>
+            <div class="stat-tuile-lbl" style="color:#9333ea">Réf. FY26/trim.</div>
             <div class="stat-tuile-val" style="color:#9333ea">${formatEuro(d.caFY26Total)}</div>
             <div style="font-size:11px;color:var(--c-text-2);margin-top:2px">CA annuel ÷ 4 équipe</div>
           </div>` : ''}
@@ -612,7 +612,7 @@ window.VueDashboardManager = {
 
         <!-- GRAPHIQUE CA PAR CDS (SVG) -->
         <div class="bloc-fiche">
-          <div class="bloc-titre">📊 CA réalisé vs objectif par CDS — ${d.quarter}</div>
+          <div class="bloc-titre">CA réalisé vs objectif par CDS — ${d.quarter}</div>
           ${this._svgCaEquipe(d.equipe)}
           <div style="display:flex;gap:16px;font-size:11px;color:var(--c-text-2);margin-top:8px;flex-wrap:wrap">
             <span><span style="display:inline-block;width:10px;height:10px;background:#E8E8ED;border-radius:2px;vertical-align:middle"></span> Objectif</span>
@@ -628,7 +628,7 @@ window.VueDashboardManager = {
           <div class="bloc-titre">Détail performance par CDS</div>
           <div class="tableau-equipe">
             <div class="te-ligne te-head" style="grid-template-columns:1.2fr 1.4fr 0.6fr 0.8fr 0.4fr 0.4fr 0.4fr">
-              <span>CDS</span><span>CA / OBJ</span><span>%</span><span style="color:#9333ea">FY26/trim</span><span>📅</span><span>📞</span><span>🎯</span>
+              <span>CDS</span><span>CA / OBJ</span><span>%</span><span style="color:#9333ea">FY26/trim</span><span>Vis.</span><span>App.</span><span>Leads</span>
             </div>
             ${d.equipe.map(e => `
             <div class="te-ligne" style="cursor:pointer;grid-template-columns:1.2fr 1.4fr 0.6fr 0.8fr 0.4fr 0.4fr 0.4fr" onclick="Router.aller('#/comptes?cds=${e.pin}')">
@@ -641,12 +641,12 @@ window.VueDashboardManager = {
               <span>${e.leadsEnCours}</span>
             </div>`).join('')}
           </div>
-          <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">📅 visites ${d.semaine} · 📞 appels ${d.semaine} · 🎯 leads actifs · <span style="color:#9333ea">FY26/trim = CA FY26 annuel ÷ 4</span></p>
+          <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">Vis. = visites ${d.semaine} · App. = appels ${d.semaine} · Leads = leads actifs · <span style="color:#9333ea">FY26/trim = CA FY26 annuel ÷ 4</span></p>
         </div>
 
         <!-- ENTONNOIR PIPELINE EMPOWER (SVG) -->
         <div class="bloc-fiche">
-          <div class="bloc-titre">📋 Entonnoir pipeline EMPOWER</div>
+          <div class="bloc-titre">Entonnoir pipeline EMPOWER</div>
           ${this._svgFunnel(d.pipelineStages)}
           <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
             <button class="btn-lien" onclick="Router.aller('#/empower-tracker')" style="font-size:12px">Voir le Tracker →</button>
@@ -656,27 +656,27 @@ window.VueDashboardManager = {
 
         <!-- GRAPHIQUE ACTIVITÉ ÉQUIPE (SVG) -->
         <div class="bloc-fiche">
-          <div class="bloc-titre">📈 Activité équipe — 6 semaines</div>
+          <div class="bloc-titre">Activité équipe — 6 semaines</div>
           ${this._svgActiviteEquipe(d.activiteEquipe)}
         </div>
 
         <!-- ALERTES ÉQUIPE -->
         <div class="bloc-fiche">
-          <div class="bloc-titre">⚠️ Alertes équipe</div>
+          <div class="bloc-titre">Alertes équipe</div>
           <div class="dash-alertes">
             ${d.equipe.filter(e => e.pace !== 'ON_TRACK').map(e => `
               <div class="alerte-ligne">${PACE[e.pace].lbl} <strong>${e.nom}</strong> — ${e.pct}% de l'objectif ${d.quarter}</div>`).join('')}
-            ${d.leadsBloques.length ? `<div class="alerte-ligne no-print" onclick="Router.aller('#/empower-tracker')">⏳ <strong>${d.leadsBloques.length}</strong> lead(s) sans action > 7 jours</div>` : ''}
-            ${d.comptesRouges.length ? `<div class="alerte-ligne no-print" onclick="Router.aller('#/comptes')">🔴 <strong>${d.comptesRouges.length}</strong> compte(s) en retard d'action</div>` : ''}
-            ${!d.leadsBloques.length && !d.comptesRouges.length && d.equipe.every(e => e.pace === 'ON_TRACK') ? '<div class="pas-de-donnees">Aucune alerte 🎉</div>' : ''}
+            ${d.leadsBloques.length ? `<div class="alerte-ligne no-print" onclick="Router.aller('#/empower-tracker')"><strong>${d.leadsBloques.length}</strong> lead(s) sans action > 7 jours</div>` : ''}
+            ${d.comptesRouges.length ? `<div class="alerte-ligne no-print" onclick="Router.aller('#/comptes')"><strong>${d.comptesRouges.length}</strong> compte(s) en retard d'action</div>` : ''}
+            ${!d.leadsBloques.length && !d.comptesRouges.length && d.equipe.every(e => e.pace === 'ON_TRACK') ? '<div class="pas-de-donnees">Aucune alerte active.</div>' : ''}
           </div>
         </div>
 
         <!-- GEM-07 Synthèse hebdo équipe -->
         <div class="bloc-fiche no-print">
-          <div class="bloc-titre">✨ Assistant IA — Synthèse hebdo équipe</div>
+          <div class="bloc-titre">Assistant IA — Synthèse hebdo équipe</div>
           <p style="font-size:12px;color:var(--c-text-2);margin-bottom:10px">Gemini analyse les KPIs de la semaine et génère un bilan, alertes, tendances et recommandations.</p>
-          <button id="btn-gem07" class="btn-secondaire" onclick="VueDashboardManager.syntheseHebdo()">✨ Synthèse hebdo IA</button>
+          <button id="btn-gem07" class="btn-secondaire" onclick="VueDashboardManager.syntheseHebdo()">Synthèse hebdo IA</button>
           <div id="gem07-zone"
                style="display:none;margin-top:12px;font-size:13px;line-height:1.7;
                       white-space:pre-wrap;padding:12px;background:var(--c-bg);
@@ -685,36 +685,36 @@ window.VueDashboardManager = {
 
         <!-- EX-5 : EXTRACTION & REPORTING -->
         <div class="bloc-fiche no-print">
-          <div class="bloc-titre">📤 Extraction & Reporting</div>
+          <div class="bloc-titre">Extraction & Reporting</div>
           <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">Sélectionnez une période et lancez l'export filtré.</p>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <button class="btn-secondaire" style="flex:1;min-width:120px;padding:14px 10px;text-align:center"
                     onclick="Router.aller('#/visites')">
-              <div style="font-size:20px;margin-bottom:4px">📋</div>
+              <div style="display:flex;justify-content:center;margin-bottom:4px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
               <div style="font-size:12px;font-weight:700">Visites</div>
               <div style="font-size:11px;color:var(--c-text-2)">Export CSV filtré</div>
             </button>
             <button class="btn-secondaire" style="flex:1;min-width:120px;padding:14px 10px;text-align:center"
                     onclick="Router.aller('#/phoning')">
-              <div style="font-size:20px;margin-bottom:4px">📞</div>
+              <div style="display:flex;justify-content:center;margin-bottom:4px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
               <div style="font-size:12px;font-weight:700">Phoning</div>
               <div style="font-size:11px;color:var(--c-text-2)">Journal des appels</div>
             </button>
             <button class="btn-secondaire" style="flex:1;min-width:120px;padding:14px 10px;text-align:center"
                     onclick="Router.aller('#/admin')">
-              <div style="font-size:20px;margin-bottom:4px">📦</div>
+              <div style="display:flex;justify-content:center;margin-bottom:4px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
               <div style="font-size:12px;font-weight:700">Exports CSV</div>
               <div style="font-size:11px;color:var(--c-text-2)">7 exports thématiques</div>
             </button>
           </div>
           <p style="font-size:11px;color:var(--c-text-2);margin-top:10px">
-            💡 Dans Visites / Phoning, utilisez le bouton 📤 en haut à droite pour filtrer par période.
+            Dans Visites / Phoning, utilisez le bouton d'export en haut à droite pour filtrer par période.
           </p>
         </div>
 
         <!-- BUG-08 : SAISIE CA RÉALISÉ À DATE -->
         <div class="bloc-fiche no-print">
-          <div class="bloc-titre">📝 Saisie CA réalisé à date</div>
+          <div class="bloc-titre">Saisie CA réalisé à date</div>
           <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">Renseignez le CA terrain pour un CDS — la valeur remplace le sell-in du quarter sélectionné.</p>
           <div style="display:grid;gap:10px">
             <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -738,7 +738,7 @@ window.VueDashboardManager = {
                      style="width:100%;margin-top:4px;padding:8px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm)"/>
             </label>
             <button class="btn-primaire" onclick="VueDashboardManager.saisirCA()" style="padding:12px">
-              💾 Enregistrer le CA
+              Enregistrer le CA
             </button>
             <div id="saisie-ca-feedback" style="font-size:13px;min-height:18px"></div>
           </div>
@@ -746,12 +746,12 @@ window.VueDashboardManager = {
 
         <!-- RACCOURCIS MANAGER -->
         <div class="dash-raccourcis no-print">
-          <button class="raccourci" onclick="Router.aller('#/empower-tracker')">📊<span>Pipeline</span></button>
-          <button class="raccourci" onclick="Router.aller('#/comptes-historiques')">🏢<span>Historiques</span></button>
-          <button class="raccourci" onclick="Router.aller('#/phoning')">📞<span>Phoning</span></button>
-          <button class="raccourci" onclick="Router.aller('#/objectifs')">🎯<span>Objectifs</span></button>
-          <button class="raccourci" onclick="Router.aller('#/admin')">📥<span>Exports</span></button>
-          <button class="raccourci" onclick="Router.aller('#/admin')">⚙️<span>Admin</span></button>
+          <button class="raccourci" onclick="Router.aller('#/empower-tracker')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Pipeline</span></button>
+          <button class="raccourci" onclick="Router.aller('#/comptes-historiques')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/></svg><span>Historiques</span></button>
+          <button class="raccourci" onclick="Router.aller('#/phoning')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span>Phoning</span></button>
+          <button class="raccourci" onclick="Router.aller('#/objectifs')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg><span>Objectifs</span></button>
+          <button class="raccourci" onclick="Router.aller('#/admin')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>Exports</span></button>
+          <button class="raccourci" onclick="Router.aller('#/admin')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg><span>Admin</span></button>
         </div>
       </div>
       ${NavBar('home')}
