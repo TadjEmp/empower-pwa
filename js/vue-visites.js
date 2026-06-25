@@ -174,7 +174,7 @@ window.VueVisites = {
         ${cell('Dernier Q', dernierQ != null ? fmtCA(dernierQ) : '—')}
         ${cell('Silence', c.silence != null ? c.silence + ' sem.' : '—')}
         ${cell('Potentiel', c.potentiel || '—')}
-        ${c.urgent ? `<div style="flex-basis:100%;font-size:11px;color:var(--c-danger);font-weight:700">🔴 Relance URGENTE</div>` : ''}
+        ${c.urgent ? `<div style="flex-basis:100%;font-size:11px;color:var(--c-danger);font-weight:700">Relance URGENTE</div>` : ''}
       </div>`;
   },
 
@@ -475,7 +475,7 @@ window.VueVisites = {
     } catch(err) {
       Toast.afficher('❌ ' + err.message, 'erreur');
       // réactive le bouton pour permettre une nouvelle tentative
-      if (btn) { btn.disabled = false; btn.textContent = btn.dataset._lbl || '📅 Planifier'; }
+      if (btn) { btn.disabled = false; btn.textContent = btn.dataset._lbl || 'Planifier'; }
     } finally {
       this._enCours = false;
     }
@@ -687,12 +687,12 @@ window.VueVisites = {
       <div class="carte-visite" style="border-left:4px solid ${coul}">
         <div class="cv-head">
           <span class="cv-heure">${v.Heure || '—'}</span>
-          <span class="cv-statut" style="color:${coul}">${estManquee ? '🔴 ' : ''}${this._labelStatut(statutEff)}</span>
+          <span class="cv-statut" style="color:${coul}">${this._labelStatut(statutEff)}</span>
         </div>
         <div class="cv-nom">${v.Nom_Compte || '—'}</div>
         ${v.Type_Visite ? `<div class="cv-type">${String(v.Type_Visite).replace(/_/g,' ')}</div>` : ''}
-        ${cdsNom && cdsNom !== '—' ? `<div class="cv-type" style="color:var(--c-text-2);font-size:11px">👤 ${cdsNom}</div>` : ''}
-        ${(v.Note_Privee || v.Commentaire_Prep) ? `<div class="cv-note">📝 ${(v.Note_Privee || v.Commentaire_Prep).slice(0, 80)}</div>` : ''}
+        ${cdsNom && cdsNom !== '—' ? `<div class="cv-type" style="color:var(--c-text-2);font-size:11px">${cdsNom}</div>` : ''}
+        ${(v.Note_Privee || v.Commentaire_Prep) ? `<div class="cv-note">${(v.Note_Privee || v.Commentaire_Prep).slice(0, 80)}</div>` : ''}
         <div class="cv-actions" style="gap:6px;flex-wrap:wrap">
           ${isPlanif ? `
             <button class="btn-primaire" style="padding:8px 14px;font-size:13px;width:auto${estManquee ? ';background:var(--c-danger)' : ''}"
@@ -702,28 +702,28 @@ window.VueVisites = {
           ${isEnCours ? `
             <button class="btn-primaire" style="padding:8px 14px;font-size:13px;width:auto"
                     onclick="VueVisites.ouvrirCR('${v.ID_Visite}')">
-              ✍️ Compte-rendu
+              Compte-rendu
             </button>` : ''}
           ${statut === 'réalisée' && (v.Source_Visite === 'ESI_VISITE_FROID' || v.Source_Visite === 'HORS_BASE') && String(v.Flag_Converti || '').toUpperCase() !== 'TRUE' ? `
             <button class="btn-primaire" style="padding:8px 14px;font-size:13px;width:auto;background:var(--c-success)"
                     onclick="VueVisites.ouvrirConversion('${v.ID_Visite}')">
-              ✨ Créer compte actif
+              Créer compte actif
             </button>` : ''}
           ${statut === 'réalisée' && String(v.Flag_Converti || '').toUpperCase() === 'TRUE' ? `
-            <span style="font-size:11px;color:var(--c-success);font-weight:700">✅ Converti en compte actif</span>
+            <span style="font-size:11px;color:var(--c-success);font-weight:700">Converti en compte actif</span>
           ` : ''}
           ${(!isPlanif && !isEnCours) ? `
             <button class="btn-secondaire" style="padding:6px 12px;font-size:12px;width:auto"
                     onclick="Router.aller('#/compte/${v.ID_Cible || ''}')">
-              📋 Fiche compte
+              Fiche compte
             </button>` : ''}
           ${peutModif ? `
             <button class="btn-secondaire" title="Modifier" style="padding:10px 14px;font-size:15px;width:auto"
-                    onclick="VueVisites.ouvrirEdition('${v.ID_Visite}')">✏️</button>
-            <button class="btn-secondaire" title="Dupliquer (J+7)" style="padding:10px 14px;font-size:15px;width:auto"
-                    onclick="VueVisites.dupliquerVisite('${v.ID_Visite}')">📋+</button>
+                    onclick="VueVisites.ouvrirEdition('${v.ID_Visite}')">✏</button>
+            <button class="btn-secondaire" title="Dupliquer (J+7)" style="padding:10px 14px;font-size:13px;width:auto"
+                    onclick="VueVisites.dupliquerVisite('${v.ID_Visite}')">+1</button>
             <button class="btn-secondaire" title="Supprimer" style="padding:10px 14px;font-size:15px;width:auto;color:var(--c-danger);border-color:var(--c-danger)"
-                    onclick="VueVisites.demanderSuppression('${v.ID_Visite}')">🗑️</button>
+                    onclick="VueVisites.demanderSuppression('${v.ID_Visite}')">✕</button>
           ` : ''}
         </div>
       </div>`;
@@ -795,8 +795,8 @@ window.VueVisites = {
         <button onclick="Router.aller('#/dashboard')" class="btn-retour">←</button>
         <h1>Visites</h1>
         <div style="display:flex;gap:6px">
-          ${peutExtraire ? `<button class="btn-retour" onclick="VueVisites.ouvrirExtraction()" title="Extraction CSV">📤</button>` : ''}
-          <button class="btn-retour" onclick="VueVisites.synchroniser()" title="Synchroniser">🔄</button>
+          ${peutExtraire ? `<button class="btn-retour" onclick="VueVisites.ouvrirExtraction()" title="Extraction CSV"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>` : ''}
+          <button class="btn-retour" onclick="VueVisites.synchroniser()" title="Synchroniser"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></button>
           <button class="btn-retour" onclick="VueVisites.ouvrirModal()" title="Planifier">＋</button>
         </div>
       </header>
@@ -834,14 +834,14 @@ window.VueVisites = {
     return `
     <div class="modal-overlay" onclick="if(event.target===this)VueVisites.fermerModal()">
       <div class="modal">
-        <h3>📅 Planifier une visite</h3>
+        <h3>Planifier une visite</h3>
         <form onsubmit="VueVisites.planifier(event)">
           <!-- D3 — Section Enseigne / Cible -->
-          <div class="modal-section-sep">🏢 Enseigne / Cible</div>
+          <div class="modal-section-sep">Enseigne / Cible</div>
           <div style="display:flex;gap:6px;margin-bottom:10px">
             <button type="button" class="btn-filtre ${!f.horsBase ? 'actif' : ''}"
                     onclick="VueVisites.state.formPlanif.horsBase=false;VueVisites.render()">
-              🏢 Compte existant
+              Compte existant
             </button>
             <button type="button" class="btn-filtre ${f.horsBase ? 'actif' : ''}"
                     onclick="VueVisites.state.formPlanif.horsBase=true;VueVisites.render()">
@@ -872,7 +872,7 @@ window.VueVisites = {
                  <input type="email" placeholder="contact@enseigne.fr" value="${f.emailLibre || ''}"
                         oninput="VueVisites.state.formPlanif.emailLibre=this.value"/></label>
                <div style="font-size:11px;color:var(--c-text-2);margin:-4px 0 10px;padding:6px 10px;background:var(--c-bg);border-radius:var(--radius-sm)">
-                 💡 Hors base : mémorisé sur cet appareil. Après la visite, vous pourrez créer ce compte dans la base.
+                 Hors base : mémorisé sur cet appareil. Après la visite, vous pourrez créer ce compte dans la base.
                </div>`
             : (() => {
               // Module 2 — Recherche par nom/ville ET par département
@@ -909,12 +909,12 @@ window.VueVisites = {
                    ❄️ Créer une visite à froid
                  </button>
                </div>` : ''}
-               <label>Compte * <span style="font-size:11px;color:var(--c-text-2);font-weight:400">${actif ? comptesFiltres.length + ' résultat(s)' : 'trié par nom · 🔴 urgents si filtré'}</span>
+               <label>Compte * <span style="font-size:11px;color:var(--c-text-2);font-weight:400">${actif ? comptesFiltres.length + ' résultat(s)' : 'trié par nom'}</span>
                  <select required size="7" style="height:180px"
                          onchange="VueVisites.setCible(this.value, this.options[this.selectedIndex].dataset.nom)">
                    <option value="">— sélectionner —</option>
                    ${comptesFiltres.map(c =>
-                     `<option value="${c.ID_Compte}" data-nom="${c.Nom_Compte}" ${f.idCible === c.ID_Compte ? 'selected' : ''}>${c.urgent ? '🔴 ' : ''}${c.Nom_Compte}${c.Departement ? ' [' + c.Departement + ']' : ''}${c.Ville ? ' — ' + c.Ville : ''}${c.silence != null ? ' · ' + c.silence + 's' : ''}</option>`
+                     `<option value="${c.ID_Compte}" data-nom="${c.Nom_Compte}" ${f.idCible === c.ID_Compte ? 'selected' : ''}>${c.urgent ? '! ' : ''}${c.Nom_Compte}${c.Departement ? ' [' + c.Departement + ']' : ''}${c.Ville ? ' — ' + c.Ville : ''}${c.silence != null ? ' · ' + c.silence + 's' : ''}</option>`
                    ).join('')}
                  </select>
                </label>
@@ -922,8 +922,8 @@ window.VueVisites = {
             })()
           }
           <!-- D3 — Section Planification -->
-          <div class="modal-section-sep">📅 Planification</div>
-          <label>🎯 Objectif de la visite *
+          <div class="modal-section-sep">Planification</div>
+          <label>Objectif de la visite *
             <select required onchange="VueVisites.state.formPlanif.objectifVisite=this.value">
               <option value="" ${!f.objectifVisite ? 'selected' : ''}>— choisir —</option>
               ${['Présentation offre EMPOWER','Suivi commande','Démo produit','Signature contrat','Onboarding EMPOWER','Réactivation','Prospection froide','Récupérer CA perdu','Formation revendeur','Autre'].map(o =>
@@ -954,7 +954,7 @@ window.VueVisites = {
             </select>
           </label>
           <!-- D3 — Section Préparation -->
-          <div class="modal-section-sep">📝 Préparation</div>
+          <div class="modal-section-sep">Préparation</div>
           <label>Préparation / contexte
             <textarea rows="2" placeholder="Points à aborder, historique, contexte…"
               oninput="VueVisites.state.formPlanif.commentairePrep=this.value">${f.commentairePrep || ''}</textarea>
@@ -964,7 +964,7 @@ window.VueVisites = {
                    oninput="VueVisites.state.formPlanif.prochaineEtape=this.value"/></label>
           <div class="modal-btns">
             <button type="button" onclick="VueVisites.fermerModal()">Annuler</button>
-            <button type="submit" class="btn-primaire">📅 Planifier</button>
+            <button type="submit" class="btn-primaire">Planifier</button>
           </div>
         </form>
       </div>
@@ -978,7 +978,7 @@ window.VueVisites = {
     return `
     <div class="modal-overlay" onclick="if(event.target===this)VueVisites.fermerEdition()">
       <div class="modal">
-        <h3>✏️ Modifier la visite</h3>
+        <h3>Modifier la visite</h3>
         <form onsubmit="VueVisites.sauvegarderEdition(event)">
           <div style="display:flex;gap:10px">
             <label style="flex:2">Date *
@@ -1010,7 +1010,7 @@ window.VueVisites = {
                    oninput="VueVisites.state.modalEdition.prochaineEtape=this.value"/></label>
           <div class="modal-btns">
             <button type="button" onclick="VueVisites.fermerEdition()">Annuler</button>
-            <button type="submit" class="btn-primaire">💾 Enregistrer</button>
+            <button type="submit" class="btn-primaire">Enregistrer</button>
           </div>
         </form>
       </div>
@@ -1024,13 +1024,13 @@ window.VueVisites = {
     return `
     <div class="modal-overlay" onclick="if(event.target===this)VueVisites.annulerSuppression()">
       <div class="modal" style="max-width:360px">
-        <h3 style="color:var(--c-danger)">🗑️ Supprimer cette visite ?</h3>
+        <h3 style="color:var(--c-danger)">Supprimer cette visite ?</h3>
         <p style="font-size:14px;margin:12px 0"><strong>${v ? v.Nom_Compte : ''}</strong> — ${v ? (v.Date || '').slice(0, 10) : ''}</p>
         <p style="font-size:12px;color:var(--c-text-2)">La visite sera marquée "supprimée" en base (soft delete) et n'apparaîtra plus dans les listes. Aucune suppression physique.</p>
         <div class="modal-btns">
           <button onclick="VueVisites.annulerSuppression()">Annuler</button>
           <button class="btn-primaire" style="background:var(--c-danger)"
-                  onclick="VueVisites.confirmerSuppression()">🗑️ Confirmer la suppression</button>
+                  onclick="VueVisites.confirmerSuppression()">Confirmer la suppression</button>
         </div>
       </div>
     </div>`;
@@ -1043,10 +1043,10 @@ window.VueVisites = {
     return `
     <div class="modal-overlay" onclick="if(event.target===this)VueVisites.fermerConversion()">
       <div class="modal">
-        <h3>✨ Créer comme compte actif</h3>
+        <h3>Créer comme compte actif</h3>
         ${m.doublonExistant ? `
         <div style="background:color-mix(in srgb,var(--c-warning) 12%,transparent);border:1px solid var(--c-warning);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">
-          <div style="font-weight:700;color:var(--c-warning);margin-bottom:6px">⚠️ Ce compte existe déjà dans la base</div>
+          <div style="font-weight:700;color:var(--c-warning);margin-bottom:6px">Ce compte existe déjà dans la base</div>
           <div style="font-size:13px;margin-bottom:10px"><strong>${m.doublonExistant.Nom_Compte}</strong> — ${m.doublonExistant.STATUT_COMPTE || '—'} · ${m.doublonExistant.CANAL || '—'}</div>
           <div style="display:flex;gap:8px">
             <button class="btn-secondaire" style="flex:1;font-size:12px"
@@ -1084,13 +1084,13 @@ window.VueVisites = {
           <textarea rows="2" placeholder="Contexte de la conversion…"
                     oninput="VueVisites._modalConversion.note=this.value">${m.note}</textarea></label>
         <div style="font-size:11px;color:var(--c-success);padding:8px;background:color-mix(in srgb,var(--c-success) 10%,transparent);border-radius:var(--radius-sm);margin-bottom:10px">
-          ✅ Un badge "Créé depuis visite à froid" sera attaché à ce compte. Tadjidine + Alexandra seront notifiés.
+          Un badge "Créé depuis visite à froid" sera attaché à ce compte. Tadjidine + Alexandra seront notifiés.
         </div>
         <div class="modal-btns">
           <button type="button" onclick="VueVisites.fermerConversion()">Annuler</button>
           <button type="button" class="btn-primaire" style="background:var(--c-success)"
                   onclick="VueVisites.confirmerConversion()" ${this._conversionEnCours ? 'disabled' : ''}>
-            ${this._conversionEnCours ? '⏳ Création…' : '✨ Créer le compte'}
+            ${this._conversionEnCours ? 'Création…' : 'Créer le compte'}
           </button>
         </div>
       </div>
@@ -1113,7 +1113,7 @@ window.VueVisites = {
     return `
     <div class="modal-overlay" onclick="if(event.target===this)VueVisites.fermerExtraction()">
       <div class="modal" style="max-width:420px">
-        <h3>📤 Extraction — Suivi des visites</h3>
+        <h3>Extraction — Suivi des visites</h3>
         <div style="display:flex;gap:10px;margin-bottom:10px">
           <label style="flex:1">Date début
             <input type="date" value="${f.debut}"
@@ -1142,7 +1142,7 @@ window.VueVisites = {
         <div style="display:flex;gap:8px">
           <button class="btn-secondaire" style="flex:1" onclick="VueVisites.fermerExtraction()">Fermer</button>
           <button class="btn-primaire" style="flex:2" onclick="VueVisites.exporterVisites()"
-                  ${cnt === 0 ? 'disabled' : ''}>📥 Exporter CSV</button>
+                  ${cnt === 0 ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exporter CSV</button>
         </div>
         <p style="font-size:11px;color:var(--c-text-2);margin-top:8px;text-align:center">Séparateur ; · UTF-8 BOM · Compatible Excel FR</p>
       </div>

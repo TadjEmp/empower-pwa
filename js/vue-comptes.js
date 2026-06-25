@@ -147,14 +147,14 @@ window.VueComptes = {
           <button class="btn-filtre ${this.state.filtreStatut === 'TOUS' ? 'actif' : ''}"
                   onclick="VueComptes.setFiltre('TOUS')">Tous</button>
           <button class="btn-filtre ${this.state.filtreStatut === 'actif' ? 'actif' : ''}"
-                  onclick="VueComptes.setFiltre('actif')">🟢 Actif</button>
+                  onclick="VueComptes.setFiltre('actif')">Actif</button>
           <button class="btn-filtre ${this.state.filtreStatut === 'a_reactiver' ? 'actif' : ''}"
-                  onclick="VueComptes.setFiltre('a_reactiver')">🟡 À réactiver</button>
+                  onclick="VueComptes.setFiltre('a_reactiver')">À réactiver</button>
           <button class="btn-filtre ${this.state.filtreStatut === 'silencieux' ? 'actif' : ''}"
-                  onclick="VueComptes.setFiltre('silencieux')">🔴 Silencieux</button>
+                  onclick="VueComptes.setFiltre('silencieux')">Silencieux</button>
           ${Session.estManager() ? `
           <button class="btn-filtre ${this.state.filtreStatut === 'SANS_CDS' ? 'actif' : ''}"
-                  onclick="VueComptes.setFiltre('SANS_CDS')">⚠️ Sans CDS</button>` : ''}
+                  onclick="VueComptes.setFiltre('SANS_CDS')">Sans CDS</button>` : ''}
         </div>
 
         <!-- BUG-04 : filtres LECLERC / REVENDEURS -->
@@ -204,10 +204,10 @@ window.VueComptes = {
               : null;
             const badgeDernier = dernActSem !== null
               ? (dernActSem === 0
-                  ? `<span style="font-size:11px;font-weight:700;color:var(--c-success);background:color-mix(in srgb,var(--c-success) 12%,transparent);padding:2px 8px;border-radius:99px;border:1px solid color-mix(in srgb,var(--c-success) 30%,transparent)">✅ Cette semaine</span>`
+                  ? `<span style="font-size:11px;font-weight:700;color:var(--c-success);background:color-mix(in srgb,var(--c-success) 12%,transparent);padding:2px 8px;border-radius:99px;border:1px solid color-mix(in srgb,var(--c-success) 30%,transparent)">Cette semaine</span>`
                   : dernActSem <= 4
-                  ? `<span style="font-size:11px;font-weight:700;color:var(--c-warning);background:color-mix(in srgb,var(--c-warning) 12%,transparent);padding:2px 8px;border-radius:99px;border:1px solid color-mix(in srgb,var(--c-warning) 30%,transparent)">⏱ il y a ${dernActSem} sem.</span>`
-                  : `<span style="font-size:11px;font-weight:700;color:var(--c-danger);background:color-mix(in srgb,var(--c-danger) 12%,transparent);padding:2px 8px;border-radius:99px;border:1px solid color-mix(in srgb,var(--c-danger) 30%,transparent)">⚠️ ${dernActSem} sem.</span>`)
+                  ? `<span style="font-size:11px;font-weight:700;color:var(--c-warning);background:color-mix(in srgb,var(--c-warning) 12%,transparent);padding:2px 8px;border-radius:99px;border:1px solid color-mix(in srgb,var(--c-warning) 30%,transparent)">il y a ${dernActSem} sem.</span>`
+                  : `<span style="font-size:11px;font-weight:700;color:var(--c-danger);background:color-mix(in srgb,var(--c-danger) 12%,transparent);padding:2px 8px;border-radius:99px;border:1px solid color-mix(in srgb,var(--c-danger) 30%,transparent)">${dernActSem} sem. sans contact</span>`)
               : '';
             return `
           <div class="carte-compte-v2">
@@ -220,19 +220,19 @@ window.VueComptes = {
             </div>
             <div class="cc-nom" onclick="Router.aller('#/compte/${c.ID_Compte}')">${c.Nom_Compte || '—'}</div>
             <div class="cc-infos" onclick="Router.aller('#/compte/${c.ID_Compte}')">
-              <span>📍 ${c.Ville || '—'}</span>
+              <span><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> ${c.Ville || '—'}</span>
               <span>${c.CANAL || '—'}</span>
               ${c.Date_prochaine_action ? `
-                <span class="${estDepassee(c.Date_prochaine_action) ? 'prochaine-action alerte' : ''}">⏰ ${dateRelative(c.Date_prochaine_action)}</span>` : ''}
+                <span class="${estDepassee(c.Date_prochaine_action) ? 'prochaine-action alerte' : ''}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${dateRelative(c.Date_prochaine_action)}</span>` : ''}
             </div>
             ${estLectureSeule ? `` : `
             <div class="cc-actions">
               <button class="btn-visiter" onclick="Router.aller('#/questionnaire/${c.ID_Compte}')">Visiter</button>
-              <button class="btn-tel-outline" onclick="Router.aller('#/phoning/${c.ID_Compte}')" title="Appeler">📞</button>
+              <button class="btn-tel-outline" onclick="Router.aller('#/phoning/${c.ID_Compte}')" title="Appeler"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></button>
             </div>`}
             ${Session.estManager() ? `
             <div class="cc-infos" style="align-items:center;gap:6px">
-              <span style="font-weight:600">${nomCDS ? '👤 ' + nomCDS : '⚠️ Non attribué'}</span>
+              <span style="font-weight:600">${nomCDS ? nomCDS : '<span style="color:var(--c-warning)">Non attribué</span>'}</span>
               <select style="flex:1;border:1px solid var(--c-border);border-radius:4px;padding:4px 6px;font-size:12px"
                       onchange="VueComptes.attribuer('${c.ID_Compte}', this.value)">
                 <option value="">— attribuer —</option>
