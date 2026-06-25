@@ -769,9 +769,9 @@ window.VuePhoning = {
           ${peutModif ? `
           <div style="display:flex;gap:6px;margin-top:8px">
             <button class="btn-secondaire" style="padding:5px 10px;font-size:12px;width:auto"
-                    onclick="VuePhoning.ouvrirEditAppel('${a.ID_Appel}')">✏️ Modifier</button>
+                    onclick="VuePhoning.ouvrirEditAppel('${a.ID_Appel}')">Modifier</button>
             <button class="btn-secondaire" style="padding:5px 10px;font-size:12px;width:auto;color:var(--c-danger);border-color:var(--c-danger)"
-                    onclick="VuePhoning.demanderSuppressionAppel('${a.ID_Appel}')">🗑️</button>
+                    onclick="VuePhoning.demanderSuppressionAppel('${a.ID_Appel}')">✕</button>
           </div>` : ''}
         </div>`;
       }).join('')}

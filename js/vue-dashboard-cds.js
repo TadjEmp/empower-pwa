@@ -489,10 +489,10 @@ window.VueDashboardCDS = {
         <!-- ALERTES -->
         ${nbAlertes > 0 ? `
         <div class="bloc-fiche">
-          <div class="bloc-titre">⚠️ Alertes <span class="badge-rouge badge-priorite">${nbAlertes}</span></div>
+          <div class="bloc-titre">Alertes <span class="badge-rouge badge-priorite">${nbAlertes}</span></div>
           <div class="dash-alertes">
-            ${d.comptesRouges.length ? `<div class="alerte-ligne" onclick="Router.aller('#/comptes')">🔴 <strong>${d.comptesRouges.length}</strong> compte(s) sans action récente</div>` : ''}
-            ${d.nextStepsDepasses.length ? `<div class="alerte-ligne" onclick="Router.aller('#/comptes')">⏰ <strong>${d.nextStepsDepasses.length}</strong> next step(s) dépassé(s)</div>` : ''}
+            ${d.comptesRouges.length ? `<div class="alerte-ligne" onclick="Router.aller('#/comptes')"><strong>${d.comptesRouges.length}</strong> compte(s) sans action récente</div>` : ''}
+            ${d.nextStepsDepasses.length ? `<div class="alerte-ligne" onclick="Router.aller('#/comptes')"><strong>${d.nextStepsDepasses.length}</strong> next step(s) dépassé(s)</div>` : ''}
           </div>
         </div>` : ''}
 
@@ -524,7 +524,7 @@ window.VueDashboardCDS = {
         <!-- PRIMES ESTIMÉES (Axe 1) -->
         ${!Session.voitTout() ? `
         <div class="bloc-fiche" style="cursor:pointer" onclick="Router.aller('#/primes')">
-          <div class="bloc-titre">🏆 Primes estimées ${d.quarter}
+          <div class="bloc-titre">Primes estimées ${d.quarter}
             <button class="btn-lien" style="margin-left:auto;font-size:12px">Détail →</button>
           </div>
           <div class="pace-chiffres">
@@ -536,15 +536,15 @@ window.VueDashboardCDS = {
 
         <!-- RACCOURCIS -->
         <div class="dash-raccourcis">
-          <button class="raccourci" onclick="Router.aller('#/visites')">📅<span>Planning visites</span></button>
-          <button class="raccourci" onclick="Router.aller('#/phoning')">📞<span>Phoning</span></button>
-          <button class="raccourci" onclick="Router.aller('#/empower-tracker')">▤<span>Tracker leads</span></button>
-          <button class="raccourci" onclick="Router.aller('#/comptes-historiques')">🏢<span>Base comptes</span></button>
-          <button class="raccourci" onclick="Router.aller('#/objectifs')">🎯<span>Objectifs</span></button>
-          <button class="raccourci" onclick="Router.aller('#/primes')">🏆<span>Mes primes</span></button>
+          <button class="raccourci" onclick="Router.aller('#/visites')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Planning visites</span></button>
+          <button class="raccourci" onclick="Router.aller('#/phoning')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span>Phoning</span></button>
+          <button class="raccourci" onclick="Router.aller('#/empower-tracker')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Tracker leads</span></button>
+          <button class="raccourci" onclick="Router.aller('#/comptes-historiques')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/></svg><span>Base comptes</span></button>
+          <button class="raccourci" onclick="Router.aller('#/objectifs')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg><span>Objectifs</span></button>
+          <button class="raccourci" onclick="Router.aller('#/primes')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg><span>Mes primes</span></button>
           ${Session.estManager() ? `
-          <button class="raccourci" onclick="Router.aller('#/manager')">👥<span>Vue équipe</span></button>
-          <button class="raccourci" onclick="Router.aller('#/admin')">⚙️<span>Admin</span></button>` : ''}
+          <button class="raccourci" onclick="Router.aller('#/manager')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Vue équipe</span></button>
+          <button class="raccourci" onclick="Router.aller('#/admin')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg><span>Admin</span></button>` : ''}
         </div>
       </div>
       <button title="Planifier une visite"
