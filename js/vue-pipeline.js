@@ -497,7 +497,7 @@ window.VuePipeline = {
                 </div>
                 ${l.Note_initiale ? `<div class="kanban-carte-note">${String(l.Note_initiale).slice(0, 60)}</div>` : ''}
                 ${this._retardWelcomePack(l) ? '<div class="kanban-carte-note" style="color:var(--c-danger);font-weight:600">⚠️ Welcome Pack J+14 dépassé</div>' : ''}
-                ${this._alerteSansActivite(l) ? '<div class="kanban-carte-note" style="color:var(--c-warning);font-weight:600">⏳ Sans activité >7j</div>' : ''}
+                ${this._inactif45(l) ? '<div class="alerte-inactivite" style="margin:4px 0">⚠ INACTIF 45j+</div>' : this._alerteSansActivite(l) ? '<div class="kanban-carte-note" style="color:var(--c-warning);font-weight:600">⏳ Sans activité >7j</div>' : ''}
                 <div class="kanban-carte-pied" style="display:flex;align-items:center;gap:4px">
                   ${l.Date_prochaine_action
                     ? `<span style="color:${estDepassee(l.Date_prochaine_action) ? 'var(--c-danger)' : 'var(--c-text-2)'}">⏰ ${dateRelative(l.Date_prochaine_action)}</span>`
@@ -920,11 +920,17 @@ window.VuePipeline = {
 
   // ── Module 8 : Alerte sans activité >7 jours ──
   _alerteSansActivite(l) {
-    // Alerte uniquement sur les leads EN_COURS ou ASSIGNE (pas ARCHIVE/INTEGRE)
     if (['ARCHIVE', 'INTEGRE', 'SAISIE'].includes(l._statut)) return false;
     const ref = l.Date_prochaine_action || l.Timestamp || l.Date_Import;
     if (!ref) return true;
     return (Date.now() - new Date(ref).getTime()) / 86400000 > 7;
+  },
+
+  _inactif45(l) {
+    if (['ARCHIVE', 'INTEGRE'].includes(l._statut)) return false;
+    const ref = l.Date_Derniere_Action || l.date_derniere_action || l.Timestamp || l.Date_Import;
+    if (!ref) return false;
+    return (Date.now() - new Date(ref).getTime()) / 86400000 > 45;
   },
 
   // ── Module 9 : Export Excel ADMIN + CHANNEL_MANAGER ──

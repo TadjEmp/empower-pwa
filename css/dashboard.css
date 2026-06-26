@@ -135,17 +135,89 @@
   display: flex; flex-direction: column; gap: 12px;
 }
 
+/* ─── Desktop page header (style Oltega) ─── */
+.dash-page-header { display: none; }
+
 @media (min-width: 900px) {
-  /* Héro : carré sur desktop (pas de border-radius bas qui déborde) */
-  .dash-hero {
-    border-radius: 0;
-    padding: 28px 40px 28px;
+  /* Héro mobile masqué sur desktop — remplacé par dash-page-header */
+  .dash-hero { display: none !important; }
+
+  /* Header Oltega : titre + date + actions rapides */
+  .dash-page-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 24px 40px 8px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .dash-ph-left { flex: 1; min-width: 0; }
+  .dash-ph-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--c-title);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .dash-ph-date {
+    font-size: 12px;
+    color: var(--c-text-2);
+    margin-top: 2px;
+    text-transform: capitalize;
+  }
+  .dash-ph-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .dash-ph-pace {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 700;
+    background: var(--c-bg);
+    border: 1.5px solid var(--c-border);
+  }
+  .dash-ph-pace.pace-ok   { background: rgba(45,158,107,.08); border-color: rgba(45,158,107,.25); color: #16a34a; }
+  .dash-ph-pace.pace-risk { background: rgba(217,48,37,.08);  border-color: rgba(217,48,37,.25);  color: var(--c-danger); }
+  .dash-ph-pace.pace-watch{ background: rgba(245,158,11,.10); border-color: rgba(245,158,11,.30); color: #92400e; }
+  .dash-ph-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--c-primary); color: #fff;
+    font-size: 13px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+
+  /* KPI cards — plus grandes et aérées sur desktop */
+  .kpi-grid-layout {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 12px 40px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .kpi-card {
+    padding: 20px 22px !important;
+    min-height: 96px !important;
+  }
+  .kpi-card .kpi-value {
+    font-size: 36px !important;
   }
 
   /* Body : grille 2 colonnes */
   .dash-body {
     max-width: 1280px;
-    padding: 20px 40px 32px;
+    padding: 4px 40px 32px;
     display: grid;
     grid-template-columns: minmax(0, 1fr) 300px;
     gap: 20px;

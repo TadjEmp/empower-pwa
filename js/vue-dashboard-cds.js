@@ -291,8 +291,28 @@ window.VueDashboardCDS = {
     const nbAlertes = d.comptesRouges.length + d.nextStepsDepasses.length + d.leadsATraiter.length;
     const potCoul   = { Fort: '#00b27e', Moyen: '#f59e0b', Faible: '#626264' };
 
+    const initiales = (Session.nom || 'U').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
     app.innerHTML = `
-      <!-- Héro navy -->
+      <!-- Header desktop Oltega — masqué mobile (CSS) -->
+      <header class="dash-page-header">
+        <div class="dash-ph-left">
+          <div class="dash-ph-title">Bonjour, ${Session.nom || '—'}</div>
+          <div class="dash-ph-date">${dateFr} · ${d.semaine}</div>
+        </div>
+        <div class="dash-ph-right">
+          <span class="dash-ph-pace ${PACE.cls}">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+            ${PACE.lbl} · ${d.pct}% objectif
+          </span>
+          ${nbAlertes > 0 ? `<button onclick="Router.aller('#/comptes')" style="position:relative;border:none;background:var(--c-bg);border-radius:99px;padding:7px 10px;cursor:pointer;display:flex;align-items:center;border:1.5px solid var(--c-border)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <span style="position:absolute;top:2px;right:2px;width:16px;height:16px;background:var(--c-danger);color:#fff;border-radius:50%;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center">${nbAlertes}</span>
+          </button>` : ''}
+          <div class="dash-ph-avatar" title="Déconnexion" onclick="Session.deconnecter();Router.aller('#/login')">${initiales}</div>
+        </div>
+      </header>
+
+      <!-- Héro navy (mobile uniquement — masqué ≥900px via CSS) -->
       <div class="dash-hero">
         <div class="dash-hero-cycle">Cycle FY27 · ${d.semaine} · ${dateFr}</div>
         <div class="dash-hero-titre">Bonjour ${Session.nom || '—'}

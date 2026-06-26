@@ -47,6 +47,7 @@ window.VueFicheCompte = {
   ouvrirEditionCoordonnees() {
     const c = this.state.compte;
     this.state.formCoord = {
+      adresse:     c.Adresse     || '',
       ville:       c.Ville       || '',
       code_postal: c.Code_Postal || '',
       departement: c.Departement || (c.Code_Postal ? String(c.Code_Postal).slice(0, 2) : ''),
@@ -76,6 +77,7 @@ window.VueFicheCompte = {
     const c = this.state.compte;
 
     const champs = {
+      Adresse:     f.adresse.trim()     || null,
       Ville:       f.ville.trim()       || null,
       Code_Postal: f.code_postal.trim() || null,
       Departement: f.departement.trim() || null,
@@ -119,6 +121,11 @@ window.VueFicheCompte = {
                     onclick="VueFicheCompte.annulerEditionCoordonnees()">✕ Annuler</button>
           </div>
           <div style="display:flex;flex-direction:column;gap:10px">
+            <label style="font-size:13px;font-weight:600">Adresse
+              <input value="${f.adresse}" placeholder="ex : 15 rue de la Paix"
+                     oninput="VueFicheCompte.state.formCoord.adresse=this.value"
+                     style="width:100%;margin-top:4px"/>
+            </label>
             <label style="font-size:13px;font-weight:600">Ville
               <input value="${f.ville}" placeholder="ex : Paris"
                      oninput="VueFicheCompte.state.formCoord.ville=this.value"
@@ -173,6 +180,7 @@ window.VueFicheCompte = {
                   onclick="VueFicheCompte.ouvrirEditionCoordonnees()">Saisir maintenant →</button>
         </div>` : ''}
         <div class="grille-identite">
+          ${c.Adresse ? `<div class="id-ligne"><span>Adresse</span><strong>${c.Adresse}</strong></div>` : ''}
           <div class="id-ligne"><span>Ville</span><strong>${c.Ville || '—'}${c.Code_Postal ? ' (' + c.Code_Postal + ')' : ''}</strong></div>
           <div class="id-ligne"><span>Département</span><strong>${dept || '—'}</strong></div>
           <div class="id-ligne"><span>Canal / Secteur</span><strong>${c.CANAL || '—'} · ${c.SECTEUR || '—'}</strong></div>

@@ -452,19 +452,27 @@ body {
 /* Réserve la hauteur de la bottom nav */
 .avec-nav { padding-bottom: calc(72px + var(--safe-bottom)) !important; }
 
+/* Items sidebar-only : cachés sur mobile (drawer gère) */
+.nav-sidebar-only { display: none !important; }
+/* Footer sidebar : caché sur mobile */
+.nav-sidebar-footer { display: none; }
+
 @media (min-width: 900px) {
   .nav-principale {
     top: 0; bottom: 0; right: auto; width: 240px;
     flex-direction: column; justify-content: flex-start;
-    overflow: visible; gap: 4px;
+    overflow-y: auto; overflow-x: hidden; gap: 2px;
     background: var(--bg-anchor);
     border-top: none; border-right: 1px solid var(--border-anchor);
-    padding: 20px 12px; box-shadow: var(--shadow-lg);
+    padding: 16px 10px 0; box-shadow: var(--shadow-lg);
+    scrollbar-width: none;
   }
+  .nav-principale::-webkit-scrollbar { display: none; }
+
   .nav-logo {
     display: flex; align-items: center; gap: 10px;
-    color: var(--text-on-anchor); padding: 4px 12px 20px; width: 100%;
-    border-bottom: 1px solid var(--border-anchor); margin-bottom: 12px;
+    color: var(--text-on-anchor); padding: 4px 12px 16px; width: 100%;
+    border-bottom: 1px solid var(--border-anchor); margin-bottom: 8px;
     flex-shrink: 0;
   }
   .nav-logo .norton-mark { width: 30px; height: 30px; flex-shrink: 0; }
@@ -478,14 +486,58 @@ body {
     font-size: 8px; font-weight: 700; letter-spacing: 0.1em;
     color: var(--text-on-anchor-muted); text-transform: uppercase;
   }
+
+  /* Tous les nav-item en mode sidebar */
   .nav-item {
     flex-direction: row; gap: 10px; width: 100%; min-width: unset;
-    padding: 11px 14px; border-radius: var(--radius-btn);
-    color: var(--text-on-anchor-muted); font-size: 14px; justify-content: flex-start;
+    padding: 10px 14px; border-radius: var(--radius-btn);
+    color: var(--text-on-anchor-muted); font-size: 13.5px; justify-content: flex-start;
     white-space: normal;
   }
   .nav-item:hover  { background: var(--bg-anchor-hover); color: var(--text-on-anchor); }
   .nav-item.actif  { background: var(--bg-anchor-active); color: var(--text-on-anchor); }
+
+  /* Items desktop-only : visibles dans la sidebar */
+  .nav-sidebar-only { display: flex !important; }
+
+  /* Séparateur visuel entre modules CRM et modules secondaires */
+  .nav-sidebar-only:nth-of-type(5) {
+    margin-top: 6px; padding-top: 14px;
+    border-top: 1px solid var(--border-anchor);
+  }
+
+  /* Footer sidebar : user info + synchro + logout */
+  .nav-sidebar-footer {
+    display: flex; flex-direction: column; gap: 2px;
+    margin-top: auto; padding: 10px 0 16px;
+    border-top: 1px solid var(--border-anchor);
+    flex-shrink: 0; width: 100%;
+  }
+  .nav-sidebar-user {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px 12px; width: 100%;
+  }
+  .nav-sidebar-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--accent-primary); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; flex-shrink: 0;
+  }
+  .nav-sidebar-user-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .nav-sidebar-nom {
+    font-size: 13px; font-weight: 600; color: var(--text-on-anchor);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .nav-sidebar-role {
+    font-size: 10px; color: var(--text-on-anchor-muted); text-transform: uppercase; letter-spacing: .05em;
+  }
+  .nav-sidebar-action {
+    border: none; background: transparent; cursor: pointer; text-align: left;
+    font-family: var(--font);
+  }
+  .nav-sidebar-danger { color: var(--accent-primary) !important; }
+  .nav-sidebar-danger:hover { background: rgba(255,109,104,.12) !important; color: var(--accent-primary) !important; }
+
   #app:has(.nav-principale) { padding-left: 240px; }
   body:has(.nav-principale) .barre-actions-fixe,
   body:has(.nav-principale) .q-nav-fixe { left: 240px; }
@@ -505,6 +557,47 @@ body {
 .cv-type { font-size: 12px; color: var(--c-text-2); margin-bottom: 6px; }
 .cv-note { font-size: 12px; color: var(--c-text-2); margin-bottom: 8px; font-style: italic; }
 .cv-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+
+/* ── Rapport de visite (Bloc 3) ── */
+.cv-rapport { margin: 8px 0; border-radius: var(--radius-sm); overflow: hidden; }
+.cv-rapport-toggle {
+  font-size: 12px; font-weight: 600; color: var(--c-primary);
+  cursor: pointer; padding: 6px 0; list-style: none;
+  display: flex; align-items: center; gap: 6px; user-select: none;
+}
+.cv-rapport-toggle::before {
+  content: ''; display: inline-block; width: 0; height: 0;
+  border-top: 5px solid transparent; border-bottom: 5px solid transparent;
+  border-left: 7px solid var(--c-primary); transition: transform .2s;
+}
+details[open] > .cv-rapport-toggle::before { transform: rotate(90deg); }
+.cv-rapport-body {
+  background: var(--bg-warm-white);
+  border: 1px solid var(--c-border);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  padding: 10px 12px; display: flex; flex-direction: column; gap: 6px;
+}
+.cv-rapport-ligne {
+  display: flex; gap: 8px; font-size: 12px; align-items: baseline;
+}
+.cv-rapport-lbl {
+  flex-shrink: 0; min-width: 110px; font-weight: 600; color: var(--c-text-2);
+  text-transform: capitalize;
+}
+.cv-rapport-val { color: var(--c-title); word-break: break-word; }
+
+/* ── Alerte inactivité 45 jours (Bloc 2) ── */
+.alerte-inactivite {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(217,48,37,.10); color: var(--c-danger);
+  border: 1px solid rgba(217,48,37,.25);
+  border-radius: var(--radius-full); padding: 3px 10px;
+  font-size: 11px; font-weight: 700; margin-bottom: 6px;
+}
+.carte-compte-alerte {
+  border-left: 4px solid var(--c-danger) !important;
+  box-shadow: 0 0 0 1px rgba(217,48,37,.15), var(--shadow) !important;
+}
 
 /* ── Planning semaine ── */
 .planning-semaine {

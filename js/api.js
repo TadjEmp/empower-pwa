@@ -107,6 +107,7 @@ const SheetsAPI = {
   _MAPS_DB_TO_GAS: {
     comptes: {
       id_compte_gas: 'ID_Compte', nom_compte: 'Nom_Compte', ville: 'Ville',
+      adresse: 'Adresse',
       code_postal: 'Code_Postal', departement: 'Departement', tel: 'Tel', email: 'Email',
       pin_cds_assigne: 'PIN_CDS_Assigne', nom_cds: 'Nom_CDS',
       canal: 'CANAL', secteur: 'SECTEUR', has_empower: 'Has_EMPOWER',
@@ -236,6 +237,7 @@ const SheetsAPI = {
   _MAPS_GAS_TO_DB: {
     comptes: {
       'ID_Compte': 'id_compte_gas', 'Nom_Compte': 'nom_compte', 'Ville': 'ville',
+      'Adresse': 'adresse',
       'Code_Postal': 'code_postal', 'Departement': 'departement', 'Tel': 'tel', 'Email': 'email',
       'PIN_CDS_Assigne': 'pin_cds_assigne', 'Nom_CDS': 'nom_cds',
       'CANAL': 'canal', 'SECTEUR': 'secteur', 'Has_EMPOWER': 'has_empower',

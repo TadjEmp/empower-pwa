@@ -199,9 +199,11 @@ window.VueComptes = {
             const estLectureSeule = Session.role === 'CHANNEL_MANAGER';
             // D1 — Badge "Dernière visite" façon Marvin Sales
             const dernActDate = c.Date_Derniere_Action || c.date_derniere_action || '';
-            const dernActSem  = dernActDate
-              ? Math.max(0, Math.floor((Date.now() - new Date(dernActDate).getTime()) / (7*86400000)))
+            const dernActJours = dernActDate
+              ? Math.max(0, Math.floor((Date.now() - new Date(dernActDate).getTime()) / 86400000))
               : null;
+            const dernActSem  = dernActJours !== null ? Math.floor(dernActJours / 7) : null;
+            const inactif45   = dernActJours !== null && dernActJours > 45;
             const badgeDernier = dernActSem !== null
               ? (dernActSem === 0
                   ? `<span style="font-size:11px;font-weight:700;color:var(--c-success);background:color-mix(in srgb,var(--c-success) 12%,transparent);padding:2px 8px;border-radius:99px;border:1px solid color-mix(in srgb,var(--c-success) 30%,transparent)">Cette semaine</span>`
@@ -209,8 +211,12 @@ window.VueComptes = {
                   ? `<span style="font-size:11px;font-weight:700;color:var(--c-warning);background:color-mix(in srgb,var(--c-warning) 12%,transparent);padding:2px 8px;border-radius:99px;border:1px solid color-mix(in srgb,var(--c-warning) 30%,transparent)">il y a ${dernActSem} sem.</span>`
                   : `<span style="font-size:11px;font-weight:700;color:var(--c-danger);background:color-mix(in srgb,var(--c-danger) 12%,transparent);padding:2px 8px;border-radius:99px;border:1px solid color-mix(in srgb,var(--c-danger) 30%,transparent)">${dernActSem} sem. sans contact</span>`)
               : '';
+            const alerteInactivite = inactif45
+              ? `<div class="alerte-inactivite"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> INACTIF ${dernActJours}j — aucun contact</div>`
+              : '';
             return `
-          <div class="carte-compte-v2">
+          <div class="carte-compte-v2${inactif45 ? ' carte-compte-alerte' : ''}">
+            ${alerteInactivite}
             <div class="cc-pills" onclick="Router.aller('#/compte/${c.ID_Compte}')">
               ${badgeStatutCompte(c)}
               ${badgeDernier}
@@ -263,8 +269,11 @@ window.VueComptes = {
                 const pa = c.Date_prochaine_action
                   ? `<span class="${estDepassee(c.Date_prochaine_action) ? 'prochaine-action alerte' : ''}">⏰ ${dateRelative(c.Date_prochaine_action)}</span>`
                   : '—';
-                return `<tr>
-                  <td>${badgeStatutCompte(c)}</td>
+                const dteDA = c.Date_Derniere_Action || c.date_derniere_action || '';
+                const joursDA = dteDA ? Math.max(0, Math.floor((Date.now() - new Date(dteDA).getTime()) / 86400000)) : null;
+                const rowStyle = (joursDA !== null && joursDA > 45) ? 'border-left:3px solid var(--c-danger);background:rgba(217,48,37,.04)' : '';
+                return `<tr style="${rowStyle}">
+                  <td>${badgeStatutCompte(c)}${joursDA !== null && joursDA > 45 ? `<br><span style="font-size:10px;font-weight:700;color:var(--c-danger)">⚠ ${joursDA}j</span>` : ''}</td>
                   <td class="compte-nom" onclick="Router.aller('#/compte/${c.ID_Compte}')">${c.Nom_Compte || '—'}</td>
                   <td>${c.Ville || '—'}</td>
                   <td>${c.CANAL || '—'}</td>

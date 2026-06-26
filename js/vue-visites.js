@@ -57,6 +57,7 @@ window.VueVisites = {
     confirmDeleteId: null,
     // EX-1 — extraction
     extractOuvert: false,
+    extractOnglet: 'visites',
     extractFiltres: { debut: '', fin: '', statut: 'TOUS', cds: 'TOUS' },
   },
 
@@ -629,7 +630,11 @@ window.VueVisites = {
     return this.state.visites.filter(v => this._matchExtraction(v)).length;
   },
 
+  // Export XLSX visites — réservé ADMIN + CHANNEL_MANAGER (Bloc 5)
   exporterVisites() {
+    if (!Session.voitTout()) {
+      Toast.afficher('Export réservé aux profils Direction et Admin', 'warning'); return;
+    }
     const f = this.state.extractFiltres;
     const data = this.state.visites.filter(v => this._matchExtraction(v));
     if (!data.length) { Toast.afficher('Aucune visite pour ces filtres', 'warning'); return; }
@@ -637,36 +642,139 @@ window.VueVisites = {
     const debut = f.debut || 'debut';
     const fin   = f.fin   || 'fin';
     const ts    = dateISOLocale().replace(/-/g, '');
-    const fn    = `VISITES_${debut}_${fin}_${ts}.csv`;
 
-    const rows = data.map(v => ({
-      ID_Visite:        v.ID_Visite || '',
-      Date:             (v.Date || v.Date_Planif || '').slice(0, 10),
-      Heure:            v.Heure || '',
-      Semaine_ISO:      v.Semaine_ISO || '',
-      CDS:              resolveCDS(v.PIN_CDS || v.Nom_CDS) || '',
-      Compte:           v.Nom_Compte || '',
-      ID_Cible:         v.ID_Cible || '',
-      Type_Visite:      v.Type_Visite || '',
-      Statut:           this._labelStatut(v.Statut_Visite),
-      Canal:            v.Canal || '',
-      Interlocuteur:    v.Interlocuteur || '',
-      Commande_Prise:   v.Commande_Prise || '',
-      Produit_Discute:  v.Produit_Principal || '',
-      Frein:            v.Frein_Principal || '',
-      Engagement:       v.Niveau_Engagement || '',
-      Prochaine_Action: v.Prochaine_Action_Texte || '',
-      Date_Prochain:    v.Date_Prochain_Contact || '',
-      Resume_IA:        v.Resume_IA || '',
-      Note:             v.Note_Privee || '',
-      Photo_URL:        v.Photo_URL || '',
-      GPS:              (v.GPS_Lat && v.GPS_Lng) ? `${v.GPS_Lat},${v.GPS_Lng}` : '',
-      Timestamp:        v.Timestamp || '',
-    }));
+    // Aplatir Questionnaire_JSON dans les colonnes
+    const flatQJSON = (v) => {
+      if (!v.Questionnaire_JSON) return {};
+      try {
+        const q = typeof v.Questionnaire_JSON === 'string'
+          ? JSON.parse(v.Questionnaire_JSON) : v.Questionnaire_JSON;
+        return (q && typeof q === 'object') ? q : {};
+      } catch { return {}; }
+    };
 
-    generateCSV(rows, fn);
+    const flatFreins = (v) => {
+      if (!v.Freins_JSON) return '';
+      try {
+        const f2 = typeof v.Freins_JSON === 'string' ? JSON.parse(v.Freins_JSON) : v.Freins_JSON;
+        if (Array.isArray(f2)) return f2.join(', ');
+        return Object.values(f2 || {}).filter(Boolean).join(', ');
+      } catch { return String(v.Freins_JSON || ''); }
+    };
+
+    const rows = data.map(v => {
+      const qj = flatQJSON(v);
+      return {
+        'Commercial':           resolveCDS(v.PIN_CDS || v.Nom_CDS) || '',
+        'Revendeur':            v.Nom_Compte || '',
+        'Email revendeur':      v.Email || '',
+        'Date':                 (v.Date || v.Date_Planif || '').slice(0, 10),
+        'Heure':                v.Heure || '',
+        'Statut':               this._labelStatut(v.Statut_Visite),
+        'Type visite':          v.Type_Visite || '',
+        'Interlocuteur':        v.Interlocuteur || v.Interlocuteur_Nom || '',
+        'Fonction':             v.Interlocuteur_Fonction || '',
+        'Objectif visite':      v.Objectifs_Visite || v.Objectif_Visite || '',
+        'Résultat visite':      v.Resultat_Visite || '',
+        'Type revendeur':       v.Type_Revendeur || '',
+        'Arbre EMPOWER':        v.Arbre_EMPOWER_Statut || '',
+        'Concurrent':           v.Concurrent_Actuel || '',
+        'Marketing présent':    v.Marketing_Present === true || v.Marketing_Present === 'TRUE' ? 'Oui' : v.Marketing_Present === false || v.Marketing_Present === 'FALSE' ? 'Non' : '',
+        'Supports marketing':   v.Marketing_Supports || '',
+        'Freins':               flatFreins(v),
+        'Prochaine action':     v.Prochaine_Action_Texte || v.Prochaine_Action || '',
+        'Date prochaine action': v.Prochaine_Action_Date ? (v.Prochaine_Action_Date + '').slice(0, 10) : '',
+        'Note préparation':     v.Commentaire_Prep || '',
+        'Note privée':          v.Note_Privee || '',
+        ...Object.fromEntries(Object.entries(qj).map(([k, val]) => [
+          'Q_' + k.replace(/[^a-zA-Z0-9]/g, '_'), String(val ?? ''),
+        ])),
+        'GPS':                  (v.GPS_Lat && v.GPS_Lng) ? `${v.GPS_Lat},${v.GPS_Lng}` : '',
+        'ID Visite':            v.ID_Visite || '',
+      };
+    });
+
+    if (typeof XLSX === 'undefined') {
+      Toast.afficher('Bibliothèque XLSX non chargée', 'error'); return;
+    }
+    const wb  = XLSX.utils.book_new();
+    const ws  = XLSX.utils.json_to_sheet(rows);
+    // Largeurs colonnes auto (~20 chars)
+    ws['!cols'] = Object.keys(rows[0] || {}).map(() => ({ wch: 22 }));
+    XLSX.utils.book_append_sheet(wb, ws, 'Visites');
+    XLSX.writeFile(wb, `VISITES_${debut}_${fin}_${ts}.xlsx`);
+    Toast.afficher(`Export XLSX : ${rows.length} visite(s)`, 'succes');
     this.state.extractOuvert = false;
     this.render();
+  },
+
+  // ── Rapport de visite : rendu questionnaire complet (Bloc 3) ──
+  // Visible par : propriétaire CDS, ADMIN (PIN 1000), CHANNEL_MANAGER (PIN 5000/5001/5002)
+  _peutVoirRapport(v) {
+    if (!Session) return false;
+    if (Session.voitTout()) return true;
+    return Number(v.PIN_CDS) === Session.pin;
+  },
+
+  _rapportVisite(v) {
+    if (!this._peutVoirRapport(v)) return '';
+
+    // Champs questionnaire individuels
+    const champs = [
+      { lbl: 'Interlocuteur',    val: v.Interlocuteur || v.Interlocuteur_Nom },
+      { lbl: 'Fonction',         val: v.Interlocuteur_Fonction },
+      { lbl: 'Objectif',         val: v.Objectifs_Visite || v.Objectif_Visite },
+      { lbl: 'Résultat',         val: v.Resultat_Visite },
+      { lbl: 'Type revendeur',   val: v.Type_Revendeur },
+      { lbl: 'Arbre EMPOWER',    val: v.Arbre_EMPOWER_Statut },
+      { lbl: 'Concurrent',       val: v.Concurrent_Actuel },
+      { lbl: 'Marketing',        val: v.Marketing_Present === true || v.Marketing_Present === 'TRUE' ? 'Oui' : v.Marketing_Present === false || v.Marketing_Present === 'FALSE' ? 'Non' : v.Marketing_Present },
+      { lbl: 'Supports',         val: v.Marketing_Supports },
+      { lbl: 'Prochaine action', val: v.Prochaine_Action_Texte || v.Prochaine_Action },
+      { lbl: 'Date action',      val: v.Prochaine_Action_Date ? new Date(v.Prochaine_Action_Date).toLocaleDateString('fr-FR') : null },
+      { lbl: 'Note prép.',       val: v.Commentaire_Prep || v.Note_Privee },
+    ].filter(c => c.val !== null && c.val !== undefined && String(c.val).trim() !== '');
+
+    // Questionnaire JSON (champs libres du formulaire)
+    let qjson = [];
+    if (v.Questionnaire_JSON) {
+      try {
+        const parsed = typeof v.Questionnaire_JSON === 'string'
+          ? JSON.parse(v.Questionnaire_JSON) : v.Questionnaire_JSON;
+        if (parsed && typeof parsed === 'object') {
+          qjson = Object.entries(parsed)
+            .filter(([, val]) => val !== null && val !== undefined && String(val).trim() !== '')
+            .map(([key, val]) => ({ lbl: key.replace(/_/g, ' '), val: String(val) }));
+        }
+      } catch {}
+    }
+
+    // Freins
+    let freins = '';
+    if (v.Freins_JSON) {
+      try {
+        const f = typeof v.Freins_JSON === 'string' ? JSON.parse(v.Freins_JSON) : v.Freins_JSON;
+        if (Array.isArray(f) && f.length) freins = f.join(', ');
+        else if (f && typeof f === 'object') freins = Object.values(f).filter(Boolean).join(', ');
+      } catch { freins = String(v.Freins_JSON); }
+    }
+
+    const allChamps = [...champs, ...(freins ? [{ lbl: 'Freins', val: freins }] : []), ...qjson];
+    if (!allChamps.length) return '';
+
+    const id = 'rapport_' + (v.ID_Visite || '').replace(/[^a-z0-9]/gi, '');
+
+    return `
+      <details class="cv-rapport" id="${id}">
+        <summary class="cv-rapport-toggle">Rapport de visite</summary>
+        <div class="cv-rapport-body">
+          ${allChamps.map(c => `
+            <div class="cv-rapport-ligne">
+              <span class="cv-rapport-lbl">${c.lbl}</span>
+              <span class="cv-rapport-val">${String(c.val).replace(/\n/g,'<br>')}</span>
+            </div>`).join('')}
+        </div>
+      </details>`;
   },
 
   // ── Carte visite (R5 : boutons edit/delete/dupliquer) ──
@@ -693,11 +801,12 @@ window.VueVisites = {
         ${v.Type_Visite ? `<div class="cv-type">${String(v.Type_Visite).replace(/_/g,' ')}</div>` : ''}
         ${cdsNom && cdsNom !== '—' ? `<div class="cv-type" style="color:var(--c-text-2);font-size:11px">${cdsNom}</div>` : ''}
         ${(v.Note_Privee || v.Commentaire_Prep) ? `<div class="cv-note">${(v.Note_Privee || v.Commentaire_Prep).slice(0, 80)}</div>` : ''}
+        ${statut === 'réalisée' ? this._rapportVisite(v) : ''}
         <div class="cv-actions" style="gap:6px;flex-wrap:wrap">
           ${isPlanif ? `
             <button class="btn-primaire" style="padding:8px 14px;font-size:13px;width:auto${estManquee ? ';background:var(--c-danger)' : ''}"
                     onclick="VueVisites.demarrerVisite('${v.ID_Visite}')">
-              ${estManquee ? '▶️ Rattraper' : '▶️ Démarrer'}
+              ${estManquee ? 'Rattraper' : 'Démarrer'}
             </button>` : ''}
           ${isEnCours ? `
             <button class="btn-primaire" style="padding:8px 14px;font-size:13px;width:auto"
@@ -710,7 +819,7 @@ window.VueVisites = {
               Créer compte actif
             </button>` : ''}
           ${statut === 'réalisée' && String(v.Flag_Converti || '').toUpperCase() === 'TRUE' ? `
-            <span style="font-size:11px;color:var(--c-success);font-weight:700">Converti en compte actif</span>
+            <span style="font-size:11px;color:var(--c-success);font-weight:700">Compte actif créé</span>
           ` : ''}
           ${(!isPlanif && !isEnCours) ? `
             <button class="btn-secondaire" style="padding:6px 12px;font-size:12px;width:auto"
@@ -1097,55 +1206,165 @@ window.VueVisites = {
     </div>`;
   },
 
-  // ── EX-1 : Panneau extraction CSV ──
+  // ── EX-1 : Panneau extraction XLSX (Bloc 5) — Direction + Admin uniquement ──
   _renderExtraction() {
     if (!this.state.extractOuvert) return '';
+    if (!Session.voitTout()) return '';
+
     const f   = this.state.extractFiltres;
     const cnt = this.extractionCount;
+    const ong = this.state.extractOnglet || 'visites';
 
-    // liste CDS pour filtre (voitTout uniquement)
     const cdsUniq = [...new Set(this.state.visites.map(v => v.PIN_CDS).filter(Boolean))];
     const cdsList = cdsUniq.map(pin => {
       const nom = resolveCDS(pin);
       return { pin: String(pin), nom: nom && nom !== '—' ? nom : 'Autre' };
     });
 
-    return `
-    <div class="modal-overlay" onclick="if(event.target===this)VueVisites.fermerExtraction()">
-      <div class="modal" style="max-width:420px">
-        <h3>Extraction — Suivi des visites</h3>
+    const tabs = [
+      { id: 'visites', lbl: 'Visites' },
+      { id: 'tracker', lbl: 'Tracker' },
+      { id: 'archives', lbl: 'Comptes archivés' },
+    ];
+
+    const tabBar = `<div style="display:flex;gap:0;margin-bottom:14px;border-bottom:2px solid var(--c-border)">
+      ${tabs.map(t => `<button onclick="VueVisites.state.extractOnglet='${t.id}';VueVisites.render()"
+        style="flex:1;padding:8px 4px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:${ong===t.id?'700':'500'};color:${ong===t.id?'var(--c-primary)':'var(--c-text-2)'};border-bottom:${ong===t.id?'2px solid var(--c-primary)':'2px solid transparent'};margin-bottom:-2px">${t.lbl}</button>`).join('')}
+    </div>`;
+
+    let corps = '';
+    if (ong === 'visites') {
+      corps = `
         <div style="display:flex;gap:10px;margin-bottom:10px">
-          <label style="flex:1">Date début
-            <input type="date" value="${f.debut}"
-                   onchange="VueVisites.state.extractFiltres.debut=this.value;VueVisites.render()"/></label>
-          <label style="flex:1">Date fin
-            <input type="date" value="${f.fin}"
-                   onchange="VueVisites.state.extractFiltres.fin=this.value;VueVisites.render()"/></label>
+          <label style="flex:1">Début<input type="date" value="${f.debut}" onchange="VueVisites.state.extractFiltres.debut=this.value;VueVisites.render()"/></label>
+          <label style="flex:1">Fin<input type="date" value="${f.fin}" onchange="VueVisites.state.extractFiltres.fin=this.value;VueVisites.render()"/></label>
         </div>
-        ${Session.voitTout() ? `
         <label>Commercial
           <select onchange="VueVisites.state.extractFiltres.cds=this.value;VueVisites.render()">
-            <option value="TOUS" ${f.cds === 'TOUS' ? 'selected' : ''}>Tous</option>
-            ${cdsList.map(c => `<option value="${c.pin}" ${f.cds === c.pin ? 'selected' : ''}>${c.nom}</option>`).join('')}
+            <option value="TOUS" ${f.cds==='TOUS'?'selected':''}>Tous</option>
+            ${cdsList.map(c=>`<option value="${c.pin}" ${f.cds===c.pin?'selected':''}>${c.nom}</option>`).join('')}
           </select>
-        </label>` : ''}
+        </label>
         <label>Statut
           <select onchange="VueVisites.state.extractFiltres.statut=this.value;VueVisites.render()">
-            <option value="TOUS" ${f.statut === 'TOUS' ? 'selected' : ''}>Tous</option>
-            ${this.STATUTS.map(s => `<option value="${s}" ${f.statut === s ? 'selected' : ''}>${this._labelStatut(s)}</option>`).join('')}
+            <option value="TOUS" ${f.statut==='TOUS'?'selected':''}>Tous</option>
+            ${this.STATUTS.map(s=>`<option value="${s}" ${f.statut===s?'selected':''}>${this._labelStatut(s)}</option>`).join('')}
           </select>
         </label>
         <div style="background:var(--c-bg);border-radius:var(--radius-sm);padding:12px;text-align:center;margin:12px 0;border:1px solid var(--c-border)">
           <span style="font-size:22px;font-weight:800;color:var(--c-primary)">${cnt}</span>
-          <span style="font-size:13px;color:var(--c-text-2);margin-left:6px">visite(s) trouvée(s)</span>
+          <span style="font-size:13px;color:var(--c-text-2);margin-left:6px">visite(s)</span>
         </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn-secondaire" style="flex:1" onclick="VueVisites.fermerExtraction()">Fermer</button>
-          <button class="btn-primaire" style="flex:2" onclick="VueVisites.exporterVisites()"
-                  ${cnt === 0 ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exporter CSV</button>
+        <button class="btn-primaire" onclick="VueVisites.exporterVisites()" ${cnt===0?'disabled':''} style="width:100%">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exporter XLSX — Visites + Questionnaires</button>`;
+    } else if (ong === 'tracker') {
+      corps = `
+        <div style="display:flex;gap:10px;margin-bottom:10px">
+          <label style="flex:1">Début<input type="date" value="${f.debut}" onchange="VueVisites.state.extractFiltres.debut=this.value;VueVisites.render()"/></label>
+          <label style="flex:1">Fin<input type="date" value="${f.fin}" onchange="VueVisites.state.extractFiltres.fin=this.value;VueVisites.render()"/></label>
         </div>
-        <p style="font-size:11px;color:var(--c-text-2);margin-top:8px;text-align:center">Séparateur ; · UTF-8 BOM · Compatible Excel FR</p>
+        <p style="font-size:13px;color:var(--c-text-2);margin:8px 0 12px">Pipeline commercial avec statuts, CA et prochaines actions.</p>
+        <button class="btn-primaire" onclick="VueVisites.exporterTracker()" style="width:100%">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exporter XLSX — Tracker</button>`;
+    } else {
+      corps = `
+        <p style="font-size:13px;color:var(--c-text-2);margin:8px 0 12px">Tous les comptes avec statut "Archivé" (perdus / hors cible).</p>
+        <button class="btn-primaire" onclick="VueVisites.exporterComptesArchives()" style="width:100%">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exporter XLSX — Comptes archivés</button>`;
+    }
+
+    return `
+    <div class="modal-overlay" onclick="if(event.target===this)VueVisites.fermerExtraction()">
+      <div class="modal" style="max-width:440px">
+        <h3 style="margin-bottom:12px">Export XLSX — Direction</h3>
+        ${tabBar}
+        ${corps}
+        <button class="btn-secondaire" onclick="VueVisites.fermerExtraction()" style="width:100%;margin-top:10px">Fermer</button>
+        <p style="font-size:11px;color:var(--c-text-2);margin-top:8px;text-align:center">Format .xlsx · Compatible Excel, Google Sheets, LibreOffice</p>
       </div>
     </div>`;
+  },
+
+  // Export XLSX Tracker (Bloc 5)
+  async exporterTracker() {
+    if (!Session.voitTout()) { Toast.afficher('Accès réservé Direction/Admin', 'warning'); return; }
+    Toast.afficher('Récupération du Tracker…', 'info');
+    try {
+      const data = await SheetsAPI.lire('pipeline');
+      if (!data || !data.length) { Toast.afficher('Aucune donnée Tracker', 'warning'); return; }
+      const f = this.state.extractFiltres;
+      const rows = data
+        .filter(p => {
+          if (!f.debut && !f.fin) return true;
+          const d = (p.Date_Creation || p.date_creation || '').slice(0, 10);
+          if (f.debut && d < f.debut) return false;
+          if (f.fin   && d > f.fin)   return false;
+          return true;
+        })
+        .map(p => ({
+          'Commercial':         resolveCDS(p.PIN_CDS || p.Nom_CDS) || '',
+          'Compte':             p.Nom_Compte || '',
+          'Statut':             p.Statut_Pipeline || p.statut_pipeline || '',
+          'Étape':              p.Etape || p.etape || '',
+          'CA potentiel':       p.CA_Potentiel || p.ca_potentiel || '',
+          'Probabilité':        p.Probabilite || p.probabilite || '',
+          'Canal':              p.Canal || p.canal || '',
+          'Date création':      (p.Date_Creation || p.date_creation || '').slice(0, 10),
+          'Date MAJ':           (p.Date_MAJ || p.date_maj || '').slice(0, 10),
+          'Prochaine action':   p.Prochaine_Action || p.prochaine_action || '',
+          'Note':               p.Note || p.note || '',
+        }));
+      if (!rows.length) { Toast.afficher('Aucune donnée pour ces filtres', 'warning'); return; }
+      if (typeof XLSX === 'undefined') { Toast.afficher('Bibliothèque XLSX non chargée', 'error'); return; }
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws['!cols'] = Object.keys(rows[0]).map(() => ({ wch: 22 }));
+      XLSX.utils.book_append_sheet(wb, ws, 'Tracker');
+      const ts = dateISOLocale().replace(/-/g, '');
+      XLSX.writeFile(wb, `TRACKER_${ts}.xlsx`);
+      Toast.afficher(`Export XLSX : ${rows.length} ligne(s)`, 'succes');
+    } catch(e) {
+      Toast.afficher('Erreur export Tracker : ' + (e.message || e), 'error');
+    }
+  },
+
+  // Export XLSX Comptes archivés (Bloc 5)
+  async exporterComptesArchives() {
+    if (!Session.voitTout()) { Toast.afficher('Accès réservé Direction/Admin', 'warning'); return; }
+    Toast.afficher('Récupération des comptes archivés…', 'info');
+    try {
+      const data = await SheetsAPI.lire('comptes');
+      const archives = (data || []).filter(c =>
+        (c.Statut || c.statut_compte || '').toLowerCase().startsWith('archiv')
+      );
+      if (!archives.length) { Toast.afficher('Aucun compte archivé', 'warning'); return; }
+      const rows = archives.map(c => ({
+        'Compte':               c.Nom_Compte || '',
+        'Ville':                c.Ville || '',
+        'Adresse':              c.Adresse || '',
+        'Code postal':          c.Code_Postal || '',
+        'Canal':                c.CANAL || '',
+        'Secteur':              c.SECTEUR || '',
+        'CDS assigné':          resolveCDS(c.PIN_CDS_Assigne || c.Nom_CDS) || '',
+        'CA FY25':              c.CA_FY25 || '',
+        'CA FY26':              c.CA_FY26 || '',
+        'CA Q1 FY27':           c.CA_Q1FY27 || '',
+        'Dernière action':      (c.Date_Derniere_Action || '').slice(0, 10),
+        'Type dernière action':  c.Type_Derniere_Action || '',
+        'Prochaine action':     c.Prochaine_Action || '',
+        'Note initiale':        c.Note_Initiale || '',
+        'ID Compte':            c.ID_Compte || '',
+      }));
+      if (typeof XLSX === 'undefined') { Toast.afficher('Bibliothèque XLSX non chargée', 'error'); return; }
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws['!cols'] = Object.keys(rows[0]).map(() => ({ wch: 22 }));
+      XLSX.utils.book_append_sheet(wb, ws, 'Comptes archivés');
+      const ts = dateISOLocale().replace(/-/g, '');
+      XLSX.writeFile(wb, `COMPTES_ARCHIVES_${ts}.xlsx`);
+      Toast.afficher(`Export XLSX : ${archives.length} compte(s) archivé(s)`, 'succes');
+    } catch(e) {
+      Toast.afficher('Erreur export comptes : ' + (e.message || e), 'error');
+    }
   },
 };
