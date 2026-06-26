@@ -593,9 +593,17 @@ body {
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
   margin-bottom: 20px;
+  padding: 0 16px;
 }
 @media (min-width: 900px) {
-  .kpi-grid-layout { grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .kpi-grid-layout {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    padding: 20px 40px 0;
+    max-width: 1280px;
+    margin: 0 auto;
+    margin-bottom: 0;
+  }
 }
 
 /* ── KPI Cards ── */

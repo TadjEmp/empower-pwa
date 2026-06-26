@@ -128,3 +128,36 @@
   background: var(--bg-warm-white); color: var(--c-title);
   width: 100%; box-sizing: border-box;
 }
+
+/* ─── Colonnes desktop 2-col ─────────────────── */
+.dash-col-main,
+.dash-col-side {
+  display: flex; flex-direction: column; gap: 12px;
+}
+
+@media (min-width: 900px) {
+  /* Héro : carré sur desktop (pas de border-radius bas qui déborde) */
+  .dash-hero {
+    border-radius: 0;
+    padding: 28px 40px 28px;
+  }
+
+  /* Body : grille 2 colonnes */
+  .dash-body {
+    max-width: 1280px;
+    padding: 20px 40px 32px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 20px;
+    align-items: start;
+  }
+
+  .dash-col-main { gap: 16px; }
+  .dash-col-side  { gap: 16px; }
+
+  /* Raccourcis dans la sidebar : 3 colonnes au lieu de 4 */
+  .dash-col-side .dash-raccourcis { grid-template-columns: repeat(3, 1fr); }
+
+  /* FAB masqué sur desktop */
+  .dash-fab { display: none !important; }
+}

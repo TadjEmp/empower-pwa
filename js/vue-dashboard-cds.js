@@ -327,6 +327,7 @@ window.VueDashboardCDS = {
       </div>
 
       <div class="dash-body avec-nav">
+        <div class="dash-col-main">
 
         <!-- GRAPHIQUE ACTIVITÉ 6 SEMAINES -->
         <div class="bloc-fiche">
@@ -468,6 +469,9 @@ window.VueDashboardCDS = {
             </div>` : ''}
         </div>` : ''}
 
+        </div><!-- /dash-col-main -->
+
+        <div class="dash-col-side">
         <!-- COMPTES HISTORIQUES À RÉACTIVER -->
         ${d.comptesAReactiver.length > 0 ? `
         <div class="bloc-fiche">
@@ -546,8 +550,9 @@ window.VueDashboardCDS = {
           <button class="raccourci" onclick="Router.aller('#/manager')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Vue équipe</span></button>
           <button class="raccourci" onclick="Router.aller('#/admin')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg><span>Admin</span></button>` : ''}
         </div>
+        </div><!-- /dash-col-side -->
       </div>
-      <button title="Planifier une visite"
+      <button title="Planifier une visite" class="dash-fab"
               onclick="VueVisites.ouvrirModal();Router.aller('#/visites')"
               style="position:fixed;bottom:72px;right:16px;width:52px;height:52px;border-radius:50%;background:var(--c-primary);color:#fff;font-size:26px;border:none;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.35);z-index:999;display:flex;align-items:center;justify-content:center;line-height:1">+</button>
       ${NavBar('home')}
