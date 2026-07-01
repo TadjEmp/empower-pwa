@@ -37,7 +37,7 @@ window.VueDashboardManager = {
   //  Aucune donnée sell-in brute, aucun CA/volume/prix détaillé.
   // ════════════════════════════════════════════════════════════════
   async initChannel() {
-    this.state = { chargement: true, dc: null };
+    this.state = { chargement: true, dc: null, exportDirOuvert: false };
     this.render();
     try {
       const [prospects, objectifs, params] = await Promise.all([
@@ -127,7 +127,7 @@ window.VueDashboardManager = {
 
     // ── 10 derniers leads INTEGRE ──
     const dateRef = p =>
-      p.PREMIERE_COMMANDE_DATE || p.Date_prochaine_action || p.Timestamp || p.Date_Import || '';
+      p.Date_Integration || p.Date_prochaine_action || p.Timestamp || p.Date_Import || '';
     const derniersIntegres = leads
       .filter(p => norm(p.STATUT_EMPOWER) === 'INTEGRE')
       .map(p => ({
@@ -149,7 +149,7 @@ window.VueDashboardManager = {
       .filter(p => {
         const s = norm(p.STATUT_EMPOWER);
         if (s === 'ARCHIVE') return false;
-        const wp = String(p.WELCOME_PACK_DATE || '').trim();
+        const wp = String(p.Welcome_Pack_Date || '').trim();
         if (wp) return false;                 // Welcome Pack déjà envoyé
         const age = ancienneteJours(p);
         return age !== null && age >= 14;
@@ -159,6 +159,26 @@ window.VueDashboardManager = {
         cds: resolveCDS(p.PIN_CDS_Assigne || p.Nom_CDS),
         jours: ancienneteJours(p),
       }))
+      .sort((a, b) => (b.jours || 0) - (a.jours || 0));
+
+    // ── Alerte 45j sans contact ──
+    const alerte45j = leads
+      .filter(p => {
+        const s = norm(p.STATUT_EMPOWER);
+        if (['ARCHIVE', 'INTEGRE', 'SAISIE', 'A_TRAITER'].includes(s)) return false;
+        const ref = p.Date_Attribution || p.Date_Import || p.Timestamp;
+        if (!ref) return false;
+        return (now - new Date(ref).getTime()) / 86400000 > 45;
+      })
+      .map(p => {
+        const ref = p.Date_Attribution || p.Date_Import || p.Timestamp;
+        return {
+          nom:   p.Nom_Compte || '—',
+          cds:   resolveCDS(p.PIN_CDS_Assigne || p.Nom_CDS),
+          jours: Math.floor((now - new Date(ref).getTime()) / 86400000),
+          statut: p.STATUT_EMPOWER || '—',
+        };
+      })
       .sort((a, b) => (b.jours || 0) - (a.jours || 0));
 
     // ── Leads ARCHIVE / blocage ──
@@ -176,7 +196,7 @@ window.VueDashboardManager = {
 
     return {
       compteurs, tauxParCDS, caParCDS, derniersIntegres,
-      alerteWelcome, leadsArchive, totalPipeline, tauxIntegration,
+      alerteWelcome, alerte45j, leadsArchive, totalPipeline, tauxIntegration,
     };
   },
 
@@ -269,6 +289,39 @@ window.VueDashboardManager = {
   },
 
   exporterCOPIL() { window.print(); },
+
+  ouvrirExportDir()  { this.state.exportDirOuvert = true;  this.render(); },
+  fermerExportDir()  { this.state.exportDirOuvert = false; this.render(); },
+
+  _renderExportDir() {
+    if (!this.state.exportDirOuvert) return '';
+    const SVG_DL  = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+    return `
+    <div class="modal-overlay" onclick="if(event.target===this)VueDashboardManager.fermerExportDir()">
+      <div class="modal" style="max-width:340px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <h3 style="margin:0;font-size:16px">Export XLSX — Direction</h3>
+          <button class="btn-retour" onclick="VueDashboardManager.fermerExportDir()">✕</button>
+        </div>
+        <p style="font-size:12px;color:var(--c-text-2);margin-bottom:16px">Exporte toutes les données accessibles à votre profil.</p>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <button class="btn-primaire" style="display:flex;align-items:center;gap:8px;justify-content:center"
+            onclick="VueDashboardManager.fermerExportDir();VueVisites.exporterVisites()">
+            ${SVG_DL} Visites + Questionnaires
+          </button>
+          <button class="btn-primaire" style="display:flex;align-items:center;gap:8px;justify-content:center"
+            onclick="VueDashboardManager.fermerExportDir();VueVisites.exporterTracker()">
+            ${SVG_DL} Tracker (pipeline leads)
+          </button>
+          <button class="btn-primaire" style="display:flex;align-items:center;gap:8px;justify-content:center"
+            onclick="VueDashboardManager.fermerExportDir();VueVisites.exporterComptesArchives()">
+            ${SVG_DL} Comptes archivés
+          </button>
+        </div>
+        <p style="font-size:11px;color:var(--c-text-2);margin-top:12px;text-align:center">Format .xlsx · Compatible Excel, Google Sheets, LibreOffice</p>
+      </div>
+    </div>`;
+  },
 
   // BUG-08 : enregistre le CA réalisé sur la ligne objectif du CDS
   async saisirCA() {
@@ -430,6 +483,7 @@ window.VueDashboardManager = {
         <div style="display:flex;gap:6px">
           <button class="btn-retour" title="Actualiser"
                   onclick="SheetsAPI.viderCache('EMPOWER_MDB','📋_PROSPECTS').then(()=>VueDashboardManager.initChannel())"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></button>
+          <button class="btn-retour" title="Export XLSX" onclick="VueDashboardManager.ouvrirExportDir()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
           <button class="btn-deco" onclick="Session.deconnecter();Router.aller('#/login')" title="Déconnexion"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></button>
         </div>
       </header>
@@ -509,14 +563,32 @@ window.VueDashboardManager = {
 
         <!-- ALERTE WELCOME PACK -->
         <div class="bloc-fiche">
-          <div class="bloc-titre">Welcome Pack non envoyé (≥ J14)</div>
+          <div class="bloc-titre">⚠️ Welcome Pack non envoyé (≥ J14)
+            ${dc.alerteWelcome.length ? `<span class="badge-compteur" style="background:var(--c-danger);color:#fff">${dc.alerteWelcome.length}</span>` : ''}
+          </div>
           ${dc.alerteWelcome.length ? `
           <div class="dash-alertes">
             ${dc.alerteWelcome.map(l => `
-              <div class="alerte-ligne">
-                <strong>${l.nom}</strong> — ${l.cds} · <span style="color:var(--c-danger)">${l.jours} j sans Welcome Pack</span>
+              <div class="alerte-ligne" onclick="Router.aller('#/empower-tracker')" style="cursor:pointer">
+                <strong>${l.nom}</strong> — ${l.cds} · <span style="color:var(--c-danger);font-weight:700">${l.jours} j sans WP</span>
               </div>`).join('')}
           </div>` : '<div class="pas-de-donnees">Aucun lead en alerte Welcome Pack 🎉</div>'}
+        </div>
+
+        <!-- ALERTE 45J SANS CONTACT -->
+        <div class="bloc-fiche">
+          <div class="bloc-titre">🔴 Sans contact +45 jours
+            ${dc.alerte45j && dc.alerte45j.length ? `<span class="badge-compteur" style="background:var(--c-danger);color:#fff">${dc.alerte45j.length}</span>` : ''}
+          </div>
+          ${dc.alerte45j && dc.alerte45j.length ? `
+          <div class="dash-alertes">
+            ${dc.alerte45j.map(l => `
+              <div class="alerte-ligne" onclick="Router.aller('#/empower-tracker')" style="cursor:pointer">
+                <strong>${l.nom}</strong> — ${l.cds}
+                · <span style="color:var(--c-danger);font-weight:700">${l.jours} j</span>
+                · <span style="font-size:11px;color:var(--c-text-2)">${l.statut}</span>
+              </div>`).join('')}
+          </div>` : '<div class="pas-de-donnees">Aucun lead sans contact +45j 🎉</div>'}
         </div>
 
         <!-- LEADS ARCHIVÉS / BLOCAGE -->
@@ -540,7 +612,8 @@ window.VueDashboardManager = {
           <button class="raccourci" onclick="Router.aller('#/comptes')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><line x1="10" y1="6" x2="10" y2="6.01"/><line x1="14" y1="6" x2="14" y2="6.01"/><line x1="10" y1="10" x2="10" y2="10.01"/><line x1="14" y1="10" x2="14" y2="10.01"/><line x1="10" y1="14" x2="10" y2="14.01"/><line x1="14" y1="14" x2="14" y2="14.01"/><line x1="10" y1="18" x2="10" y2="18.01"/><line x1="14" y1="18" x2="14" y2="18.01"/></svg><span>Comptes</span></button>
         </div>
       </div>
-      ${NavBar('home')}
+      ${NavBar('reporting')}
+      ${this._renderExportDir()}
     `;
   },
 
@@ -754,7 +827,7 @@ window.VueDashboardManager = {
           <button class="raccourci" onclick="Router.aller('#/admin')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg><span>Admin</span></button>
         </div>
       </div>
-      ${NavBar('home')}
+      ${NavBar('reporting')}
     `;
   },
 };

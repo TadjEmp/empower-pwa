@@ -137,49 +137,123 @@ function generateCSV(data, filename) {
   if (typeof Toast !== 'undefined') Toast.afficher(`📥 Export : ${filename}`, 'succes');
 }
 
+// ── SidebarToggle — collapse/expand du volet desktop ──
+const SidebarToggle = (function () {
+  const KEY = 'empower_sidebar';
+
+  function _apply(collapsed) {
+    document.body.classList.toggle('sidebar-collapsed', collapsed);
+  }
+
+  return {
+    init() {
+      const saved = localStorage.getItem(KEY);
+      _apply(saved === 'collapsed');
+    },
+    toggle() {
+      const next = !document.body.classList.contains('sidebar-collapsed');
+      _apply(next);
+      localStorage.setItem(KEY, next ? 'collapsed' : 'expanded');
+    },
+    collapse()  { _apply(true);  localStorage.setItem(KEY, 'collapsed'); },
+    expand()    { _apply(false); localStorage.setItem(KEY, 'expanded'); },
+    isCollapsed() { return document.body.classList.contains('sidebar-collapsed'); },
+  };
+})();
+
+// ── updateNavBadge — met à jour un badge dans la sidebar sans re-render ──
+function updateNavBadge(itemId, count) {
+  const el = document.querySelector(`.nav-item[data-id="${itemId}"] .nav-badge`);
+  if (!el) return;
+  el.textContent = count > 99 ? '99+' : String(count);
+  el.classList.toggle('visible', count > 0);
+}
+
 function NavBar(actif) {
-  // Tous les items de navigation — mobileOnly:false = visible dans sidebar desktop uniquement
-  const tousItems = [
-    // ── 4 onglets permanents (mobile bottom nav + desktop sidebar) ──
-    { id: 'home',        hash: '#/dashboard',          mobileNav: true,
-      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>', lbl: 'Home' },
-    { id: 'tracker',     hash: '#/empower-tracker',    mobileNav: true,
-      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/></svg>', lbl: 'Tracker' },
-    { id: 'comptes',     hash: '#/comptes',            mobileNav: true,
-      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v8h4"/><path d="M18 9h2a2 2 0 0 1 2 2v11h-4"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>', lbl: 'Comptes' },
-    { id: 'reporting',   hash: '#/manager',            mobileNav: true,
-      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="4" height="12" x="2" y="6" rx="1"/><rect width="4" height="16" x="9" y="2" rx="1"/><rect width="4" height="8" x="16" y="10" rx="1"/></svg>', lbl: 'Reporting' },
-    // ── Modules supplémentaires — sidebar desktop uniquement ──
-    { id: 'visites',     hash: '#/visites',            mobileNav: false,
-      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', lbl: 'Mon Planning' },
-    { id: 'phoning',     hash: '#/phoning',            mobileNav: false,
-      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>', lbl: 'Phoning' },
-    { id: 'photos',      hash: '#/photos',             mobileNav: false,
-      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>', lbl: 'Mes Photos' },
-    { id: 'historiques', hash: '#/comptes-historiques', mobileNav: false,
-      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>', lbl: 'Historique CA' },
-    { id: 'objectifs',   hash: '#/objectifs',          mobileNav: false,
-      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', lbl: 'Mes Objectifs' },
-    { id: 'primes',      hash: '#/primes',             mobileNav: false,
-      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>', lbl: 'Mes Primes' },
-    { id: 'admin',       hash: '#/admin',              mobileNav: false,
-      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>', lbl: 'Administration' },
+  // ── Catalogue complet des items de navigation ──
+  const TOUS = [
+    // CRM (mobile bottom nav + desktop sidebar)
+    { id: 'home',        hash: '#/dashboard',           mobileNav: true,  lbl: 'Accueil',
+      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>' },
+    { id: 'tracker',     hash: '#/empower-tracker',     mobileNav: true,  lbl: 'Tracker',
+      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/></svg>' },
+    { id: 'comptes',     hash: '#/comptes',             mobileNav: true,  lbl: 'Comptes',
+      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v8h4"/><path d="M18 9h2a2 2 0 0 1 2 2v11h-4"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>' },
+    { id: 'reporting',   hash: '#/manager',             mobileNav: true,  lbl: 'Reporting',
+      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="4" height="12" x="2" y="6" rx="1"/><rect width="4" height="16" x="9" y="2" rx="1"/><rect width="4" height="8" x="16" y="10" rx="1"/></svg>' },
+    // Activité (sidebar desktop uniquement)
+    { id: 'visites',     hash: '#/visites',             mobileNav: false, lbl: 'Mon Planning',
+      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="8" y1="18" x2="8" y2="18"/><line x1="12" y1="18" x2="12" y2="18"/></svg>' },
+    { id: 'phoning',     hash: '#/phoning',             mobileNav: false, lbl: 'Phoning',
+      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>' },
+    { id: 'photos',      hash: '#/photos',              mobileNav: false, lbl: 'Mes Photos',
+      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>' },
+    // Données (sidebar desktop uniquement)
+    { id: 'historiques', hash: '#/comptes-historiques', mobileNav: false, lbl: 'Historique CA',
+      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>' },
+    { id: 'objectifs',   hash: '#/objectifs',           mobileNav: false, lbl: 'Mes Objectifs',
+      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>' },
+    { id: 'primes',      hash: '#/primes',              mobileNav: false, lbl: 'Mes Primes',
+      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>' },
+    // Admin
+    { id: 'admin',       hash: '#/admin',               mobileNav: false, lbl: 'Administration',
+      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>' },
+  ];
+
+  // Sections groupées (desktop sidebar uniquement — labels + séparateurs)
+  const SECTIONS = [
+    { lbl: null,        ids: ['home', 'tracker', 'comptes', 'reporting'] },
+    { lbl: 'Activité',  ids: ['visites', 'phoning', 'photos'] },
+    { lbl: 'Données',   ids: ['historiques', 'objectifs', 'primes'] },
+    { lbl: 'Admin',     ids: ['admin'] },
   ];
 
   const role = (typeof Session !== 'undefined') ? Session.role : null;
-  let autorises = [];
-  if (role && typeof window.Permissions !== 'undefined') {
-    autorises = window.Permissions.onglets(role);
+  const autorises = (role && typeof window.Permissions !== 'undefined')
+    ? window.Permissions.onglets(role) : [];
+  const itemMap = Object.fromEntries(TOUS.map(i => [i.id, i]));
+
+  const nomUser  = (typeof Session !== 'undefined') ? (Session.nom || '') : '';
+  const initiale = nomUser ? nomUser.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : '?';
+
+  // ── Rendu d'un item nav ──
+  // mobileNav:true  → pas de nav-sidebar-only → visible mobile bottom nav + sidebar desktop
+  // mobileNav:false → nav-sidebar-only → caché mobile, visible uniquement sidebar desktop
+  function _itemHtml(i) {
+    const cls = [
+      'nav-item',
+      i.mobileNav ? '' : 'nav-sidebar-only',
+      actif === i.id ? 'actif' : '',
+    ].filter(Boolean).join(' ');
+    return `<a class="${cls}" href="${i.hash}" data-id="${i.id}" data-lbl="${i.lbl}">
+      <span class="nav-icone">${i.icone}</span>
+      <span class="nav-lbl">${i.lbl}</span>
+      <span class="nav-badge" id="nav-badge-${i.id}"></span>
+    </a>`;
   }
 
-  const items = role
-    ? tousItems.filter(i => autorises.indexOf(i.id) !== -1)
-    : [];
+  // ── Section groupée (desktop : label + colonne / mobile : display:contents transparent) ──
+  function _sectionHtml(sec) {
+    const visibles = sec.ids
+      .map(id => itemMap[id])
+      .filter(i => i && autorises.indexOf(i.id) !== -1);
+    if (!visibles.length) return '';
+    return `<div class="nav-section">
+      ${sec.lbl ? `<span class="nav-section-lbl">${sec.lbl}</span>` : ''}
+      ${visibles.map(i => _itemHtml(i)).join('')}
+    </div>`;
+  }
 
-  const nomUser = (typeof Session !== 'undefined') ? (Session.nom || '') : '';
-  const initiale = nomUser ? nomUser.charAt(0).toUpperCase() : '?';
+  // ── Toutes les sections (mobile + desktop) ──
+  const sidebarSections = role ? SECTIONS.map(_sectionHtml).join('') : '';
+
+  // SVG icônes footer
+  const ICO_SYNC = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>';
+  const ICO_OUT  = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>';
+  const ICO_CHEV = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>';
 
   return `
+    <!-- Barre mobile top -->
     <div class="app-brand-bar">
       <div class="app-brand-logo">
         ${NORTON_SVG}
@@ -195,32 +269,39 @@ function NavBar(actif) {
         </svg>
       </button>
     </div>
-    <nav class="nav-principale">
+
+    <!-- Sidebar desktop -->
+    <nav class="nav-principale" role="navigation" aria-label="Navigation principale">
+      <!-- Logo + toggle -->
       <div class="nav-logo">
         ${NORTON_SVG}
         <div class="nav-logo-textes">
           <span class="nav-logo-norton">norton<sup>™</sup></span>
           <span class="nav-logo-esi">EMPOWER SALES INTELLIGENCE</span>
         </div>
+        <button class="nav-toggle-btn" onclick="SidebarToggle.toggle()" title="Réduire / Développer le menu" aria-label="Toggle sidebar">
+          ${ICO_CHEV}
+        </button>
       </div>
-      ${items.map(i => `
-        <a class="nav-item${i.mobileNav ? '' : ' nav-sidebar-only'}${actif === i.id ? ' actif' : ''}" href="${i.hash}">
-          <span class="nav-icone">${i.icone}</span><span class="nav-lbl">${i.lbl}</span>
-        </a>`).join('')}
+
+      <!-- Sections : transparent (display:contents) sur mobile → bottom nav ; colonnes groupées sur desktop -->
+      ${sidebarSections}
+
+      <!-- Footer : utilisateur + actions -->
       <div class="nav-sidebar-footer">
-        <div class="nav-sidebar-user">
+        <div class="nav-sidebar-user" title="${nomUser} · ${role || ''}">
           <div class="nav-sidebar-avatar">${initiale}</div>
           <div class="nav-sidebar-user-info">
             <div class="nav-sidebar-nom">${nomUser}</div>
             <div class="nav-sidebar-role">${role || ''}</div>
           </div>
         </div>
-        <button class="nav-item nav-sidebar-action" onclick="DrawerMenu._synchro()">
-          <span class="nav-icone"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></span>
+        <button class="nav-item nav-sidebar-action" data-lbl="Synchroniser" onclick="DrawerMenu._synchro()">
+          <span class="nav-icone">${ICO_SYNC}</span>
           <span class="nav-lbl">Synchroniser</span>
         </button>
-        <button class="nav-item nav-sidebar-action nav-sidebar-danger" onclick="DrawerMenu._deconnecter()">
-          <span class="nav-icone"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span>
+        <button class="nav-item nav-sidebar-action nav-sidebar-danger" data-lbl="Déconnexion" onclick="DrawerMenu._deconnecter()">
+          <span class="nav-icone">${ICO_OUT}</span>
           <span class="nav-lbl">Déconnexion</span>
         </button>
       </div>

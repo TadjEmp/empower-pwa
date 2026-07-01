@@ -163,7 +163,7 @@ window.VueAdmin = {
           // Extraire la première ligne du log (entrée la plus récente)
           const noteLines = String(l.Note_initiale || '').split('\n');
           const noteRecente = noteLines[0]?.trim().slice(0, 80) || '';
-          const packOk = l.WELCOME_PACK_DATE;
+          const packOk = l.Welcome_Pack_Date;
           const packAttend = !packOk && ['COMPTE_CREE','INTEGRE'].includes(l.STATUT_EMPOWER);
           return `
             <div style="padding:10px 0;border-bottom:1px solid var(--c-border)">
@@ -693,7 +693,7 @@ window.VueAdmin = {
           POTENTIEL:          p.POTENTIEL || '',
           ORIGINE:            p.ORIGINE || '',
           Date_Import:        String(p.Date_Import || '').slice(0, 10),
-          Welcome_Pack_Date:  String(p.WELCOME_PACK_DATE || '').slice(0, 10),
+          Welcome_Pack_Date:  String(p.Welcome_Pack_Date || '').slice(0, 10),
           Date_prochaine_action: String(p.Date_prochaine_action || '').slice(0, 10),
           Ville:              p.Ville || '',
           Departement:        p.Departement || '',
@@ -703,7 +703,7 @@ window.VueAdmin = {
           Produits_Potentiels: p.Produits_Potentiels || '',
           Note_initiale:      String(p.Note_initiale || '').replace(/\n/g, ' '),
           FLAG_ACTION:        p.FLAG_ACTION || '',
-          PREMIERE_COMMANDE_DATE: String(p.PREMIERE_COMMANDE_DATE || '').slice(0, 10),
+          Date_Integration:   String(p.Date_Integration || '').slice(0, 10),
         }));
       const csv  = this._toCSV(rows);
       const date = dateISOLocale();

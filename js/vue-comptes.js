@@ -115,6 +115,12 @@ window.VueComptes = {
     const nbActif   = _cs.filter(c => this._statutCompte(c) === 'actif').length;
     const nbReact   = _cs.filter(c => this._statutCompte(c) === 'a_reactiver').length;
     const caTotalP  = _cs.reduce((s, c) => s + (window.parseCA(c.CA_Q1FY27) || window.parseCA(c.CA_FY26) || 0), 0);
+    const nb45j     = _cs.filter(c => {
+      const d = c.Date_Derniere_Action || c.date_derniere_action;
+      if (!d) return false;
+      return (Date.now() - new Date(d).getTime()) / 86400000 > 45;
+    }).length;
+    if (window.updateNavBadge) updateNavBadge('comptes', nb45j);
     const cdsList = (this._cdsListe || [
       { pin: 1000, nom: 'Tadjidine' }, { pin: 4001, nom: 'Lyes' },
       { pin: 4002, nom: 'Mehdi' },     { pin: 4003, nom: 'Johanne' },

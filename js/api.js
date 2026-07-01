@@ -80,6 +80,7 @@ const SheetsAPI = {
   _tableMap: {
     '🏢_COMPTES': 'comptes', 'COMPTES': 'comptes',
     '📋 COMPTES HISTORIQUES': 'sellin_agregats', 'COMPTES HISTORIQUES': 'sellin_agregats', 'COMPTES_HISTORIQUES': 'sellin_agregats',
+    '📉_SELL_IN_HISTORIQUE': 'sellin_agregats', 'SELL_IN_HISTORIQUE': 'sellin_agregats',
     '🎯_OBJECTIFS_PRIMES': 'objectifs_primes', 'OBJECTIFS_PRIMES': 'objectifs_primes',
     '📊_PARAMS': 'params', '⚙️_PARAMS': 'params', 'PARAMS': 'params',
     '🔔_NOTIFS': 'notifs', 'NOTIFS': 'notifs',
@@ -107,7 +108,6 @@ const SheetsAPI = {
   _MAPS_DB_TO_GAS: {
     comptes: {
       id_compte_gas: 'ID_Compte', nom_compte: 'Nom_Compte', ville: 'Ville',
-      adresse: 'Adresse',
       code_postal: 'Code_Postal', departement: 'Departement', tel: 'Tel', email: 'Email',
       pin_cds_assigne: 'PIN_CDS_Assigne', nom_cds: 'Nom_CDS',
       canal: 'CANAL', secteur: 'SECTEUR', has_empower: 'Has_EMPOWER',
@@ -142,6 +142,7 @@ const SheetsAPI = {
       date_visite: 'Date',           // vue-visites.js utilise v.Date et v.Date_Planif
       heure: 'Heure', semaine_iso: 'Semaine_ISO',
       pin_cds: 'PIN_CDS', nom_cds: 'Nom_CDS', nom_compte: 'Nom_Compte',
+      adresse: 'Adresse', departement: 'Departement', ville: 'Ville', tel: 'Tel', email: 'Email',
       type_visite: 'Type_Visite', source_visite: 'Source_Visite',
       objectif_visite: 'Objectif_Visite', resultat_visite: 'Resultat_Visite',
       statut: 'Statut_Visite',       // statut avec valeur traduite (voir _transformRow)
@@ -162,8 +163,6 @@ const SheetsAPI = {
       empower_partenaire: 'Empower_Partenaire', empower_interesse: 'Empower_Interesse',
       decideur_rencontre: 'Decideur_Rencontre', decideur_nom: 'Decideur_Nom',
       decideur_fonction: 'Decideur_Fonction', concurrents_json: 'Concurrents_JSON',
-      // Prospect à froid : coordonnées saisies sur la visite (pas encore un compte)
-      departement: 'Departement', ville: 'Ville', tel: 'Tel', email: 'Email',
       deleted: 'deleted', deleted_at: 'deleted_at', deleted_by: 'deleted_by',
       id: '_uuid',
     },
@@ -176,7 +175,15 @@ const SheetsAPI = {
       prochaine_action: 'Prochaine_Action', date_rappel: 'Date_Rappel',
       commande_annoncee: 'Commande_Annoncee', montant_estime: 'Montant_Estime',
       statut_final: 'Statut_Final', questionnaire_json: 'Questionnaire_JSON',
-      note: 'Note', deleted: 'deleted', id: '_uuid',
+      note: 'Note',
+      // Planification d'appel
+      date_planifiee: 'Date_Planifiee',
+      objectif_appel: 'Objectif_Appel',
+      note_preparation: 'Note_Preparation',
+      // Appel à froid (champs contact direct)
+      nom_enseigne: 'Nom_Enseigne', departement: 'Departement',
+      ville: 'Ville', telephone: 'Telephone', email_contact: 'Email_Contact',
+      deleted: 'deleted', id: '_uuid',
     },
     actions: {
       id_action_gas: 'ID_Action', date_action: 'Date_Action', type_action: 'Type_Action',
@@ -192,7 +199,8 @@ const SheetsAPI = {
       parametre: 'Parametre', valeur: 'Valeur', description: 'Description', id: '_uuid',
     },
     leads: {
-      id_prospect_gas: 'ID_Prospect', nom_compte: 'Nom_Compte', ville: 'Ville',
+      id_prospect_gas: 'ID_Prospect', nom_compte: 'Nom_Compte',
+      adresse: 'Adresse', ville: 'Ville',
       code_postal: 'Code_Postal', departement: 'Departement', tel: 'Tel', email: 'Email',
       canal: 'CANAL', secteur: 'SECTEUR', statut: 'STATUT_EMPOWER', potentiel: 'POTENTIEL',
       pin_cds_assigne: 'PIN_CDS_Assigne', nom_cds: 'Nom_CDS', pin_channel: 'PIN_Channel',
@@ -205,6 +213,20 @@ const SheetsAPI = {
       date_prochaine_action: 'Date_prochaine_action',
       contact_nom: 'CONTACT_NOM', contact_fonction: 'CONTACT_FONCTION',
       id: '_uuid',
+    },
+    nsb_commandes: {
+      id: '_uuid',
+      date_commande: 'Date',
+      pin_cds: 'PIN_CDS',
+      id_compte: 'ID_Compte',
+      nom_compte: 'Nom_Compte',
+      produit: 'Produit',
+      montant_eur: 'Montant_EUR',
+      statut: 'Statut',
+      valid_manager: 'Valid_Manager',
+      date_validation: 'Date_Validation',
+      notes: 'Notes',
+      created_at: 'Timestamp',
     },
   },
 
@@ -232,6 +254,10 @@ const SheetsAPI = {
     if (table === 'visites' && out.Statut_Visite) {
       out.Statut_Visite = this._VISITES_STATUT_DB_TO_GAS[out.Statut_Visite] || out.Statut_Visite
     }
+    // Conversion boolean DB → 'OUI'/'NON' pour valid_manager (nsb_commandes)
+    if (table === 'nsb_commandes' && 'Valid_Manager' in out) {
+      out.Valid_Manager = out.Valid_Manager === true ? 'OUI' : (out.Valid_Manager === false ? 'NON' : out.Valid_Manager)
+    }
     return out
   },
 
@@ -239,7 +265,6 @@ const SheetsAPI = {
   _MAPS_GAS_TO_DB: {
     comptes: {
       'ID_Compte': 'id_compte_gas', 'Nom_Compte': 'nom_compte', 'Ville': 'ville',
-      'Adresse': 'adresse',
       'Code_Postal': 'code_postal', 'Departement': 'departement', 'Tel': 'tel', 'Email': 'email',
       'PIN_CDS_Assigne': 'pin_cds_assigne', 'Nom_CDS': 'nom_cds',
       'CANAL': 'canal', 'SECTEUR': 'secteur', 'Has_EMPOWER': 'has_empower',
@@ -259,11 +284,10 @@ const SheetsAPI = {
       'Date': 'date_visite', 'Date_Planif': 'date_visite',
       'Heure': 'heure', 'Semaine_ISO': 'semaine_iso',
       'PIN_CDS': 'pin_cds', 'Nom_CDS': 'nom_cds', 'Nom_Compte': 'nom_compte',
+      'Adresse': 'adresse', 'Departement': 'departement', 'Ville': 'ville', 'Tel': 'tel', 'Email': 'email',
       'Type_Visite': 'type_visite', 'Source_Visite': 'source_visite',
-      'Objectif_Visite': 'objectif_visite', 'Objectifs_Visite': 'objectif_visite',
-      'Resultat_Visite': 'resultat_visite',
+      'Objectif_Visite': 'objectif_visite', 'Objectifs_Visite': 'objectif_visite', 'Resultat_Visite': 'resultat_visite',
       'Statut_Visite': 'statut',   // valeur traduite par _toDBRow
-      'Departement': 'departement', 'Ville': 'ville', 'Tel': 'tel', 'Email': 'email',
       'Resume_IA': 'resum_ia', 'Slider_Receptivite': 'slider_receptivite',
       'Interlocuteur_Nom': 'interlocuteur_nom', 'Interlocuteur_Fonction': 'interlocuteur_fonction',
       'Photo_URL': 'photo_url', 'Note_Privee': 'note', 'GPS_Lat': 'gps_lat', 'GPS_Lng': 'gps_lng',
@@ -290,6 +314,13 @@ const SheetsAPI = {
       'Commande_Annoncee': 'commande_annoncee', 'Montant_Estime': 'montant_estime',
       'Statut_Final': 'statut_final', 'Questionnaire_JSON': 'questionnaire_json',
       'Note': 'note',
+      // Planification
+      'Date_Planifiee': 'date_planifiee',
+      'Objectif_Appel': 'objectif_appel',
+      'Note_Preparation': 'note_preparation',
+      // Appel à froid
+      'Nom_Enseigne': 'nom_enseigne', 'Departement': 'departement',
+      'Ville': 'ville', 'Telephone': 'telephone', 'Email_Contact': 'email_contact',
     },
     actions: {
       'ID_Action': 'id_action_gas', 'Date_Action': 'date_action', 'Type_Action': 'type_action',
@@ -302,8 +333,22 @@ const SheetsAPI = {
       'Statut_Lu': 'statut_lu',  // boolean en DB : true=lu / false=non lu
     },
     params: { 'Parametre': 'parametre', 'Valeur': 'valeur', 'Description': 'description' },
+    nsb_commandes: {
+      'Date': 'date_commande',
+      'PIN_CDS': 'pin_cds',
+      'ID_Compte': 'id_compte',
+      'Nom_Compte': 'nom_compte',
+      'Produit': 'produit',
+      'Montant_EUR': 'montant_eur',
+      'Statut': 'statut',
+      'Valid_Manager': 'valid_manager',
+      'Date_Validation': 'date_validation',
+      'Notes': 'notes',
+      // ID_NSB exclu — pas de colonne DB, uuid auto-généré
+    },
     leads: {
-      'ID_Prospect': 'id_prospect_gas', 'Nom_Compte': 'nom_compte', 'Ville': 'ville',
+      'ID_Prospect': 'id_prospect_gas', 'Nom_Compte': 'nom_compte',
+      'Adresse': 'adresse', 'Ville': 'ville',
       'Code_Postal': 'code_postal', 'Departement': 'departement', 'Tel': 'tel', 'Email': 'email',
       'CANAL': 'canal', 'SECTEUR': 'secteur', 'STATUT_EMPOWER': 'statut', 'POTENTIEL': 'potentiel',
       'PIN_CDS_Assigne': 'pin_cds_assigne', 'Nom_CDS': 'nom_cds', 'PIN_Channel': 'pin_channel',
@@ -312,9 +357,12 @@ const SheetsAPI = {
       'Date_Relance': 'date_relance', 'Date_Creation_Compte': 'date_creation_compte',
       'Date_Integration': 'date_integration', 'Date_Archive': 'date_archive',
       'Welcome_Pack_Envoye': 'welcome_pack_envoye', 'Welcome_Pack_Date': 'welcome_pack_date', 'WELCOME_PACK_DATE': 'welcome_pack_date',
-      'Note_initiale': 'note', 'FLAG_ALERTE': 'flag_alerte', 'ID_Compte_Gas': 'id_compte_gas',
+      'Note_initiale': 'note', 'FLAG_ALERTE': 'flag_alerte', 'FLAG_ACTION': 'flag_action',
+      'ID_Compte_Gas': 'id_compte_gas',
       'Date_prochaine_action': 'date_prochaine_action',
       'CONTACT_NOM': 'contact_nom', 'CONTACT_FONCTION': 'contact_fonction',
+      'Flag_traite': 'flag_traite', 'Flag_converti': 'flag_converti',
+      'Source_Import': 'source_import',
     },
     objectifs_primes: {
       'PIN_CDS': 'pin_cds', 'Nom_CDS': 'nom_cds',
@@ -342,9 +390,10 @@ const SheetsAPI = {
     }
     // Conversion OUI/NON → boolean pour colonnes boolean Supabase
     const _BOOL_COLS = {
-      visites: ['marketing_present', 'plv_installe'],
-      notifs:  ['statut_lu'],
-      leads:   ['welcome_pack_envoye'],
+      visites:       ['marketing_present', 'plv_installe'],
+      notifs:        ['statut_lu'],
+      leads:         ['welcome_pack_envoye'],
+      nsb_commandes: ['valid_manager'],
     }
     const boolCols = _BOOL_COLS[table] || []
     for (const col of boolCols) {
@@ -353,9 +402,33 @@ const SheetsAPI = {
         out[col] = v === 'OUI' || v === 'TRUE' || v === '1' || v === 'YES'
       }
     }
-    // Chaîne vide → null pour colonnes date/timestamp/numeric (évite l'erreur PostgreSQL)
+    // Chaîne vide → null pour colonnes date/timestamp/lat/lng (évite l'erreur PostgreSQL)
     for (const col of Object.keys(out)) {
       if (out[col] === '' && (/^date_/.test(col) || /_date$/.test(col) || /_at$/.test(col) || /_lat$/.test(col) || /_lng$/.test(col))) {
+        out[col] = null
+      }
+    }
+    // Chaîne vide → null pour colonnes UUID — évite l'erreur "invalid input syntax for type uuid"
+    for (const col of Object.keys(out)) {
+      if (out[col] === '' && (/^id_/.test(col) || /_gas$/.test(col) || col === 'id')) {
+        out[col] = null
+      }
+    }
+    // Chaîne vide → null pour colonnes NUMERIC (INTEGER/FLOAT) — évite l'erreur de cast PostgreSQL
+    const _NUMERIC_COLS = {
+      phoning:          ['montant_estime', 'interet_score', 'pin_cds', 'slider_receptivite'],
+      leads:            ['pin_cds_assigne', 'pin_channel'],
+      nsb_commandes:    ['montant_eur', 'pin_cds'],
+      comptes:          ['pin_cds_assigne', 'slider_receptivite', 'ca_fy25', 'ca_fy26', 'ca_q1fy27'],
+      visites:          ['pin_cds', 'slider_receptivite', 'duree_minutes', 'gps_lat', 'gps_lng'],
+      objectifs_primes: ['pin_cds', 'q1_obj_initial','q1_obj_revise','q1_ca_realise',
+                         'q2_obj_initial','q2_obj_revise','q2_ca_realise',
+                         'q3_obj_initial','q3_obj_revise','q3_ca_realise',
+                         'q4_obj_initial','q4_obj_revise','q4_ca_realise'],
+    }
+    const numCols = _NUMERIC_COLS[table] || []
+    for (const col of numCols) {
+      if (col in out && (out[col] === '' || out[col] === undefined || out[col] === null)) {
         out[col] = null
       }
     }

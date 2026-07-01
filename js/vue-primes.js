@@ -196,10 +196,11 @@ window.VuePrimes = {
           Date_Validation: '',
           Notes: v('nsb-note'),
         };
-        promises.push(SheetsAPI.ecrire('EMPOWER_MDB', '🛒_NSB_COMMANDES', ligne)
-          .then(() => this.state.nsb.push(ligne)));
+        promises.push(SheetsAPI.ecrire('EMPOWER_MDB', '🛒_NSB_COMMANDES', ligne));
       }
       await Promise.all(promises);
+      // Recharger depuis DB pour avoir les _uuid Supabase réels
+      this.state.nsb = await SheetsAPI.lire('EMPOWER_MDB', '🛒_NSB_COMMANDES');
       this.state.modalNSB = false;
       Toast.afficher(`${qte} commande(s) NSB déclarée(s) — en attente de validation`, 'succes');
     } catch(err) { Toast.afficher('Erreur : ' + (err.message || err), 'erreur'); }
@@ -215,7 +216,7 @@ window.VuePrimes = {
         Statut: 'VALIDE',
         Date_Validation: dateISOLocale(),
       });
-      const n = this.state.nsb.find(x => x.ID_NSB === id);
+      const n = this.state.nsb.find(x => (x._uuid || x.ID_NSB) === id);
       if (n) { n.Valid_Manager = 'OUI'; n.Statut = 'VALIDE'; }
       Toast.afficher('Déclaration validée', 'succes');
       this.render();
@@ -419,7 +420,7 @@ window.VuePrimes = {
             ${n.Date || '—'} · CDS : ${resolveCDS(n.PIN_CDS)}${!isEmpower && n.Montant_EUR ? ' · ' + fmtCA(n.Montant_EUR) + ' €' : ''}${n.Notes ? ' · ' + n.Notes : ''}
           </div>
         </div>
-        <button class="q-chip active" onclick="VuePrimes.validerDeclaration('${n.ID_NSB}')">Valider</button>
+        <button class="q-chip active" onclick="VuePrimes.validerDeclaration('${n._uuid || n.ID_NSB}')">Valider</button>
       </div>`;
     };
 

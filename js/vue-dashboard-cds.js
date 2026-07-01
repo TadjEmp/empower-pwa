@@ -572,9 +572,9 @@ window.VueDashboardCDS = {
         </div>
         </div><!-- /dash-col-side -->
       </div>
-      <button title="Planifier une visite" class="dash-fab"
+      <button title="+ Planifier une visite" class="dash-fab"
               onclick="VueVisites.ouvrirModal();Router.aller('#/visites')"
-              style="position:fixed;bottom:72px;right:16px;width:52px;height:52px;border-radius:50%;background:var(--c-primary);color:#fff;font-size:26px;border:none;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.35);z-index:999;display:flex;align-items:center;justify-content:center;line-height:1">+</button>
+              style="position:fixed;bottom:calc(var(--safe-bottom, 0px) + 80px);right:16px;width:56px;height:56px;border-radius:50%;background:var(--c-primary);color:#fff;font-size:28px;border:none;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.4);z-index:1000;display:flex;align-items:center;justify-content:center;line-height:1">+</button>
       ${NavBar('home')}
     `;
   },

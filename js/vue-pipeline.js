@@ -147,6 +147,7 @@ window.VuePipeline = {
     if (this.state.filtreAlerte === 'WP_RETARD') l = l.filter(p => this._retardWelcomePack(p));
     if (this.state.filtreAlerte === 'WP_ENVOYE') l = l.filter(p => !!p.Welcome_Pack_Date);
     if (this.state.filtreAlerte === 'ACTION_DUE') l = l.filter(p => p.Date_prochaine_action && estDepassee(p.Date_prochaine_action));
+    if (this.state.filtreAlerte === 'CONTACT_45J') l = l.filter(p => this._alerte45jSansContact(p));
     // BLOC 7 — filtre channel
     if (this.state.filtreChannel !== 'TOUS') l = l.filter(p => String(p.CANAL || '').trim() === this.state.filtreChannel);
     return l;
@@ -181,7 +182,10 @@ window.VuePipeline = {
 
   _retardWelcomePack(p) {
     if (p._statut !== 'COMPTE_CREE' || p.Welcome_Pack_Date) return false;
-    const ref = p.Timestamp || p.Date_Import;
+    const maintenant = new Date();
+    const relance = p.Date_Relance ? new Date(p.Date_Relance) : null;
+    const relancePassee = relance && relance < maintenant;
+    const ref = (relancePassee ? p.Date_Relance : null) || p.Date_Attribution || p.Timestamp || p.Date_Import;
     return ref && (Date.now() - new Date(ref).getTime()) / 86400000 > 14;
   },
 
@@ -221,7 +225,6 @@ window.VuePipeline = {
     if (!lead) return;
     const champs = { STATUT_EMPOWER: statut };
     if (statut === 'COMPTE_CREE') {
-      if (!lead.Welcome_Pack_Date) champs.Welcome_Pack_Date = dateISOLocale();
       if (!lead.Date_Creation_Compte) champs.Date_Creation_Compte = dateISOLocale();
     }
     if (statut === 'INTEGRE') {
@@ -266,7 +269,7 @@ window.VuePipeline = {
     // Capturer TOUS les champs AVANT render() — render() vide les inputs du DOM
     const nomSaisi = v('nl-nom').toUpperCase();
     const vals = {
-      ville: v('nl-ville'), cp: v('nl-cp'), tel: v('nl-tel'), email: v('nl-email'),
+      adresse: v('nl-adresse'), ville: v('nl-ville'), cp: v('nl-cp'), tel: v('nl-tel'), email: v('nl-email'),
       canal: v('nl-canal'), note: v('nl-note'), dateAction: v('nl-date-action'),
       potentiel: v('nl-potentiel'), origine: v('nl-origine'),
       contact: v('nl-contact'), fonction: v('nl-fonction'),
@@ -298,9 +301,9 @@ window.VuePipeline = {
 
     const lead = {
       ID_Prospect: genId('PROS'),
-      Nom_Compte: nomSaisi, Ville: vals.ville, Code_Postal: vals.cp,
+      Nom_Compte: nomSaisi, Adresse: vals.adresse, Ville: vals.ville, Code_Postal: vals.cp,
       Tel: vals.tel, Email: vals.email,
-      PIN_CDS_Assigne: cdsAssignePin ? Number(cdsAssignePin) : '',
+      PIN_CDS_Assigne: cdsAssignePin ? Number(cdsAssignePin) : null,
       Source_Import: 'ESI_PIPELINE',
       FLAG_ACTION: statutInit, CANAL: vals.canal,
       Note_initiale: vals.note, Date_prochaine_action: vals.dateAction,
@@ -430,6 +433,7 @@ window.VuePipeline = {
             <option value="WP_RETARD" ${this.state.filtreAlerte==='WP_RETARD'?'selected':''}>⚠️ WP J+14 dépassé</option>
             <option value="WP_ENVOYE" ${this.state.filtreAlerte==='WP_ENVOYE'?'selected':''}>📦 Welcome Pack envoyé</option>
             <option value="ACTION_DUE" ${this.state.filtreAlerte==='ACTION_DUE'?'selected':''}>⏰ Action en retard</option>
+            <option value="CONTACT_45J" ${this.state.filtreAlerte==='CONTACT_45J'?'selected':''}>🔴 Sans contact +45j</option>
           </select>
           ${voitTous ? `
           <select onchange="VuePipeline.state.filtreOrigine=this.value;VuePipeline.render()">
@@ -497,7 +501,7 @@ window.VuePipeline = {
                 </div>
                 ${l.Note_initiale ? `<div class="kanban-carte-note">${String(l.Note_initiale).slice(0, 60)}</div>` : ''}
                 ${this._retardWelcomePack(l) ? '<div class="kanban-carte-note" style="color:var(--c-danger);font-weight:600">⚠️ Welcome Pack J+14 dépassé</div>' : ''}
-                ${this._inactif45(l) ? '<div class="alerte-inactivite" style="margin:4px 0">⚠ INACTIF 45j+</div>' : this._alerteSansActivite(l) ? '<div class="kanban-carte-note" style="color:var(--c-warning);font-weight:600">⏳ Sans activité >7j</div>' : ''}
+                ${this._alerte45jSansContact(l) ? '<div class="kanban-carte-note" style="color:var(--c-danger);font-weight:600">🔴 Sans contact +45j</div>' : this._alerteSansActivite(l) ? '<div class="kanban-carte-note" style="color:var(--c-warning);font-weight:600">⏳ Sans activité >7j</div>' : ''}
                 <div class="kanban-carte-pied" style="display:flex;align-items:center;gap:4px">
                   ${l.Date_prochaine_action
                     ? `<span style="color:${estDepassee(l.Date_prochaine_action) ? 'var(--c-danger)' : 'var(--c-text-2)'}">⏰ ${dateRelative(l.Date_prochaine_action)}</span>`
@@ -540,14 +544,18 @@ window.VuePipeline = {
             <th>Potentiel</th>
             ${voitTous ? '<th>CDS</th>' : ''}
             <th>Action</th>
+            <th>Alertes</th>
             <th>Source</th>
             <th style="min-width:80px">Actions</th>
           </tr></thead>
           <tbody>
-            ${leads.map(l => `<tr>
-              <td class="compte-nom" onclick="VuePipeline.ouvrirLead('${l.ID_Prospect}')" style="cursor:pointer">
+            ${leads.map(l => {
+              const wpRetard   = this._retardWelcomePack(l);
+              const contact45j = this._alerte45jSansContact(l);
+              const activite7j = !contact45j && this._alerteSansActivite(l);
+              return `<tr style="${wpRetard || contact45j ? 'background:rgba(217,48,37,0.04)' : ''}">
+              <td class="compte-nom" onclick="VuePipeline.ouvrirLead('${l.ID_Prospect}')" style="cursor:pointer;font-weight:600">
                 ${l.Nom_Compte}
-                ${this._retardWelcomePack(l) ? '<span style="margin-left:4px;color:var(--c-danger);font-size:11px;font-weight:700">⚠️ WP</span>' : ''}
               </td>
               <td style="font-size:12px;color:var(--c-text-2)">${l.CANAL || '—'}</td>
               <td>
@@ -562,12 +570,18 @@ window.VuePipeline = {
               <td style="font-size:12px;color:${l.Date_prochaine_action && estDepassee(l.Date_prochaine_action) ? 'var(--c-danger)' : 'var(--c-text-2)'}">
                 ${l.Date_prochaine_action ? dateRelative(l.Date_prochaine_action) : '—'}
               </td>
+              <td style="font-size:12px;white-space:nowrap">
+                ${wpRetard   ? '<span style="color:var(--c-danger);font-weight:700">⚠️ WP J+14</span><br>' : ''}
+                ${contact45j ? '<span style="color:var(--c-danger);font-weight:700">🔴 +45j</span>' : ''}
+                ${activite7j ? '<span style="color:var(--c-warning);font-weight:700">⏳ +7j</span>' : ''}
+                ${!wpRetard && !contact45j && !activite7j ? '<span style="color:var(--c-text-2)">—</span>' : ''}
+              </td>
               <td style="font-size:11px;color:var(--c-text-2)">${(l.ORIGINE||'—').replace('Import_','').replace(/_/g,' ')}</td>
               <td>
                 <button class="btn-visiter" style="padding:4px 10px;font-size:12px"
                         onclick="VuePipeline.ouvrirLead('${l.ID_Prospect}')">Voir →</button>
               </td>
-            </tr>`).join('')}
+            </tr>`;}).join('')}
           </tbody>
         </table>
       </div>`;
@@ -587,6 +601,8 @@ window.VuePipeline = {
             <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.05em;margin-bottom:6px">IDENTIFICATION</div>
             <label>Enseigne / Raison sociale *
               <input id="nl-nom" required placeholder="ex : MICRO PLUS INFORMATIQUE — en majuscules"/></label>
+            <label>Adresse postale
+              <input id="nl-adresse" placeholder="ex : 12 rue du Général de Gaulle"/></label>
             <div style="display:flex;gap:10px">
               <label style="flex:2">Ville
                 <input id="nl-ville" placeholder="ex : Lyon"/></label>
@@ -693,6 +709,7 @@ window.VuePipeline = {
         <!-- Infos lead complètes -->
         <div class="q-recap" style="margin-bottom:12px">
           <div class="q-recap-ligne"><span>CDS assigné</span><strong>${this._nomCDS(l.PIN_CDS_Assigne)}</strong></div>
+          ${l.Adresse ? `<div class="q-recap-ligne"><span>Adresse</span><strong>${l.Adresse}</strong></div>` : ''}
           ${l.Ville || l.Code_Postal ? `<div class="q-recap-ligne"><span>Localisation</span><strong>${l.Ville || '—'} ${l.Code_Postal||''}</strong></div>` : ''}
           ${l.Tel ? `<div class="q-recap-ligne"><span>Téléphone</span><strong><a class="lien-tel" href="tel:${String(l.Tel).replace(/\s/g, '')}">${l.Tel}</a></strong></div>` : ''}
           ${l.Email ? `<div class="q-recap-ligne"><span>Email</span><strong>${l.Email}</strong></div>` : ''}
@@ -709,6 +726,28 @@ window.VuePipeline = {
         ${peutEditer ? `
         <div style="margin-bottom:12px;padding:12px;background:var(--c-bg);border-radius:var(--radius-sm);border:1px solid var(--c-border)">
           <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.04em;margin-bottom:8px">📝 MISE À JOUR SUIVI</div>
+
+          ${l._statut === 'COMPTE_CREE' && !l.Welcome_Pack_Date ? `
+          <button class="btn-primaire" style="width:100%;margin-bottom:10px;font-size:12px;background:var(--c-success)"
+                  onclick="VuePipeline.marquerWPEnvoye('${l.ID_Prospect}')">
+            📦 Marquer Welcome Pack envoyé
+          </button>` : l.Welcome_Pack_Date ? `
+          <div style="font-size:12px;color:var(--c-success);margin-bottom:8px;padding:6px 10px;background:var(--c-success-10,#e6f9f0);border-radius:var(--radius-sm)">
+            ✅ Welcome Pack envoyé le ${String(l.Welcome_Pack_Date).slice(0,10)}
+          </div>` : ''}
+
+          <label style="font-size:12px;color:var(--c-text-2);margin-bottom:8px;display:block">Adresse postale
+            <input class="q-input" id="lead-adresse" style="margin-top:3px"
+                   placeholder="ex : 12 rue de la Paix" value="${l.Adresse || ''}"/>
+          </label>
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <label style="flex:2;font-size:12px;color:var(--c-text-2)">Ville
+              <input class="q-input" id="lead-ville" style="margin-top:3px" value="${l.Ville || ''}"/>
+            </label>
+            <label style="flex:1;font-size:12px;color:var(--c-text-2)">CP
+              <input class="q-input" id="lead-cp" style="margin-top:3px" value="${l.Code_Postal || ''}"/>
+            </label>
+          </div>
 
           <div style="display:flex;gap:8px;margin-bottom:8px">
             <label style="flex:1;font-size:12px;color:var(--c-text-2)">Statut
@@ -798,6 +837,9 @@ window.VuePipeline = {
     const date      = document.getElementById('lead-date-action')?.value || '';
     const flag      = document.getElementById('lead-flag')?.value || '';
     const nouveauStatut = document.getElementById('lead-statut-select')?.value || '';
+    const adresse   = (document.getElementById('lead-adresse')?.value || '').trim();
+    const ville     = (document.getElementById('lead-ville')?.value || '').trim();
+    const cp        = (document.getElementById('lead-cp')?.value || '').trim();
     const lead = this.state.leads.find(l => String(l.ID_Prospect) === String(id));
     if (!lead) return;
 
@@ -810,6 +852,9 @@ window.VuePipeline = {
       Note_initiale: noteFinale,
       Date_prochaine_action: date,
       FLAG_ACTION: flag,
+      ...(adresse !== (lead.Adresse || '') ? { Adresse: adresse } : {}),
+      ...(ville   !== (lead.Ville || '')   ? { Ville: ville }     : {}),
+      ...(cp      !== (lead.Code_Postal || '') ? { Code_Postal: cp } : {}),
     };
 
     const doCreerCompte = nouveauStatut && nouveauStatut !== lead._statut &&
@@ -818,7 +863,6 @@ window.VuePipeline = {
     if (nouveauStatut && nouveauStatut !== lead._statut) {
       champs.STATUT_EMPOWER = nouveauStatut;
       if (nouveauStatut === 'COMPTE_CREE') {
-        if (!lead.Welcome_Pack_Date) champs.Welcome_Pack_Date = dateISOLocale();
         if (!lead.Date_Creation_Compte) champs.Date_Creation_Compte = dateISOLocale();
       }
       if (nouveauStatut === 'INTEGRE') {
@@ -921,16 +965,43 @@ window.VuePipeline = {
   // ── Module 8 : Alerte sans activité >7 jours ──
   _alerteSansActivite(l) {
     if (['ARCHIVE', 'INTEGRE', 'SAISIE'].includes(l._statut)) return false;
-    const ref = l.Date_prochaine_action || l.Timestamp || l.Date_Import;
+    const maintenant = new Date();
+    // Date_prochaine_action dépassée = action en retard → référence prioritaire
+    const planif = l.Date_prochaine_action ? new Date(l.Date_prochaine_action) : null;
+    const planifPassee = planif && planif < maintenant;
+    // Date_Relance passée = dernière action connue (issu du Google Sheet "Date Prochaine action")
+    const relance = l.Date_Relance ? new Date(l.Date_Relance) : null;
+    const relancePassee = relance && relance < maintenant;
+    const ref = planifPassee
+      ? l.Date_prochaine_action
+      : (relancePassee ? l.Date_Relance : null) || l.Date_Attribution || l.Timestamp || l.Date_Import;
     if (!ref) return true;
     return (Date.now() - new Date(ref).getTime()) / 86400000 > 7;
   },
 
-  _inactif45(l) {
-    if (['ARCHIVE', 'INTEGRE'].includes(l._statut)) return false;
-    const ref = l.Date_Derniere_Action || l.date_derniere_action || l.Timestamp || l.Date_Import;
+  // ── Module 8b : Alerte sans contact >45 jours ──
+  _alerte45jSansContact(l) {
+    if (['ARCHIVE', 'INTEGRE', 'SAISIE'].includes(l._statut)) return false;
+    const maintenant = new Date();
+    // Date_Relance passée = dernière date d'action connue (prioritaire sur date d'import)
+    const relance = l.Date_Relance ? new Date(l.Date_Relance) : null;
+    const relancePassee = relance && relance < maintenant;
+    const ref = (relancePassee ? l.Date_Relance : null) || l.Date_Attribution || l.Timestamp || l.Date_Import;
     if (!ref) return false;
     return (Date.now() - new Date(ref).getTime()) / 86400000 > 45;
+  },
+
+  // ── Marquer le Welcome Pack comme envoyé manuellement ──
+  async marquerWPEnvoye(id) {
+    const lead = this.state.leads.find(l => String(l.ID_Prospect) === String(id));
+    if (!lead) return;
+    try {
+      const champs = { Welcome_Pack_Date: dateISOLocale(), Welcome_Pack_Envoye: 'OUI' };
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', id, champs);
+      Object.assign(lead, champs);
+      Toast.afficher('✅ Welcome Pack marqué envoyé', 'succes');
+      this.render();
+    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
   },
 
   // ── Module 9 : Export Excel ADMIN + CHANNEL_MANAGER ──

@@ -21,6 +21,9 @@
   }
 
   // 5. Si pas de session → aller login ; sinon démarrer le polling notifs
+  // Init sidebar collapse state (avant toute navigation)
+  if (window.SidebarToggle) SidebarToggle.init();
+
   if (!sessionOk) {
     Router.aller('#/login');
   } else {
