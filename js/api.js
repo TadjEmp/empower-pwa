@@ -162,6 +162,8 @@ const SheetsAPI = {
       empower_partenaire: 'Empower_Partenaire', empower_interesse: 'Empower_Interesse',
       decideur_rencontre: 'Decideur_Rencontre', decideur_nom: 'Decideur_Nom',
       decideur_fonction: 'Decideur_Fonction', concurrents_json: 'Concurrents_JSON',
+      // Prospect à froid : coordonnées saisies sur la visite (pas encore un compte)
+      departement: 'Departement', ville: 'Ville', tel: 'Tel', email: 'Email',
       deleted: 'deleted', deleted_at: 'deleted_at', deleted_by: 'deleted_by',
       id: '_uuid',
     },
@@ -258,8 +260,10 @@ const SheetsAPI = {
       'Heure': 'heure', 'Semaine_ISO': 'semaine_iso',
       'PIN_CDS': 'pin_cds', 'Nom_CDS': 'nom_cds', 'Nom_Compte': 'nom_compte',
       'Type_Visite': 'type_visite', 'Source_Visite': 'source_visite',
-      'Objectifs_Visite': 'objectif_visite', 'Resultat_Visite': 'resultat_visite',
+      'Objectif_Visite': 'objectif_visite', 'Objectifs_Visite': 'objectif_visite',
+      'Resultat_Visite': 'resultat_visite',
       'Statut_Visite': 'statut',   // valeur traduite par _toDBRow
+      'Departement': 'departement', 'Ville': 'ville', 'Tel': 'tel', 'Email': 'email',
       'Resume_IA': 'resum_ia', 'Slider_Receptivite': 'slider_receptivite',
       'Interlocuteur_Nom': 'interlocuteur_nom', 'Interlocuteur_Fonction': 'interlocuteur_fonction',
       'Photo_URL': 'photo_url', 'Note_Privee': 'note', 'GPS_Lat': 'gps_lat', 'GPS_Lng': 'gps_lng',

@@ -256,7 +256,7 @@ window.VueVisites = {
         Source_Import:  'VISITE_FROID_CONVERTI',
         ID_Visite_Origine: m.idVisite,
         Badge_Visite_Froid: 'TRUE',
-        Note_initiale:  m.note,
+        Note_Initiale:  m.note,
         Date_Import:    aujourd,
         Timestamp:      new Date().toISOString(),
       });
