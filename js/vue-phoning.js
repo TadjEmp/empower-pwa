@@ -13,14 +13,14 @@ window.VuePhoning = {
     return {
       phase: 'PRE',
       chargement: true, envoiEnCours: false,
-      comptes: [], prospects: [],
+      comptes: [], tousComptes: [], prospects: [],
       typeSource: 'EXISTANT', cible: null,
-      mode: 'PLANNING',        // PLANNING | BASE | APPEL | HISTORIQUE
+      mode: 'BASE',            // BASE | PLANNING | APPEL | HISTORIQUE
       filtreListe: 'TOUS',
       recherche: '', rechercheBase: '', script: '', scriptEnCours: false,
       enregistre: false, transcription: '', qualif: null,
       froidsMode: false,
-      froidsFields: { nom: '', dept: '', ville: '', tel: '', email: '' },
+      froidsFields: { nom: '', dept: '', ville: '', tel: '', email: '', adresse: '' },
       brouillonSauvegarde: false,
       d: {
         objectif: '', accroche: '',
@@ -31,6 +31,9 @@ window.VuePhoning = {
         commandeAnnoncee: '', montantEstime: '', statutFinal: '',
         // F1 — Appel à froid questionnaire
         typeAppel: '', interetScore: 0, concurrentActuel: '', potentielEstime: '',
+        // Qualification pendant appel (PhoneOS)
+        statutCallPills: '',
+        empowerQ: [false, false, false, false, false],
       },
       geminiAnalyse: null, geminiEnCours: false,
       // BUG-09 — planning phoning
@@ -66,6 +69,7 @@ window.VuePhoning = {
         // Pas de statut renseigné → on garde (compte historique par défaut).
         return st === '' || STATUTS_PHONING.includes(st);
       };
+      this.state.tousComptes = comptes; // tous comptes pour recherche planning (y compris ESI)
       this.state.comptes = comptes.filter(c =>
         (Session.voitTout() || Number(c.PIN_CDS_Assigne) === Session.pin) &&
         estHistorique(c)
@@ -160,7 +164,7 @@ window.VuePhoning = {
         this.state.d.objectif = b.objectif || '';
         this.state.d.accroche = b.accroche || '';
         this.state.recherche  = b.recherche || '';
-        this.state.froidsFields = b.froidsFields || { nom: '', dept: '', ville: '', tel: '', email: '' };
+        this.state.froidsFields = b.froidsFields || { nom: '', dept: '', ville: '', tel: '', email: '', adresse: '' };
         this.state.froidsMode   = !!b.froidsMode;
         this.state.brouillonSauvegarde = true;
       }
@@ -186,7 +190,7 @@ window.VuePhoning = {
     this.state.phase      = 'PRE';
     this.state.recherche  = '';
     this.state.geminiAnalyse = null;
-    Object.assign(this.state.d, { objectif:'', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'', typeAppel:'', interetScore:0, concurrentActuel:'', potentielEstime:'' });
+    Object.assign(this.state.d, { objectif:'', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'', typeAppel:'', interetScore:0, concurrentActuel:'', potentielEstime:'', statutCallPills:'', empowerQ:[false,false,false,false,false] });
     this.render();
   },
 
@@ -196,10 +200,10 @@ window.VuePhoning = {
     this.state.cible      = c;
     this.state.typeSource = 'EXISTANT';
     this.state.mode       = 'APPEL';
-    this.state.phase      = 'PRE';
+    this.state.phase      = 'CALL';   // accès direct depuis Base — pas de friction PRE
     this.state.recherche  = c.Nom_Compte;
     this.state.geminiAnalyse = null;
-    Object.assign(this.state.d, { objectif:'', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'', typeAppel:'', interetScore:0, concurrentActuel:'', potentielEstime:'' });
+    Object.assign(this.state.d, { objectif:'Prospection Empower', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'', typeAppel:'', interetScore:0, concurrentActuel:'', potentielEstime:'', statutCallPills:'', empowerQ:[false,false,false,false,false] });
     this.render();
   },
   setFiltreListe(f) { this.state.filtreListe = f; this.render(); },
@@ -295,18 +299,19 @@ window.VuePhoning = {
 
   demarrerAppel() {
     const s = this.state;
-    if (!String(s.d.objectif || '').trim()) {
-      Toast.afficher("Indiquez l'objectif de l'appel avant de continuer", 'warning'); return;
-    }
+    // objectif non bloquant — défaut silencieux si vide
+    if (!String(s.d.objectif || '').trim()) s.d.objectif = 'Prospection Empower';
     if (s.froidsMode) {
       if (!s.froidsFields.nom.trim()) { Toast.afficher('Nom de l\'enseigne requis', 'warning'); return; }
-      if (!s.froidsFields.tel.trim()) { Toast.afficher('Téléphone requis', 'warning'); return; }
+      // tel facultatif — warning uniquement
+      if (!s.froidsFields.tel.trim()) Toast.afficher('Téléphone non renseigné', 'warning');
       // Créer une cible virtuelle pour le flux CALL/POST
       s.cible = {
         ID_Compte: 'FROID_' + Date.now(),
         Nom_Compte: s.froidsFields.nom.trim(),
         Tel: s.froidsFields.tel.trim(),
         Email: s.froidsFields.email.trim(),
+        Adresse: s.froidsFields.adresse.trim(),
         Ville: s.froidsFields.ville.trim(),
         Departement: s.froidsFields.dept.trim(),
         STATUT_COMPTE: 'FROID',
@@ -360,6 +365,8 @@ window.VuePhoning = {
           }
           Toast.afficher(`✅ Qualifié : ${q.typeappel || '—'} · score ${q.score ?? '—'}/5`, 'succes', 4000);
         } catch(e) { Toast.afficher('❌ IA : ' + e.message, 'erreur'); }
+        const _d = this.state.d;
+        if (_d.statutCallPills && !_d.statutAppel) _d.statutAppel = _d.statutCallPills;
         this.state.phase = 'POST';
         this.render();
       });
@@ -370,7 +377,13 @@ window.VuePhoning = {
     }
   },
 
-  passerAuPost() { this.state.phase = 'POST'; this.render(); },
+  passerAuPost() {
+    const d = this.state.d;
+    // Pré-remplir statutAppel depuis les pills si déjà cliqué pendant l'appel
+    if (d.statutCallPills && !d.statutAppel) d.statutAppel = d.statutCallPills;
+    this.state.phase = 'POST';
+    this.render();
+  },
 
   // ── Enregistrement final + archivage prospect ──
   async valider() {
@@ -393,20 +406,21 @@ window.VuePhoning = {
         Type_Appel: d.typeAppel || '',
         Statut_Appel: d.statutAppel,
         Interet_EMPOWER: d.interetEmpower,
-        Interet_Score: d.typeAppel === 'Appel_Froid' ? (d.interetScore || '') : '',
-        Questionnaire_JSON: d.typeAppel === 'Appel_Froid'
-          ? JSON.stringify({
-              interet_score:    d.interetScore || 0,
-              concurrent_actuel: d.concurrentActuel || '',
-              potentiel_estime:  d.potentielEstime || '',
-              gemini_analyse:    s.geminiAnalyse || '',
-            })
-          : '',
+        Interet_Score: d.typeAppel === 'Appel_Froid' ? (d.interetScore || null) : null,
+        Questionnaire_JSON: JSON.stringify({
+          interet_score:     d.interetScore || 0,
+          concurrent_actuel: d.concurrentActuel || '',
+          potentiel_estime:  d.potentielEstime || '',
+          gemini_analyse:    s.geminiAnalyse || '',
+          empower_score:     (d.empowerQ || []).reduce((acc, v, i) => acc + (v ? [1,2,1,2,3][i] : 0), 0),
+          empower_q:         d.empowerQ || [],
+          statut_call:       d.statutCallPills || '',
+        }),
         Frein_Principal: d.frein,
         Prochaine_Action: d.prochaineAction,
         Date_Rappel: d.dateRappel,
         Commande_Annoncee: estProspect ? '' : (d.commandeAnnoncee || ''),
-        Montant_Estime: estProspect ? '' : ((typeof parseCA !== "undefined" ? parseCA(d.montantEstime) : null) ?? ''),
+        Montant_Estime: estProspect ? null : ((typeof parseCA !== "undefined" ? parseCA(d.montantEstime) : null) ?? null),
         Statut_Final: estProspect ? (d.resultatProspect || '') : (d.statutFinal || ''),
         Note: [d.note, s.qualif ? `[IA ${s.qualif.typeappel} · ${s.qualif.score}/5]` : ''].filter(Boolean).join('\n'),
         Timestamp: new Date().toISOString(),
@@ -459,12 +473,13 @@ window.VuePhoning = {
         // Sync état local
         const local = s.prospects.find(p => p.ID_Prospect === idCible);
         if (local) Object.assign(local, maj);
-      } else {
+      } else if (!c._isFroid) {
+        // Appel sur compte existant — mise à jour de la fiche compte
         const majCompte = {
           Date_Derniere_Action: dateISOLocale(),
           Type_Derniere_Action: 'Appel',
-          Prochaine_action: d.prochaineAction,
-          Date_prochaine_action: d.dateRappel,
+          Prochaine_Action: d.prochaineAction,
+          Date_Prochaine_Action: d.dateRappel || null,
         };
         // BLOC 3 — statut final aligné sur le vocabulaire réel (EN_COURS/INTEGRE/ARCHIVE)
         if (['EN_COURS', 'INTEGRE', 'ARCHIVE'].includes(d.statutFinal)) {
@@ -979,6 +994,9 @@ window.VuePhoning = {
         <label class="q-label">Email <span style="font-size:11px;font-weight:400">(optionnel)</span>
           <input class="q-input" type="email" placeholder="contact@enseigne.fr" value="${s.froidsFields.email}"
                  oninput="VuePhoning.state.froidsFields.email=this.value;VuePhoning._sauvegarderBrouillon()"/></label>
+        <label class="q-label">Adresse <span style="font-size:11px;font-weight:400">(optionnel)</span>
+          <input class="q-input" placeholder="12 rue de la Paix, 75001 Paris" value="${s.froidsFields.adresse}"
+                 oninput="VuePhoning.state.froidsFields.adresse=this.value;VuePhoning._sauvegarderBrouillon()"/></label>
         <div style="font-size:11px;color:var(--c-text-2);margin:-4px 0 10px;padding:6px;background:var(--c-bg);border-radius:var(--radius-sm)">
           ❄️ Appel à froid : non enregistré dans la base prospects. Enregistré uniquement dans le journal phoning.
         </div>
@@ -1019,18 +1037,14 @@ window.VuePhoning = {
         '<p style="font-size:13px;line-height:1.6;white-space:pre-wrap">' + s.script + '</p></div>' : ''}
       ` : ''}
 
-      ${s.froidsMode
-        ? (!s.froidsFields.nom.trim() || !s.froidsFields.tel.trim() || !String(d.objectif||'').trim()
-            ? `<div style="font-size:11px;color:var(--c-text-2);text-align:center;margin-top:4px">Renseignez le nom, téléphone et objectif pour continuer.</div>`
-            : '')
-        : (!s.cible || !String(d.objectif || '').trim()
-            ? `<div style="font-size:11px;color:var(--c-text-2);text-align:center;margin-top:4px">Sélectionnez un compte et saisissez un objectif pour activer l'appel.</div>`
+      ${s.froidsMode && !s.froidsFields.nom.trim()
+        ? `<div style="font-size:11px;color:var(--c-text-2);text-align:center;margin-top:4px">Renseignez le nom de l'enseigne pour continuer.</div>`
+        : (!s.froidsMode && !s.cible
+            ? `<div style="font-size:11px;color:var(--c-text-2);text-align:center;margin-top:4px">Sélectionnez un compte pour activer l'appel.</div>`
             : '')
       }
       <button type="button" class="btn-primaire" onclick="VuePhoning.demarrerAppel()"
-              ${(s.froidsMode
-                  ? (!s.froidsFields.nom.trim() || !s.froidsFields.tel.trim() || !String(d.objectif||'').trim())
-                  : (!s.cible || !String(d.objectif || '').trim()))
+              ${(s.froidsMode ? !s.froidsFields.nom.trim() : !s.cible)
                 ? 'disabled style="opacity:.5;cursor:not-allowed"' : ''}>Démarrer l'appel →</button>
     </div>`;
   },
@@ -1106,19 +1120,168 @@ window.VuePhoning = {
   },
 
   _phaseCALL() {
-    const s = this.state;
-    return `<div class="q-champs" style="align-items:center;text-align:center;padding-top:24px">
-      <div style="font-size:48px;line-height:1">${s.enregistre ? '<span style="display:inline-block;width:20px;height:20px;background:var(--c-danger);border-radius:50%"></span>' : '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>'}</div>
-      <p class="q-intro">${s.enregistre
-        ? 'Enregistrement en cours… (30s max — résumez l\'échange à voix haute)'
-        : 'Pendant ou juste après l\'appel, enregistrez un résumé vocal de 30s.\nL\'IA transcrira et qualifiera automatiquement.'}</p>
-      ${s.cible?.Tel ? `<a class="btn-secondaire" style="text-decoration:none;text-align:center"
-        href="tel:${String(s.cible.Tel).replace(/\s/g, '')}">Appeler ${s.cible.Tel}</a>` : ''}
-      <button type="button" class="btn-primaire" style="${s.enregistre ? 'background:var(--c-danger)' : ''}"
-              onclick="VuePhoning.toggleEnregistrement()">
-        ${s.enregistre ? '⏹ Arrêter l\'enregistrement' : '⏺ Enregistrer le résumé (30s)'}
+    const s = this.state, d = s.d, c = s.cible;
+
+    const PILLS = [
+      { lbl: 'Intéressé',      col: 'var(--c-success)' },
+      { lbl: 'Vente conclue',  col: 'var(--c-primary)' },
+      { lbl: 'À rappeler',     col: 'var(--c-warning)'  },
+      { lbl: 'NRP',            col: 'var(--c-text-2)'   },
+      { lbl: 'Pas intéressé',  col: 'var(--c-danger)'   },
+    ];
+
+    const EQ = [
+      { label: 'Connaît le portail Empower Norton ?',        pts: 1 },
+      { label: 'Intéressé par 25% récurrents sur 3 ans ?',   pts: 2 },
+      { label: 'A accès internet pour commander en ligne ?', pts: 1 },
+      { label: 'Accord pour créer le compte Empower ?',      pts: 2 },
+      { label: 'Commande test Empower planifiée ?',          pts: 3 },
+    ];
+    const eqArr = d.empowerQ || [false,false,false,false,false];
+    const eqScore = EQ.reduce((acc, q, i) => acc + (eqArr[i] ? q.pts : 0), 0);
+    const eqPct   = Math.round((eqScore / 9) * 100);
+    const maturite = eqScore <= 2 ? { lbl: 'FROID',    col: 'var(--c-text-2)', bg: 'rgba(154,171,184,.12)' }
+                   : eqScore <= 5 ? { lbl: 'CHAUD',    col: '#f59e0b',          bg: 'rgba(245,158,11,.10)'  }
+                   :                { lbl: 'BRÛLANT 🔥', col: 'var(--c-danger)',  bg: 'rgba(186,26,26,.08)'   };
+
+    const OBJECTIONS = [
+      { cat: '🎯 Image & Positionnement', col: 'var(--c-danger)', items: [
+        { q: 'Norton c\'est grand public — pas pour les professionnels', r: 'Norton protège 500 millions d\'appareils dont de très nombreuses TPE/PME. La suite 360 couvre VPN, dark web monitoring et gestionnaire de mots de passe. C\'est une marque que vos clients reconnaissent déjà — ce qui réduit votre temps de vente.' },
+        { q: 'On propose déjà Kaspersky / ESET / Bitdefender', r: 'Empower ne vous demande pas d\'abandonner votre gamme — c\'est une ligne de revenus complémentaire. La différence clé : 25% de revshare sur 3 ans de renouvellements automatiques, sans action de votre part.' },
+        { q: 'Nos clients sont trop petits pour ce type de produit', r: 'C\'est exactement le cœur de cible Empower — les TPE avec 1 à 10 postes, souvent non équipés. Norton 360 démarre à moins de 30€/an par poste, s\'installe en 5 minutes, et le client renouvelle en ligne tout seul.' },
+      ]},
+      { cat: '💰 Concurrence & Prix', col: '#b45309', items: [
+        { q: 'D\'autres concurrents sont moins chers à l\'achat', r: 'Le prix d\'achat n\'est que la première ligne. Sur 50 clients à 40€/an, vous touchez 1 500€/an de revenus passifs sans stock ni relance — aucun concurrent low-cost ne propose ça.' },
+        { q: 'D\'autres concurrents proposent aussi du revshare', r: 'Le revshare Empower est 100% automatique — Norton traque les renouvellements et vous crédite directement sur le portail, même sur les upgrades. Pas de déclaration manuelle, pas de paperasse, pas de condition cachée.' },
+      ]},
+      { cat: '🔧 Expérience & Technique', col: '#3b82f6', items: [
+        { q: 'Norton ralentit les PC — mes clients se plaignent', r: 'C\'est une réputation des années 2010 — depuis le rachat par Gen Digital, le moteur a été entièrement refondu. AV-Test le place parmi les moins gourmands du marché. Si un client a un problème, les revendeurs Empower ont un support technique prioritaire.' },
+        { q: 'On installe du gratuit — Windows Defender, Avast…', r: 'Windows Defender ne couvre ni VPN, ni dark web, ni gestionnaire de mots de passe. Avec Norton Empower vous touchez 25% récurrents et intervenez moins souvent en urgence sur des incidents d\'infection.' },
+        { q: 'Nos clients utilisent déjà Microsoft 365 Defender', r: 'Microsoft Defender couvre uniquement les appareils Windows gérés en entreprise — pas les postes persos, pas les Macs, pas les mobiles. Norton couvre tous les appareils avec un seul abonnement. C\'est complémentaire, et vous êtes payé sur ce complément.' },
+      ]},
+      { cat: '⚙️ Friction & Process', col: 'var(--c-primary)', items: [
+        { q: 'Obliger le client à créer un compte — trop contraignant', r: 'La création de compte prend moins de 2 minutes — email + mot de passe. Et c\'est ce compte qui déclenche votre revshare sur 3 ans : sans compte client, pas de commission récurrente.' },
+        { q: 'Pas le temps de se former à un nouveau programme', r: 'L\'inscription Empower prend moins de 2 minutes en ligne, le portail est en français. Je vous envoie le lien maintenant — vous avez votre premier accès dans l\'heure, sans engagement.' },
+        { q: 'On n\'a pas de technicien dédié pour déployer ça', r: 'Empower ne nécessite aucun déploiement centralisé — chaque client installe lui-même en quelques clics avec un lien que vous lui envoyez par email. Pas de serveur, pas de mise à jour manuelle.' },
+        { q: 'Besoin de valider avec notre DSI / responsable IT', r: 'Je vous envoie une fiche technique et un argumentaire DSI prêts à l\'emploi. Donnez-moi votre email et je vous l\'envoie dans l\'heure. On planifie un point de suivi dans 15 jours.' },
+      ]},
+      { cat: '📊 Marché & Demande', col: 'var(--c-success)', items: [
+        { q: 'On n\'a pas de demande client pour ce type de produit', r: 'La demande n\'existe pas parce qu\'elle n\'est pas encore activée — aucun client ne demande spontanément un antivirus. Norton fournit des outils marketing prêts à l\'emploi pour créer cette demande.' },
+        { q: 'Clients dans des secteurs réglementés (santé, juridique)', r: 'Norton 360 intègre nativement le chiffrement des fichiers sensibles, le VPN et la surveillance des fuites — des fonctions utiles en environnement médical ou juridique. La conformité RGPD est documentée et certifiable.' },
+      ]},
+      { cat: '🕐 Confiance & Timing', col: '#6b7e8c', items: [
+        { q: 'Norton a été racheté — je ne sais pas si la marque tient', r: 'Gen Digital est l\'une des plus grandes entreprises de cybersécurité au monde avec 500M de clients actifs — Norton, Avast, AVG et LifeLock sont tous sous le même toit. Le portail Empower est maintenu et mis à jour activement.' },
+        { q: 'On est en pleine restructuration — mauvais timing', r: 'C\'est justement en période de restructuration qu\'une ligne de revenus passifs est la plus précieuse — elle rentre sans générer de charge supplémentaire. L\'inscription prend 2 minutes et ne vous engage à rien.' },
+        { q: 'Mes clients associent Norton à des popups intrusives', r: 'Cette image date des versions packagées avec les PC dans les années 2000. Le Norton actuel n\'a plus aucun modèle publicitaire intrusif. Une démonstration de 5 minutes suffit à changer la perception.' },
+        { q: 'On vend uniquement du physique en boutique', r: 'Le flux Empower est 100% compatible avec le modèle boutique — vous remettez un code d\'activation en caisse, le client crée son compte depuis chez lui, et votre commission tombe automatiquement.' },
+        { q: 'Je préfère des marques locales ou européennes', r: 'Norton respecte le RGPD et ses serveurs européens traitent les données des clients EU. Et aucune marque européenne ne propose un programme revshare à 25% sur 3 ans avec tracking automatique.' },
+        { q: 'Nos clients renouvellent pas — ils réinstallent à chaque fois', r: 'C\'est précisément ce que le compte client Empower règle — le renouvellement est automatique via la CB enregistrée, sans intervention de votre part. Vous touchez la commission pendant 3 ans.' },
+      ]},
+    ];
+
+    return `<div class="q-champs">
+
+      <!-- Fiche contact pendant l'appel -->
+      <div style="background:var(--c-surface);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">
+        <div style="font-weight:700;font-size:16px;color:var(--c-title);margin-bottom:8px">${c?.Nom_Compte || '—'}</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          ${c?.Tel ? `<a class="lien-tel" href="tel:${String(c.Tel).replace(/\s/g,'')}">📞 ${c.Tel}</a>` : '<span style="font-size:12px;color:var(--c-text-2)">Pas de téléphone enregistré</span>'}
+          ${c?.Email ? `<span style="font-size:12px;color:var(--c-text-2)">✉ ${c.Email}</span>` : ''}
+          ${(c?.Adresse || c?.Ville) ? `<span style="font-size:12px;color:var(--c-text-2)">📍 ${[c.Adresse, c.Ville].filter(Boolean).join(' · ')}</span>` : ''}
+          ${(c?.CANAL || c?.CA_FY26) ? `<span style="font-size:11px;color:var(--c-text-2)">${[c?.CANAL, c?.CA_FY26 ? 'CA FY26 : ' + fmtCA(c.CA_FY26) + ' €' : ''].filter(Boolean).join(' · ')}</span>` : ''}
+        </div>
+      </div>
+
+      <!-- Pills résultat -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:7px">Résultat de l'appel</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${PILLS.map(p => `
+            <button type="button"
+              onclick="VuePhoning.state.d.statutCallPills='${p.lbl}';VuePhoning.state.d.statutAppel='${p.lbl}';VuePhoning.render()"
+              style="font-size:12px;font-weight:700;padding:6px 12px;border-radius:99px;cursor:pointer;transition:all .15s;
+                     border:1.5px solid ${p.col};
+                     background:${d.statutCallPills === p.lbl ? p.col : 'transparent'};
+                     color:${d.statutCallPills === p.lbl ? '#fff' : p.col}">
+              ${p.lbl}
+            </button>`).join('')}
+        </div>
+      </div>
+
+      <!-- Questionnaire Empower /9 -->
+      <div style="background:var(--c-surface);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;text-transform:uppercase">Qualification Empower</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:14px;font-weight:800;color:var(--c-title)">${eqScore} / 9</span>
+            <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:${maturite.bg};color:${maturite.col};border:1px solid ${maturite.col}20">● ${maturite.lbl}</span>
+          </div>
+        </div>
+        <div style="height:4px;background:var(--c-border);border-radius:2px;margin-bottom:12px;overflow:hidden">
+          <div style="height:4px;width:${eqPct}%;background:${maturite.col};border-radius:2px;transition:width .3s"></div>
+        </div>
+        ${EQ.map((q, i) => `
+          <label style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:var(--radius-sm);cursor:pointer;margin-bottom:6px;transition:all .15s;
+                         border:1.5px solid ${eqArr[i] ? 'rgba(45,158,107,.4)' : 'var(--c-border)'};
+                         background:${eqArr[i] ? 'rgba(45,158,107,.06)' : 'var(--c-bg)'}">
+            <input type="checkbox" ${eqArr[i] ? 'checked' : ''}
+                   onchange="VuePhoning.state.d.empowerQ[${i}]=this.checked;VuePhoning.render()"
+                   style="width:16px;height:16px;margin-top:2px;accent-color:var(--c-success);flex-shrink:0;cursor:pointer"/>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:600;color:${eqArr[i] ? 'var(--c-success)' : 'var(--c-title)'}">${q.label}</div>
+              <div style="font-size:10px;color:var(--c-text-2);font-weight:500;margin-top:2px">${q.pts} pt${q.pts > 1 ? 's' : ''}${q.pts === 3 ? ' ⭐' : ''}</div>
+            </div>
+          </label>`).join('')}
+      </div>
+
+      <!-- Notes pendant l'appel -->
+      <label class="q-label">Notes d'appel
+        <textarea class="q-textarea" rows="3" placeholder="Objections rencontrées, nom interlocuteur, points clés…"
+                  oninput="VuePhoning.set('note', this.value)">${d.note}</textarea>
+      </label>
+
+      <!-- Bloc 20 objections -->
+      <details style="border:1.5px solid var(--c-border);border-radius:var(--radius-sm);margin-bottom:14px;overflow:hidden">
+        <summary style="padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;color:var(--c-title);
+                        display:flex;align-items:center;gap:8px;list-style:none;background:var(--c-surface)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          20 objections — scripts de réponse
+        </summary>
+        <div style="padding:8px 12px 12px">
+          ${OBJECTIONS.map(cat => `
+            <div style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;display:inline-block;margin:10px 0 7px;letter-spacing:.04em;background:${cat.col}15;color:${cat.col}">${cat.cat}</div>
+            ${cat.items.map(obj => `
+              <details style="border:1px solid var(--c-border);border-radius:6px;margin-bottom:5px;overflow:hidden">
+                <summary style="padding:8px 11px;font-size:12px;font-weight:600;cursor:pointer;background:var(--c-bg);
+                                color:var(--c-title);list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px">
+                  <span style="flex:1">&ldquo;${obj.q}&rdquo;</span>
+                  <span style="color:var(--c-text-2);font-size:10px;flex-shrink:0">→ script</span>
+                </summary>
+                <div style="padding:10px 12px;background:var(--c-surface);border-left:3px solid var(--c-primary)">
+                  <p style="font-size:12px;line-height:1.65;color:var(--c-text);margin:0 0 8px">${obj.r}</p>
+                  <button type="button"
+                          onclick="(function(btn,txt){navigator.clipboard.writeText(txt).then(()=>{btn.textContent='✓ Copié';btn.style.color='var(--c-success)';setTimeout(()=>{btn.textContent='Copier';btn.style.color=''},1500)})})(this,'${obj.r.replace(/'/g, '’').replace(/"/g, '“')}')"
+                          style="font-size:11px;color:var(--c-text-2);background:none;border:none;cursor:pointer;padding:0">Copier</button>
+                </div>
+              </details>`).join('')}
+          `).join('')}
+        </div>
+      </details>
+
+      <!-- Enregistrement vocal IA -->
+      <div style="border-top:1px solid var(--c-border);padding-top:12px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px">
+        <button type="button" class="${s.enregistre ? 'btn-primaire' : 'btn-secondaire'}"
+                style="${s.enregistre ? 'background:var(--c-danger);border-color:var(--c-danger)' : ''}"
+                onclick="VuePhoning.toggleEnregistrement()">
+          ${s.enregistre ? '⏹ Arrêter l\'enregistrement (IA)' : '⏺ Enregistrer résumé vocal (IA — 30s)'}
+        </button>
+        ${s.enregistre ? '<p style="font-size:11px;color:var(--c-text-2);text-align:center;margin:0">Résumez l\'échange à voix haute — l\'IA transcrira et qualifiera automatiquement.</p>' : ''}
+      </div>
+
+      <button type="button" class="btn-primaire" onclick="VuePhoning.passerAuPost()">
+        Saisie post-appel →
       </button>
-      <button type="button" class="btn-secondaire" onclick="VuePhoning.passerAuPost()">Passer la dictée → saisie manuelle</button>
+
     </div>`;
   },
 
@@ -1361,15 +1524,53 @@ window.VuePhoning = {
       <div class="modal" style="max-width:440px">
         <h3>Planifier un appel</h3>
 
+        <!-- Toggle mode -->
+        <div class="q-chips" style="margin-bottom:12px">
+          <button type="button" class="q-chip ${!f.modeFroid ? 'active' : ''}"
+                  onclick="VuePhoning.state.formPlanif.modeFroid=false;VuePhoning.render()">🏢 Compte existant</button>
+          <button type="button" class="q-chip ${f.modeFroid ? 'active' : ''}"
+                  onclick="VuePhoning.state.formPlanif.modeFroid=true;VuePhoning.render()">❄️ Appel à froid</button>
+        </div>
+
+        ${!f.modeFroid ? `
         <label class="q-label">Compte à appeler
           ${f.idCompte
-            ? `<div style="padding:10px;background:var(--c-bg);border-radius:var(--radius-sm);font-weight:700;border:1.5px solid var(--c-primary)">${f.nomCompte}</div>`
+            ? `<div style="padding:10px;background:var(--c-bg);border-radius:var(--radius-sm);font-weight:700;border:1.5px solid var(--c-primary)">${f.nomCompte}
+                 <button type="button" onclick="VuePhoning.state.formPlanif.idCompte=null;VuePhoning.state.formPlanif.nomCompte='';VuePhoning.render()"
+                         style="float:right;background:none;border:none;cursor:pointer;color:var(--c-text-2)">✕</button>
+               </div>`
             : `<input class="q-input" placeholder="🔍 Rechercher un compte…" id="planif-recherche"
                      value="${f.rechercheCompte || ''}"
                      oninput="VuePhoning._rechercherPlanif(this.value)" autocomplete="off"/>
                <div id="planif-suggestions"></div>`
           }
         </label>
+        ` : `
+        <label class="q-label">Nom de l'enseigne *
+          <input class="q-input" placeholder="ex : Informatique Plus" value="${f.froidNom || ''}"
+                 oninput="VuePhoning.state.formPlanif.froidNom=this.value"/>
+        </label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <label class="q-label">Département
+            <input class="q-input" placeholder="ex : 75" value="${f.froidDept || ''}"
+                   oninput="VuePhoning.state.formPlanif.froidDept=this.value"/>
+          </label>
+          <label class="q-label">Ville
+            <input class="q-input" placeholder="ex : Paris" value="${f.froidVille || ''}"
+                   oninput="VuePhoning.state.formPlanif.froidVille=this.value"/>
+          </label>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <label class="q-label">Téléphone
+            <input class="q-input" type="tel" placeholder="06…" value="${f.froidTel || ''}"
+                   oninput="VuePhoning.state.formPlanif.froidTel=this.value"/>
+          </label>
+          <label class="q-label">Email
+            <input class="q-input" type="email" placeholder="contact@…" value="${f.froidEmail || ''}"
+                   oninput="VuePhoning.state.formPlanif.froidEmail=this.value"/>
+          </label>
+        </div>
+        `}
 
         <label class="q-label">Date et heure prévues
           <input type="datetime-local" class="q-input"
@@ -1379,7 +1580,7 @@ window.VuePhoning = {
 
         <label class="q-label">Objectif de l'appel
           <div class="q-chips" style="flex-wrap:wrap">
-            ${['Relance CA','Info produit','Prise de commande','Autre'].map(o => `
+            ${['Relance CA','Info produit','Prise de commande','Prospection','Autre'].map(o => `
               <button type="button" class="q-chip ${f.objectif === o ? 'active' : ''}"
                       onclick="VuePhoning.state.formPlanif.objectif='${o}';VuePhoning.render()">${o}</button>`).join('')}
           </div>
@@ -1407,7 +1608,8 @@ window.VuePhoning = {
     if (!zone) return;
     if (!v || v.length < 2) { zone.innerHTML = ''; return; }
     const q = normaliserNom(v);
-    const matches = this.state.comptes.filter(c => normaliserNom(c.Nom_Compte).includes(q)).slice(0, 6);
+    const baseRecherche = this.state.tousComptes || this.state.comptes;
+    const matches = baseRecherche.filter(c => normaliserNom(c.Nom_Compte).includes(q)).slice(0, 6);
     zone.innerHTML = matches.map(c => `
       <div class="q-arbre-btn" style="margin-top:4px" onclick="VuePhoning._choisirComptePlanif('${c.ID_Compte}','${c.Nom_Compte.replace(/'/g, "\\'")}')">
         <strong>${c.Nom_Compte}</strong>
@@ -1423,7 +1625,8 @@ window.VuePhoning = {
   },
 
   ouvrirFormPlanif(idCompte = null) {
-    const c = idCompte ? this.state.comptes.find(x => String(x.ID_Compte) === String(idCompte)) : null;
+    const allC = this.state.tousComptes || this.state.comptes;
+    const c = idCompte ? allC.find(x => String(x.ID_Compte) === String(idCompte)) : null;
     this.state.formPlanif = {
       idCompte: c ? c.ID_Compte : null,
       nomCompte: c ? c.Nom_Compte : '',
@@ -1431,6 +1634,8 @@ window.VuePhoning = {
       datePlanifiee: '',
       objectif: '',
       note: '',
+      modeFroid: false,
+      froidNom: '', froidDept: '', froidVille: '', froidTel: '', froidEmail: '',
     };
     this.render();
   },
@@ -1439,26 +1644,39 @@ window.VuePhoning = {
 
   async sauvegarderPlanif() {
     const f = this.state.formPlanif;
-    if (!f || !f.idCompte) { Toast.afficher('Sélectionnez un compte', 'warning'); return; }
-    if (!f.datePlanifiee)  { Toast.afficher('Indiquez la date prévue', 'warning'); return; }
+    if (!f) return;
+    if (!f.datePlanifiee) { Toast.afficher('Indiquez la date prévue', 'warning'); return; }
+    if (f.modeFroid) {
+      if (!f.froidNom.trim()) { Toast.afficher('Indiquez le nom de l\'enseigne', 'warning'); return; }
+    } else {
+      if (!f.idCompte) { Toast.afficher('Sélectionnez un compte', 'warning'); return; }
+    }
     this.state.envoiEnCours = true;
     this.render();
     try {
-      const c = this.state.comptes.find(x => String(x.ID_Compte) === String(f.idCompte));
+      const allC = this.state.tousComptes || this.state.comptes;
+      const c = f.modeFroid ? null : allC.find(x => String(x.ID_Compte) === String(f.idCompte));
       const record = {
         ID_Appel: genId('APPEL'),
         Date_Planifiee: f.datePlanifiee,
         Date: dateISOLocale(),
         Semaine_ISO: getISOWeek(),
         PIN_CDS: Session.pin, Nom_CDS: Session.nom,
-        ID_Cible: f.idCompte, Reseller: c ? c.Nom_Compte : f.nomCompte,
+        ID_Cible: f.modeFroid ? '' : f.idCompte,
+        Reseller: f.modeFroid ? f.froidNom : (c ? c.Nom_Compte : f.nomCompte),
         Statut_Appel: 'planifié',
         Objectif_Appel: f.objectif,
         Note_Preparation: f.note,
         Timestamp: new Date().toISOString(),
+        ...(f.modeFroid ? {
+          Nom_Enseigne: f.froidNom,
+          Departement: f.froidDept,
+          Ville: f.froidVille,
+          Telephone: f.froidTel,
+          Email_Contact: f.froidEmail,
+        } : {}),
       };
       await SheetsAPI.ecrire('EMPOWER_MDB', '📞_PHONING', record);
-      // Ajoute au state local pour affichage immédiat sans rechargement
       this.state.planning.push(record);
       this.state.planning.sort((a, b) => (a.Date_Planifiee || '').localeCompare(b.Date_Planifiee || ''));
       this.state.formPlanif = null;
@@ -1471,7 +1689,30 @@ window.VuePhoning = {
   lancerAppelPlanifie(id) {
     const plan = this.state.planning.find(a => a.ID_Appel === id);
     if (!plan) { Toast.afficher('Appel introuvable', 'warning'); return; }
-    const c = this.state.comptes.find(x => String(x.ID_Compte) === String(plan.ID_Cible));
+    // Appel à froid planifié (pas de compte en base)
+    if (!plan.ID_Cible && (plan.Nom_Enseigne || plan.Reseller)) {
+      const cibleFroide = {
+        _isFroid: true,
+        ID_Compte: null,
+        Nom_Compte: plan.Nom_Enseigne || plan.Reseller,
+        Ville: plan.Ville || '',
+        Tel: plan.Telephone || '',
+        Email: plan.Email_Contact || '',
+        Departement: plan.Departement || '',
+      };
+      this.state.cible          = cibleFroide;
+      this.state.typeSource     = 'FROID';
+      this.state.froidsMode     = true;
+      this.state.froidsFields   = { nom: cibleFroide.Nom_Compte, dept: cibleFroide.Departement, ville: cibleFroide.Ville, tel: cibleFroide.Tel, email: cibleFroide.Email, adresse: '' };
+      this.state.idPlanifEnCours = id;
+      this.state.mode           = 'APPEL';
+      this.state.phase          = 'PRE';
+      this.state.d.objectif     = plan.Objectif_Appel || '';
+      this.render();
+      return;
+    }
+    const allC = this.state.tousComptes || this.state.comptes;
+    const c = allC.find(x => String(x.ID_Compte) === String(plan.ID_Cible));
     if (!c) { Toast.afficher('Compte introuvable — vérifiez vos comptes attribués', 'warning'); return; }
     this.state.cible          = c;
     this.state.typeSource     = 'EXISTANT';
@@ -1526,7 +1767,10 @@ Fournis exactement :
 Ton : direct, professionnel, actionnable. Français. 150 mots max.`;
       s.geminiAnalyse = await GeminiAPI._appeler(prompt, ctx);
     } catch(e) {
-      Toast.afficher('❌ Gemini : ' + e.message, 'erreur');
+      const msg = String(e.message).includes('404')
+        ? 'Gemini indisponible (404) — vérifiez la clé Gemini dans Admin → Paramètres'
+        : '❌ Gemini : ' + e.message;
+      Toast.afficher(msg, 'erreur');
       s.geminiAnalyse = null;
     }
     s.geminiEnCours = false;

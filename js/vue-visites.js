@@ -85,6 +85,10 @@ window.VueVisites = {
       if (param && sousVue === 'cr') {
         this.state.visitePlanifiee = this.state.visites.find(v => v.ID_Visite === param) || null;
       }
+      const nbVisitesPlanif = this.state.visites.filter(v =>
+        ['planifiée', 'planifiee', 'en cours'].includes((v.Statut_Visite || 'planifiée').toLowerCase())
+      ).length;
+      if (window.updateNavBadge) updateNavBadge('visites', nbVisitesPlanif);
       this.state.chargement = false;
       this.render();
     } catch(e) {
@@ -190,7 +194,7 @@ window.VueVisites = {
       idCible: '', nomCible: '',
       horsBase: false, nomLibre: '',
       // Champs prospect à froid (M1 + M7)
-      deptLibre: '', villeLibre: '', telLibre: '', emailLibre: '',
+      adresseLibre: '', deptLibre: '', villeLibre: '', telLibre: '', emailLibre: '',
       commentairePrep: '',
       prochaineEtape: '',
       rechercheCompte: '',
@@ -256,7 +260,7 @@ window.VueVisites = {
         Source_Import:  'VISITE_FROID_CONVERTI',
         ID_Visite_Origine: m.idVisite,
         Badge_Visite_Froid: 'TRUE',
-        Note_initiale:  m.note,
+        Note_Initiale:  m.note,
         Date_Import:    aujourd,
         Timestamp:      new Date().toISOString(),
       });
@@ -450,6 +454,7 @@ window.VueVisites = {
         Objectif_Visite:        f.objectifVisite || '',
         Statut_Visite:          'planifiée',
         // Prospect à froid : infos de contact stockées sur la visite
+        Adresse:                f.horsBase ? (f.adresseLibre || '') : '',
         Departement:            f.horsBase ? (f.deptLibre || '') : '',
         Ville:                  f.horsBase ? (f.villeLibre || '') : '',
         Tel:                    f.horsBase ? (f.telLibre || '') : '',
@@ -631,9 +636,17 @@ window.VueVisites = {
   },
 
   // Export XLSX visites — réservé ADMIN + CHANNEL_MANAGER (Bloc 5)
-  exporterVisites() {
+  async exporterVisites() {
     if (!Session.voitTout()) {
       Toast.afficher('Export réservé aux profils Direction et Admin', 'warning'); return;
+    }
+    // Auto-fetch si appelé hors de la vue Visites (ex: depuis le dashboard manager)
+    if (!this.state.visites || !this.state.visites.length) {
+      Toast.afficher('Chargement des visites…', 'info', 2000);
+      const raw = await SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES');
+      this.state.visites = (raw || [])
+        .filter(v => String(v.deleted || '').toUpperCase() !== 'TRUE')
+        .filter(v => Session.voitTout() || Number(v.PIN_CDS) === Session.pin);
     }
     const f = this.state.extractFiltres;
     const data = this.state.visites.filter(v => this._matchExtraction(v));
@@ -966,6 +979,9 @@ window.VueVisites = {
                    ${this._lireProspectsFroid().map(n => `<option value="${n}">`).join('')}
                  </datalist>
                </label>
+               <label>Adresse <span style="font-weight:400;font-size:11px;color:var(--c-text-2)">(optionnel)</span>
+                 <input placeholder="ex : 12 rue du Commerce" value="${f.adresseLibre || ''}"
+                        oninput="VueVisites.state.formPlanif.adresseLibre=this.value"/></label>
                <div style="display:flex;gap:8px">
                  <label style="flex:1">Département
                    <input placeholder="ex : 75" maxlength="3" value="${f.deptLibre || ''}"
@@ -1290,29 +1306,31 @@ window.VueVisites = {
     if (!Session.voitTout()) { Toast.afficher('Accès réservé Direction/Admin', 'warning'); return; }
     Toast.afficher('Récupération du Tracker…', 'info');
     try {
-      const data = await SheetsAPI.lire('pipeline');
+      const data = await SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS');
       if (!data || !data.length) { Toast.afficher('Aucune donnée Tracker', 'warning'); return; }
       const f = this.state.extractFiltres;
       const rows = data
         .filter(p => {
           if (!f.debut && !f.fin) return true;
-          const d = (p.Date_Creation || p.date_creation || '').slice(0, 10);
+          const d = (p.Date_Creation_Compte || p.Date_Attribution || '').slice(0, 10);
           if (f.debut && d < f.debut) return false;
           if (f.fin   && d > f.fin)   return false;
           return true;
         })
         .map(p => ({
-          'Commercial':         resolveCDS(p.PIN_CDS || p.Nom_CDS) || '',
+          'Commercial':         resolveCDS(p.PIN_CDS_Assigne) || p.Nom_CDS || '',
           'Compte':             p.Nom_Compte || '',
-          'Statut':             p.Statut_Pipeline || p.statut_pipeline || '',
-          'Étape':              p.Etape || p.etape || '',
-          'CA potentiel':       p.CA_Potentiel || p.ca_potentiel || '',
-          'Probabilité':        p.Probabilite || p.probabilite || '',
-          'Canal':              p.Canal || p.canal || '',
-          'Date création':      (p.Date_Creation || p.date_creation || '').slice(0, 10),
-          'Date MAJ':           (p.Date_MAJ || p.date_maj || '').slice(0, 10),
-          'Prochaine action':   p.Prochaine_Action || p.prochaine_action || '',
-          'Note':               p.Note || p.note || '',
+          'Ville':              p.Ville || '',
+          'Statut':             p.STATUT_EMPOWER || '',
+          'Potentiel':          p.POTENTIEL || '',
+          'Canal':              p.CANAL || '',
+          'Secteur':            p.SECTEUR || '',
+          'Origine':            p.ORIGINE || '',
+          'Date attribution':   (p.Date_Attribution || '').slice(0, 10),
+          'Date création compte': (p.Date_Creation_Compte || '').slice(0, 10),
+          'Date relance':       (p.Date_Relance || '').slice(0, 10),
+          'Prochaine action':   (p.Date_prochaine_action || '').slice(0, 10),
+          'Note initiale':      p.Note_initiale || '',
         }));
       if (!rows.length) { Toast.afficher('Aucune donnée pour ces filtres', 'warning'); return; }
       if (typeof XLSX === 'undefined') { Toast.afficher('Bibliothèque XLSX non chargée', 'error'); return; }
@@ -1333,7 +1351,7 @@ window.VueVisites = {
     if (!Session.voitTout()) { Toast.afficher('Accès réservé Direction/Admin', 'warning'); return; }
     Toast.afficher('Récupération des comptes archivés…', 'info');
     try {
-      const data = await SheetsAPI.lire('comptes');
+      const data = await SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES');
       const archives = (data || []).filter(c =>
         (c.Statut || c.statut_compte || '').toLowerCase().startsWith('archiv')
       );

@@ -370,16 +370,22 @@ window.VueQuestionnaire = {
       : 'N/A';
 
     try {
+      // Générer l'ID_Visite AVANT l'upload pour que les noms de photos correspondent à la visite
+      const idVisite = this._visitePlanifiee?.ID_Visite || genId('VIS');
+
       let photoURLs = [];
+      let photosEchouees = 0;
       for (const [i, p] of s.photos.entries()) {
         try {
-          const r = await SheetsAPI.uploadPhoto(p, `${idCible}_${d.date}_${i+1}.jpg`);
+          const r = await SheetsAPI.uploadPhoto(p, `${idVisite}_${i+1}.jpg`);
           if (r?.url) photoURLs.push(r.url);
-        } catch { /* photo ignorée si upload KO */ }
+          else photosEchouees++;
+        } catch { photosEchouees++; }
       }
+      if (photosEchouees > 0) Toast.afficher(`⚠️ ${photosEchouees} photo(s) non uploadée(s) — vérifiez la connexion`, 'warning', 5000);
 
       const visite = {
-        ID_Visite:               genId('VIS'),
+        ID_Visite:               idVisite,
         Date:                    d.date,
         Heure:                   d.heure,
         Semaine_ISO:             getISOWeek(new Date(d.date)),
@@ -847,10 +853,16 @@ window.VueQuestionnaire = {
             <button class="btn-sup-photo" onclick="VueQuestionnaire.supprimerPhoto(${i})">✕</button>
           </div>`).join('')}
         ${s.photos.length < 4 ? `
-        <label class="btn-q-photo" style="margin-top:8px">📷 Ajouter une photo
-          <input type="file" accept="image/*" capture="environment" hidden
-                 onchange="VueQuestionnaire.ajouterPhoto(this)"/>
-        </label>` : ''}
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <label class="btn-q-photo" style="flex:1">📷 Caméra
+            <input type="file" accept="image/*" capture="environment" hidden
+                   onchange="VueQuestionnaire.ajouterPhoto(this)"/>
+          </label>
+          <label class="btn-q-photo" style="flex:1">🖼️ Bibliothèque
+            <input type="file" accept="image/*" hidden
+                   onchange="VueQuestionnaire.ajouterPhoto(this)"/>
+          </label>
+        </div>` : ''}
       </div>
     </div>`;
   },
