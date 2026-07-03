@@ -465,10 +465,27 @@ window.VueDashboardManager = {
     </svg>`;
   },
 
-  // ── BLOC 4 : rendu HOME ALEXANDRA (onboarding, lecture seule) ──
+  // ── Section 10 cahier des charges : Accueil (activité) vs Reporting (chiffres) ──
+  // Un seul jeu de données (dc), deux rendus distincts selon l'onglet emprunté —
+  // évite la duplication où Accueil et Reporting affichaient exactement le même écran.
+  _contexteReporting() { return window.location.hash.includes('/manager'); },
+
+  // Section thématique repliable, couleur distincte par thème (section 10 cahier des charges).
+  _sectionThematique(titre, couleur, corps, ouvert = true) {
+    return `
+      <details ${ouvert ? 'open' : ''} style="border:1.5px solid var(--c-border);border-left:4px solid ${couleur};
+                border-radius:var(--radius-sm);margin-bottom:14px;overflow:hidden">
+        <summary style="padding:12px 14px;font-size:13px;font-weight:700;cursor:pointer;color:var(--c-title);
+                        list-style:none;background:var(--c-surface)">${titre}</summary>
+        <div style="padding:4px 14px 14px">${corps}</div>
+      </details>`;
+  },
+
+  // ── BLOC 4 : rendu HOME/REPORTING ALEXANDRA (onboarding, lecture seule) ──
   renderChannel() {
     const app = document.getElementById('app');
     const dc  = this.state.dc;
+    const modeReporting = this._contexteReporting();
     const dateFr = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
     const badgeSource = src =>
@@ -477,140 +494,152 @@ window.VueDashboardManager = {
           ? 'background:#FFF1EC;color:#C2410C'
           : 'background:#E8F0FF;color:#0050FF'}">${src}</span>`;
 
-    app.innerHTML = `
+    const section = (titre, couleur, corps, ouvert = true) => this._sectionThematique(titre, couleur, corps, ouvert);
+
+    const header = `
       <header class="header-vue no-print" style="display:flex;align-items:center;justify-content:space-between">
-        <h1>Onboarding EMPOWER</h1>
+        <h1>${modeReporting ? 'Reporting' : 'Onboarding EMPOWER'}</h1>
         <div style="display:flex;gap:6px">
           <button class="btn-retour" title="Actualiser"
                   onclick="SheetsAPI.viderCache('EMPOWER_MDB','📋_PROSPECTS').then(()=>VueDashboardManager.initChannel())"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></button>
           <button class="btn-retour" title="Export XLSX" onclick="VueDashboardManager.ouvrirExportDir()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
           <button class="btn-deco" onclick="Session.deconnecter();Router.aller('#/login')" title="Déconnexion"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></button>
         </div>
-      </header>
+      </header>`;
 
+    if (!modeReporting) {
+      // ── ACCUEIL : activité du jour / actions immédiates uniquement ──
+      app.innerHTML = `
+        ${header}
+        <div class="dash-body avec-nav">
+          <p class="dash-date" style="color:var(--c-text-2);font-family:Montserrat,sans-serif;font-size:13px">${dateFr} · Suivi FY27</p>
+
+          <div class="stat-tuiles">
+            ${dc.compteurs.map(c => `
+              <div class="stat-tuile" style="border-top:3px solid ${c.coul}">
+                <div class="stat-tuile-lbl">${c.lbl}</div>
+                <div class="stat-tuile-val" style="color:${c.coul}">${c.n}</div>
+              </div>`).join('')}
+          </div>
+
+          <div class="bloc-fiche">
+            <div class="bloc-titre">Pipeline onboarding</div>
+            <p style="font-size:13px;color:var(--c-text-2);margin:0">
+              <strong style="color:var(--c-text)">${dc.totalPipeline}</strong> lead(s) au total ·
+              taux d'intégration global : <strong style="color:var(--c-success)">${dc.tauxIntegration}%</strong>
+            </p>
+            <button class="btn-lien no-print" onclick="Router.aller('#/empower-tracker')"
+                    style="font-size:12px;margin-top:8px">Voir le Tracker →</button>
+          </div>
+
+          <div class="bloc-fiche">
+            <div class="bloc-titre">⚠️ Welcome Pack non envoyé (≥ J14)
+              ${dc.alerteWelcome.length ? `<span class="badge-compteur" style="background:var(--c-danger);color:#fff">${dc.alerteWelcome.length}</span>` : ''}
+            </div>
+            ${dc.alerteWelcome.length ? `
+            <div class="dash-alertes">
+              ${dc.alerteWelcome.map(l => `
+                <div class="alerte-ligne" onclick="Router.aller('#/empower-tracker')" style="cursor:pointer">
+                  <strong>${l.nom}</strong> — ${l.cds} · <span style="color:var(--c-danger);font-weight:700">${l.jours} j sans WP</span>
+                </div>`).join('')}
+            </div>` : '<div class="pas-de-donnees">Aucun lead en alerte Welcome Pack 🎉</div>'}
+          </div>
+
+          <div class="bloc-fiche">
+            <div class="bloc-titre">🔴 Sans contact +45 jours
+              ${dc.alerte45j && dc.alerte45j.length ? `<span class="badge-compteur" style="background:var(--c-danger);color:#fff">${dc.alerte45j.length}</span>` : ''}
+            </div>
+            ${dc.alerte45j && dc.alerte45j.length ? `
+            <div class="dash-alertes">
+              ${dc.alerte45j.map(l => `
+                <div class="alerte-ligne" onclick="Router.aller('#/empower-tracker')" style="cursor:pointer">
+                  <strong>${l.nom}</strong> — ${l.cds}
+                  · <span style="color:var(--c-danger);font-weight:700">${l.jours} j</span>
+                  · <span style="font-size:11px;color:var(--c-text-2)">${l.statut}</span>
+                </div>`).join('')}
+            </div>` : '<div class="pas-de-donnees">Aucun lead sans contact +45j 🎉</div>'}
+          </div>
+
+          <div class="dash-raccourcis no-print">
+            <button class="raccourci" onclick="Router.aller('#/empower-tracker')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Tracker</span></button>
+            <button class="raccourci" onclick="Router.aller('#/comptes')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><line x1="10" y1="6" x2="10" y2="6.01"/><line x1="14" y1="6" x2="14" y2="6.01"/><line x1="10" y1="10" x2="10" y2="10.01"/><line x1="14" y1="10" x2="14" y2="10.01"/><line x1="10" y1="14" x2="10" y2="14.01"/><line x1="14" y1="14" x2="14" y2="14.01"/><line x1="10" y1="18" x2="10" y2="18.01"/><line x1="14" y1="18" x2="14" y2="18.01"/></svg><span>Comptes</span></button>
+          </div>
+        </div>
+        ${NavBar('home')}
+        ${this._renderExportDir()}
+      `;
+      return;
+    }
+
+    // ── REPORTING : données chiffrées, sections thématiques cliquables ──
+    const pipelineCorps = `
+      <p style="font-size:13px;color:var(--c-text-2);margin:0 0 10px">
+        <strong style="color:var(--c-text)">${dc.totalPipeline}</strong> lead(s) au total ·
+        taux d'intégration global : <strong style="color:var(--c-success)">${dc.tauxIntegration}%</strong>
+      </p>
+      ${this._svgFunnel(dc.compteurs.map(c => ({ id: c.id, lbl: c.lbl, n: c.n, coul: c.coul })))}
+      <button class="btn-lien no-print" onclick="Router.aller('#/empower-tracker')" style="font-size:12px;margin-top:10px">Voir le Tracker →</button>`;
+
+    const performanceCorps = dc.tauxParCDS.length ? `
+      <div class="tableau-equipe">
+        <div class="te-ligne te-head" style="grid-template-columns:1.4fr 1.4fr 0.7fr"><span>CDS</span><span>Intégrés / Assignés</span><span>Taux</span></div>
+        ${dc.tauxParCDS.map(c => {
+          const col = c.taux >= 50 ? 'pace-ok' : c.taux >= 30 ? 'pace-watch' : 'pace-risk';
+          return `
+          <div class="te-ligne" style="grid-template-columns:1.4fr 1.4fr 0.7fr">
+            <span><strong>${c.nom}</strong></span>
+            <span>${c.integres} / ${c.assignes}</span>
+            <span class="pace-badge ${col}">${c.taux}%</span>
+          </div>`;
+        }).join('')}
+      </div>` : '<div class="pas-de-donnees">Aucun lead assigné.</div>';
+
+    const caCorps = `
+      <p style="font-size:11px;color:var(--c-text-2);margin:0 0 10px">Valeur saisie par Tadjidine — source indiquée pour chaque CDS.</p>
+      ${dc.caParCDS.length ? `
+      <div class="tableau-equipe">
+        ${dc.caParCDS.map(c => `
+          <div class="te-ligne" style="grid-template-columns:1fr auto auto;gap:8px">
+            <span><strong>${c.nom}</strong></span>
+            <span style="font-size:13px">${c.caStr === '—' ? '—' : c.caStr + ' €'}</span>
+            <span>${badgeSource(c.source)}</span>
+          </div>`).join('')}
+      </div>` : '<div class="pas-de-donnees">Aucune donnée CA.</div>'}`;
+
+    const historiqueCorps = `
+      <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;margin-bottom:6px">10 DERNIERS LEADS INTÉGRÉS</div>
+      ${dc.derniersIntegres.length ? `
+      <div class="tableau-equipe">
+        <div class="te-ligne te-head" style="grid-template-columns:1.5fr 1fr 1fr"><span>Compte</span><span>CDS</span><span>Origine</span></div>
+        ${dc.derniersIntegres.map(l => `
+          <div class="te-ligne" style="grid-template-columns:1.5fr 1fr 1fr">
+            <span><strong>${l.nom}</strong></span>
+            <span>${l.cds}</span>
+            <span style="font-size:11px;color:var(--c-text-2)">${l.origine}</span>
+          </div>`).join('')}
+      </div>` : '<div class="pas-de-donnees">Aucun lead intégré pour le moment.</div>'}
+      <div style="height:1px;background:var(--c-border);margin:14px 0"></div>
+      <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;margin-bottom:6px">LEADS ARCHIVÉS / BLOQUÉS</div>
+      ${dc.leadsArchive.length ? `
+      <div class="tableau-equipe">
+        <div class="te-ligne te-head" style="grid-template-columns:1.5fr 1fr 1.5fr"><span>Compte</span><span>CDS</span><span>Motif</span></div>
+        ${dc.leadsArchive.map(l => `
+          <div class="te-ligne" style="grid-template-columns:1.5fr 1fr 1.5fr">
+            <span><strong>${l.nom}</strong></span>
+            <span>${l.cds}</span>
+            <span style="font-size:11px;color:var(--c-text-2)">${l.note}</span>
+          </div>`).join('')}
+      </div>` : '<div class="pas-de-donnees">Aucun lead archivé.</div>'}`;
+
+    app.innerHTML = `
+      ${header}
       <div class="dash-body avec-nav">
         <p class="dash-date" style="color:var(--c-text-2);font-family:Montserrat,sans-serif;font-size:13px">${dateFr} · Suivi FY27</p>
 
-        <!-- COMPTEURS PIPELINE -->
-        <div class="stat-tuiles">
-          ${dc.compteurs.map(c => `
-            <div class="stat-tuile" style="border-top:3px solid ${c.coul}">
-              <div class="stat-tuile-lbl">${c.lbl}</div>
-              <div class="stat-tuile-val" style="color:${c.coul}">${c.n}</div>
-            </div>`).join('')}
-        </div>
-
-        <!-- TAUX INTÉGRATION GLOBAL -->
-        <div class="bloc-fiche">
-          <div class="bloc-titre">Pipeline onboarding</div>
-          <p style="font-size:13px;color:var(--c-text-2);margin:0">
-            <strong style="color:var(--c-text)">${dc.totalPipeline}</strong> lead(s) au total ·
-            taux d'intégration global : <strong style="color:var(--c-success)">${dc.tauxIntegration}%</strong>
-          </p>
-          <button class="btn-lien no-print" onclick="Router.aller('#/empower-tracker')"
-                  style="font-size:12px;margin-top:8px">Voir le Tracker →</button>
-        </div>
-
-        <!-- TAUX INTÉGRATION PAR CDS -->
-        <div class="bloc-fiche">
-          <div class="bloc-titre">Taux d'intégration par CDS</div>
-          ${dc.tauxParCDS.length ? `
-          <div class="tableau-equipe">
-            <div class="te-ligne te-head" style="grid-template-columns:1.4fr 1.4fr 0.7fr"><span>CDS</span><span>Intégrés / Assignés</span><span>Taux</span></div>
-            ${dc.tauxParCDS.map(c => {
-              const col = c.taux >= 50 ? 'pace-ok' : c.taux >= 30 ? 'pace-watch' : 'pace-risk';
-              return `
-              <div class="te-ligne" style="grid-template-columns:1.4fr 1.4fr 0.7fr">
-                <span><strong>${c.nom}</strong></span>
-                <span>${c.integres} / ${c.assignes}</span>
-                <span class="pace-badge ${col}">${c.taux}%</span>
-              </div>`;
-            }).join('')}
-          </div>` : '<div class="pas-de-donnees">Aucun lead assigné.</div>'}
-        </div>
-
-        <!-- CA RÉALISÉ (label source visible) -->
-        <div class="bloc-fiche">
-          <div class="bloc-titre">CA réalisé par CDS</div>
-          <p style="font-size:11px;color:var(--c-text-2);margin:0 0 10px">
-            Valeur saisie par Tadjidine — source indiquée pour chaque CDS.
-          </p>
-          ${dc.caParCDS.length ? `
-          <div class="tableau-equipe">
-            ${dc.caParCDS.map(c => `
-              <div class="te-ligne" style="grid-template-columns:1fr auto auto;gap:8px">
-                <span><strong>${c.nom}</strong></span>
-                <span style="font-size:13px">${c.caStr === '—' ? '—' : c.caStr + ' €'}</span>
-                <span>${badgeSource(c.source)}</span>
-              </div>`).join('')}
-          </div>` : '<div class="pas-de-donnees">Aucune donnée CA.</div>'}
-        </div>
-
-        <!-- 10 DERNIERS LEADS INTÉGRÉS -->
-        <div class="bloc-fiche">
-          <div class="bloc-titre">10 derniers leads intégrés</div>
-          ${dc.derniersIntegres.length ? `
-          <div class="tableau-equipe">
-            <div class="te-ligne te-head" style="grid-template-columns:1.5fr 1fr 1fr"><span>Compte</span><span>CDS</span><span>Origine</span></div>
-            ${dc.derniersIntegres.map(l => `
-              <div class="te-ligne" style="grid-template-columns:1.5fr 1fr 1fr">
-                <span><strong>${l.nom}</strong></span>
-                <span>${l.cds}</span>
-                <span style="font-size:11px;color:var(--c-text-2)">${l.origine}</span>
-              </div>`).join('')}
-          </div>` : '<div class="pas-de-donnees">Aucun lead intégré pour le moment.</div>'}
-        </div>
-
-        <!-- ALERTE WELCOME PACK -->
-        <div class="bloc-fiche">
-          <div class="bloc-titre">⚠️ Welcome Pack non envoyé (≥ J14)
-            ${dc.alerteWelcome.length ? `<span class="badge-compteur" style="background:var(--c-danger);color:#fff">${dc.alerteWelcome.length}</span>` : ''}
-          </div>
-          ${dc.alerteWelcome.length ? `
-          <div class="dash-alertes">
-            ${dc.alerteWelcome.map(l => `
-              <div class="alerte-ligne" onclick="Router.aller('#/empower-tracker')" style="cursor:pointer">
-                <strong>${l.nom}</strong> — ${l.cds} · <span style="color:var(--c-danger);font-weight:700">${l.jours} j sans WP</span>
-              </div>`).join('')}
-          </div>` : '<div class="pas-de-donnees">Aucun lead en alerte Welcome Pack 🎉</div>'}
-        </div>
-
-        <!-- ALERTE 45J SANS CONTACT -->
-        <div class="bloc-fiche">
-          <div class="bloc-titre">🔴 Sans contact +45 jours
-            ${dc.alerte45j && dc.alerte45j.length ? `<span class="badge-compteur" style="background:var(--c-danger);color:#fff">${dc.alerte45j.length}</span>` : ''}
-          </div>
-          ${dc.alerte45j && dc.alerte45j.length ? `
-          <div class="dash-alertes">
-            ${dc.alerte45j.map(l => `
-              <div class="alerte-ligne" onclick="Router.aller('#/empower-tracker')" style="cursor:pointer">
-                <strong>${l.nom}</strong> — ${l.cds}
-                · <span style="color:var(--c-danger);font-weight:700">${l.jours} j</span>
-                · <span style="font-size:11px;color:var(--c-text-2)">${l.statut}</span>
-              </div>`).join('')}
-          </div>` : '<div class="pas-de-donnees">Aucun lead sans contact +45j 🎉</div>'}
-        </div>
-
-        <!-- LEADS ARCHIVÉS / BLOCAGE -->
-        <div class="bloc-fiche">
-          <div class="bloc-titre">Leads archivés / bloqués</div>
-          ${dc.leadsArchive.length ? `
-          <div class="tableau-equipe">
-            <div class="te-ligne te-head" style="grid-template-columns:1.5fr 1fr 1.5fr"><span>Compte</span><span>CDS</span><span>Motif</span></div>
-            ${dc.leadsArchive.map(l => `
-              <div class="te-ligne" style="grid-template-columns:1.5fr 1fr 1.5fr">
-                <span><strong>${l.nom}</strong></span>
-                <span>${l.cds}</span>
-                <span style="font-size:11px;color:var(--c-text-2)">${l.note}</span>
-              </div>`).join('')}
-          </div>` : '<div class="pas-de-donnees">Aucun lead archivé.</div>'}
-        </div>
-
-        <!-- RACCOURCIS LECTURE SEULE -->
-        <div class="dash-raccourcis no-print">
-          <button class="raccourci" onclick="Router.aller('#/empower-tracker')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Tracker</span></button>
-          <button class="raccourci" onclick="Router.aller('#/comptes')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><line x1="10" y1="6" x2="10" y2="6.01"/><line x1="14" y1="6" x2="14" y2="6.01"/><line x1="10" y1="10" x2="10" y2="10.01"/><line x1="14" y1="10" x2="14" y2="10.01"/><line x1="10" y1="14" x2="10" y2="14.01"/><line x1="14" y1="14" x2="14" y2="14.01"/><line x1="10" y1="18" x2="10" y2="18.01"/><line x1="14" y1="18" x2="14" y2="18.01"/></svg><span>Comptes</span></button>
-        </div>
+        ${section('🟣 Pipeline', '#9333ea', pipelineCorps)}
+        ${section('🟢 Performance par CDS', '#00b27e', performanceCorps)}
+        ${section('🔵 CA', '#0050FF', caCorps)}
+        ${section('⚪ Historique', '#626264', historiqueCorps, false)}
       </div>
       ${NavBar('reporting')}
       ${this._renderExportDir()}
@@ -672,19 +701,17 @@ window.VueDashboardManager = {
           </div>
         </div>
 
-        <!-- PACE CONSOLIDÉ -->
-        <div class="bloc-fiche dash-pace">
-          <div class="bloc-titre">Équipe — Pace CA ${d.quarter}
-            <span class="pace-badge ${d.pctTotal >= 100 ? 'pace-ok' : d.pctTotal >= 80 ? 'pace-watch' : 'pace-risk'}">${d.pctTotal}%</span>
+        <!-- Section 10 cahier des charges : 4 sections thématiques cliquables, couleur distincte par KPI -->
+        ${this._sectionThematique('🔵 CA', '#0050FF', `
+          <div class="bloc-fiche dash-pace" style="margin-bottom:12px">
+            <div class="bloc-titre">Équipe — Pace CA ${d.quarter}
+              <span class="pace-badge ${d.pctTotal >= 100 ? 'pace-ok' : d.pctTotal >= 80 ? 'pace-watch' : 'pace-risk'}">${d.pctTotal}%</span>
+            </div>
+            <div class="pace-chiffres">
+              <strong>${formatEuro(d.caTotal)}</strong><span>/ ${formatEuro(d.objTotal)}</span>
+            </div>
+            <div class="pace-barre"><div class="pace-barre-fill ${d.pctTotal >= 100 ? 'pace-ok' : d.pctTotal >= 80 ? 'pace-watch' : 'pace-risk'}" style="width:${Math.min(d.pctTotal, 100)}%"></div></div>
           </div>
-          <div class="pace-chiffres">
-            <strong>${formatEuro(d.caTotal)}</strong><span>/ ${formatEuro(d.objTotal)}</span>
-          </div>
-          <div class="pace-barre"><div class="pace-barre-fill ${d.pctTotal >= 100 ? 'pace-ok' : d.pctTotal >= 80 ? 'pace-watch' : 'pace-risk'}" style="width:${Math.min(d.pctTotal, 100)}%"></div></div>
-        </div>
-
-        <!-- GRAPHIQUE CA PAR CDS (SVG) -->
-        <div class="bloc-fiche">
           <div class="bloc-titre">CA réalisé vs objectif par CDS — ${d.quarter}</div>
           ${this._svgCaEquipe(d.equipe)}
           <div style="display:flex;gap:16px;font-size:11px;color:var(--c-text-2);margin-top:8px;flex-wrap:wrap">
@@ -694,11 +721,26 @@ window.VueDashboardManager = {
             <span><span style="display:inline-block;width:10px;height:10px;background:#FA0000;border-radius:2px;vertical-align:middle"></span> At Risk</span>
             <span><span style="display:inline-block;width:10px;height:8px;border:1.5px dashed #9333ea;border-radius:2px;vertical-align:middle"></span> FY26 réf./trim.</span>
           </div>
-        </div>
+        `)}
 
-        <!-- TABLEAU CDS -->
-        <div class="bloc-fiche">
-          <div class="bloc-titre">Détail performance par CDS</div>
+        ${this._sectionThematique('🟣 Pipeline', '#9333ea', `
+          ${this._svgFunnel(d.pipelineStages)}
+          <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
+            <button class="btn-lien" onclick="Router.aller('#/empower-tracker')" style="font-size:12px">Voir le Tracker →</button>
+            <span style="font-size:11px;color:var(--c-text-2)">Taux intégration : <strong>${d.tauxIntegration}%</strong></span>
+          </div>
+        `)}
+
+        ${this._sectionThematique('🟦 Activité terrain', '#0EA5E9', `
+          <p style="font-size:13px;color:var(--c-text-2);margin:0 0 10px">
+            Cette semaine : <strong style="color:var(--c-text)">${d.equipe.reduce((s,e)=>s+e.visitesSem,0)} visite(s)</strong> ·
+            <strong style="color:var(--c-text)">${d.equipe.reduce((s,e)=>s+e.appelsSem,0)} appel(s)</strong>
+          </p>
+          <div class="bloc-titre">Activité équipe — 6 semaines</div>
+          ${this._svgActiviteEquipe(d.activiteEquipe)}
+        `)}
+
+        ${this._sectionThematique('🟠 Objectifs', '#f59e0b', `
           <div class="tableau-equipe">
             <div class="te-ligne te-head" style="grid-template-columns:1.2fr 1.4fr 0.6fr 0.8fr 0.4fr 0.4fr 0.4fr">
               <span>CDS</span><span>CA / OBJ</span><span>%</span><span style="color:#9333ea">FY26/trim</span><span>Vis.</span><span>App.</span><span>Leads</span>
@@ -715,23 +757,36 @@ window.VueDashboardManager = {
             </div>`).join('')}
           </div>
           <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">Vis. = visites ${d.semaine} · App. = appels ${d.semaine} · Leads = leads actifs · <span style="color:#9333ea">FY26/trim = CA FY26 annuel ÷ 4</span></p>
-        </div>
-
-        <!-- ENTONNOIR PIPELINE EMPOWER (SVG) -->
-        <div class="bloc-fiche">
-          <div class="bloc-titre">Entonnoir pipeline EMPOWER</div>
-          ${this._svgFunnel(d.pipelineStages)}
-          <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
-            <button class="btn-lien" onclick="Router.aller('#/empower-tracker')" style="font-size:12px">Voir le Tracker →</button>
-            <span style="font-size:11px;color:var(--c-text-2)">Taux intégration : <strong>${d.tauxIntegration}%</strong></span>
+          <div style="height:1px;background:var(--c-border);margin:14px 0"></div>
+          <div class="bloc-titre" style="padding:0">Saisie CA réalisé à date</div>
+          <p style="font-size:12px;color:var(--c-text-2);margin:6px 0 12px">Renseignez le CA terrain pour un CDS — la valeur remplace le sell-in du quarter sélectionné.</p>
+          <div style="display:grid;gap:10px">
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <label style="flex:1;min-width:120px;font-size:13px">CDS
+                <select id="saisie-ca-cds" style="width:100%;margin-top:4px;padding:8px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm)">
+                  ${d.equipe.map(e => `<option value="${e.pin}">${e.nom}</option>`).join('')}
+                </select>
+              </label>
+              <label style="flex:1;min-width:100px;font-size:13px">Quarter
+                <select id="saisie-ca-quarter" style="width:100%;margin-top:4px;padding:8px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm)">
+                  ${['Q1','Q2','Q3','Q4'].map(q => `<option value="${q}" ${q === d.quarter ? 'selected' : ''}>${q} FY27</option>`).join('')}
+                </select>
+              </label>
+            </div>
+            <label style="font-size:13px">CA réalisé (€)
+              <input id="saisie-ca-valeur" type="number" min="0" step="0.01" placeholder="ex : 18500"
+                     style="width:100%;margin-top:4px;padding:8px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);font-size:15px"/>
+            </label>
+            <label style="font-size:13px">Commentaire (facultatif)
+              <input id="saisie-ca-note" type="text" placeholder="ex : Sell-in S24 confirmé"
+                     style="width:100%;margin-top:4px;padding:8px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm)"/>
+            </label>
+            <button class="btn-primaire" onclick="VueDashboardManager.saisirCA()" style="padding:12px">
+              Enregistrer le CA
+            </button>
+            <div id="saisie-ca-feedback" style="font-size:13px;min-height:18px"></div>
           </div>
-        </div>
-
-        <!-- GRAPHIQUE ACTIVITÉ ÉQUIPE (SVG) -->
-        <div class="bloc-fiche">
-          <div class="bloc-titre">Activité équipe — 6 semaines</div>
-          ${this._svgActiviteEquipe(d.activiteEquipe)}
-        </div>
+        `, false)}
 
         <!-- ALERTES ÉQUIPE -->
         <div class="bloc-fiche">
@@ -783,38 +838,6 @@ window.VueDashboardManager = {
           <p style="font-size:11px;color:var(--c-text-2);margin-top:10px">
             Dans Visites / Phoning, utilisez le bouton d'export en haut à droite pour filtrer par période.
           </p>
-        </div>
-
-        <!-- BUG-08 : SAISIE CA RÉALISÉ À DATE -->
-        <div class="bloc-fiche no-print">
-          <div class="bloc-titre">Saisie CA réalisé à date</div>
-          <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">Renseignez le CA terrain pour un CDS — la valeur remplace le sell-in du quarter sélectionné.</p>
-          <div style="display:grid;gap:10px">
-            <div style="display:flex;gap:10px;flex-wrap:wrap">
-              <label style="flex:1;min-width:120px;font-size:13px">CDS
-                <select id="saisie-ca-cds" style="width:100%;margin-top:4px;padding:8px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm)">
-                  ${d.equipe.map(e => `<option value="${e.pin}">${e.nom}</option>`).join('')}
-                </select>
-              </label>
-              <label style="flex:1;min-width:100px;font-size:13px">Quarter
-                <select id="saisie-ca-quarter" style="width:100%;margin-top:4px;padding:8px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm)">
-                  ${['Q1','Q2','Q3','Q4'].map(q => `<option value="${q}" ${q === d.quarter ? 'selected' : ''}>${q} FY27</option>`).join('')}
-                </select>
-              </label>
-            </div>
-            <label style="font-size:13px">CA réalisé (€)
-              <input id="saisie-ca-valeur" type="number" min="0" step="0.01" placeholder="ex : 18500"
-                     style="width:100%;margin-top:4px;padding:8px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);font-size:15px"/>
-            </label>
-            <label style="font-size:13px">Commentaire (facultatif)
-              <input id="saisie-ca-note" type="text" placeholder="ex : Sell-in S24 confirmé"
-                     style="width:100%;margin-top:4px;padding:8px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm)"/>
-            </label>
-            <button class="btn-primaire" onclick="VueDashboardManager.saisirCA()" style="padding:12px">
-              Enregistrer le CA
-            </button>
-            <div id="saisie-ca-feedback" style="font-size:13px;min-height:18px"></div>
-          </div>
         </div>
 
         <!-- RACCOURCIS MANAGER -->
