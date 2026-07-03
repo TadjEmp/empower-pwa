@@ -26,6 +26,16 @@ window.NotifCenter = {
   basculer() { this._ouvert = !this._ouvert; this._render(); },
   fermer()   { this._ouvert = false; this._render(); },
 
+  // Table de routage Type_Notif -> route contextuelle (insensible à la casse).
+  _route(typeNotif, idCible) {
+    if (!idCible) return '#/dashboard';
+    const t = String(typeNotif || '').toUpperCase();
+    if (['COMPTE_CREE', 'VISITE_REALISEE'].includes(t)) return '#/compte/' + idCible;
+    if (['LEAD_ASSIGNE', 'NOUVEAU_LEAD', 'STATUT_CHANGE', 'STATUT_ARCHIVE', 'STATUT_EN_COURS', 'STATUT_INTEGRE'].includes(t)) return '#/empower-tracker';
+    if (t === 'IMPORT_TRACKER') return '#/empower-tracker';
+    return '#/dashboard';
+  },
+
   // N3-4 — clic notif → Statut_Lu = true. Optimiste : retrait local immédiat.
   async marquerLue(id) {
     if (!id) return;
@@ -33,6 +43,15 @@ window.NotifCenter = {
     this._render();
     try { await SheetsAPI.mettreAJour('EMPOWER_MDB', '🔔_NOTIFS', id, { Statut_Lu: true }); }
     catch (e) { /* silencieux : non bloquant */ }
+  },
+
+  // Clic notif → navigue vers la route contextuelle PUIS marque comme lue.
+  async ouvrir(id) {
+    if (!id) return;
+    const n = this.liste.find(n => n.ID_Notif === id);
+    const route = n ? this._route(n.Type_Notif, String(n.ID_Cible || '').trim()) : '#/dashboard';
+    Router.aller(route);
+    await this.marquerLue(id);
   },
 
   async marquerToutesLues() {
@@ -69,7 +88,7 @@ window.NotifCenter = {
       : this.liste.map(n => {
           const id = String(n.ID_Notif || '').replace(/'/g, "\\'");
           return `
-          <div class="nc-item" onclick="NotifCenter.marquerLue('${id}')" title="Marquer comme lue">
+          <div class="nc-item" onclick="NotifCenter.ouvrir('${id}')" title="Ouvrir">
             <div class="nc-item-type">${this._icone(n.Type_Notif)} ${String(n.Type_Notif || '').replace(/_/g, ' ')}</div>
             <div class="nc-item-msg">${this._echap(String(n.Message || '').slice(0, 140))}</div>
             <div class="nc-item-date">${this._dateCourte(n.Timestamp || n.Date_Envoi)}</div>

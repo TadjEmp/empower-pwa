@@ -35,6 +35,16 @@ window.VueDashboardCDS = {
     return Session.voitTout() || Number(pinChamp) === Session.pin;
   },
 
+  // Table de routage Type_Notif -> route contextuelle (miroir de NotifCenter._route).
+  _routeNotif(typeNotif, idCible) {
+    if (!idCible) return '#/dashboard';
+    const t = String(typeNotif || '').toUpperCase();
+    if (['COMPTE_CREE', 'VISITE_REALISEE'].includes(t)) return '#/compte/' + idCible;
+    if (['LEAD_ASSIGNE', 'NOUVEAU_LEAD', 'STATUT_CHANGE', 'STATUT_ARCHIVE', 'STATUT_EN_COURS', 'STATUT_INTEGRE'].includes(t)) return '#/empower-tracker';
+    if (t === 'IMPORT_TRACKER') return '#/empower-tracker';
+    return '#/dashboard';
+  },
+
   _calculer({ comptes, visites, appels, objectifs, prospects, params, notifs }) {
     const pin      = Session.pin;
     const semaine  = getISOWeek();
@@ -418,7 +428,7 @@ window.VueDashboardCDS = {
           <div class="bloc-titre">Alertes actives <span class="badge-rouge badge-priorite">${d.mesNotifs.length}</span></div>
           <div class="dash-alertes">
             ${d.mesNotifs.map(n => `
-              <div class="alerte-ligne"${n.cible ? ` onclick="Router.aller('#/empower-tracker')"` : ''}>
+              <div class="alerte-ligne" onclick="Router.aller('${this._routeNotif(n.type, n.cible)}')">
                 <span style="font-size:10px;font-weight:700;color:var(--c-primary);text-transform:uppercase">${n.type}</span>
                 <span style="margin-left:6px">${n.message}</span>
               </div>`).join('')}

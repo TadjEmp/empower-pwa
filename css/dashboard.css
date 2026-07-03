@@ -230,6 +230,9 @@
   /* Raccourcis dans la sidebar : 3 colonnes au lieu de 4 */
   .dash-col-side .dash-raccourcis { grid-template-columns: repeat(3, 1fr); }
 
+  /* Raccourcis dupliqués avec la sidebar persistante desktop : masqués */
+  .dash-raccourcis { display: none; }
+
   /* FAB masqué sur desktop */
   .dash-fab { display: none !important; }
 }

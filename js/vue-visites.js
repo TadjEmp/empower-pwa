@@ -48,6 +48,8 @@ window.VueVisites = {
     erreur: null,
     dateVue: null,
     modeVue: 'jour',
+    // Section 2 cahier des charges — planning groupé par commercial (Manager/Channel)
+    commercialSelectionne: null,
     visitePlanifiee: null,
     modalPlanif: false,
     comptes: [],
@@ -328,6 +330,45 @@ window.VueVisites = {
       (v.Date || v.Date_Planif || '').slice(0, 10) === today &&
       (v.Statut_Visite || 'planifiée') === 'planifiée'
     ).length;
+  },
+
+  // ── Section 2 cahier des charges : groupement du planning par commercial ──
+  // (Manager/Channel uniquement — réutilisé identiquement par jour/semaine/historique)
+  _grouperParCommercial(liste) {
+    const map = new Map();
+    (liste || []).forEach(v => {
+      const pin = String(v.PIN_CDS || '');
+      if (!map.has(pin)) map.set(pin, { pin, nom: resolveCDS(v.PIN_CDS || v.Nom_CDS), visites: [] });
+      map.get(pin).visites.push(v);
+    });
+    return [...map.values()].sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
+  },
+
+  selectionnerCommercial(pin) {
+    this.state.commercialSelectionne = pin;
+    this.render();
+  },
+
+  retourCommerciaux() {
+    this.state.commercialSelectionne = null;
+    this.render();
+  },
+
+  // liste de cartes "commercial" pour la période/mode courant
+  _renderCartesCommerciaux(liste) {
+    const groupes = this._grouperParCommercial(liste);
+    if (!groupes.length) {
+      return `<div style="padding:32px;text-align:center;color:var(--c-text-2)">Aucune visite pour l'instant.</div>`;
+    }
+    return groupes.map(g => `
+      <div class="carte-visite" style="cursor:pointer" onclick="VueVisites.selectionnerCommercial('${g.pin}')">
+        <div class="cv-nom">${g.nom}</div>
+        <div class="cv-type">${g.visites.length} visite${g.visites.length > 1 ? 's' : ''}</div>
+      </div>`).join('');
+  },
+
+  _boutonRetourCommerciaux() {
+    return `<button class="btn-secondaire" style="width:auto;padding:6px 12px;font-size:12px;margin-bottom:10px" onclick="VueVisites.retourCommerciaux()">← Tous les commerciaux</button>`;
   },
 
   // ── Navigation dates ──
@@ -869,28 +910,57 @@ window.VueVisites = {
       weekday: 'long', day: 'numeric', month: 'long'
     });
 
+    // Section 2 cahier des charges — Manager/Channel : planning groupé par commercial,
+    // tant qu'aucun commercial n'est "ouvert". Un CDS ne voit que ses propres visites
+    // (comportement inchangé, pas de groupement car un seul commercial = lui-même).
+    const groupeActif = Session.voitTout() && !this.state.commercialSelectionne;
+
     let contenu = '';
     if (this.state.modeVue === 'historique') {
       const hist = this.visitesRealisees;
-      contenu = hist.length === 0
-        ? `<div style="padding:32px;text-align:center;color:var(--c-text-2)">Aucune visite réalisée pour l'instant.</div>`
-        : `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-             <span style="font-size:13px;color:var(--c-text-2)">${hist.length} visite(s) réalisée(s)</span>
-             <button class="btn-secondaire" style="width:auto;padding:6px 12px;font-size:12px" onclick="VueVisites.ouvrirExtraction()">📤 Export CSV</button>
-           </div>
-           ${hist.map(v => this._carteVisite(v)).join('')}`;
+      if (groupeActif) {
+        contenu = this._renderCartesCommerciaux(hist);
+      } else {
+        const histFiltre = this.state.commercialSelectionne
+          ? hist.filter(v => String(v.PIN_CDS || '') === this.state.commercialSelectionne)
+          : hist;
+        contenu = histFiltre.length === 0
+          ? `<div style="padding:32px;text-align:center;color:var(--c-text-2)">Aucune visite réalisée pour l'instant.</div>`
+          : `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+               <span style="font-size:13px;color:var(--c-text-2)">${histFiltre.length} visite(s) réalisée(s)</span>
+               <button class="btn-secondaire" style="width:auto;padding:6px 12px;font-size:12px" onclick="VueVisites.ouvrirExtraction()">📤 Export CSV</button>
+             </div>
+             ${histFiltre.map(v => this._carteVisite(v)).join('')}`;
+        if (this.state.commercialSelectionne) contenu = this._boutonRetourCommerciaux() + contenu;
+      }
     } else if (this.state.modeVue === 'jour') {
       const vj = this.visitesJour;
-      contenu = vj.length === 0
-        ? `<div style="padding:32px;text-align:center;color:var(--c-text-2)">
-             Aucune visite ce jour.
-             <br><button class="btn-secondaire" style="margin-top:16px;width:auto;padding:10px 20px"
-                         onclick="VueVisites.ouvrirModal()">+ Planifier une visite</button>
-           </div>`
-        : vj.map(v => this._carteVisite(v)).join('');
+      if (groupeActif) {
+        contenu = this._renderCartesCommerciaux(vj);
+      } else {
+        const vjFiltre = this.state.commercialSelectionne
+          ? vj.filter(v => String(v.PIN_CDS || '') === this.state.commercialSelectionne)
+          : vj;
+        contenu = vjFiltre.length === 0
+          ? `<div style="padding:32px;text-align:center;color:var(--c-text-2)">
+               Aucune visite ce jour.
+               <br><button class="btn-secondaire" style="margin-top:16px;width:auto;padding:10px 20px"
+                           onclick="VueVisites.ouvrirModal()">+ Planifier une visite</button>
+             </div>`
+          : vjFiltre.map(v => this._carteVisite(v)).join('');
+        if (this.state.commercialSelectionne) contenu = this._boutonRetourCommerciaux() + contenu;
+      }
+    } else if (groupeActif) {
+      contenu = this._renderCartesCommerciaux(this.visitesSemaine.flatMap(j => j.visites));
     } else {
-      const semaine = this.visitesSemaine;
+      const semaine = this.visitesSemaine.map(j => ({
+        ...j,
+        visites: this.state.commercialSelectionne
+          ? j.visites.filter(v => String(v.PIN_CDS || '') === this.state.commercialSelectionne)
+          : j.visites,
+      }));
       contenu = `
+        ${this.state.commercialSelectionne ? this._boutonRetourCommerciaux() : ''}
         <div class="planning-semaine">
           ${semaine.map(j => `
             <div class="planning-jour ${j.iso === today ? 'planning-jour-today' : ''}"
