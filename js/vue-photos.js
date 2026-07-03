@@ -8,6 +8,7 @@ window.VuePhotos = {
 
   state: {
     visites:     [],
+    cdsListe:    [],
     chargement:  true,
     erreur:      null,
     filtreQ:     '',
@@ -23,13 +24,18 @@ window.VuePhotos = {
     this.state.zoomIdx    = null;
     this.render();
     try {
-      const visites = await SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES');
+      const [visites, cdsListe] = await Promise.all([
+        SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES'),
+        SheetsAPI.lireCDS(),
+      ]);
       this.state.visites = visites
         .filter(v => !String(v.deleted || '').toUpperCase().includes('TRUE'))
         .filter(v => Session.voitTout() || Number(v.PIN_CDS) === Session.pin)
         .filter(v => v.Photo_URL && String(v.Photo_URL).trim())
         .sort((a, b) =>
           (b.Date || b.Date_Planif || '').localeCompare(a.Date || a.Date_Planif || ''));
+      this.state.cdsListe = (Array.isArray(cdsListe) ? cdsListe : [])
+        .filter(c => String(c.role).toUpperCase() === 'CDS');
       this.state.chargement = false;
       this.render();
     } catch(e) {
@@ -39,9 +45,15 @@ window.VuePhotos = {
     }
   },
 
-  // ── Liste unique des commerciaux présents dans les visites ──
+  // ── Liste des commerciaux pour le filtre — tous les CDS actifs, même sans
+  // photo pour l'instant (utile au manager pour voir "0 photo"), plus tout
+  // PIN present dans les visites mais absent du registre (garde-fou). ──
   _listeCommerciaux() {
     const vus = new Map();
+    for (const c of this.state.cdsListe) {
+      if (!c.pin) continue;
+      vus.set(String(c.pin), c.nom || window.resolveCDS(c.pin));
+    }
     for (const v of this.state.visites) {
       const pin = v.PIN_CDS || v.Nom_CDS;
       if (!pin || vus.has(String(pin))) continue;

@@ -875,9 +875,9 @@ window.VueVisites = {
           ${statut === 'réalisée' && String(v.Flag_Converti || '').toUpperCase() === 'TRUE' ? `
             <span style="font-size:11px;color:var(--c-success);font-weight:700">Compte actif créé</span>
           ` : ''}
-          ${(!isPlanif && !isEnCours) ? `
+          ${(!isPlanif && !isEnCours && v.ID_Cible !== 'HORS_BASE' && v.Source_Visite !== 'ESI_VISITE_FROID') ? `
             <button class="btn-secondaire" style="padding:6px 12px;font-size:12px;width:auto"
-                    onclick="${(v.ID_Cible === 'HORS_BASE' || v.Source_Visite === 'ESI_VISITE_FROID') ? `VueVisites.ouvrirCR('${v.ID_Visite}')` : `Router.aller('#/compte/${v.ID_Cible || ''}')`}">
+                    onclick="Router.aller('#/compte/${v.ID_Cible || ''}')">
               Fiche compte
             </button>` : ''}
           ${peutModif ? `
