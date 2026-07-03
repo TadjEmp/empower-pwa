@@ -658,16 +658,85 @@ window.VueAdmin = {
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Chargement…'; }
     try {
       const data = await SheetsAPI.lire(exp.fichier, exp.onglet);
-      const csv  = this._toCSV(data);
+      const rows = this._aplatirExport(id, data);
+      const csv  = this._toCSV(rows);
       const date = dateISOLocale();
       this._telechargerCSV(csv, `ESI_${exp.id}_${date}.csv`);
-      await this._logExport(exp.label, data.length);
-      Toast.afficher(`✅ Export ${exp.label} — ${data.length} lignes`, 'succes');
+      await this._logExport(exp.label, rows.length);
+      Toast.afficher(`✅ Export ${exp.label} — ${rows.length} lignes`, 'succes');
     } catch(e) {
       Toast.afficher('❌ Export échoué : ' + e.message, 'erreur');
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = `📥 Exporter`; }
     }
+  },
+
+  // Section 11 cahier des charges — aplatit les colonnes JSON (freins, grossistes,
+  // profil revendeur, questionnaire d'appel) en texte lisible par thème avant export CSV.
+  // Ne concerne que les exports 'visites' et 'phoning', seuls à contenir des champs JSON ;
+  // les autres exports (prospects, comptes, actions, objectifs, sell_in) sont déjà plats.
+  _flatJSON(val) {
+    if (!val) return '';
+    try {
+      const p = typeof val === 'string' ? JSON.parse(val) : val;
+      if (Array.isArray(p)) return p.join(', ');
+      if (p && typeof p === 'object') return Object.values(p).filter(Boolean).join(', ');
+      return String(val);
+    } catch { return String(val); }
+  },
+
+  _aplatirExport(id, data) {
+    if (id === 'visites') {
+      return (data || []).map(v => ({
+        'ID_Visite':              v.ID_Visite || '',
+        'Date':                   (v.Date || v.Date_Planif || '').slice ? (v.Date || v.Date_Planif || '').slice(0, 10) : (v.Date || v.Date_Planif || ''),
+        'Heure':                  v.Heure || '',
+        'Commercial':             v.Nom_CDS || '',
+        'Compte':                 v.Nom_Compte || '',
+        'Statut':                 v.Statut_Visite || '',
+        'Type_Visite':            v.Type_Visite || '',
+        'Resultat_Visite':        v.Resultat_Visite || '',
+        'Interlocuteur':          v.Interlocuteur || v.Interlocuteur_Nom || '',
+        'Fonction_Interlocuteur': v.Interlocuteur_Fonction || '',
+        'Type_Revendeur':         v.Type_Revendeur || '',
+        'Clientele_Principale':   this._flatJSON(v.Clientele_Principale),
+        'Canal_Vente':            this._flatJSON(v.Canal_Vente),
+        'Activites_Principales':  this._flatJSON(v.Activites_Principales),
+        'Objectifs_Visite':       this._flatJSON(v.Objectif_Visite || v.Objectifs_Visite),
+        'Freins':                 this._flatJSON(v.Freins_JSON),
+        'Grossistes':             this._flatJSON(v.Grossistes_JSON),
+        'Concurrent':             v.Concurrent_Actuel || '',
+        'Marketing_Present':      v.Marketing_Present === true || v.Marketing_Present === 'TRUE' ? 'Oui' : v.Marketing_Present === false || v.Marketing_Present === 'FALSE' ? 'Non' : '',
+        'Prochaine_Action':       v.Prochaine_Action_Texte || v.Prochaine_Action || '',
+        'Date_Prochaine_Action':  v.Prochaine_Action_Date ? String(v.Prochaine_Action_Date).slice(0, 10) : '',
+        'Note':                   v.Note_Privee || '',
+      }));
+    }
+    if (id === 'phoning') {
+      return (data || []).map(a => {
+        let qj = {};
+        try { qj = a.Questionnaire_JSON ? (typeof a.Questionnaire_JSON === 'string' ? JSON.parse(a.Questionnaire_JSON) : a.Questionnaire_JSON) : {}; } catch {}
+        return {
+          'ID_Appel':          a.ID_Appel || '',
+          'Date':              (a.Date || '').slice ? (a.Date || '').slice(0, 10) : (a.Date || ''),
+          'Commercial':        a.Nom_CDS || '',
+          'Compte':            a.Reseller || a.Nom_Enseigne || '',
+          'Statut_Appel':      a.Statut_Appel || '',
+          'Type_Appel':        a.Type_Appel || '',
+          'Interet_EMPOWER':   a.Interet_EMPOWER || '',
+          'Interet_Score':     qj.interet_score ?? a.Interet_Score ?? '',
+          'Frein_Principal':   a.Frein_Principal || '',
+          'Concurrent':        qj.concurrent_actuel || qj.concurrent || a.Concurrent_Actuel || '',
+          'Resume_IA':         qj.gemini_analyse || '',
+          'Prochaine_Action':  a.Prochaine_Action || '',
+          'Date_Rappel':       a.Date_Rappel || '',
+          'Commande_Annoncee': a.Commande_Annoncee || '',
+          'Montant_Estime':    a.Montant_Estime != null && a.Montant_Estime !== '' ? a.Montant_Estime : '',
+          'Note':              a.Note || '',
+        };
+      });
+    }
+    return data || [];
   },
 
   // BLOC 10 — Export Tracker EMPOWER avec colonnes métier + filtre Pickup Date
