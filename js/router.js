@@ -32,6 +32,8 @@ const Router = {
     { pattern: /^#\/visites\/cr\/([^/]+)$/,        vue: 'VueVisites',            auth: true, param: 1 },
     { pattern: /^#\/objectifs$/,                    vue: 'VueObjectifs',          auth: true  },
     { pattern: /^#\/primes$/,                       vue: 'VuePrimes',             auth: true  },
+    { pattern: /^#\/visites-fdv$/,                  vue: 'VueVisitesFDV',         auth: true  },
+    { pattern: /^#\/phoning-fdv$/,                  vue: 'VuePhoningFDV',         auth: true  },
 
     // ── Routes auxiliaires ──
     { pattern: /^#\/photos$/,                       vue: 'VuePhotos',             auth: true  },

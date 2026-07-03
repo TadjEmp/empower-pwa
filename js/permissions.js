@@ -21,9 +21,11 @@
       'home', 'tracker', 'historiques', 'phoning', 'visites',
       'objectifs', 'primes', 'questionnaire', 'comptes', 'photos',
     ],
-    // V5 BUG5 — Alexandra : conserve OBJECTIFS ; jamais Visites/Phoning/Primes.
+    // V5 BUG5 — Alexandra : conserve OBJECTIFS ; jamais Visites/Phoning/Primes (raw CDS).
+    // Section 9 cahier des charges — vues consolidées lecture seule dédiées.
     CHANNEL_MANAGER: [
       'home', 'tracker', 'comptes', 'objectifs', 'reporting', 'photos', 'admin',
+      'visites_fdv', 'phoning_fdv',
     ],
     EXTERNE: [
       'tracker',
@@ -46,6 +48,8 @@
         /^#\/reactiver$/.test(h))              return 'historiques';
     if (/^#\/phoning(\/.*)?$/.test(h))         return 'phoning';
     if (/^#\/visites(\/.*)?$/.test(h))         return 'visites';
+    if (/^#\/visites-fdv$/.test(h))            return 'visites_fdv';
+    if (/^#\/phoning-fdv$/.test(h))            return 'phoning_fdv';
     if (/^#\/objectifs$/.test(h))              return 'objectifs';
     if (/^#\/primes$/.test(h))                 return 'primes';
     if (/^#\/comptes$/.test(h) ||
@@ -72,6 +76,8 @@
     questionnaire: '#/questionnaire',
     admin:         '#/admin',
     photos:        '#/photos',
+    visites_fdv:   '#/visites-fdv',
+    phoning_fdv:   '#/phoning-fdv',
   };
 
   function onglets(role) {
