@@ -42,7 +42,7 @@ window.VueDashboardCDS = {
     const quarter  = paramMap.QuarterActif || 'Q1';
     const CA = v => (typeof window.parseCA === 'function' ? (window.parseCA(v) ?? 0) : Number(v) || 0);
 
-    // ── CA / objectif ──
+    // ── CA / objectif (trimestre en cours) ──
     const obj = objectifs.find(o => Number(o.PIN_CDS) === pin);
     let caRealise = 0, caObjectif = 0;
     if (Session.voitTout()) {
@@ -56,11 +56,16 @@ window.VueDashboardCDS = {
     }
     const pct  = caObjectif > 0 ? Math.round(caRealise / caObjectif * 100) : 0;
     const pace = pct >= 100 ? 'ON_TRACK' : pct >= 80 ? 'WATCH' : 'AT_RISK';
-    // PACE annuel : CA Q-réalisé cumulé vs objectif FY27
+    // CA FY27 cumulé : somme des 4 trimestres (Q1+Q2+Q3+Q4), pour le KPI annuel
+    const QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4'];
+    const caRealiseFY27 = Session.voitTout()
+      ? objectifs.reduce((s, o) => s + QUARTERS.reduce((sq, q) => sq + CA(o[`${q}_CA_Realise`]), 0), 0)
+      : (obj ? QUARTERS.reduce((sq, q) => sq + CA(obj[`${q}_CA_Realise`]), 0) : 0);
+    // PACE annuel : CA FY27 cumulé vs objectif FY27
     const caFY27Obj = Session.voitTout()
       ? objectifs.reduce((s, o) => s + CA(o.FY27_Obj), 0)
       : (obj ? CA(obj.FY27_Obj) : 0);
-    const pctAnnuel = caFY27Obj > 0 ? Math.round(caRealise / caFY27Obj * 100) : 0;
+    const pctAnnuel = caFY27Obj > 0 ? Math.round(caRealiseFY27 / caFY27Obj * 100) : 0;
 
     // ── Comptes & alertes ──
     const mesComptes        = comptes.filter(c => this._estMoi(c.PIN_CDS_Assigne));
@@ -189,7 +194,7 @@ window.VueDashboardCDS = {
 
     return {
       semaine, quarter, caRealise, caObjectif, pct, pace,
-      caFY27Obj, pctAnnuel,
+      caFY27Obj, pctAnnuel, caRealiseFY27,
       caFY26Mes, caFY26Q, // BLOC 5 — référence FY26 pour comparaison
       comptesRouges, nextStepsDepasses, leadsATraiter,
       visitesAujourdhui, comptesAReactiver,

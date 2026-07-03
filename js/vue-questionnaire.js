@@ -206,7 +206,7 @@ window.VueQuestionnaire = {
     );
   },
 
-  get sourceListe() { return this.state.typeSource === 'EXISTANT' ? this.state.comptes : this.state.prospects; },
+  get sourceListe() { return this.state.typeSource === 'PROSPECT' ? this.state.prospects : this.state.typeSource === 'FROID' ? [] : this.state.comptes; },
   get suggestions() {
     const q = normaliserNom(this.state.recherche);
     if (q.length < 2) return [];
@@ -214,7 +214,19 @@ window.VueQuestionnaire = {
   },
 
   setSource(s) {
-    this.state.typeSource = s; this.state.cible = null; this.state.recherche = ''; this.render();
+    this.state.typeSource = s; this.state.cible = null; this.state.recherche = '';
+    if (s === 'FROID') {
+      this.state.cible = { Nom_Compte: '', ID_Compte: 'HORS_BASE', ID_Prospect: null, Ville: '', STATUT_COMPTE: 'Visite à froid' };
+      this._modeFroid = true;
+    } else {
+      this._modeFroid = false;
+    }
+    this.render();
+  },
+
+  setFroidChamp(champ, val) {
+    if (!this.state.cible) return;
+    this.state.cible[champ] = val;
   },
 
   setRecherche(v) {
@@ -340,6 +352,9 @@ window.VueQuestionnaire = {
   suivant() {
     if (this.state.etape === 0 && !this.state.cible) {
       Toast.afficher('Sélectionnez un compte ou un prospect', 'warning'); return;
+    }
+    if (this.state.etape === 0 && this.state.typeSource === 'FROID' && !(this.state.cible?.Nom_Compte || '').trim()) {
+      Toast.afficher('Indiquez le nom de l\'enseigne', 'warning'); return;
     }
     this.state.etape = Math.min(this.state.etape + 1, this.ETAPES.length - 1);
     this.render(); window.scrollTo(0, 0);
@@ -619,8 +634,9 @@ window.VueQuestionnaire = {
   // ── BLOC 1 — Identification ──
   _etape0() {
     const s = this.state, d = s.d;
-    // FIX-B/C : en mode froid, afficher la cible pré-remplie sans champ de recherche
-    const bannereFroid = this._modeFroid ? `
+    // FIX-B/C : en mode froid issu d'une visite planifiée, afficher la cible pré-remplie sans champ de recherche
+    const froidPlanifie = this._modeFroid && this._visitePlanifiee;
+    const bannereFroid = froidPlanifie ? `
       <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fff8e1;border-radius:var(--radius-sm);border-left:4px solid #ffc107;margin-bottom:14px">
         <span style="font-size:22px">❄️</span>
         <div>
@@ -629,23 +645,37 @@ window.VueQuestionnaire = {
           <div style="font-size:11px;color:var(--c-text-2)">Prospect hors base — non référencé dans vos comptes</div>
         </div>
       </div>` : '';
+    const zoneRecherche = s.typeSource === 'FROID' ? `
+      <label class="q-label">Nom de l'enseigne *
+        <input class="q-input" placeholder="ex : MICRO PLUS INFORMATIQUE" value="${s.cible?.Nom_Compte || ''}"
+               oninput="VueQuestionnaire.setFroidChamp('Nom_Compte',this.value)" autocomplete="off"/>
+      </label>
+      <div style="display:flex;gap:12px">
+        <label class="q-label" style="flex:1">Ville
+          <input class="q-input" placeholder="ex : Paris" value="${s.cible?.Ville || ''}"
+                 oninput="VueQuestionnaire.setFroidChamp('Ville',this.value)"/></label>
+        <label class="q-label" style="flex:1">Téléphone
+          <input class="q-input" type="tel" placeholder="ex : 01 23 45 67 89" value="${s.cible?.Tel || ''}"
+                 oninput="VueQuestionnaire.setFroidChamp('Tel',this.value)"/></label>
+      </div>` : `
+      <label class="q-label">Compte ${s.typeSource==='EXISTANT'?'(base historique)':'(base prospects)'}
+        <input class="q-input" placeholder="🔍 Rechercher…" value="${s.recherche}"
+               oninput="VueQuestionnaire.setRecherche(this.value)" autocomplete="off"/>
+      </label>
+      <div id="q-suggestions"></div>`;
     return `<div class="q-champs">
       ${bannereFroid}
-      ${!this._modeFroid ? `
+      ${!froidPlanifie ? `
       <label class="q-label">Statut du compte
         <div style="display:flex;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:4px;background:var(--c-surface)">
-          ${[['EXISTANT','✅ Existant'],['PROSPECT','❄️ Prospect']].map(([v,l]) => `
+          ${[['EXISTANT','✅ Existant'],['PROSPECT','❄️ Prospect'],['FROID','🆕 Visite à froid']].map(([v,l]) => `
             <button type="button" style="flex:1;padding:9px;border:none;border-radius:4px;font-weight:600;font-size:14px;cursor:pointer;
               ${s.typeSource===v?'background:var(--c-title);color:#fff':'background:transparent;color:var(--c-text-2)'}"
               onclick="VueQuestionnaire.setSource('${v}')">${l}</button>`).join('')}
         </div>
       </label>
-      <label class="q-label">Compte ${s.typeSource==='EXISTANT'?'(base historique)':'(base prospects)'}
-        <input class="q-input" placeholder="🔍 Rechercher…" value="${s.recherche}"
-               oninput="VueQuestionnaire.setRecherche(this.value)" autocomplete="off"/>
-      </label>
-      <div id="q-suggestions"></div>` : '<div id="q-suggestions"></div>'}
-      ${s.cible ? `<div class="q-recap">
+      ${zoneRecherche}` : '<div id="q-suggestions"></div>'}
+      ${s.cible && s.typeSource!=='FROID' ? `<div class="q-recap">
         <div class="q-recap-ligne"><span>Ville</span><strong>${s.cible.Ville||'—'}</strong></div>
         <div class="q-recap-ligne"><span>Statut</span><strong>${s.cible.STATUT_COMPTE||s.cible.Statut||'—'}</strong></div>
         ${s.cible.CA_FY25 ? `<div class="q-recap-ligne"><span>CA FY25</span><strong>${formatEuro(s.cible.CA_FY25)}</strong></div>` : ''}

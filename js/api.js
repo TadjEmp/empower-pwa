@@ -303,6 +303,7 @@ const SheetsAPI = {
       'Empower_Partenaire': 'empower_partenaire', 'Empower_Interesse': 'empower_interesse',
       'Decideur_Rencontre': 'decideur_rencontre', 'Decideur_Nom': 'decideur_nom',
       'Decideur_Fonction': 'decideur_fonction', 'Concurrents_JSON': 'concurrents_json',
+      'Norton_Reference': 'produits_norton',
     },
     phoning: {
       'ID_Appel': 'id_appel_gas', 'Date': 'date_appel', 'Semaine_ISO': 'semaine_iso',
@@ -493,12 +494,6 @@ const SheetsAPI = {
     if (this._estTableVide(onglet)) return { ok: true, skipped: true }
     const table   = this._resolveTable(onglet)
     const dbChamps = this._toDBRow(table, champs)
-    if (!this._online) {
-      await this._queueAdd({ op: 'update', table, id, champs: dbChamps })
-      Toast.afficher('📥 Modification en attente', 'info')
-      return { ok: true, offline: true }
-    }
-    let q = this._sb.from(table).update(dbChamps)
     // Déterminer la clé métier par table
     const gasKeyMap = {
       comptes:          'id_compte_gas',
@@ -511,12 +506,13 @@ const SheetsAPI = {
       objectifs_primes: 'pin_cds',
     }
     const gasKey = gasKeyMap[table]
-    if (gasKey && typeof id === 'string' && !id.match(/^[0-9a-f-]{36}$/i)) {
-      q = q.eq(gasKey, id)
-    } else {
-      q = q.eq('id', id)
+    const idColonne = (gasKey && typeof id === 'string' && !id.match(/^[0-9a-f-]{36}$/i)) ? gasKey : 'id'
+    if (!this._online) {
+      await this._queueAdd({ op: 'update', table, id, idColonne, champs: dbChamps })
+      Toast.afficher('📥 Modification en attente', 'info')
+      return { ok: true, offline: true }
     }
-    const { error } = await q
+    const { error } = await this._sb.from(table).update(dbChamps).eq(idColonne, id)
     if (error) throw new Error(error.message)
     await this._invalidate(table)
     return { ok: true }
@@ -684,10 +680,10 @@ const SheetsAPI = {
     let ok = 0
     for (const item of all) {
       try {
-        const { op, table, row, id, champs } = item.payload
+        const { op, table, row, id, champs, idColonne } = item.payload
         let err
         if (op === 'insert') ({ error: err } = await this._sb.from(table).insert(row))
-        if (op === 'update') ({ error: err } = await this._sb.from(table).update(champs).eq('id', id))
+        if (op === 'update') ({ error: err } = await this._sb.from(table).update(champs).eq(idColonne || 'id', id))
         if (!err) {
           await new Promise(res2 => {
             const tx = this._db.transaction('queue','readwrite')

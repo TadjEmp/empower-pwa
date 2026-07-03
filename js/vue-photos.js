@@ -11,6 +11,7 @@ window.VuePhotos = {
     chargement:  true,
     erreur:      null,
     filtreQ:     '',
+    filtrePinCds: 'TOUS',
     zoomIdx:     null,   // index dans _flat[]
   },
 
@@ -38,12 +39,26 @@ window.VuePhotos = {
     }
   },
 
+  // ── Liste unique des commerciaux présents dans les visites ──
+  _listeCommerciaux() {
+    const vus = new Map();
+    for (const v of this.state.visites) {
+      const pin = v.PIN_CDS || v.Nom_CDS;
+      if (!pin || vus.has(String(pin))) continue;
+      vus.set(String(pin), window.resolveCDS(pin));
+    }
+    return Array.from(vus, ([pin, nom]) => ({ pin, nom }))
+      .sort((a, b) => a.nom.localeCompare(b.nom));
+  },
+
   // ── Données filtrées + index plat pour zoom ──
   _buildFlat() {
     const q = normaliserNom(this.state.filtreQ || '');
+    const filtrePinCds = this.state.filtrePinCds;
     const flat = [];
     for (const v of this.state.visites) {
       if (q && !normaliserNom(v.Nom_Compte || '').includes(q)) continue;
+      if (filtrePinCds && filtrePinCds !== 'TOUS' && String(v.PIN_CDS) !== filtrePinCds) continue;
       const urls = String(v.Photo_URL || '').split(' | ').map(u => u.trim()).filter(Boolean);
       for (const url of urls) {
         flat.push({ url, visite: v });
@@ -86,23 +101,29 @@ window.VuePhotos = {
   },
 
   // ── Téléchargement ──
-  // Synchrone : <a click> évite le blocage popup iOS après await.
-  // Pour URLs cross-origin (Supabase storage), le navigateur ouvre dans un nouvel onglet
-  // où l'utilisateur peut sauvegarder nativement.
-  telecharger(idx) {
+  // fetch + blob : nécessaire pour forcer le téléchargement (et non l'ouverture d'onglet)
+  // sur les URLs cross-origin (Supabase Storage), où l'attribut download seul est ignoré.
+  async telecharger(idx) {
     const item = this._flat[idx];
     if (!item) return;
     const url = item.url;
     const nom  = (item.visite.Nom_Compte || 'visite').replace(/[^a-zA-Z0-9]/g, '_');
     const date = (item.visite.Date || '').slice(0, 10).replace(/-/g, '');
-    const a = document.createElement('a');
-    a.href     = url;
-    a.download = `photo_${nom}_${date}.jpg`;
-    a.target   = '_blank';
-    a.rel      = 'noopener noreferrer';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href     = blobUrl;
+      a.download = `photo_${nom}_${date}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch(e) {
+      Toast.afficher('❌ Échec du téléchargement : ' + e.message, 'erreur');
+    }
   },
 
   // ── Render ──
@@ -125,7 +146,7 @@ window.VuePhotos = {
           </div>
           <div style="padding:0 14px 6px;flex-shrink:0">
             <div style="color:#fff;font-size:14px;font-weight:700">${visite.Nom_Compte || '—'}</div>
-            <div style="color:rgba(255,255,255,.6);font-size:12px">${dateStr}</div>
+            <div style="color:rgba(255,255,255,.6);font-size:12px">${dateStr} · ${window.resolveCDS(visite.PIN_CDS || visite.Nom_CDS)}</div>
           </div>
           <div class="photo-zoom-img-wrap">
             <img src="${url}" alt="${visite.Nom_Compte || 'photo'}"
@@ -183,6 +204,17 @@ window.VuePhotos = {
                oninput="VuePhotos.state.filtreQ=this.value;VuePhotos.render()"/>
       </div>
 
+      ${Session.voitTout() ? `
+      <div style="padding:10px 12px 0 12px">
+        <select style="width:100%;box-sizing:border-box;padding:11px 14px;border:1.5px solid var(--c-border);border-radius:var(--radius);font-size:14px;background:var(--c-surface);color:var(--c-text)"
+                onchange="VuePhotos.state.filtrePinCds=this.value;VuePhotos.render()">
+          <option value="TOUS" ${this.state.filtrePinCds === 'TOUS' ? 'selected' : ''}>Filtrer par commercial — Tous</option>
+          ${this._listeCommerciaux().map(c => `
+            <option value="${c.pin}" ${String(this.state.filtrePinCds) === String(c.pin) ? 'selected' : ''}>${c.nom}</option>
+          `).join('')}
+        </select>
+      </div>` : ''}
+
       <div class="avec-nav" style="padding:12px">
         ${flat.length === 0
           ? `<div style="text-align:center;padding:48px 20px;color:var(--c-text-2)">
@@ -209,6 +241,7 @@ window.VuePhotos = {
                          onerror="this.style.display='none';this.parentElement.style.background='var(--c-surface-alt)'"/>
                     <div class="photo-tile-caption">
                       <div class="photo-tile-nom">${item.visite.Nom_Compte || '—'}</div>
+                      <div style="color:rgba(255,255,255,.75);font-size:10px">${window.resolveCDS(item.visite.PIN_CDS || item.visite.Nom_CDS)}</div>
                     </div>
                     <button class="photo-tile-dl"
                             onclick="event.stopPropagation();VuePhotos.telecharger(${globalIdx})"

@@ -26,6 +26,9 @@ window.VuePrimes = {
 
   PLAFOND: 700,
 
+  // Fallback si SheetsAPI.lireCDS() indisponible (même liste que _renderManager)
+  CDS_FALLBACK: [ { pin: 1000, nom: 'Tadjidine' }, { pin: 4001, nom: 'Lyes' }, { pin: 4002, nom: 'Mehdi' }, { pin: 4003, nom: 'Johanne' } ],
+
   state: null,
 
   async init() {
@@ -40,20 +43,26 @@ window.VuePrimes = {
       modalOnboarding: false,
       // Filtre de validation manager : 'NSB' | 'EMPOWER' | 'TOUS'
       filtreValidation: 'TOUS',
+      // Liste des CDS pour le sélecteur "CDS concerné" (manager/channel)
+      cdsListe: [],
     };
     this.render();
     try {
-      const [objectifs, nsb, prospects, params] = await Promise.all([
+      const [objectifs, nsb, prospects, params, cdsApi] = await Promise.all([
         SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
         SheetsAPI.lire('EMPOWER_MDB', '🛒_NSB_COMMANDES'),
         SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS'),
         SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
+        SheetsAPI.lireCDS(),
       ]);
       const paramMap = Object.fromEntries((params || []).map(p => [p.Parametre, p.Valeur]));
       this.state.quarter   = this.state.quarter || paramMap.QuarterActif || 'Q1';
       this.state.objectifs = objectifs || [];
       this.state.nsb       = nsb || [];
       this.state.prospects = prospects || [];
+      this.state.cdsListe  = (Array.isArray(cdsApi) && cdsApi.length)
+        ? cdsApi.filter(c => String(c.role).toUpperCase() === 'CDS').map(c => ({ pin: Number(c.pin), nom: c.nom }))
+        : this.CDS_FALLBACK;
       this.state.chargement = false;
       this.render();
     } catch(e) {
@@ -179,6 +188,7 @@ window.VuePrimes = {
     if (this.state.envoiEnCours) return;
     const v = id => document.getElementById(id)?.value?.trim() || '';
     const qte = Math.max(1, parseInt(v('nsb-qte') || '1', 10));
+    const pinCds = Number(v('nsb-cds')) || Session.pin;
     this.state.envoiEnCours = true;
     try {
       const promises = [];
@@ -186,7 +196,7 @@ window.VuePrimes = {
         const ligne = {
           ID_NSB: genId('NSB'),
           Date: v('nsb-date') || dateISOLocale(),
-          PIN_CDS: Session.pin,
+          PIN_CDS: pinCds,
           ID_Compte: '',
           Nom_Compte: (v('nsb-compte') || '').toUpperCase() || `NSB_${i+1}`,
           Produit: v('nsb-produit') || 'NSB',
@@ -238,11 +248,12 @@ window.VuePrimes = {
     }
     const q = this.state.quarter;
     const estManager = Session.estManager();
+    const estManagerOuChannel = estManager || Session.estChannel();
 
     app.innerHTML = `
       <header class="header-vue">
         <button onclick="Router.aller('#/dashboard')" class="btn-retour">←</button>
-        <h1>${estManager ? 'Primes équipe' : 'Mes primes'}</h1>
+        <h1>${estManagerOuChannel ? 'Primes Équipe' : 'Mes primes'}</h1>
         <span class="badge-compteur">${q} FY27</span>
       </header>
 
@@ -486,6 +497,7 @@ window.VuePrimes = {
     const v = id => document.getElementById(id)?.value?.trim() || '';
     const type = v('ob-type');  // 'EMPOWER_FLAVIE' ou 'EMPOWER_TERRAIN'
     const qte  = Math.max(1, parseInt(v('ob-qte') || '1', 10));
+    const pinCds = Number(v('ob-cds')) || Session.pin;
     this.state.envoiEnCours = true;
     try {
       const promises = [];
@@ -494,7 +506,7 @@ window.VuePrimes = {
         const ligne = {
           ID_NSB: genId('OB'),
           Date: v('ob-date') || dateISOLocale(),
-          PIN_CDS: Session.pin,
+          PIN_CDS: pinCds,
           ID_Compte: '',
           Nom_Compte: v('ob-compte') || '',
           Produit: type,
@@ -522,6 +534,12 @@ window.VuePrimes = {
       <div class="modal">
         <h3>Déclarer une commande NSB</h3>
         <form onsubmit="VuePrimes.declarerNSB(event)">
+          ${(Session.estManager() || Session.estChannel()) ? `
+          <label>CDS concerné *
+            <select id="nsb-cds" required>
+              ${(this.state.cdsListe || []).map(c => `<option value="${c.pin}">${c.nom}</option>`).join('')}
+            </select>
+          </label>` : ''}
           <label>Revendeur (optionnel)<input id="nsb-compte" placeholder="Nom du revendeur (facultatif)"/></label>
           <label>Date<input id="nsb-date" type="date" value="${dateISOLocale()}"/></label>
           <label>Produit<select id="nsb-produit"><option>NSB</option><option>NSB 5 postes</option><option>NSB 10 postes</option><option>NSB 20 postes</option></select></label>
@@ -546,6 +564,12 @@ window.VuePrimes = {
       <div class="modal">
         <h3>Déclarer un onboarding EMPOWER</h3>
         <form onsubmit="VuePrimes.declarerOnboarding(event)">
+          ${(Session.estManager() || Session.estChannel()) ? `
+          <label>CDS concerné *
+            <select id="ob-cds" required>
+              ${(this.state.cdsListe || []).map(c => `<option value="${c.pin}">${c.nom}</option>`).join('')}
+            </select>
+          </label>` : ''}
           <label>Type *
             <select id="ob-type">
               <option value="EMPOWER_FLAVIE">Via Alexandra (conversion channel + 1ère commande confirmée)</option>

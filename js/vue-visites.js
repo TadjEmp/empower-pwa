@@ -836,7 +836,7 @@ window.VueVisites = {
           ` : ''}
           ${(!isPlanif && !isEnCours) ? `
             <button class="btn-secondaire" style="padding:6px 12px;font-size:12px;width:auto"
-                    onclick="Router.aller('#/compte/${v.ID_Cible || ''}')">
+                    onclick="${(v.ID_Cible === 'HORS_BASE' || v.Source_Visite === 'ESI_VISITE_FROID') ? `VueVisites.ouvrirCR('${v.ID_Visite}')` : `Router.aller('#/compte/${v.ID_Cible || ''}')`}">
               Fiche compte
             </button>` : ''}
           ${peutModif ? `

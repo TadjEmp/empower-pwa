@@ -249,7 +249,7 @@ window.VueObjectifs = {
             <span>/ ${fmtEUR(d.obj)} — ${q}</span>
           </div>
           ${this._barreProgression(d.pct, d.pace)}
-          <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
+          <div class="objectifs-grille" style="margin-top:10px">
             <div class="stat-mini"><div>${safePct(d.pct)}</div><div>Atteinte</div></div>
             <div class="stat-mini"><div>${fmtEUR(d.projection)}</div><div>Projection ${q}</div></div>
             <div class="stat-mini" style="color:${ecartCouleur}">
@@ -259,14 +259,14 @@ window.VueObjectifs = {
           </div>
           <div style="height:1px;background:var(--c-border);margin:12px 0"></div>
           <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;margin-bottom:4px">AXE 2 — NSB</div>
-          <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <div class="objectifs-grille">
             <div class="stat-mini"><div>${a2.valide ?? '—'}</div><div>Validés</div></div>
             <div class="stat-mini"><div>${(a2.total - a2.valide) ?? '—'}</div><div>En attente</div></div>
             ${a2.obj2 > 0 ? `<div class="stat-mini"><div>${a2.obj2}</div><div>Objectif NSB</div></div>` : ''}
           </div>
           <div style="height:1px;background:var(--c-border);margin:12px 0"></div>
           <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;margin-bottom:4px">AXE 3 — ONBOARDING EMPOWER</div>
-          <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <div class="objectifs-grille">
             <div class="stat-mini"><div>${a3.integres ?? '—'}</div><div>Total intégrés</div></div>
             <div class="stat-mini"><div>${a3.viaCanal ?? '—'}</div><div>Via Alexandra</div></div>
             <div class="stat-mini"><div>${a3.terrain ?? '—'}</div><div>Par le CDS</div></div>
@@ -316,7 +316,7 @@ window.VueObjectifs = {
     app.innerHTML = `
       <header class="header-vue">
         <button onclick="Router.aller('#/dashboard')" class="btn-retour">←</button>
-        <h1>Suivi des Objectifs</h1>
+        <h1>${estManager ? 'Objectifs FDV' : 'Mes objectifs'}</h1>
         <span class="badge-compteur">${q} · ${this.state.semaine}</span>
       </header>
       <div class="avec-nav dash-body" style="padding:12px">

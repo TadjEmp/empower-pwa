@@ -738,6 +738,13 @@ details[open] > .cv-rapport-toggle::before { transform: rotate(90deg); }
 }
 .stat-mini > div:first-child { font-size: 16px; font-weight: 800; color: var(--c-title); }
 
+/* ── Grille objectifs (remplace le flex-wrap inline des stat-mini) ── */
+.objectifs-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+}
+
 /* ── Comptes Historiques stats ── */
 .ch-stats {
   display: grid; grid-template-columns: repeat(4, 1fr);

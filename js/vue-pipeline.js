@@ -687,7 +687,7 @@ window.VuePipeline = {
     if (!l) return '';
     // Droits Bloc 4 : ADMIN gère tout ; CDS édite/avance SES leads ; Alexandra (CHANNEL_MANAGER) = lecture seule ; EXTERNE = saisie seule.
     const peutAssigner = this._peutAssigner();   // attribution CDS → ADMIN uniquement
-    const peutEditer = Session.estManager() || (Session.estCDS() && Number(l.PIN_CDS_Assigne) === Session.pin); // suivi + avancement
+    const peutEditer = Session.estManager() || Session.estChannel() || (Session.estCDS() && Number(l.PIN_CDS_Assigne) === Session.pin); // suivi + avancement
     const cdsList = this.CDS.length ? this.CDS : this.CDS_FALLBACK;
     const statut = this.STATUTS.find(s => s.id === l._statut);
     const FLAGS = ['SAISIE','A_RELANCER','EN_COURS','A_RAPPELER','INTERESSE','WELCOME_PACK_ENVOYE','NON_INTERESSE','PERDU'];

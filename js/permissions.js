@@ -23,7 +23,7 @@
     ],
     // V5 BUG5 — Alexandra : conserve OBJECTIFS ; jamais Visites/Phoning/Primes.
     CHANNEL_MANAGER: [
-      'home', 'tracker', 'comptes', 'objectifs', 'reporting', 'photos',
+      'home', 'tracker', 'comptes', 'objectifs', 'reporting', 'photos', 'admin',
     ],
     EXTERNE: [
       'tracker',
