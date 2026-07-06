@@ -84,6 +84,8 @@ window.VueQuestionnaire = {
   _visitePlanifiee: null,
   _isHorsBase: false,
   _modeFroid: false, // FIX-B/C : true quand la visite en cours est à froid (HORS_BASE)
+  _modalAjoutTracker: null, // Ajout au Tracker Empower depuis une visite à froid intéressée
+  _trackerAjoute: false,
 
   _etatInitial() {
     const now = new Date();
@@ -141,6 +143,8 @@ window.VueQuestionnaire = {
   async init(idCible = null) {
     // FIX-B/C : réinitialiser le mode froid sauf si déjà positionné par ouvrirCR
     this._modeFroid = false;
+    this._modalAjoutTracker = null;
+    this._trackerAjoute = false;
     this.state = this._etatInitial();
     this.render();
     try {
@@ -227,6 +231,129 @@ window.VueQuestionnaire = {
   setFroidChamp(champ, val) {
     if (!this.state.cible) return;
     this.state.cible[champ] = val;
+  },
+
+  // ── Ajout au Tracker Empower depuis une visite à froid intéressée ──
+  // (prospect visité, jamais encore comptes ni leads — cf. audit PROMPT_CLAUDE_REFONTE_UX_DESKTOP_ESI.md pt.2)
+  ouvrirAjoutTracker() {
+    const c = this.state.cible;
+    this._modalAjoutTracker = {
+      nomCompte:   c?.Nom_Compte || '',
+      adresse:     c?.Adresse || '',
+      ville:       c?.Ville || '',
+      departement: c?.Departement || '',
+      tel:         c?.Tel || '',
+      email:       c?.Email || '',
+      contactNom:      this.state.d.decideurNom || this.state.d.interlocuteurNom || '',
+      contactFonction: this.state.d.decideurFonction || this.state.d.interlocuteurFonction || '',
+    };
+    this.render();
+  },
+
+  fermerAjoutTracker() { this._modalAjoutTracker = null; this.render(); },
+
+  forcerAjoutTracker() {
+    this._modalAjoutTracker.doublonExistant = null;
+    this._modalAjoutTracker._forcerDoublon = true;
+    this.confirmerAjoutTracker();
+  },
+
+  async confirmerAjoutTracker() {
+    const m = this._modalAjoutTracker;
+    if (!m || !m.nomCompte.trim()) { Toast.afficher('Nom du compte requis', 'warning'); return; }
+
+    // Anti-doublon : contre les comptes ET les leads déjà existants
+    const normNom = normaliserNom(m.nomCompte);
+    const dejaCompte = this.state.comptes.find(c => normaliserNom(c.Nom_Compte) === normNom);
+    const dejaLead   = this.state.prospects.find(p => normaliserNom(p.Nom_Compte) === normNom);
+    const doublon = dejaCompte || dejaLead;
+    if (doublon && !m._forcerDoublon) {
+      this._modalAjoutTracker.doublonExistant = { ...doublon, _typeDoublon: dejaCompte ? 'compte' : 'lead' };
+      this.render();
+      return;
+    }
+    if (this._ajoutTrackerEnCours) return;
+    this._ajoutTrackerEnCours = true;
+    this.render();
+    try {
+      const lead = {
+        ID_Prospect: genId('PROS'),
+        Nom_Compte: m.nomCompte, Adresse: m.adresse, Ville: m.ville, Departement: m.departement,
+        Tel: m.tel, Email: m.email,
+        PIN_CDS_Assigne: Session.pin, Nom_CDS: Session.nom,
+        STATUT_EMPOWER: 'SAISIE', FLAG_ACTION: 'SAISIE',
+        Source_Import: 'ESI_VISITE_TERRAIN', ORIGINE: 'VISITE_TERRAIN',
+        Flag_traite: 'FALSE', Flag_converti: 'FALSE',
+        CONTACT_NOM: m.contactNom, CONTACT_FONCTION: m.contactFonction,
+        Note_initiale: `Ajouté depuis visite terrain du ${this.state.d.date} (intérêt EMPOWER exprimé sur place).`,
+        Date_Import: dateISOLocale(),
+        Timestamp: new Date().toISOString(),
+      };
+      await SheetsAPI.ecrire('EMPOWER_MDB', '📋_PROSPECTS', lead);
+      this.state.prospects.unshift(lead);
+      // Notifications PIN 1000 (Tadjidine) + PIN 5000 (Alexandra) — même convention que confirmerConversion()
+      for (const dest of [1000, 5000]) {
+        SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
+          ID_Notif: genId('NOTIF'), Date_Envoi: new Date().toISOString(),
+          PIN_Destinataire: dest, Type_Notif: 'NOUVEAU_LEAD',
+          Message: `🎯 Nouveau lead depuis visite terrain (${Session.nom}) : ${m.nomCompte}`,
+          ID_Cible: lead.ID_Prospect, Statut_Lu: false, Timestamp: new Date().toISOString(),
+        }).catch(() => {});
+      }
+      this._modalAjoutTracker = null;
+      this._trackerAjoute = true;
+      Toast.afficher(`✅ Ajouté au Tracker : ${m.nomCompte}`, 'succes', 5000);
+      this.render();
+    } catch(e) {
+      Toast.afficher('❌ ' + e.message, 'erreur');
+    } finally {
+      this._ajoutTrackerEnCours = false;
+    }
+  },
+
+  _renderModalAjoutTracker() {
+    const m = this._modalAjoutTracker;
+    if (!m) return '';
+    return `
+    <div class="modal-overlay" onclick="if(event.target===this)VueQuestionnaire.fermerAjoutTracker()">
+      <div class="modal">
+        <h3>Ajouter au Tracker Empower</h3>
+        ${m.doublonExistant ? `
+        <div style="background:color-mix(in srgb,var(--c-warning) 12%,transparent);border:1px solid var(--c-warning);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">
+          <div style="font-weight:700;color:var(--c-warning);margin-bottom:6px">Ce nom existe déjà — ${m.doublonExistant._typeDoublon === 'compte' ? 'compte actif' : 'lead Tracker'}</div>
+          <div style="font-size:13px;margin-bottom:10px"><strong>${m.doublonExistant.Nom_Compte}</strong></div>
+          <button class="btn-primaire" style="width:100%;font-size:12px" onclick="VueQuestionnaire.forcerAjoutTracker()">Ajouter quand même</button>
+        </div>` : ''}
+        <p style="font-size:13px;color:var(--c-text-2);margin-bottom:12px">Relire les informations avant création du lead (statut initial : SAISIE).</p>
+        <label>Nom de l'enseigne *
+          <input required value="${m.nomCompte}"
+                 oninput="VueQuestionnaire._modalAjoutTracker.nomCompte=this.value"/></label>
+        <label>Adresse
+          <input value="${m.adresse}"
+                 oninput="VueQuestionnaire._modalAjoutTracker.adresse=this.value"/></label>
+        <div style="display:flex;gap:8px">
+          <label style="flex:1">Département
+            <input placeholder="ex : 75" maxlength="3" value="${m.departement}"
+                   oninput="VueQuestionnaire._modalAjoutTracker.departement=this.value"/></label>
+          <label style="flex:2">Ville
+            <input placeholder="ex : Paris" value="${m.ville}"
+                   oninput="VueQuestionnaire._modalAjoutTracker.ville=this.value"/></label>
+        </div>
+        <label>Téléphone <span style="color:var(--c-text-2);font-weight:400">(optionnel)</span>
+          <input type="tel" value="${m.tel}"
+                 oninput="VueQuestionnaire._modalAjoutTracker.tel=this.value"/></label>
+        <label>Email <span style="color:var(--c-text-2);font-weight:400">(optionnel)</span>
+          <input type="email" value="${m.email}"
+                 oninput="VueQuestionnaire._modalAjoutTracker.email=this.value"/></label>
+        <div class="modal-btns">
+          <button type="button" onclick="VueQuestionnaire.fermerAjoutTracker()">Annuler</button>
+          <button type="button" class="btn-primaire"
+                  onclick="VueQuestionnaire.confirmerAjoutTracker()" ${this._ajoutTrackerEnCours ? 'disabled' : ''}>
+            ${this._ajoutTrackerEnCours ? 'Ajout…' : 'Ajouter au Tracker'}
+          </button>
+        </div>
+      </div>
+    </div>`;
   },
 
   setRecherche(v) {
@@ -627,6 +754,8 @@ window.VueQuestionnaire = {
           : `<button class="btn-q-nav btn-q-terminer" onclick="VueQuestionnaire.valider()"
                ${s.envoiEnCours ? 'disabled' : ''}>${s.envoiEnCours ? 'Enregistrement…' : '✓ VALIDER LA VISITE'}</button>`}
       </div>
+
+      ${this._renderModalAjoutTracker()}
     `;
     this._renderSuggestions();
   },
@@ -874,6 +1003,12 @@ window.VueQuestionnaire = {
         ${empowerAlerte ? '<div style="font-size:12px;color:var(--c-primary);font-weight:600;padding:6px 0">🔔 Alerte EMPOWER → Alexandra sera envoyée</div>' : ''}
         <div class="q-recap-ligne"><span>GPS</span><strong>${s.gps.lat?'📍 capturé':'—'}</strong></div>
       </div>
+
+      ${this._modeFroid && empowerAlerte ? `
+        <button type="button" class="btn-primaire" style="margin-top:4px"
+                onclick="VueQuestionnaire.ouvrirAjoutTracker()" ${this._trackerAjoute ? 'disabled' : ''}>
+          ${this._trackerAjoute ? '✅ Ajouté au Tracker Empower' : '➕ Ajouter au Tracker Empower'}
+        </button>` : ''}
 
       <div class="q-photo-zone">
         <label class="q-label">📷 Photos terrain (${s.photos.length}/4)</label>

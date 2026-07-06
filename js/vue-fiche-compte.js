@@ -11,6 +11,7 @@ window.VueFicheCompte = {
     editCoord: false,
     formCoord: { ville: '', code_postal: '', departement: '', tel: '', email: '' },
     sauvegardeEnCours: false,
+    modalRapportPhoning: false,
   },
 
   async init(idCompte) {
@@ -98,6 +99,38 @@ window.VueFicheCompte = {
     }
     this.state.sauvegardeEnCours = false;
     this.render();
+  },
+
+  ouvrirRapportPhoning() {
+    this.state.modalRapportPhoning = true;
+    this.render();
+  },
+
+  fermerRapportPhoning() {
+    this.state.modalRapportPhoning = false;
+    this.render();
+  },
+
+  _renderModalRapportPhoning() {
+    const appels = [...this.state.appels].sort((a, b) => new Date(b.Date) - new Date(a.Date));
+    return `
+      <div class="modal-overlay" onclick="if(event.target===this)VueFicheCompte.fermerRapportPhoning()">
+        <div class="modal" style="max-width:520px;margin:0 auto">
+          <h3>📊 Rapport Phoning — ${this.state.compte.Nom_Compte}</h3>
+          ${appels.length === 0 ? '<div class="vide-liste">Aucun appel enregistré pour ce compte</div>' : `
+            <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">${appels.length} appel${appels.length > 1 ? 's' : ''} au total</p>
+            ${appels.map(a => `
+            <div class="carte-appel" style="margin-bottom:10px">
+              <div class="appel-date">${a.Date || '—'} · ${window.resolveCDS(a.PIN_CDS || a.Nom_CDS)}</div>
+              <div class="appel-resultat">${a.Statut_Appel || '—'} · Intérêt EMPOWER : ${a.Interet_EMPOWER || '—'}${a.Interet_Score ? ' (' + a.Interet_Score + '/5)' : ''}</div>
+              ${a.Frein_Principal ? `<div class="appel-frein">Frein : ${a.Frein_Principal}</div>` : ''}
+              ${a.Prochaine_Action ? `<div class="appel-frein">→ ${a.Prochaine_Action}${a.Date_Rappel ? ' (' + a.Date_Rappel + ')' : ''}</div>` : ''}
+              ${a.Note ? `<div class="pa-note">📝 ${a.Note}</div>` : ''}
+            </div>`).join('')}
+          `}
+          <button class="btn-secondaire" style="margin-top:8px" onclick="VueFicheCompte.fermerRapportPhoning()">Fermer</button>
+        </div>
+      </div>`;
   },
 
   _barreCA(label, val, max) {
@@ -297,8 +330,11 @@ window.VueFicheCompte = {
       <div class="barre-actions-fixe">
         <button class="btn-action btn-visite" onclick="Router.aller('#/questionnaire/${c.ID_Compte}')">📋 Visite</button>
         <button class="btn-action btn-appel" onclick="Router.aller('#/phoning/${c.ID_Compte}')">📞 Appeler</button>
+        <button class="btn-action" style="background:var(--c-text-2);color:#fff" onclick="VueFicheCompte.ouvrirRapportPhoning()">📊 Rapport</button>
         <button class="btn-action btn-planning" onclick="VueVisites.state.formPlanif=VueVisites.state.formPlanif||{};VueVisites.ouvrirModal();Router.aller('#/visites')">🗓️ Planifier</button>
       </div>
+
+      ${this.state.modalRapportPhoning ? this._renderModalRapportPhoning() : ''}
     `;
   },
 };

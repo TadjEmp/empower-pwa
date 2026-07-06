@@ -15,7 +15,7 @@
     ADMIN: [
       'home', 'tracker', 'historiques', 'phoning', 'visites',
       'objectifs', 'primes', 'comptes', 'manager', 'admin',
-      'questionnaire', 'reporting', 'photos',
+      'questionnaire', 'reporting', 'photos', 'phoning_fdv',
     ],
     CDS: [
       'home', 'tracker', 'historiques', 'phoning', 'visites',
