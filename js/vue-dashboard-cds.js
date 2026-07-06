@@ -355,10 +355,10 @@ window.VueDashboardCDS = {
 
       <!-- KPI grid 4 cartes façon DASHBOARD_W09 -->
       <div class="kpi-grid-layout">
-        ${kpiCard({ label: 'Comptes', value: d.nbComptes, accent: 'primary' })}
-        ${kpiCard({ label: 'Visites sem.', value: `${d.visitesSem}/${d.objVisites}`, accent: d.visitesSem >= d.objVisites ? 'teal' : 'amber' })}
-        ${kpiCard({ label: 'Appels sem.', value: `${d.appelsSem}/${d.objAppels}`, accent: d.appelsSem >= d.objAppels ? 'teal' : 'coral' })}
-        ${kpiCard({ label: 'Leads actifs', value: d.leadsATraiter.length, accent: d.leadsATraiter.length > 0 ? 'indigo' : 'teal' })}
+        ${kpiCard({ label: 'Comptes', value: d.nbComptes, accent: 'primary', onclick: "Router.aller('#/comptes')" })}
+        ${kpiCard({ label: 'Visites sem.', value: `${d.visitesSem}/${d.objVisites}`, accent: d.visitesSem >= d.objVisites ? 'teal' : 'amber', onclick: "Router.aller('#/visites')" })}
+        ${kpiCard({ label: 'Appels sem.', value: `${d.appelsSem}/${d.objAppels}`, accent: d.appelsSem >= d.objAppels ? 'teal' : 'coral', onclick: "Router.aller('#/phoning')" })}
+        ${kpiCard({ label: 'Leads actifs', value: d.leadsATraiter.length, accent: d.leadsATraiter.length > 0 ? 'indigo' : 'teal', onclick: "Router.aller('#/empower-tracker')" })}
       </div>
 
       <div class="dash-body avec-nav">
@@ -384,7 +384,8 @@ window.VueDashboardCDS = {
           </div>
         </div>
 
-        <!-- TOP 5 COMPTES ACTIFS (CA_Q1FY27 > 0) -->
+        <!-- TOP 5 COMPTES ACTIFS + TOP 5 RELANCES — sous-grille 2 colonnes desktop large -->
+        <div class="dash-grid-2col">
         ${d.top5Actifs.length > 0 ? `
         <div class="bloc-fiche">
           <div class="bloc-titre">
@@ -421,6 +422,7 @@ window.VueDashboardCDS = {
               </div>
             </div>`).join('')}
         </div>` : ''}
+        </div><!-- /dash-grid-2col -->
 
         <!-- ALERTES ACTIVES (🔔_NOTIFS) -->
         ${d.mesNotifs.length > 0 ? `
@@ -458,7 +460,8 @@ window.VueDashboardCDS = {
           }
         </div>
 
-        <!-- LEADS EMPOWER À TRAITER -->
+        <!-- LEADS EMPOWER À TRAITER + MA BASE PROSPECTS — sous-grille 2 colonnes desktop large -->
+        <div class="dash-grid-2col">
         ${d.leadsATraiter.length > 0 ? `
         <div class="bloc-fiche">
           <div class="bloc-titre">
@@ -503,6 +506,7 @@ window.VueDashboardCDS = {
               +${d.mesProspects.length - 5} autres prospects → voir le Tracker
             </div>` : ''}
         </div>` : ''}
+        </div><!-- /dash-grid-2col -->
 
         </div><!-- /dash-col-main -->
 

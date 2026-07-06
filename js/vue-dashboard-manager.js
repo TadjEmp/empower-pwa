@@ -512,11 +512,12 @@ window.VueDashboardManager = {
       app.innerHTML = `
         ${header}
         <div class="dash-body avec-nav">
+          <div class="dash-col-main">
           <p class="dash-date" style="color:var(--c-text-2);font-family:Montserrat,sans-serif;font-size:13px">${dateFr} · Suivi FY27</p>
 
           <div class="stat-tuiles">
             ${dc.compteurs.map(c => `
-              <div class="stat-tuile" style="border-top:3px solid ${c.coul}">
+              <div class="stat-tuile" style="border-top:3px solid ${c.coul};cursor:pointer" onclick="Router.aller('#/empower-tracker')">
                 <div class="stat-tuile-lbl">${c.lbl}</div>
                 <div class="stat-tuile-val" style="color:${c.coul}">${c.n}</div>
               </div>`).join('')}
@@ -531,7 +532,9 @@ window.VueDashboardManager = {
             <button class="btn-lien no-print" onclick="Router.aller('#/empower-tracker')"
                     style="font-size:12px;margin-top:8px">Voir le Tracker →</button>
           </div>
+          </div><!-- /dash-col-main -->
 
+          <div class="dash-col-side">
           <div class="bloc-fiche">
             <div class="bloc-titre">⚠️ Welcome Pack non envoyé (≥ J14)
               ${dc.alerteWelcome.length ? `<span class="badge-compteur" style="background:var(--c-danger);color:#fff">${dc.alerteWelcome.length}</span>` : ''}
@@ -564,6 +567,7 @@ window.VueDashboardManager = {
             <button class="raccourci" onclick="Router.aller('#/empower-tracker')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Tracker</span></button>
             <button class="raccourci" onclick="Router.aller('#/comptes')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><line x1="10" y1="6" x2="10" y2="6.01"/><line x1="14" y1="6" x2="14" y2="6.01"/><line x1="10" y1="10" x2="10" y2="10.01"/><line x1="14" y1="10" x2="14" y2="10.01"/><line x1="10" y1="14" x2="10" y2="14.01"/><line x1="14" y1="14" x2="14" y2="14.01"/><line x1="10" y1="18" x2="10" y2="18.01"/><line x1="14" y1="18" x2="14" y2="18.01"/></svg><span>Comptes</span></button>
           </div>
+          </div><!-- /dash-col-side -->
         </div>
         ${NavBar('home')}
         ${this._renderExportDir()}
@@ -634,12 +638,17 @@ window.VueDashboardManager = {
     app.innerHTML = `
       ${header}
       <div class="dash-body avec-nav">
+        <div class="dash-col-main">
         <p class="dash-date" style="color:var(--c-text-2);font-family:Montserrat,sans-serif;font-size:13px">${dateFr} · Suivi FY27</p>
 
         ${section('🟣 Pipeline', '#9333ea', pipelineCorps)}
         ${section('🟢 Performance par CDS', '#00b27e', performanceCorps)}
         ${section('🔵 CA', '#0050FF', caCorps)}
+        </div><!-- /dash-col-main -->
+
+        <div class="dash-col-side">
         ${section('⚪ Historique', '#626264', historiqueCorps, false)}
+        </div><!-- /dash-col-side -->
       </div>
       ${NavBar('reporting')}
       ${this._renderExportDir()}
@@ -670,6 +679,7 @@ window.VueDashboardManager = {
       </header>
 
       <div class="dash-body copil-print avec-nav">
+        <div class="dash-col-main">
         <div class="print-only" style="display:none">
           <h1>COPIL ESI — ${d.semaine} FY27</h1>
           <p>${dateFr} · Empower Sales Intelligence · Norton France</p>
@@ -678,7 +688,7 @@ window.VueDashboardManager = {
 
         <!-- TUILES STATS -->
         <div class="stat-tuiles">
-          <div class="stat-tuile">
+          <div class="stat-tuile" style="cursor:pointer" onclick="Router.aller('#/objectifs')">
             <div class="stat-tuile-lbl">CA total ${d.quarter}</div>
             <div class="stat-tuile-val">${formatEuro(d.caTotal)}</div>
             <div style="font-size:11px;color:var(--c-text-2);margin-top:2px">/ ${formatEuro(d.objTotal)} obj. · <strong style="color:${d.pctTotal>=100?'var(--c-success)':d.pctTotal>=80?'var(--c-warning)':'var(--c-danger)'}">${d.pctTotal}%</strong></div>
@@ -689,7 +699,7 @@ window.VueDashboardManager = {
             <div class="stat-tuile-val" style="color:#9333ea">${formatEuro(d.caFY26Total)}</div>
             <div style="font-size:11px;color:var(--c-text-2);margin-top:2px">CA annuel ÷ 4 équipe</div>
           </div>` : ''}
-          <div class="stat-tuile bleu">
+          <div class="stat-tuile bleu" style="cursor:pointer" onclick="Router.aller('#/empower-tracker')">
             <div class="stat-tuile-lbl">Leads pipeline</div>
             <div class="stat-tuile-val">${d.assignes}</div>
             <div style="font-size:11px;color:#A8C8FF;margin-top:2px">${d.integres} intégrés · ${d.tauxIntegration}% taux</div>
@@ -787,7 +797,9 @@ window.VueDashboardManager = {
             <div id="saisie-ca-feedback" style="font-size:13px;min-height:18px"></div>
           </div>
         `, false)}
+        </div><!-- /dash-col-main -->
 
+        <div class="dash-col-side">
         <!-- ALERTES ÉQUIPE -->
         <div class="bloc-fiche">
           <div class="bloc-titre">Alertes équipe</div>
@@ -849,6 +861,7 @@ window.VueDashboardManager = {
           <button class="raccourci" onclick="Router.aller('#/admin')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>Exports</span></button>
           <button class="raccourci" onclick="Router.aller('#/admin')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg><span>Admin</span></button>
         </div>
+        </div><!-- /dash-col-side -->
       </div>
       ${NavBar('reporting')}
     `;

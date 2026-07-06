@@ -658,13 +658,15 @@ function statusBadge(statut, label) {
 }
 
 // ── v5.0 — KPI Card façon DASHBOARD_W09 (barre d'accent + chiffre font-black) ──
-// opts: { label, value, unit?, accent?('primary'|'coral'|'indigo'|'teal'|'amber'|'danger'), pills?[{txt,bg,color}] }
+// opts: { label, value, unit?, accent?('primary'|'coral'|'indigo'|'teal'|'amber'|'danger'), pills?[{txt,bg,color}], onclick? }
+// onclick (string de JS, ex. "Router.aller('#/comptes')") rend la carte cliquable — drill-down desktop (refonte UX Bloc 2).
 function kpiCard(opts = {}) {
-  const { label = '', value = '0', unit = '', accent = 'primary', pills = [] } = opts;
+  const { label = '', value = '0', unit = '', accent = 'primary', pills = [], onclick = '' } = opts;
   const pillsHtml = (pills || []).map(p =>
     `<span class="kpi-pill" style="background:${p.bg || 'rgba(0,80,255,.10)'};color:${p.color || 'var(--c-primary)'}">${p.txt}</span>`
   ).join('');
-  return `<div class="kpi-card">
+  const clicAttrs = onclick ? ` style="cursor:pointer" onclick="${onclick}"` : '';
+  return `<div class="kpi-card"${clicAttrs}>
     <div class="kpi-accent acc-${accent}"></div>
     <p class="kpi-label">${label}</p>
     <div style="display:flex;align-items:baseline">

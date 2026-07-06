@@ -65,7 +65,7 @@
   .print-only { display: block !important; }
   body { background: #fff; }
   .bloc-fiche { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
-  .dash-body { max-width: 100%; }
+  .dash-body { max-width: 100%; display: block !important; }
   .print-only h1 { font-size: 22px; color: #0E0D30; }
   .print-only p  { color: #626264; font-size: 12px; margin-bottom: 16px; }
 }

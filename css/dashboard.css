@@ -142,6 +142,15 @@
   /* Héro mobile masqué sur desktop — remplacé par dash-page-header */
   .dash-hero { display: none !important; }
 
+  /* Tuiles stats Manager/Channel : grille au lieu du scroll horizontal mobile */
+  .stat-tuiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    overflow-x: visible;
+  }
+  .stat-tuile { min-width: 0; }
+
   /* Header Oltega : titre + date + actions rapides */
   .dash-page-header {
     display: flex;
@@ -235,4 +244,16 @@
 
   /* FAB masqué sur desktop */
   .dash-fab { display: none !important; }
+}
+
+/* Sous-grille 2 colonnes pour les paires de blocs courts (Accueil CDS) —
+   déclenchée seulement quand la colonne principale est assez large. */
+@media (min-width: 1200px) {
+  .dash-grid-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+  .dash-grid-2col .bloc-fiche { margin-bottom: 0; }
 }
