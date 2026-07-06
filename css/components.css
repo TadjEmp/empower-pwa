@@ -291,10 +291,11 @@
 .nc-item-msg  { font-size: 14px; color: var(--c-text); margin: 2px 0; line-height: 1.35; }
 .nc-item-date { font-size: 11px; color: var(--c-text-2); }
 
-@media (min-width: 1024px) {
-  .nc-cloche  { top: 14px; bottom: auto; right: 20px; }
+/* Aligné sur le breakpoint sidebar/topbar (900px) — ancre la cloche dans la topbar desktop */
+@media (min-width: 900px) {
+  .nc-cloche  { top: 4px; bottom: auto; right: 28px; z-index: 130; }
   .nc-overlay { align-items: flex-start; }
-  .nc-panneau { margin: 70px 20px 0; }
+  .nc-panneau { margin: 62px 28px 0; }
 }
 
 /* ── prefers-reduced-motion PHONE OS §6.4 ── */

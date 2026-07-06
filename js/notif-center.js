@@ -14,7 +14,7 @@ window.NotifCenter = {
 
   // Alimenté par le polling (app.js) avec TOUTES les lignes 🔔_NOTIFS.
   majDepuisRows(rows) {
-    if (!window.Session || !Session.pin) { this.liste = []; this._render(); return; }
+    if (typeof Session === 'undefined' || !Session.pin) { this.liste = []; this._render(); return; }
     const pin = Number(Session.pin);
     this.liste = (Array.isArray(rows) ? rows : [])
       .filter(n => Number(n.PIN_Destinataire) === pin && !n.Statut_Lu)
@@ -73,7 +73,7 @@ window.NotifCenter = {
 
   _render() {
     const el = this._conteneur();
-    if (!window.Session || !Session.pin) { el.innerHTML = ''; return; }   // masqué hors session
+    if (typeof Session === 'undefined' || !Session.pin) { el.innerHTML = ''; return; }   // masqué hors session
     const c = this.compteur;
     el.innerHTML = `
       <button class="nc-cloche" onclick="NotifCenter.basculer()" aria-label="Notifications (${c} non lue${c > 1 ? 's' : ''})">

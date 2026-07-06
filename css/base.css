@@ -654,6 +654,39 @@ body {
   .avec-nav { padding-bottom: 24px !important; }
 }
 
+/* ═══════════════════════════════════════
+   TOPBAR DESKTOP — refonte UX desktop, Bloc 1 (Shell)
+   Barre de titre persistante ≥900px, masquée sur mobile et sur les vues
+   qui gèrent déjà leur propre header desktop (.dash-page-header).
+   ═══════════════════════════════════════ */
+.topbar-desktop { display: none; }
+
+@media (min-width: 900px) {
+  .topbar-desktop {
+    display: flex; align-items: center;
+    position: fixed; top: 0; left: 240px; right: 0; height: 56px;
+    padding: 0 28px;
+    background: var(--bg-warm-white);
+    border-bottom: 1px solid var(--border-medium);
+    z-index: 120;
+    transition: left .22s cubic-bezier(.4,0,.2,1);
+  }
+  body.sidebar-collapsed .topbar-desktop { left: 58px; }
+  #topbar-root.topbar-hidden .topbar-desktop { display: none; }
+
+  .topbar-titre {
+    font-size: 15px; font-weight: 700; color: var(--c-title);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* Décale le contenu sous la topbar — sauf si la vue a déjà son propre header desktop */
+  #app:has(.nav-principale) { padding-top: 56px; }
+  #topbar-root.topbar-hidden ~ #app:has(.nav-principale) { padding-top: 0; }
+
+  /* Le titre est désormais affiché par la topbar — évite le doublon dans le header de page */
+  .header-vue h1 { display: none; }
+}
+
 /* ── Cartes Visites ── */
 .carte-visite {
   background: var(--c-surface); border-radius: var(--radius);

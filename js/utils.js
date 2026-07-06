@@ -392,6 +392,9 @@ const DrawerMenu = (function () {
   }
 
   function ouvrir() {
+    // Le drawer est un menu mobile — le hamburger qui l'ouvre est déjà masqué
+    // ≥900px (.app-brand-bar), cette garde est une sécurité supplémentaire.
+    if (window.innerWidth >= 900) return;
     // Lazy-render si la session vient de démarrer ou si le DOM a été vidé
     const ov = document.getElementById('drawer-overlay');
     const pn = document.getElementById('drawer-panneau');
@@ -433,6 +436,63 @@ const DrawerMenu = (function () {
 
   return { renderToRoot, ouvrir, fermer, _synchro, _deconnecter };
 })();
+
+// ═══════════════════════════════════════
+//  Topbar — Barre de titre desktop persistante (refonte UX desktop, Bloc 1 — Shell)
+//  Miroir passif du titre de la vue courante (#app .header-vue h1), masquée
+//  automatiquement si la vue gère déjà son propre header desktop
+//  (ex. dash-page-header sur l'Accueil CDS) pour éviter un double header.
+//  Rendue dans #topbar-root (hors #app) pour survivre aux re-render de vue.
+// ═══════════════════════════════════════
+const Topbar = (function () {
+  let _observer = null;
+
+  function _getRoot() {
+    let root = document.getElementById('topbar-root');
+    if (!root) {
+      root = document.createElement('div');
+      root.id = 'topbar-root';
+      document.body.insertBefore(root, document.body.firstChild);
+    }
+    return root;
+  }
+
+  // null → la vue courante a déjà son propre header desktop, ne rien afficher
+  function _sourceTitre() {
+    if (document.querySelector('#app .dash-page-header')) return null;
+    const h1 = document.querySelector('#app .header-vue h1');
+    return h1 ? h1.textContent.trim() : 'EMPOWER Sales Intelligence';
+  }
+
+  function _render() {
+    const root  = _getRoot();
+    const titre = _sourceTitre();
+
+    if (titre === null) {
+      root.classList.add('topbar-hidden');
+      return;
+    }
+    root.classList.remove('topbar-hidden');
+
+    if (!root.firstElementChild) {
+      root.innerHTML = `<div class="topbar-desktop"><span class="topbar-titre"></span></div>`;
+    }
+    const span = root.querySelector('.topbar-titre');
+    if (span && span.textContent !== titre) span.textContent = titre;
+  }
+
+  function init() {
+    _render();
+    if (_observer) return; // garde anti double-init (boot ne s'exécute qu'une fois normalement)
+    const cible = document.getElementById('app');
+    if (!cible) return;
+    _observer = new MutationObserver(debounce(_render, 30));
+    _observer.observe(cible, { childList: true, subtree: true });
+  }
+
+  return { init, _render };
+})();
+window.Topbar = Topbar;
 
 // ═══════════════════════════════════════
 //  Bloc 9 #1 — resolveCDS(pinOuLibelle) → prénom EN MAJUSCULES ou '—'
