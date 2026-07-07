@@ -289,6 +289,25 @@ window.VueObjectifs = {
       const pctTotal  = (totalObj > 0 && isFinite(totalCA) && isFinite(totalObj))
         ? Math.round(totalCA / totalObj * 100) : 0;
       const paceTotal = pctTotal >= 100 ? 'ON_TRACK' : pctTotal >= 80 ? 'WATCH' : 'AT_RISK';
+      // Bloc 7 refonte desktop : comparatif rapide de toute l'équipe en un coup d'œil,
+      // avant le détail par CDS (qui reste inchangé plus bas pour le drill-down).
+      const PACE_BADGE = { ON_TRACK: 'pace-ok', WATCH: 'pace-watch', AT_RISK: 'pace-risk' };
+      const tableauComparatif = `
+        <div class="tableau-equipe" style="margin-bottom:14px">
+          <div class="te-ligne te-head" style="grid-template-columns:1.4fr 1.4fr 0.6fr 0.8fr">
+            <span>CDS</span><span>CA / Objectif</span><span>%</span><span>Pace</span>
+          </div>
+          ${CDS.map(c => {
+            const d = this._donneesCDS(c.pin);
+            return `
+            <div class="te-ligne" style="grid-template-columns:1.4fr 1.4fr 0.6fr 0.8fr">
+              <span><strong>${c.nom}</strong></span>
+              <span style="font-size:12px">${fmtEUR(d.ca)} / ${fmtEUR(d.obj)}</span>
+              <span style="font-weight:700">${safePct(d.pct)}</span>
+              <span class="pace-badge ${PACE_BADGE[d.pace]}">${d.pace === 'ON_TRACK' ? 'ON TRACK' : d.pace === 'WATCH' ? 'WATCH' : 'AT RISK'}</span>
+            </div>`;
+          }).join('')}
+        </div>`;
       corps = `
         <div class="bloc-fiche">
           <div class="bloc-titre">Équipe — ${q}
@@ -300,6 +319,7 @@ window.VueObjectifs = {
           <div class="pace-chiffres"><strong>${fmtEUR(totalCA)}</strong><span>/ ${fmtEUR(totalObj)}</span></div>
           ${this._barreProgression(pctTotal, paceTotal)}
         </div>
+        ${tableauComparatif}
         ${CDS.map(c => renderCDS(c.pin, c.nom)).join('')}
       `;
     } else {
@@ -320,10 +340,12 @@ window.VueObjectifs = {
         <span class="badge-compteur">${q} · ${this.state.semaine}</span>
       </header>
       <div class="avec-nav dash-body" style="padding:12px">
+        <div class="dash-col-main">
         <p style="font-size:12px;color:var(--c-text-2);margin-bottom:8px">
           Quarter actif : <strong>${q}</strong> FY27 · ${this.state.semaine}
         </p>
         ${corps}
+        </div>
       </div>
       ${NavBar('objectifs')}
       ${this._renderModal()}

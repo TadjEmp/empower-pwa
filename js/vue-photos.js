@@ -19,6 +19,7 @@ window.VuePhotos = {
   _flat: [], // tableau plat { url, visite, idx } — mis à jour dans render()
 
   async init() {
+    this._desactiverClavierZoom(); // évite un listener orphelin si on quitte la vue zoom ouvert
     this.state.chargement = true;
     this.state.erreur     = null;
     this.state.zoomIdx    = null;
@@ -93,14 +94,16 @@ window.VuePhotos = {
       .map(d => ({ date: d, items: groupes[d] }));
   },
 
-  // ── Zoom ──
+  // ── Zoom ── (Bloc 7 refonte desktop : navigation clavier ← → Échap)
   ouvrirZoom(idx) {
     this.state.zoomIdx = idx;
+    this._activerClavierZoom();
     this.render();
   },
 
   fermerZoom() {
     this.state.zoomIdx = null;
+    this._desactiverClavierZoom();
     this.render();
   },
 
@@ -110,6 +113,19 @@ window.VuePhotos = {
 
   zoomSuivant() {
     if (this.state.zoomIdx < this._flat.length - 1) { this.state.zoomIdx++; this.render(); }
+  },
+
+  _activerClavierZoom() {
+    if (this._onKeyZoom) return; // déjà actif
+    this._onKeyZoom = (e) => {
+      if (e.key === 'Escape')     this.fermerZoom();
+      else if (e.key === 'ArrowLeft')  this.zoomPrecedent();
+      else if (e.key === 'ArrowRight') this.zoomSuivant();
+    };
+    document.addEventListener('keydown', this._onKeyZoom);
+  },
+  _desactiverClavierZoom() {
+    if (this._onKeyZoom) { document.removeEventListener('keydown', this._onKeyZoom); this._onKeyZoom = null; }
   },
 
   // ── Téléchargement ──

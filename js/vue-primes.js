@@ -167,9 +167,28 @@ window.VuePrimes = {
     return { atteint: obj > 0 && ca >= obj, ca, obj, montant: obj > 0 && ca >= obj ? 300 : 0 };
   },
 
+  // ── Bloc 7 refonte desktop : jauge segmentée visuelle des paliers de prime ──
+  _jaugePaliers(pctActuel) {
+    const zones = [
+      { label: '< 80%',    color: 'var(--c-danger)'  },
+      { label: '80-99%',   color: 'var(--c-warning)' },
+      { label: '100-119%', color: '#3b82f6'           },
+      { label: '≥ 120%',   color: 'var(--c-success)' },
+    ];
+    const idx = pctActuel >= 120 ? 3 : pctActuel >= 100 ? 2 : pctActuel >= 80 ? 1 : 0;
+    return `
+      <div class="prime-jauge">
+        ${zones.map((z, i) => `
+          <div class="prime-jauge-seg${i === idx ? ' actif' : ''}" style="background:${z.color}">
+            <span class="prime-jauge-lbl">${z.label}</span>
+          </div>`).join('')}
+      </div>`;
+  },
+
   // ── Simulateur Axe 1 ──
   simuler(valeur) {
     const zone = document.getElementById('simu-resultat');
+    const jaugeZone = document.getElementById('simu-jauge');
     if (!zone) return;
     const pin = Session.estCDS() ? Session.pin : Number(document.getElementById('primes-cds-select')?.value || Session.pin);
     const o   = this.state.objectifs.find(x => Number(x.PIN_CDS) === pin) || {};
@@ -180,6 +199,7 @@ window.VuePrimes = {
     let prime = 0;
     if (pct >= 120) prime = 500; else if (pct >= 100) prime = 400; else if (pct >= 80) prime = 200;
     zone.innerHTML = `→ ${Math.round(pct)}% de l'objectif (${fmtCA(obj)} €) = <strong style="color:var(--c-cta)">${prime} € de prime Axe 1</strong>${pct >= 120 ? ' (dont 100 € P3 hors plafond)' : ''}`;
+    if (jaugeZone) jaugeZone.innerHTML = this._jaugePaliers(pct);
   },
 
   // ── Déclaration NSB (CDS) ──
@@ -258,12 +278,14 @@ window.VuePrimes = {
       </header>
 
       <div class="dash-body avec-nav">
+        <div class="dash-col-main">
         <div class="q-chips" style="padding:0">
           ${['Q1', 'Q2', 'Q3', 'Q4'].map(x => `
             <button class="q-chip ${q === x ? 'active' : ''}" onclick="VuePrimes.setQuarter('${x}')">${x}</button>`).join('')}
         </div>
 
         ${estManager ? this._renderManager(q) : this._renderCDS(Session.pin, q)}
+        </div>
       </div>
       ${NavBar('primes')}
       ${this._renderModalNSB()}
@@ -319,12 +341,14 @@ window.VuePrimes = {
         </div>
         <div class="pace-chiffres"><strong>${fmtCA(c.ca)} €</strong><span>/ ${fmtCA(c.obj)} € → <b>${c.axe1 + c.p3} €</b></span></div>
         ${barre(c.pct, 100)}
+        ${this._jaugePaliers(c.pct)}
         <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">&lt;80% : 0 € · 80-99% : 200 € · 100-119% : 400 € · ≥120% : 400 € + 100 € bonus P3</p>
         <div style="margin-top:10px">
           <label class="q-label">Simulateur — si mon CA ${q} atteint :
             <input type="number" class="q-input" placeholder="ex : ${c.obj}" oninput="VuePrimes.simuler(this.value)"/>
           </label>
           <p id="simu-resultat" style="font-size:13px;margin-top:6px;color:var(--c-text-2)"></p>
+          <div id="simu-jauge"></div>
         </div>
       </div>
 
