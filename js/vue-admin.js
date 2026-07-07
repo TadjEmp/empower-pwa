@@ -28,6 +28,13 @@ window.VueAdmin = {
       // Bloc 8 refonte desktop — sous-navigation + journal d'audit
       adminTab: 'objectifs',
       journal: [], journalChargement: false,
+      // Sécurité + CRUD utilisateurs — matrice de permissions en lecture
+      usersState: {
+        chargement: false, liste: [],
+        modalCreation: false, envoiEnCours: false,
+        formCreation: { nom: '', email: '', pin: '', role: 'CDS', motdepasse: '' },
+        modalReset: false, resetTarget: null, resetMdp: '',
+      },
     };
     this.render();
     try {
@@ -71,9 +78,229 @@ window.VueAdmin = {
     this.state.adminTab = tab;
     if (tab === 'journal' && !this.state.journal.length && !this.state.journalChargement) {
       this._chargerJournal();
+    } else if (tab === 'utilisateurs' && !this.state.usersState.liste.length && !this.state.usersState.chargement) {
+      this._chargerUtilisateurs();
     } else {
       this.render();
     }
+  },
+
+  // ── CRUD Utilisateurs (sécurisé via Edge Function admin-users, service_role) ──
+  async _chargerUtilisateurs() {
+    this.state.usersState.chargement = true;
+    this.render();
+    try {
+      const { data, error } = await SheetsAPI._sb.from('utilisateurs')
+        .select('pin,nom,email,role,actif').order('pin');
+      if (error) throw new Error(error.message);
+      this.state.usersState.liste = data || [];
+    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+    this.state.usersState.chargement = false;
+    this.render();
+  },
+
+  ouvrirModalCreation() {
+    this.state.usersState.modalCreation = true;
+    this.state.usersState.formCreation = { nom: '', email: '', pin: '', role: 'CDS', motdepasse: '' };
+    this.render();
+  },
+  fermerModalCreation() { this.state.usersState.modalCreation = false; this.render(); },
+
+  async creerUtilisateur(e) {
+    e.preventDefault();
+    if (this.state.usersState.envoiEnCours) return;
+    const f = this.state.usersState.formCreation;
+    if (!f.nom.trim() || !f.email.trim() || !f.pin || !f.motdepasse) {
+      Toast.afficher('Champs requis manquants', 'warning'); return;
+    }
+    if (f.motdepasse.length < 6) { Toast.afficher('Mot de passe trop court (6 caractères min)', 'warning'); return; }
+    this.state.usersState.envoiEnCours = true;
+    this.render();
+    try {
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/admin-users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+        body: JSON.stringify({
+          action: 'create', token: SheetsAPI.TOKEN,
+          email: f.email.trim(), motdepasse: f.motdepasse,
+          pin: Number(f.pin), nom: f.nom.trim(), role: f.role,
+        }),
+      });
+      const data = await r.json();
+      if (!data.ok) throw new Error(data.erreur || `HTTP ${r.status}`);
+      Toast.afficher(`✅ Utilisateur ${f.nom} créé`, 'succes');
+      this.state.usersState.modalCreation = false;
+      await this._chargerUtilisateurs();
+    } catch(err) {
+      Toast.afficher('❌ ' + err.message, 'erreur');
+    }
+    this.state.usersState.envoiEnCours = false;
+    this.render();
+  },
+
+  async changerRole(pin, role) {
+    try {
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/admin-users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+        body: JSON.stringify({ action: 'updateRole', token: SheetsAPI.TOKEN, targetPin: pin, role }),
+      });
+      const data = await r.json();
+      if (!data.ok) throw new Error(data.erreur);
+      Toast.afficher('✅ Rôle mis à jour', 'succes');
+      await this._chargerUtilisateurs();
+    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); await this._chargerUtilisateurs(); }
+  },
+
+  async toggleActifUtilisateur(pin, actifActuel) {
+    const nouvelEtat = !actifActuel;
+    const ok = confirm(nouvelEtat ? 'Réactiver ce compte ?' : "Désactiver ce compte ? L'utilisateur ne pourra plus se connecter.");
+    if (!ok) return;
+    try {
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/admin-users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+        body: JSON.stringify({ action: 'toggleActif', token: SheetsAPI.TOKEN, targetPin: pin, actif: nouvelEtat }),
+      });
+      const data = await r.json();
+      if (!data.ok) throw new Error(data.erreur);
+      Toast.afficher(nouvelEtat ? '✅ Compte réactivé' : '✅ Compte désactivé', 'succes');
+      await this._chargerUtilisateurs();
+    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+  },
+
+  ouvrirModalReset(pin, nom) {
+    this.state.usersState.resetTarget = { pin, nom };
+    this.state.usersState.resetMdp = '';
+    this.state.usersState.modalReset = true;
+    this.render();
+  },
+  fermerModalReset() { this.state.usersState.modalReset = false; this.render(); },
+
+  async confirmerReset() {
+    const us = this.state.usersState;
+    if (!us.resetMdp || us.resetMdp.length < 6) { Toast.afficher('Mot de passe trop court (6 caractères min)', 'warning'); return; }
+    try {
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/admin-users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+        body: JSON.stringify({ action: 'resetPassword', token: SheetsAPI.TOKEN, targetPin: us.resetTarget.pin, nouveauMotdepasse: us.resetMdp }),
+      });
+      const data = await r.json();
+      if (!data.ok) throw new Error(data.erreur);
+      Toast.afficher(`✅ Mot de passe réinitialisé pour ${us.resetTarget.nom}`, 'succes');
+      this.state.usersState.modalReset = false;
+      this.render();
+    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+  },
+
+  _TOUS_TABS() { return [...new Set(Object.values(Permissions.MATRICE).flat())]; },
+
+  _renderUtilisateurs() {
+    const us = this.state.usersState;
+    if (us.chargement) return `<div class="spinner-centre" style="min-height:200px">Chargement des utilisateurs…</div>`;
+    const ROLES = Object.keys(Permissions.MATRICE);
+    return `
+      <div class="bloc-fiche">
+        <div class="bloc-titre" style="display:flex;align-items:center;gap:8px">👥 Utilisateurs
+          <button class="btn-secondaire" style="margin-left:auto;width:auto;padding:8px 14px" onclick="VueAdmin.ouvrirModalCreation()">➕ Créer un utilisateur</button>
+        </div>
+        <div class="desktop-table-wrap">
+          <table class="desktop-table-data-view">
+            <thead><tr><th>PIN</th><th>Nom</th><th>Email</th><th>Rôle</th><th>Statut</th><th>Actions</th></tr></thead>
+            <tbody>
+              ${us.liste.map(u => `
+                <tr>
+                  <td>${u.pin}</td>
+                  <td>${u.nom}</td>
+                  <td style="font-size:12px">${u.email}</td>
+                  <td>
+                    <select style="font-size:12px;padding:4px 6px" onchange="VueAdmin.changerRole(${u.pin}, this.value)" ${u.pin === Session.pin ? 'disabled' : ''}>
+                      ${ROLES.map(r => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${r}</option>`).join('')}
+                    </select>
+                  </td>
+                  <td>
+                    <span style="font-size:11px;padding:2px 8px;border-radius:99px;font-weight:700;
+                      background:${u.actif ? 'rgba(26,158,92,.12)' : 'rgba(217,48,37,.08)'};
+                      color:${u.actif ? 'var(--c-success,#1a9e5c)' : 'var(--c-danger)'}">${u.actif ? 'Actif' : 'Désactivé'}</span>
+                  </td>
+                  <td style="white-space:nowrap">
+                    <button class="btn-lien" style="font-size:12px" onclick="VueAdmin.ouvrirModalReset(${u.pin}, '${(u.nom || '').replace(/'/g, "\\'")}')">🔑 Reset mdp</button>
+                    <button class="btn-lien" style="font-size:12px;color:${u.actif ? 'var(--c-danger)' : 'var(--c-success,#1a9e5c)'}"
+                            ${u.pin === Session.pin ? 'disabled title="Impossible de modifier son propre compte"' : ''}
+                            onclick="VueAdmin.toggleActifUtilisateur(${u.pin}, ${u.actif})">${u.actif ? '🚫 Désactiver' : '✅ Réactiver'}</button>
+                  </td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+        ${us.liste.length === 0 ? '<div class="pas-de-donnees">Aucun utilisateur.</div>' : ''}
+      </div>
+
+      <div class="bloc-fiche">
+        <div class="bloc-titre">🔐 Matrice des permissions (lecture seule)</div>
+        <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">Définie dans <code>js/permissions.js</code> — accès par rôle aux sections de l'app.</p>
+        <div class="desktop-table-wrap">
+          <table class="desktop-table-data-view">
+            <thead><tr><th>Section</th>${ROLES.map(r => `<th style="text-align:center">${r}</th>`).join('')}</tr></thead>
+            <tbody>
+              ${this._TOUS_TABS().map(tab => `
+                <tr>
+                  <td style="font-size:12px">${tab}</td>
+                  ${ROLES.map(r => `<td style="text-align:center">${Permissions.MATRICE[r].includes(tab) ? '✅' : '—'}</td>`).join('')}
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      ${us.modalCreation ? this._renderModalCreation() : ''}
+      ${us.modalReset ? this._renderModalReset() : ''}
+    `;
+  },
+
+  _renderModalCreation() {
+    const f = this.state.usersState.formCreation;
+    return `
+      <div class="modal-overlay" onclick="if(event.target===this) VueAdmin.fermerModalCreation()">
+        <div class="modal">
+          <h3>➕ Créer un utilisateur</h3>
+          <form onsubmit="VueAdmin.creerUtilisateur(event)">
+            <label>Nom *
+              <input class="q-input" required value="${f.nom}" oninput="VueAdmin.state.usersState.formCreation.nom=this.value"/></label>
+            <label>Email *
+              <input type="email" class="q-input" required value="${f.email}" oninput="VueAdmin.state.usersState.formCreation.email=this.value"/></label>
+            <label>PIN *
+              <input type="number" class="q-input" required value="${f.pin}" oninput="VueAdmin.state.usersState.formCreation.pin=this.value"/></label>
+            <label>Rôle *
+              <select onchange="VueAdmin.state.usersState.formCreation.role=this.value">
+                ${Object.keys(Permissions.MATRICE).map(r => `<option value="${r}" ${f.role === r ? 'selected' : ''}>${r}</option>`).join('')}
+              </select></label>
+            <label>Mot de passe initial * (6 caractères min)
+              <input type="password" class="q-input" required value="${f.motdepasse}" oninput="VueAdmin.state.usersState.formCreation.motdepasse=this.value"/></label>
+            <div style="display:flex;gap:8px;margin-top:14px">
+              <button type="button" class="btn-secondaire" onclick="VueAdmin.fermerModalCreation()">Annuler</button>
+              <button type="submit" class="btn-primaire" ${this.state.usersState.envoiEnCours ? 'disabled' : ''}>${this.state.usersState.envoiEnCours ? '⏳ Création…' : '✅ Créer'}</button>
+            </div>
+          </form>
+        </div>
+      </div>`;
+  },
+
+  _renderModalReset() {
+    const us = this.state.usersState;
+    return `
+      <div class="modal-overlay" onclick="if(event.target===this) VueAdmin.fermerModalReset()">
+        <div class="modal">
+          <h3>🔑 Réinitialiser le mot de passe — ${us.resetTarget.nom}</h3>
+          <label>Nouveau mot de passe (6 caractères min)
+            <input type="password" class="q-input" value="${us.resetMdp}" oninput="VueAdmin.state.usersState.resetMdp=this.value"/></label>
+          <div style="display:flex;gap:8px;margin-top:14px">
+            <button type="button" class="btn-secondaire" onclick="VueAdmin.fermerModalReset()">Annuler</button>
+            <button type="button" class="btn-primaire" onclick="VueAdmin.confirmerReset()">✅ Réinitialiser</button>
+          </div>
+        </div>
+      </div>`;
   },
 
   async _chargerJournal() {
@@ -903,6 +1130,7 @@ window.VueAdmin = {
     const adminTab = this.state.adminTab || 'objectifs';
     const ADMIN_TABS = [
       ['objectifs',    '🎯 Objectifs'],
+      ['utilisateurs', '👥 Utilisateurs'],
       ['integrations', '🔑 Intégrations'],
       ['sync',         '🔄 Synchronisation'],
       ['exports',      '📥 Exports'],
@@ -1107,6 +1335,8 @@ window.VueAdmin = {
               </button>
             </div>`).join('')}
         </div>` : ''}
+
+        ${adminTab === 'utilisateurs' ? this._renderUtilisateurs() : ''}
 
         ${adminTab === 'journal' ? this._renderJournal() : ''}
 
