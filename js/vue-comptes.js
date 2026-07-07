@@ -9,6 +9,30 @@ window.VueComptes = {
     filtreCanal: 'TOUS',   // BUG-04 : TOUS | LECLERC | REVENDEURS
     filtreCDSPin: 'TOUS',  // BUG-06 : filtre Manager par CDS
     triPar: 'PRIORITE', chargement: true,
+    triCol: null, triSens: 'asc', // Bloc 4 — tri de colonnes datagrid desktop
+  },
+
+  // ── Bloc 4 refonte desktop : tri de colonnes cliquables (datagrid) ──
+  _valeurTriCompte(c, col) {
+    switch (col) {
+      case 'compte': return normaliserNom(c.Nom_Compte || '');
+      case 'ville':  return normaliserNom(c.Ville || '');
+      case 'canal':  return normaliserNom(c.CANAL || '');
+      case 'fy26':   return window.parseCA(c.CA_FY26) || 0;
+      case 'q1fy27': return window.parseCA(c.CA_Q1FY27) || 0;
+      case 'action': return c.Date_prochaine_action ? new Date(c.Date_prochaine_action).getTime() : 0;
+      case 'cds':    return window.resolveCDS(c.PIN_CDS_Assigne) || '';
+      default:       return '';
+    }
+  },
+  triParColonneCompte(col) {
+    if (this.state.triCol === col) this.state.triSens = this.state.triSens === 'asc' ? 'desc' : 'asc';
+    else { this.state.triCol = col; this.state.triSens = 'asc'; }
+    this.render();
+  },
+  _indicateurTriCompte(col) {
+    if (this.state.triCol !== col) return '';
+    return this.state.triSens === 'asc' ? ' ▲' : ' ▼';
   },
 
   PRIORITE_ORDRE: { 'Rouge': 0, 'Orange': 1, 'Vert': 2 },
@@ -86,6 +110,17 @@ window.VueComptes = {
       l = l.filter(c => String(c.PIN_CDS_Assigne) === String(this.state.filtreCDSPin));
     }
 
+    // Tri — colonne cliquable (Bloc 4) prioritaire sur le select existant
+    if (this.state.triCol) {
+      const col = this.state.triCol, sens = this.state.triSens === 'asc' ? 1 : -1;
+      l.sort((a, b) => {
+        const va = this._valeurTriCompte(a, col), vb = this._valeurTriCompte(b, col);
+        if (va < vb) return -1 * sens;
+        if (va > vb) return  1 * sens;
+        return 0;
+      });
+      return l;
+    }
     // Tri — parseCA pour CA (résistant aux dates corrompues)
     if (this.state.triPar === 'PRIORITE')
       l.sort((a, b) => (this.PRIORITE_ORDRE[a.Priorite] ?? 9) - (this.PRIORITE_ORDRE[b.Priorite] ?? 9));
@@ -259,9 +294,16 @@ window.VueComptes = {
         <div class="desktop-table-wrap">
           <table class="desktop-table-data-view">
             <thead><tr>
-              <th>Statut</th><th>Compte</th><th>Ville</th><th>Canal</th>
-              <th class="num">CA FY26</th><th class="num">CA Q1 FY27</th>
-              <th>Prochaine action</th><th>CDS</th><th>Actions</th>
+              <th>Statut</th>
+              <th style="cursor:pointer" onclick="VueComptes.triParColonneCompte('compte')">Compte${this._indicateurTriCompte('compte')}</th>
+              <th style="cursor:pointer" onclick="VueComptes.triParColonneCompte('ville')">Ville${this._indicateurTriCompte('ville')}</th>
+              <th style="cursor:pointer" onclick="VueComptes.triParColonneCompte('canal')">Canal${this._indicateurTriCompte('canal')}</th>
+              <th class="num">CA FY25</th>
+              <th class="num" style="cursor:pointer" onclick="VueComptes.triParColonneCompte('fy26')">CA FY26${this._indicateurTriCompte('fy26')}</th>
+              <th class="num" style="cursor:pointer" onclick="VueComptes.triParColonneCompte('q1fy27')">CA Q1 FY27${this._indicateurTriCompte('q1fy27')}</th>
+              <th style="cursor:pointer" onclick="VueComptes.triParColonneCompte('action')">Prochaine action${this._indicateurTriCompte('action')}</th>
+              <th style="cursor:pointer" onclick="VueComptes.triParColonneCompte('cds')">CDS${this._indicateurTriCompte('cds')}</th>
+              <th>Actions</th>
             </tr></thead>
             <tbody>
               ${liste.map(c => {
@@ -278,13 +320,23 @@ window.VueComptes = {
                 const dteDA = c.Date_Derniere_Action || c.date_derniere_action || '';
                 const joursDA = dteDA ? Math.max(0, Math.floor((Date.now() - new Date(dteDA).getTime()) / 86400000)) : null;
                 const rowStyle = (joursDA !== null && joursDA > 45) ? 'border-left:3px solid var(--c-danger);background:rgba(217,48,37,.04)' : '';
+                // Delta % — Q1FY27 annualisé (×4) vs CA FY26, coloré vert/rouge (Bloc 4)
+                const fy26Num = window.parseCA(c.CA_FY26);
+                const q1Num   = window.parseCA(c.CA_Q1FY27);
+                let deltaHtml = '';
+                if (fy26Num && q1Num !== null) {
+                  const delta = Math.round(((q1Num * 4) - fy26Num) / fy26Num * 100);
+                  const coul = delta >= 0 ? 'var(--c-success)' : 'var(--c-danger)';
+                  deltaHtml = `<br><span style="font-size:10px;font-weight:700;color:${coul}">${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)}% (annualisé)</span>`;
+                }
                 return `<tr style="${rowStyle}">
                   <td>${badgeStatutCompte(c)}${joursDA !== null && joursDA > 45 ? `<br><span style="font-size:10px;font-weight:700;color:var(--c-danger)">⚠ ${joursDA}j</span>` : ''}</td>
                   <td class="compte-nom" onclick="Router.aller('#/compte/${c.ID_Compte}')">${c.Nom_Compte || '—'}</td>
                   <td>${c.Ville || '—'}</td>
                   <td>${c.CANAL || '—'}</td>
+                  <td class="num" style="color:var(--c-muted)">${caFY25}</td>
                   <td class="num" style="color:var(--c-muted)">${caFY26}</td>
-                  <td class="num" style="font-weight:700;color:var(--c-title)">${caQ1 !== '—' ? caQ1 : caFY26}</td>
+                  <td class="num" style="font-weight:700;color:var(--c-title)">${caQ1 !== '—' ? caQ1 : caFY26}${deltaHtml}</td>
                   <td>${pa}</td>
                   <td>${Session.estManager() ? `
                     <select style="border:1px solid var(--c-border);border-radius:4px;padding:3px 6px;font-size:12px"
@@ -333,5 +385,5 @@ window.VueComptes = {
   setFiltre(s)    { this.state.filtreStatut = s; this.render(); },
   setFiltreCanal(c) { this.state.filtreCanal = c; this.render(); },
   setFiltreCDS(p) { this.state.filtreCDSPin = p; this.render(); },
-  setTri(t)       { this.state.triPar = t;       this.render(); },
+  setTri(t)       { this.state.triPar = t; this.state.triCol = null; this.render(); },
 };

@@ -3,7 +3,7 @@
 //  Cache-first pour assets statiques
 // ═══════════════════════════════════════
 
-const CACHE_NAME  = 'esi-v5-55';
+const CACHE_NAME  = 'esi-v5-56';
 // Chemins relatifs : fonctionne à la racine d'un domaine comme en sous-dossier GitHub Pages
 const ASSETS_CORE = [
   './',
@@ -13,7 +13,6 @@ const ASSETS_CORE = [
   './css/components.css',
   './css/comptes.css',
   './css/questionnaire.css',
-  './css/reactiver.css',
   './css/dashboard.css',
   './css/pipeline.css',
   './js/utils.js',
@@ -30,7 +29,6 @@ const ASSETS_CORE = [
   './js/vue-comptes.js',
   './js/vue-fiche-compte.js',
   './js/vue-questionnaire.js',
-  './js/vue-reactiver.js',
   './js/vue-phoning.js',
   './js/vue-pipeline.js',
   './js/vue-dashboard-manager.js',

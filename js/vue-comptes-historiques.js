@@ -12,6 +12,29 @@ window.VueComptesHistoriques = {
     filtreStatut: 'TOUS',
     recherche: '',
     triPar: 'PRIORITE',
+    triCol: null, triSens: 'asc', // Bloc 4 — tri de colonnes datagrid desktop
+  },
+
+  // ── Bloc 4 refonte desktop : tri de colonnes cliquables (datagrid) ──
+  _valeurTriHist(c, col) {
+    switch (col) {
+      case 'compte': return normaliserNom(c.nom || '');
+      case 'canal':  return normaliserNom(c.canal || '');
+      case 'fy25':   return c.caFy25 || 0;
+      case 'fy26':   return c.caFy26 || 0;
+      case 'q1fy27': return c.caQ1Fy27 || 0;
+      case 'cds':    return c.cdsPrenom || '';
+      default:       return '';
+    }
+  },
+  triParColonneHist(col) {
+    if (this.state.triCol === col) this.state.triSens = this.state.triSens === 'asc' ? 'desc' : 'asc';
+    else { this.state.triCol = col; this.state.triSens = 'asc'; }
+    this.render();
+  },
+  _indicateurTriHist(col) {
+    if (this.state.triCol !== col) return '';
+    return this.state.triSens === 'asc' ? ' ▲' : ' ▼';
   },
 
   async init() {
@@ -90,6 +113,17 @@ window.VueComptesHistoriques = {
       if (f === 'INACTIF')   return st === 'INACTIF' || pr === 'INACTIF' || ((c.caFy26 === null || c.caFy26 === 0) && (c.caQ1Fy27 === null || c.caQ1Fy27 === 0));
       return st === f || pr === f;
     });
+    // Tri — colonne cliquable (Bloc 4) prioritaire sur le select existant
+    if (this.state.triCol) {
+      const col = this.state.triCol, sens = this.state.triSens === 'asc' ? 1 : -1;
+      l.sort((a, b) => {
+        const va = this._valeurTriHist(a, col), vb = this._valeurTriHist(b, col);
+        if (va < vb) return -1 * sens;
+        if (va > vb) return  1 * sens;
+        return 0;
+      });
+      return l;
+    }
     if (this.state.triPar === 'CA')  l.sort((a, b) => (b.caFy26 || 0) - (a.caFy26 || 0));
     if (this.state.triPar === 'NOM') l.sort((a, b) => a.nom.localeCompare(b.nom));
     if (this.state.triPar === 'PRIORITE') {
@@ -206,9 +240,13 @@ window.VueComptesHistoriques = {
         <div class="desktop-table-wrap">
           <table class="desktop-table-data-view">
             <thead><tr>
-              <th>Type</th><th>Compte</th><th>Canal</th>
-              <th class="num">CA FY25</th><th class="num">CA FY26</th><th class="num">CA Q1 FY27</th>
-              <th>Statut</th>${Session.voitTout() ? '<th>CDS</th>' : ''}<th>Actions</th>
+              <th>Type</th>
+              <th style="cursor:pointer" onclick="VueComptesHistoriques.triParColonneHist('compte')">Compte${this._indicateurTriHist('compte')}</th>
+              <th style="cursor:pointer" onclick="VueComptesHistoriques.triParColonneHist('canal')">Canal${this._indicateurTriHist('canal')}</th>
+              <th class="num" style="cursor:pointer" onclick="VueComptesHistoriques.triParColonneHist('fy25')">CA FY25${this._indicateurTriHist('fy25')}</th>
+              <th class="num" style="cursor:pointer" onclick="VueComptesHistoriques.triParColonneHist('fy26')">CA FY26${this._indicateurTriHist('fy26')}</th>
+              <th class="num" style="cursor:pointer" onclick="VueComptesHistoriques.triParColonneHist('q1fy27')">CA Q1 FY27${this._indicateurTriHist('q1fy27')}</th>
+              <th>Statut</th>${Session.voitTout() ? `<th style="cursor:pointer" onclick="VueComptesHistoriques.triParColonneHist('cds')">CDS${this._indicateurTriHist('cds')}</th>` : ''}<th>Actions</th>
             </tr></thead>
             <tbody>
               ${liste.map(c => {
@@ -245,5 +283,5 @@ window.VueComptesHistoriques = {
   setRecherche: debounce(function(v) { VueComptesHistoriques.state.recherche = v; VueComptesHistoriques.render(); }, 250),
   setType(t)   { this.state.filtreType   = t; this.render(); },
   setStatut(s) { this.state.filtreStatut = s; this.render(); },
-  setTri(t)    { this.state.triPar = t;       this.render(); },
+  setTri(t)    { this.state.triPar = t; this.state.triCol = null; this.render(); },
 };

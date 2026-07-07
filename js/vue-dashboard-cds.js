@@ -410,10 +410,10 @@ window.VueDashboardCDS = {
           <div class="bloc-titre">
             Top 5 relances urgentes
             <span class="badge-rouge badge-priorite">${d.top5.length}</span>
-            <button class="btn-lien" onclick="Router.aller('#/reactiver')" style="margin-left:auto;font-size:12px">Réactiver →</button>
+            <button class="btn-lien" onclick="Router.aller('#/comptes-historiques')" style="margin-left:auto;font-size:12px">Réactiver →</button>
           </div>
           ${d.top5.map(c => `
-            <div class="relance-ligne" onclick="Router.aller('#/reactiver')">
+            <div class="relance-ligne" onclick="Router.aller('#/comptes-historiques')">
               <div class="relance-nom">${c.Nom_Compte || c.ID_Compte || '—'}</div>
               <div class="relance-meta">
                 <span class="statut-pill statut-reactiver">${String(c.STATUT_COMPTE || '—').toUpperCase()}</span>
