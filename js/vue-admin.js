@@ -25,6 +25,9 @@ window.VueAdmin = {
       // BLOC 10 — filtre Pickup Date pour exports (manager + channel)
       filtrePickupDe: '',
       filtrePickupA: '',
+      // Bloc 8 refonte desktop — sous-navigation + journal d'audit
+      adminTab: 'objectifs',
+      journal: [], journalChargement: false,
     };
     this.render();
     try {
@@ -61,6 +64,31 @@ window.VueAdmin = {
     } else {
       this.render();
     }
+  },
+
+  // ── Bloc 8 refonte desktop : sous-navigation Administration ──
+  setAdminTab(tab) {
+    this.state.adminTab = tab;
+    if (tab === 'journal' && !this.state.journal.length && !this.state.journalChargement) {
+      this._chargerJournal();
+    } else {
+      this.render();
+    }
+  },
+
+  async _chargerJournal() {
+    this.state.journalChargement = true;
+    this.render();
+    try {
+      const rows = await SheetsAPI.lire('EMPOWER_MDB', '📊_ACTIONS');
+      this.state.journal = (rows || [])
+        .sort((a, b) => new Date(b.Date_Action || b.Timestamp || 0) - new Date(a.Date_Action || a.Timestamp || 0))
+        .slice(0, 200);
+    } catch(e) {
+      Toast.afficher('❌ Erreur chargement journal : ' + e.message, 'erreur');
+    }
+    this.state.journalChargement = false;
+    this.render();
   },
 
   async _chargerSuivi() {
@@ -872,14 +900,33 @@ window.VueAdmin = {
       return;
     }
 
+    const adminTab = this.state.adminTab || 'objectifs';
+    const ADMIN_TABS = [
+      ['objectifs',    '🎯 Objectifs'],
+      ['integrations', '🔑 Intégrations'],
+      ['sync',         '🔄 Synchronisation'],
+      ['exports',      '📥 Exports'],
+      ['rgpd',         '🔒 RGPD'],
+      ['journal',      '📊 Journal'],
+      ['maintenance',  '🧹 Maintenance'],
+    ];
+
     app.innerHTML = `
       <header class="header-vue">
         <button onclick="Router.aller('#/manager')" class="btn-retour">←</button>
         <h1>⚙️ Administration</h1>
       </header>
 
-      <div class="dash-body avec-nav">
+      <!-- Bloc 8 refonte desktop : sous-navigation par onglets au lieu d'un scroll unique -->
+      <div class="tabs-premium" style="padding:10px 12px;background:var(--c-surface);border-bottom:1px solid var(--c-border);overflow-x:auto">
+        ${ADMIN_TABS.map(([t, l]) => `
+          <button class="tab-btn-premium ${adminTab === t ? 'actif' : ''}" onclick="VueAdmin.setAdminTab('${t}')">${l}</button>`).join('')}
+      </div>
 
+      <div class="dash-body avec-nav">
+        <div class="dash-col-main">
+
+        ${adminTab === 'objectifs' ? `
         <!-- OBJECTIFS -->
         <div class="bloc-fiche">
           <div class="bloc-titre">Objectifs FY27 par CDS (€ révisés)</div>
@@ -899,8 +946,9 @@ window.VueAdmin = {
                       onclick="VueAdmin.sauverObjectif('${o.PIN_CDS}')">💾 Enregistrer ${o.Nom_CDS}</button>
             </div>`).join('')}
           <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">Vide = objectif initial conservé. Les % pace utilisent le révisé s'il existe.</p>
-        </div>
+        </div>` : ''}
 
+        ${adminTab === 'integrations' ? `
         <!-- CLÉS API -->
         <div class="bloc-fiche">
           <div class="bloc-titre">Clé API Groq (transcription vocale + LLM)</div>
@@ -948,8 +996,9 @@ window.VueAdmin = {
               <div class="id-ligne"><span>${p.Parametre}</span><strong>${p.Valeur}</strong></div>`).join('')}
           </div>
           <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">Modifiables directement dans le Google Sheet EMPOWER MDB.</p>
-        </div>
+        </div>` : ''}
 
+        ${adminTab === 'exports' ? `
         <!-- EXPORTS CSV — REPORTING THÉMATIQUE -->
         <div class="bloc-fiche">
           <div class="bloc-titre">📥 Exports CSV — Reporting thématique</div>
@@ -958,8 +1007,9 @@ window.VueAdmin = {
             Chaque export est tracé dans 📊_ACTIONS avec l'identité de l'exporteur.
           </p>
           ${this._renderExports()}
-        </div>
+        </div>` : ''}
 
+        ${adminTab === 'sync' ? `
         <!-- IMPORT EMPOWER TRACKER -->
         <div class="bloc-fiche">
           <div class="bloc-titre">🔄 Synchroniser EMPOWER TRACKER</div>
@@ -1033,8 +1083,9 @@ window.VueAdmin = {
           <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">
             Source : Google Drive · ID classeur configurable via secret <code>SELLIN_SHEET_ID</code> · Edge Function <code>sync-sellin</code>
           </p>
-        </div>
+        </div>` : ''}
 
+        ${adminTab === 'rgpd' ? `
         <!-- RGPD -->
         <div class="bloc-fiche">
           <div class="bloc-titre">🔒 RGPD — Purge des données personnelles</div>
@@ -1055,15 +1106,51 @@ window.VueAdmin = {
                 🗑️ Purger
               </button>
             </div>`).join('')}
-        </div>
+        </div>` : ''}
 
+        ${adminTab === 'journal' ? this._renderJournal() : ''}
+
+        ${adminTab === 'maintenance' ? `
         <!-- MAINTENANCE -->
         <div class="bloc-fiche">
           <div class="bloc-titre">Maintenance</div>
           <button class="btn-secondaire" onclick="VueAdmin.viderCache()">🗑️ Vider le cache local (IndexedDB)</button>
-        </div>
+        </div>` : ''}
+
+        </div><!-- /dash-col-main -->
       </div>
       ${NavBar('admin')}
     `;
+  },
+
+  // ── Bloc 8 refonte desktop : onglet Journal — exploite 📊_ACTIONS déjà collecté ──
+  _renderJournal() {
+    if (this.state.journalChargement) {
+      return `<div class="spinner-centre" style="min-height:200px">Chargement du journal…</div>`;
+    }
+    const rows = this.state.journal || [];
+    return `
+      <div class="bloc-fiche">
+        <div class="bloc-titre">📊 Journal des actions
+          <span class="badge-compteur">${rows.length}${rows.length >= 200 ? ' (200 dernières)' : ''}</span>
+          <button class="btn-lien" style="margin-left:auto;font-size:12px" onclick="VueAdmin.state.journal=[];VueAdmin._chargerJournal()">↻ Actualiser</button>
+        </div>
+        ${rows.length === 0 ? '<div class="pas-de-donnees">Aucune action enregistrée.</div>' : `
+        <div class="desktop-table-wrap">
+          <table class="desktop-table-data-view">
+            <thead><tr><th>Date</th><th>Type</th><th>CDS</th><th>Compte</th><th>Statut avant → après</th></tr></thead>
+            <tbody>
+              ${rows.map(a => `
+                <tr>
+                  <td style="font-size:12px;white-space:nowrap">${a.Date_Action ? new Date(a.Date_Action).toLocaleString('fr-FR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—'}</td>
+                  <td style="font-size:12px">${a.Type_Action || '—'}</td>
+                  <td style="font-size:12px">${window.resolveCDS(a.PIN_CDS) || '—'}</td>
+                  <td style="font-size:12px">${a.Nom_Compte || '—'}</td>
+                  <td style="font-size:11px;color:var(--c-text-2)">${a.Statut_Avant || '—'} → ${a.Statut_Apres || '—'}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`}
+      </div>`;
   },
 };
