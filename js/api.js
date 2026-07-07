@@ -30,32 +30,18 @@ const SheetsAPI = {
   },
 
   // ── LOGIN ────────────────────────────────────────────
-  // Hash identique GAS : SHA256(motdepasse + salt)
+  // Vérification du mot de passe déportée côté serveur (Edge Function auth-login,
+  // clé service_role) : le hash/salt ne transitent plus jamais vers le navigateur.
   async login(email, motdepasse) {
     try {
       if (!email || !motdepasse) return { ok: false, erreur: 'Email et mot de passe requis' }
-      const emailNorm = email.trim().toLowerCase()
-      const { data: users, error } = await this._sb
-        .from('utilisateurs')
-        .select('email,hash,salt,pin,nom,role,actif')
-        .eq('email', emailNorm)
-        .limit(1)
-      if (error) throw new Error(error.message)
-      if (!users || users.length === 0)
-        return { ok: false, erreur: 'Email ou mot de passe incorrect' }
-      const u = users[0]
-      if (!u.actif) return { ok: false, erreur: 'Compte désactivé' }
-      const hash = await this._sha256(motdepasse + u.salt)
-      if (hash !== u.hash) return { ok: false, erreur: 'Email ou mot de passe incorrect' }
-      const token  = (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, '')
-      const expiry = Date.now() + 8 * 3600 * 1000
-      // Stocker token en DB (traçabilité optionnelle, ignore erreur)
-      this._sb.from('utilisateurs').update({ token, token_expiry: expiry }).eq('email', emailNorm)
-        .then(() => {}).catch(() => {})
-      return {
-        ok: true, token, expiry,
-        utilisateur: { email: u.email, pin: Number(u.pin), nom: u.nom, role: u.role },
-      }
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/auth-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+        body: JSON.stringify({ email, motdepasse }),
+      })
+      const data = await r.json()
+      return data
     } catch(e) {
       return { ok: false, erreur: this._online ? e.message : 'Connexion impossible hors-ligne' }
     }

@@ -10,6 +10,56 @@ window.VueComptes = {
     filtreCDSPin: 'TOUS',  // BUG-06 : filtre Manager par CDS
     triPar: 'PRIORITE', chargement: true,
     triCol: null, triSens: 'asc', // Bloc 4 — tri de colonnes datagrid desktop
+    // Bloc 9 refonte desktop — fiche compte en panneau docké (split-view),
+    // la liste reste visible et cliquable derrière (≥900px uniquement).
+    ficheDockee: null, ficheDockeeChargement: false,
+  },
+
+  // ── Bloc 9 — fiche compte : docké sur desktop, plein écran sur mobile ──
+  ouvrirFiche(idCompte) {
+    if (window.innerWidth < 900) { Router.aller('#/compte/' + idCompte); return; }
+    this.state.ficheDockee = idCompte;
+    this.state.ficheDockeeChargement = true;
+    this.render();
+    VueFicheCompte._chargerDonnees(idCompte)
+      .then(() => { this.state.ficheDockeeChargement = false; this.render(); })
+      .catch(e => {
+        this.state.ficheDockeeChargement = false;
+        Toast.afficher('❌ ' + e.message, 'erreur');
+        this.state.ficheDockee = null;
+        this.render();
+      });
+  },
+  fermerFicheDockee() {
+    this.state.ficheDockee = null;
+    this.render();
+  },
+  _renderFicheDockee() {
+    if (this.state.ficheDockeeChargement) {
+      return `
+        <div class="modal-overlay modal-docked" onclick="if(event.target===this)VueComptes.fermerFicheDockee()">
+          <div class="modal modal-docked-panel">
+            <div class="spinner-centre">Chargement de la fiche…</div>
+          </div>
+        </div>`;
+    }
+    const c = VueFicheCompte.state.compte;
+    return `
+      <div class="modal-overlay modal-docked" onclick="if(event.target===this)VueComptes.fermerFicheDockee()">
+        <div class="modal modal-docked-panel" style="overflow-y:auto">
+          <div class="bloc-titre" style="position:sticky;top:0;background:var(--c-surface);z-index:1;padding-bottom:8px">
+            ${c.Nom_Compte}
+            <button class="btn-lien" style="margin-left:auto;font-size:13px" onclick="VueComptes.fermerFicheDockee()">✕ Fermer</button>
+          </div>
+          ${VueFicheCompte.renderContenuFiche()}
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+            <button class="btn-action btn-visite" style="width:auto;flex:1" onclick="Router.aller('#/questionnaire/${c.ID_Compte}')">📋 Visite</button>
+            <button class="btn-action btn-appel" style="width:auto;flex:1" onclick="Router.aller('#/phoning/${c.ID_Compte}')">📞 Appeler</button>
+            <button class="btn-action" style="width:auto;flex:1;background:var(--c-text-2);color:#fff" onclick="VueFicheCompte.ouvrirRapportPhoning()">📊 Rapport</button>
+          </div>
+          ${VueFicheCompte.state.modalRapportPhoning ? VueFicheCompte._renderModalRapportPhoning() : ''}
+        </div>
+      </div>`;
   },
 
   // ── Bloc 4 refonte desktop : tri de colonnes cliquables (datagrid) ──
@@ -258,15 +308,15 @@ window.VueComptes = {
             return `
           <div class="carte-compte-v2${inactif45 ? ' carte-compte-alerte' : ''}">
             ${alerteInactivite}
-            <div class="cc-pills" onclick="Router.aller('#/compte/${c.ID_Compte}')">
+            <div class="cc-pills" onclick="VueComptes.ouvrirFiche('${c.ID_Compte}')">
               ${badgeStatutCompte(c)}
               ${badgeDernier}
               ${this._badgePriorite(c.Priorite)}
               <span style="margin-left:auto;font-size:12px;color:var(--c-muted)">FY26 ${caFY26}</span>
               <span style="font-size:13px;font-weight:700;color:var(--c-title)">FY27 Q1 ${caQ1 !== '—' ? caQ1 : '—'}</span>
             </div>
-            <div class="cc-nom" onclick="Router.aller('#/compte/${c.ID_Compte}')">${c.Nom_Compte || '—'}</div>
-            <div class="cc-infos" onclick="Router.aller('#/compte/${c.ID_Compte}')">
+            <div class="cc-nom" onclick="VueComptes.ouvrirFiche('${c.ID_Compte}')">${c.Nom_Compte || '—'}</div>
+            <div class="cc-infos" onclick="VueComptes.ouvrirFiche('${c.ID_Compte}')">
               <span><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> ${c.Ville || '—'}</span>
               <span>${c.CANAL || '—'}</span>
               ${c.Date_prochaine_action ? `
@@ -331,7 +381,7 @@ window.VueComptes = {
                 }
                 return `<tr style="${rowStyle}">
                   <td>${badgeStatutCompte(c)}${joursDA !== null && joursDA > 45 ? `<br><span style="font-size:10px;font-weight:700;color:var(--c-danger)">⚠ ${joursDA}j</span>` : ''}</td>
-                  <td class="compte-nom" onclick="Router.aller('#/compte/${c.ID_Compte}')">${c.Nom_Compte || '—'}</td>
+                  <td class="compte-nom" onclick="VueComptes.ouvrirFiche('${c.ID_Compte}')">${c.Nom_Compte || '—'}</td>
                   <td>${c.Ville || '—'}</td>
                   <td>${c.CANAL || '—'}</td>
                   <td class="num" style="color:var(--c-muted)">${caFY25}</td>
@@ -356,6 +406,7 @@ window.VueComptes = {
 
       ${Session.role !== 'CHANNEL_MANAGER' ? `<button class="fab" onclick="Router.aller('#/questionnaire')" title="Nouvelle visite" style="bottom:140px">＋</button>` : ''}
       ${NavBar('comptes')}
+      ${this.state.ficheDockee ? this._renderFicheDockee() : ''}
     `;
     const champ = document.getElementById('recherche-comptes');
     if (this.state.recherche && champ) {

@@ -19,22 +19,7 @@ window.VueFicheCompte = {
     this.state.editCoord  = false;
     this.render();
     try {
-      const [comptes, rawV17, visites, appels] = await Promise.all([
-        SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
-        SheetsAPI.lire('V17', '📋 COMPTES HISTORIQUES'),
-        SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES'),
-        SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING'),
-      ]);
-      const compte = comptes.find(c => String(c.ID_Compte) === String(idCompte));
-      if (!compte) throw new Error(`Compte ${idCompte} introuvable`);
-
-      const nomNorm = normaliserNom(compte.Nom_Compte);
-      this.state.compte  = compte;
-      this.state.v17     = rawV17.find(r => normaliserNom(r.RESELLER) === nomNorm) || null;
-      this.state.visites = visites.filter(v => String(v.ID_Cible) === String(idCompte))
-        .sort((a, b) => new Date(b.Date) - new Date(a.Date));
-      this.state.appels  = appels.filter(a => String(a.ID_Cible) === String(idCompte))
-        .sort((a, b) => new Date(b.Date) - new Date(a.Date));
+      await this._chargerDonnees(idCompte);
       this.state.chargement = false;
       this.render();
     } catch(e) {
@@ -43,6 +28,28 @@ window.VueFicheCompte = {
         `<div class="erreur">Erreur : ${e.message}<br><br>
          <button class="btn-secondaire" onclick="Router.aller('#/comptes')">← Retour aux comptes</button></div>`;
     }
+  },
+
+  // Extrait de init() — chargement pur des données, sans toucher #app.
+  // Réutilisé par le panneau docké desktop (VueComptes.ouvrirFiche) qui ne
+  // doit pas remplacer la vue Comptes en arrière-plan.
+  async _chargerDonnees(idCompte) {
+    const [comptes, rawV17, visites, appels] = await Promise.all([
+      SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
+      SheetsAPI.lire('V17', '📋 COMPTES HISTORIQUES'),
+      SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES'),
+      SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING'),
+    ]);
+    const compte = comptes.find(c => String(c.ID_Compte) === String(idCompte));
+    if (!compte) throw new Error(`Compte ${idCompte} introuvable`);
+
+    const nomNorm = normaliserNom(compte.Nom_Compte);
+    this.state.compte  = compte;
+    this.state.v17     = rawV17.find(r => normaliserNom(r.RESELLER) === nomNorm) || null;
+    this.state.visites = visites.filter(v => String(v.ID_Cible) === String(idCompte))
+      .sort((a, b) => new Date(b.Date) - new Date(a.Date));
+    this.state.appels  = appels.filter(a => String(a.ID_Cible) === String(idCompte))
+      .sort((a, b) => new Date(b.Date) - new Date(a.Date));
   },
 
   ouvrirEditionCoordonnees() {
@@ -235,12 +242,10 @@ window.VueFicheCompte = {
       </div>`;
   },
 
-  render() {
-    const app = document.getElementById('app');
-    if (this.state.chargement) {
-      app.innerHTML = '<div class="spinner-centre">Chargement de la fiche…</div>';
-      return;
-    }
+  // Contenu de la fiche (identité + CA + prochaine action + visites + appels),
+  // sans header ni barre d'actions — réutilisé par render() (page pleine mobile)
+  // et par le panneau docké desktop (VueComptes.ouvrirFiche, Bloc 9 refonte).
+  renderContenuFiche() {
     const c   = this.state.compte;
     const v17 = this.state.v17;
     const fy25 = window.parseCA(v17?.['CA FY25 €'] ?? c.CA_FY25) ?? 0;
@@ -248,18 +253,71 @@ window.VueFicheCompte = {
     const fy27 = window.parseCA(v17?.['CA Q1FY27 €'] ?? c.CA_Q1FY27) ?? 0;
     const maxCA = Math.max(fy25, fy26, fy27, 1);
 
-    const _lastActivity = (() => {
-      const dates = [
-        ...this.state.visites.map(v => v.Date),
-        ...this.state.appels.map(a => a.Date),
-      ].filter(Boolean).map(d => new Date(d)).filter(d => !isNaN(d));
-      if (!dates.length) return null;
-      return new Date(Math.max(...dates));
-    })();
-    const _semainesSilence = _lastActivity
-      ? Math.floor((Date.now() - _lastActivity.getTime()) / (7 * 24 * 3600 * 1000))
-      : null;
-    const semainesSilenceLabel = _semainesSilence !== null ? `${_semainesSilence} sem.` : '—';
+    return `
+      ${this._renderBlocIdentite(c)}
+
+      <!-- CA HISTORIQUE -->
+      <div class="bloc-fiche">
+        <div class="bloc-titre">CA Historique</div>
+        ${!v17 ? '<div class="pas-de-v17">⚠️ Pas de correspondance V17 — données MDB</div>' : ''}
+        <div class="graphique-ca">
+          ${this._barreCA('FY25', fy25, maxCA)}
+          ${this._barreCA('FY26', fy26, maxCA)}
+          ${this._barreCA('Q1·27', fy27, maxCA)}
+        </div>
+        ${v17 ? `
+        <div class="grille-identite" style="margin-top:12px">
+          <div class="id-ligne"><span>Évolution FY26 vs FY25</span><strong>${(() => { const ev = window.parseCA(v17['EVOL_FY26_VS_FY25_%']); return ev !== null ? ev + ' %' : (v17['EVOL_FY26_VS_FY25_%'] ? String(v17['EVOL_FY26_VS_FY25_%']) : '—'); })()}</strong></div>
+          <div class="id-ligne"><span>Potentiel upsell</span><strong>${v17.POTENTIEL_UPSELL || '—'}</strong></div>
+          <div class="id-ligne"><span>Score potentiel</span><strong>${v17.SCORE_POTENTIEL != null && v17.SCORE_POTENTIEL !== '' ? String(v17.SCORE_POTENTIEL) + '/100' : '—'}</strong></div>
+        </div>` : ''}
+      </div>
+
+      <!-- PROCHAINE ACTION -->
+      <div class="bloc-fiche">
+        <div class="bloc-titre">Prochaine action</div>
+        ${c.Prochaine_action ? `
+          <div class="prochaine-action-detail">
+            <div class="pa-type">${c.Prochaine_action}</div>
+            <div class="pa-date ${estDepassee(c.Date_prochaine_action) ? 'date-depassee' : ''}">
+              📅 ${dateRelative(c.Date_prochaine_action)}
+            </div>
+            ${c.Note_initiale ? `<div class="pa-note">📝 ${c.Note_initiale}</div>` : ''}
+          </div>` : '<div class="pas-de-donnees">Aucune action planifiée</div>'}
+      </div>
+
+      <!-- VISITES -->
+      <div class="bloc-fiche">
+        <div class="bloc-titre">Visites (${this.state.visites.length})</div>
+        ${this.state.visites.length === 0 ? '<div class="vide-liste">Aucune visite enregistrée</div>'
+          : this.state.visites.slice(0, 5).map(v => `
+          <div class="carte-visite">
+            <div class="visite-date">${v.Date || '—'} · ${v.Heure || ''} · ${window.resolveCDS(v.PIN_CDS || v.Nom_CDS)}</div>
+            <div class="visite-resultat">${v.Resultat_Visite || v.Type_Visite || '—'}</div>
+            <div class="visite-score">Réceptivité ${v.Slider_Receptivite != null && v.Slider_Receptivite !== '' ? v.Slider_Receptivite : '—'}/5${v.Prochaine_Action_Texte ? ` · → ${v.Prochaine_Action_Texte}` : ''}</div>
+          </div>`).join('')}
+      </div>
+
+      <!-- APPELS -->
+      <div class="bloc-fiche">
+        <div class="bloc-titre">Appels (${this.state.appels.length})</div>
+        ${this.state.appels.length === 0 ? '<div class="vide-liste">Aucun appel enregistré</div>'
+          : this.state.appels.slice(0, 5).map(a => `
+          <div class="carte-appel">
+            <div class="appel-date">${a.Date || '—'} · ${window.resolveCDS(a.PIN_CDS || a.Nom_CDS)}</div>
+            <div class="appel-resultat">${a.Statut_Appel || '—'} · Intérêt EMPOWER : ${a.Interet_EMPOWER || '—'}</div>
+            <div class="appel-frein">${a.Frein_Principal ? `Frein : ${a.Frein_Principal}` : ''}${a.Prochaine_Action ? ` · → ${a.Prochaine_Action}` : ''}</div>
+          </div>`).join('')}
+      </div>`;
+  },
+
+  render() {
+    const app = document.getElementById('app');
+    if (this.state.chargement) {
+      app.innerHTML = '<div class="spinner-centre">Chargement de la fiche…</div>';
+      return;
+    }
+    const c = this.state.compte;
 
     app.innerHTML = `
       <header class="header-vue">
@@ -268,62 +326,7 @@ window.VueFicheCompte = {
       </header>
 
       <div class="fiche-body">
-
-        ${this._renderBlocIdentite(c)}
-
-        <!-- CA HISTORIQUE -->
-        <div class="bloc-fiche">
-          <div class="bloc-titre">CA Historique</div>
-          ${!v17 ? '<div class="pas-de-v17">⚠️ Pas de correspondance V17 — données MDB</div>' : ''}
-          <div class="graphique-ca">
-            ${this._barreCA('FY25', fy25, maxCA)}
-            ${this._barreCA('FY26', fy26, maxCA)}
-            ${this._barreCA('Q1·27', fy27, maxCA)}
-          </div>
-          ${v17 ? `
-          <div class="grille-identite" style="margin-top:12px">
-            <div class="id-ligne"><span>Évolution FY26 vs FY25</span><strong>${(() => { const ev = window.parseCA(v17['EVOL_FY26_VS_FY25_%']); return ev !== null ? ev + ' %' : (v17['EVOL_FY26_VS_FY25_%'] ? String(v17['EVOL_FY26_VS_FY25_%']) : '—'); })()}</strong></div>
-            <div class="id-ligne"><span>Potentiel upsell</span><strong>${v17.POTENTIEL_UPSELL || '—'}</strong></div>
-            <div class="id-ligne"><span>Score potentiel</span><strong>${v17.SCORE_POTENTIEL != null && v17.SCORE_POTENTIEL !== '' ? String(v17.SCORE_POTENTIEL) + '/100' : '—'}</strong></div>
-          </div>` : ''}
-        </div>
-
-        <!-- PROCHAINE ACTION -->
-        <div class="bloc-fiche">
-          <div class="bloc-titre">Prochaine action</div>
-          ${c.Prochaine_action ? `
-            <div class="prochaine-action-detail">
-              <div class="pa-type">${c.Prochaine_action}</div>
-              <div class="pa-date ${estDepassee(c.Date_prochaine_action) ? 'date-depassee' : ''}">
-                📅 ${dateRelative(c.Date_prochaine_action)}
-              </div>
-              ${c.Note_initiale ? `<div class="pa-note">📝 ${c.Note_initiale}</div>` : ''}
-            </div>` : '<div class="pas-de-donnees">Aucune action planifiée</div>'}
-        </div>
-
-        <!-- VISITES -->
-        <div class="bloc-fiche">
-          <div class="bloc-titre">Visites (${this.state.visites.length})</div>
-          ${this.state.visites.length === 0 ? '<div class="vide-liste">Aucune visite enregistrée</div>'
-            : this.state.visites.slice(0, 5).map(v => `
-            <div class="carte-visite">
-              <div class="visite-date">${v.Date || '—'} · ${v.Heure || ''} · ${window.resolveCDS(v.PIN_CDS || v.Nom_CDS)}</div>
-              <div class="visite-resultat">${v.Resultat_Visite || v.Type_Visite || '—'}</div>
-              <div class="visite-score">Réceptivité ${v.Slider_Receptivite != null && v.Slider_Receptivite !== '' ? v.Slider_Receptivite : '—'}/5${v.Prochaine_Action_Texte ? ` · → ${v.Prochaine_Action_Texte}` : ''}</div>
-            </div>`).join('')}
-        </div>
-
-        <!-- APPELS -->
-        <div class="bloc-fiche">
-          <div class="bloc-titre">Appels (${this.state.appels.length})</div>
-          ${this.state.appels.length === 0 ? '<div class="vide-liste">Aucun appel enregistré</div>'
-            : this.state.appels.slice(0, 5).map(a => `
-            <div class="carte-appel">
-              <div class="appel-date">${a.Date || '—'} · ${window.resolveCDS(a.PIN_CDS || a.Nom_CDS)}</div>
-              <div class="appel-resultat">${a.Statut_Appel || '—'} · Intérêt EMPOWER : ${a.Interet_EMPOWER || '—'}</div>
-              <div class="appel-frein">${a.Frein_Principal ? `Frein : ${a.Frein_Principal}` : ''}${a.Prochaine_Action ? ` · → ${a.Prochaine_Action}` : ''}</div>
-            </div>`).join('')}
-        </div>
+        ${this.renderContenuFiche()}
       </div>
 
       <!-- ACTIONS -->
