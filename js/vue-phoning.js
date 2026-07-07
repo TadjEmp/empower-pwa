@@ -8,6 +8,7 @@
 window.VuePhoning = {
 
   state: null,
+  sessionAppels: 0, // Bloc 6 — compteur d'appels de la session (hors state : survit aux re-init())
 
   _etatInitial() {
     return {
@@ -50,10 +51,14 @@ window.VuePhoning = {
       // EX-2 — extraction
       extractOuvert: false,
       extractFiltres: { debut: '', fin: '', cds: 'TOUS', resultat: 'TOUS' },
+      // Bloc 6 — file d'appels courante (pour "Appel suivant" depuis l'écran de succès)
+      _fileAppels: null, _fileAppelsIdx: -1,
+      appelDebutTs: null,
     };
   },
 
   async init(idCible = null) {
+    this._arreterTimerAppel(); // Bloc 6 — évite un timer orphelin si on quitte un appel en cours
     this.state = this._etatInitial();
     this.render();
     try {
@@ -194,9 +199,19 @@ window.VuePhoning = {
     this.render();
   },
 
-  demarrerAppelCompte(idCompte) {
+  demarrerAppelCompte(idCompte, _depuisFile = false) {
     const c = this.state.comptes.find(x => String(x.ID_Compte) === String(idCompte));
     if (!c) { Toast.afficher('Compte introuvable', 'warning'); return; }
+    // Bloc 6 — file d'appels (permet "Appel suivant" depuis l'écran de succès) :
+    // capturée seulement au premier appel de la session, pas ré-écrasée quand
+    // appelSuivant() ré-invoque cette fonction pour l'élément suivant.
+    if (!_depuisFile) {
+      let liste = this.state.comptes;
+      const q = this.state.rechercheBase ? normaliserNom(this.state.rechercheBase) : '';
+      if (q.length >= 2) liste = liste.filter(x => normaliserNom(x.Nom_Compte).includes(q) || normaliserNom(x.Ville || '').includes(q));
+      this.state._fileAppels = liste;
+      this.state._fileAppelsIdx = liste.findIndex(x => String(x.ID_Compte) === String(idCompte));
+    }
     this.state.cible      = c;
     this.state.typeSource = 'EXISTANT';
     this.state.mode       = 'APPEL';
@@ -204,7 +219,37 @@ window.VuePhoning = {
     this.state.recherche  = c.Nom_Compte;
     this.state.geminiAnalyse = null;
     Object.assign(this.state.d, { objectif:'Prospection Empower', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'', typeAppel:'', interetScore:0, concurrentActuel:'', potentielEstime:'', statutCallPills:'', empowerQ:[false,false,false,false,false] });
+    this._demarrerTimerAppel();
     this.render();
+  },
+
+  // ── Bloc 6 refonte desktop : timer temps réel pendant l'appel ──
+  _demarrerTimerAppel() {
+    this.state.appelDebutTs = Date.now();
+    if (this._timerAppelId) return; // déjà actif — évite les doublons si render() rappelé
+    this._timerAppelId = setInterval(() => {
+      const el = document.getElementById('phoning-timer-appel');
+      if (!el || !this.state.appelDebutTs) return;
+      const sec = Math.floor((Date.now() - this.state.appelDebutTs) / 1000);
+      el.textContent = `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`;
+    }, 1000);
+  },
+  _arreterTimerAppel() {
+    if (this._timerAppelId) { clearInterval(this._timerAppelId); this._timerAppelId = null; }
+  },
+
+  // ── Bloc 6 refonte desktop : enchaîner directement sur le prochain appel ──
+  appelSuivant() {
+    const file = this.state._fileAppels;
+    const idx  = this.state._fileAppelsIdx;
+    if (!file || idx === -1 || idx + 1 >= file.length) {
+      Toast.afficher('Plus de compte à appeler dans cette liste', 'info');
+      this.init();
+      return;
+    }
+    const suivant = file[idx + 1];
+    this.state._fileAppelsIdx = idx + 1;
+    this.demarrerAppelCompte(suivant.ID_Compte, true);
   },
   setFiltreListe(f) { this.state.filtreListe = f; this.render(); },
 
@@ -321,6 +366,7 @@ window.VuePhoning = {
       if (!s.cible) { Toast.afficher('Sélectionnez un compte', 'warning'); return; }
     }
     s.phase = 'CALL';
+    this._demarrerTimerAppel();
     this.render();
   },
 
@@ -367,6 +413,7 @@ window.VuePhoning = {
         } catch(e) { Toast.afficher('❌ IA : ' + e.message, 'erreur'); }
         const _d = this.state.d;
         if (_d.statutCallPills && !_d.statutAppel) _d.statutAppel = _d.statutCallPills;
+        this._arreterTimerAppel();
         this.state.phase = 'POST';
         this.render();
       });
@@ -381,6 +428,7 @@ window.VuePhoning = {
     const d = this.state.d;
     // Pré-remplir statutAppel depuis les pills si déjà cliqué pendant l'appel
     if (d.statutCallPills && !d.statutAppel) d.statutAppel = d.statutCallPills;
+    this._arreterTimerAppel();
     this.state.phase = 'POST';
     this.render();
   },
@@ -520,11 +568,14 @@ window.VuePhoning = {
       }[d.resultatProspect] || '';
 
       this._effacerBrouillon();
+      this.sessionAppels++; // Bloc 6 — compteur de session
+      const aUnSuivant = s._fileAppels && s._fileAppelsIdx > -1 && s._fileAppelsIdx + 1 < s._fileAppels.length;
       document.getElementById('app').innerHTML = `
         <div class="visite-succes">
           <div class="succes-icone"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
           <h2>Appel enregistré</h2>
           <p class="succes-duree">${c.Nom_Compte}</p>
+          <p class="succes-duree">📞 ${this.sessionAppels} appel${this.sessionAppels > 1 ? 's' : ''} cette session</p>
           <div class="succes-recap">
             <div>${d.statutAppel} · Intérêt EMPOWER : ${d.interetEmpower || '—'}</div>
             ${msgResultat ? `<div>${msgResultat}</div>` : ''}
@@ -535,6 +586,7 @@ window.VuePhoning = {
             ${s.qualif?.resume ? `<div>${s.qualif.resume}</div>` : ''}
           </div>
           <div class="succes-btns">
+            ${aUnSuivant ? `<button class="btn-primaire" style="background:var(--c-success)" onclick="VuePhoning.appelSuivant()">☎ Appel suivant →</button>` : ''}
             <button class="btn-primaire" onclick="Router.aller('#/dashboard')">← Dashboard</button>
             <button class="btn-secondaire" onclick="VuePhoning.init()">Retour au planning</button>
           </div>
@@ -1183,7 +1235,13 @@ window.VuePhoning = {
 
       <!-- Fiche contact pendant l'appel -->
       <div style="background:var(--c-surface);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">
-        <div style="font-weight:700;font-size:16px;color:var(--c-title);margin-bottom:8px">${c?.Nom_Compte || '—'}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-weight:700;font-size:16px;color:var(--c-title)">${c?.Nom_Compte || '—'}</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:700;color:var(--c-primary);font-variant-numeric:tabular-nums">
+            <span style="width:7px;height:7px;border-radius:50%;background:var(--c-danger);animation:pulse-appel 1.4s infinite"></span>
+            <span id="phoning-timer-appel">00:00</span>
+          </div>
+        </div>
         <div style="display:flex;flex-direction:column;gap:5px">
           ${c?.Tel ? `<a class="lien-tel" href="tel:${String(c.Tel).replace(/\s/g,'')}">📞 ${c.Tel}</a>` : '<span style="font-size:12px;color:var(--c-text-2)">Pas de téléphone enregistré</span>'}
           ${c?.Email ? `<span style="font-size:12px;color:var(--c-text-2)">✉ ${c.Email}</span>` : ''}
