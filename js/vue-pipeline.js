@@ -70,6 +70,9 @@ window.VuePipeline = {
       exportFiltres: { debut: '', fin: '', periode: 'MOIS' },
       triCol: null, triSens: 'asc',
       selection: new Set(),
+      pageTable: 1,
+      colonnesMenuOuvert: false,
+      colonnesTable: this._chargerPrefColonnes(),
     };
     this.render();
     try {
@@ -141,7 +144,15 @@ window.VuePipeline = {
   get leadsFiltres() {
     let l = this.state.leads;
     const q = normaliserNom(this.state.recherche);
-    if (q) l = l.filter(p => normaliserNom(p.Nom_Compte).includes(q) || normaliserNom(p.Ville || '').includes(q));
+    // Recherche multi-champs (Bloc 3 — datagrid desktop) : compte, ville, contact, tel, email, notes
+    if (q) l = l.filter(p =>
+      normaliserNom(p.Nom_Compte).includes(q) ||
+      normaliserNom(p.Ville || '').includes(q) ||
+      normaliserNom(p.CONTACT_NOM || '').includes(q) ||
+      normaliserNom(p.Tel || '').includes(q) ||
+      normaliserNom(p.Email || '').includes(q) ||
+      normaliserNom(p.Note_initiale || '').includes(q)
+    );
     if (this.state.filtreCDS !== 'TOUS') l = l.filter(p => String(p.PIN_CDS_Assigne) === String(this.state.filtreCDS));
     if (this.state.filtrePotentiel !== 'TOUS') l = l.filter(p => String(p.POTENTIEL || '').toLowerCase() === String(this.state.filtrePotentiel).toLowerCase());
     if (this.state.filtreStatut !== 'TOUS') l = l.filter(p => p._statut === this.state.filtreStatut);
@@ -413,6 +424,34 @@ window.VuePipeline = {
   },
   viderSelection() { this.state.selection.clear(); this.render(); },
 
+  // ── Datagrid desktop (Bloc 3) : colonnes configurables (persistées) ──
+  _COLS_CONFIGURABLES: [
+    { id: 'canal',     lbl: 'Canal' },
+    { id: 'potentiel', lbl: 'Potentiel' },
+    { id: 'cds',       lbl: 'CDS' },
+    { id: 'action',    lbl: 'Action' },
+    { id: 'alertes',   lbl: 'Alertes' },
+    { id: 'source',    lbl: 'Source' },
+  ],
+  _chargerPrefColonnes() {
+    try {
+      const sauve = JSON.parse(localStorage.getItem('empower_tracker_cols') || 'null');
+      if (sauve) return sauve;
+    } catch { /* ignore */ }
+    return { canal: true, potentiel: true, cds: true, action: true, alertes: true, source: true };
+  },
+  ouvrirColonnesMenu() { this.state.colonnesMenuOuvert = true; this.render(); },
+  fermerColonnesMenu() { this.state.colonnesMenuOuvert = false; this.render(); },
+  toggleColonne(col) {
+    this.state.colonnesTable[col] = !this.state.colonnesTable[col];
+    localStorage.setItem('empower_tracker_cols', JSON.stringify(this.state.colonnesTable));
+    this.render();
+  },
+
+  // ── Datagrid desktop (Bloc 3) : pagination réelle (mode Tableau) ──
+  PAGE_SIZE: 50,
+  allerPage(n) { this.state.pageTable = n; this.render(); },
+
   async attribuerSelection(pin) {
     if (!pin || !this.state.selection.size) return;
     const ids = [...this.state.selection];
@@ -433,6 +472,7 @@ window.VuePipeline = {
 
   setRecherche: debounce(function(v) {
     VuePipeline.state.recherche = v;
+    VuePipeline.state.pageTable = 1;
     // Quand on tape une recherche, on affiche tout pour ne rien masquer
     if (v) VuePipeline.state.colonnesEtendues = { SAISIE:true, ASSIGNE:true, EN_COURS:true, COMPTE_CREE:true, INTEGRE:true, ARCHIVE:true };
     else    VuePipeline.state.colonnesEtendues = {};
@@ -476,7 +516,7 @@ window.VuePipeline = {
       </div>
 
       <div class="barre-filtres">
-        <input type="search" placeholder="🔍 Rechercher un prospect…" value="${this.state.recherche}"
+        <input type="search" placeholder="🔍 Nom, ville, contact, tél, email, notes…" value="${this.state.recherche}"
                style="border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:8px 12px;font-size:14px;width:100%"
                oninput="VuePipeline.setRecherche(this.value)"/>
         <div class="filtres-statut">
@@ -600,6 +640,7 @@ window.VuePipeline = {
 
     const statutLabel = id => (this.STATUTS.find(s => s.id === id) || {}).lbl || id;
     const peutBatch = this._peutAssigner();
+    const cc = this.state.colonnesTable; // colonnes configurables (persistées)
 
     // Tri de colonnes (Bloc 3 — datagrid desktop)
     let leads = leadsEntree;
@@ -613,12 +654,32 @@ window.VuePipeline = {
       });
     }
 
+    // Pagination réelle (Bloc 3 — remplace le rendu de tous les leads d'un coup)
+    const totalPages = Math.max(1, Math.ceil(leads.length / this.PAGE_SIZE));
+    if (this.state.pageTable > totalPages) this.state.pageTable = totalPages;
+    if (this.state.pageTable < 1) this.state.pageTable = 1;
+    const page = this.state.pageTable;
+    const leadsPage = leads.slice((page - 1) * this.PAGE_SIZE, page * this.PAGE_SIZE);
+
     const th = (col, lbl, extra = '') => `<th style="cursor:pointer;user-select:none;${extra}" onclick="VuePipeline.triParColonne('${col}')">${lbl}${this._indicateurTri(col)}</th>`;
-    const idsVisibles = leads.map(l => l.ID_Prospect);
+    const idsVisibles = leadsPage.map(l => l.ID_Prospect);
     const selection = this.state.selection;
     const nbSelect = selection.size;
+    const showCDS = voitTous && cc.cds;
 
     return `
+      <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin:12px 12px 0;position:relative">
+        <span style="font-size:12px;color:var(--c-text-2)">${leads.length} lead(s)</span>
+        <button class="btn-secondaire" style="width:auto;padding:6px 12px;font-size:12px" onclick="VuePipeline.ouvrirColonnesMenu()">⚙ Colonnes</button>
+        ${this.state.colonnesMenuOuvert ? `
+        <div style="position:absolute;top:100%;right:0;z-index:50;margin-top:4px;padding:10px;background:var(--bg-warm-white);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);box-shadow:var(--shadow-modal);min-width:180px">
+          ${this._COLS_CONFIGURABLES.map(c => `
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;padding:4px 2px;cursor:pointer">
+            <input type="checkbox" ${cc[c.id] ? 'checked' : ''} onchange="VuePipeline.toggleColonne('${c.id}')"/> ${c.lbl}
+          </label>`).join('')}
+          <button class="btn-lien" style="font-size:12px;margin-top:6px" onclick="VuePipeline.fermerColonnesMenu()">Fermer</button>
+        </div>` : ''}
+      </div>
       ${peutBatch && nbSelect > 0 ? `
       <div class="tracker-batch-bar">
         <span><strong>${nbSelect}</strong> lead(s) sélectionné(s)</span>
@@ -634,17 +695,17 @@ window.VuePipeline = {
           <thead><tr>
             ${peutBatch ? `<th style="width:32px"><input type="checkbox" ${idsVisibles.length && idsVisibles.every(id => selection.has(id)) ? 'checked' : ''} onchange="VuePipeline.basculerSelectionTout(${JSON.stringify(idsVisibles).replace(/"/g,'&quot;')})"/></th>` : ''}
             ${th('nom', 'Compte')}
-            ${th('canal', 'Canal')}
+            ${cc.canal ? th('canal', 'Canal') : ''}
             ${th('statut', 'Statut')}
-            ${th('potentiel', 'Potentiel')}
-            ${voitTous ? th('cds', 'CDS') : ''}
-            ${th('action', 'Action')}
-            <th>Alertes</th>
-            <th>Source</th>
+            ${cc.potentiel ? th('potentiel', 'Potentiel') : ''}
+            ${showCDS ? th('cds', 'CDS') : ''}
+            ${cc.action ? th('action', 'Action') : ''}
+            ${cc.alertes ? '<th>Alertes</th>' : ''}
+            ${cc.source ? '<th>Source</th>' : ''}
             <th style="min-width:80px">Actions</th>
           </tr></thead>
           <tbody>
-            ${leads.map(l => {
+            ${leadsPage.map(l => {
               const wpRetard   = this._retardWelcomePack(l);
               const contact45j = this._alerte45jSansContact(l);
               const activite7j = !contact45j && this._alerteSansActivite(l);
@@ -653,26 +714,24 @@ window.VuePipeline = {
               <td class="compte-nom" onclick="VuePipeline.ouvrirLead('${l.ID_Prospect}')" style="cursor:pointer;font-weight:600">
                 ${l.Nom_Compte}
               </td>
-              <td style="font-size:12px;color:var(--c-text-2)">${l.CANAL || '—'}</td>
+              ${cc.canal ? `<td style="font-size:12px;color:var(--c-text-2)">${l.CANAL || '—'}</td>` : ''}
               <td>
                 <span class="statut-pill statut-${(l._statut||'').toLowerCase()}" style="font-size:10px">
                   ${statutLabel(l._statut)}
                 </span>
               </td>
-              <td>
-                ${l.POTENTIEL ? `<span class="pot-pill pot-${(l.POTENTIEL||'').toLowerCase()}">${l.POTENTIEL}</span>` : '—'}
-              </td>
-              ${voitTous ? `<td style="font-size:12px">${this._nomCDS(l.PIN_CDS_Assigne)}</td>` : ''}
-              <td style="font-size:12px;color:${l.Date_prochaine_action && estDepassee(l.Date_prochaine_action) ? 'var(--c-danger)' : 'var(--c-text-2)'}">
+              ${cc.potentiel ? `<td>${l.POTENTIEL ? `<span class="pot-pill pot-${(l.POTENTIEL||'').toLowerCase()}">${l.POTENTIEL}</span>` : '—'}</td>` : ''}
+              ${showCDS ? `<td style="font-size:12px">${this._nomCDS(l.PIN_CDS_Assigne)}</td>` : ''}
+              ${cc.action ? `<td style="font-size:12px;color:${l.Date_prochaine_action && estDepassee(l.Date_prochaine_action) ? 'var(--c-danger)' : 'var(--c-text-2)'}">
                 ${l.Date_prochaine_action ? dateRelative(l.Date_prochaine_action) : '—'}
-              </td>
-              <td style="font-size:12px;white-space:nowrap">
+              </td>` : ''}
+              ${cc.alertes ? `<td style="font-size:12px;white-space:nowrap">
                 ${wpRetard   ? '<span style="color:var(--c-danger);font-weight:700">⚠️ WP J+14</span><br>' : ''}
                 ${contact45j ? '<span style="color:var(--c-danger);font-weight:700">🔴 +45j</span>' : ''}
                 ${activite7j ? '<span style="color:var(--c-warning);font-weight:700">⏳ +7j</span>' : ''}
                 ${!wpRetard && !contact45j && !activite7j ? '<span style="color:var(--c-text-2)">—</span>' : ''}
-              </td>
-              <td style="font-size:11px;color:var(--c-text-2)">${(l.ORIGINE||'—').replace('Import_','').replace(/_/g,' ')}</td>
+              </td>` : ''}
+              ${cc.source ? `<td style="font-size:11px;color:var(--c-text-2)">${(l.ORIGINE||'—').replace('Import_','').replace(/_/g,' ')}</td>` : ''}
               <td>
                 <button class="btn-visiter" style="padding:4px 10px;font-size:12px"
                         onclick="VuePipeline.ouvrirLead('${l.ID_Prospect}')">Voir →</button>
@@ -680,7 +739,13 @@ window.VuePipeline = {
             </tr>`;}).join('')}
           </tbody>
         </table>
-      </div>`;
+      </div>
+      ${totalPages > 1 ? `
+      <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin:12px">
+        <button class="btn-secondaire" style="width:auto;padding:6px 14px;font-size:12px" ${page <= 1 ? 'disabled' : ''} onclick="VuePipeline.allerPage(${page - 1})">← Précédent</button>
+        <span style="font-size:12px;color:var(--c-text-2)">Page ${page} / ${totalPages}</span>
+        <button class="btn-secondaire" style="width:auto;padding:6px 14px;font-size:12px" ${page >= totalPages ? 'disabled' : ''} onclick="VuePipeline.allerPage(${page + 1})">Suivant →</button>
+      </div>` : ''}`;
   },
 
   _renderModal() {
