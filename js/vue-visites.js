@@ -1299,7 +1299,7 @@ window.VueVisites = {
           <div style="font-size:13px;margin-bottom:10px"><strong>${m.doublonExistant.Nom_Compte}</strong> — ${m.doublonExistant.STATUT_COMPTE || '—'} · ${m.doublonExistant.CANAL || '—'}</div>
           <div style="display:flex;gap:8px">
             <button class="btn-secondaire" style="flex:1;font-size:12px"
-                    onclick="VueVisites.fermerConversion();Router.aller('#/compte/${m.doublonExistant.ID_Compte}')">👁️ Voir la fiche</button>
+                    onclick="VueVisites.fermerConversion();VueVisites.ouvrirFiche('${m.doublonExistant.ID_Compte}')">👁️ Voir la fiche</button>
             <button class="btn-primaire" style="flex:1;font-size:12px"
                     onclick="VueVisites.forcerConversion()">Créer quand même</button>
           </div>
