@@ -119,3 +119,47 @@
 .pj-heure { color: var(--c-text-2); flex-shrink: 0; }
 .pj-nom   { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--c-title); }
 .pj-plus  { font-size: 10px; color: var(--c-primary); text-align: center; font-weight: 700; }
+
+/* Le mode Tableau (.desktop-table-data-view) est masqué par défaut <900px
+   (base.css) sans repli carte — masque l'onglet pour éviter un écran vide
+   sur mobile ; le Kanban couvre déjà correctement ce cas. */
+@media (max-width: 899px) {
+  .tab-tableau-desktop { display: none; }
+}
+
+/* ── Bloc 3 refonte desktop — barre d'actions groupées (datagrid Tracker) ── */
+.tracker-batch-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 12px 12px 0; padding: 10px 14px;
+  background: color-mix(in srgb, var(--c-primary) 8%, var(--bg-warm-white));
+  border: 1.5px solid var(--c-primary);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+.tracker-batch-bar select {
+  border: 1.5px solid var(--c-border); border-radius: var(--radius-sm);
+  padding: 6px 10px; font-size: 12px; background: var(--bg-warm-white);
+}
+
+/* ── Bloc 3 refonte desktop — panneau de détail latéral (au lieu du modal
+   plein écran) pour la fiche lead du Tracker. La liste/kanban reste visible
+   et cliquable derrière ; fermeture via le bouton "Fermer" du panneau. ── */
+@media (min-width: 900px) {
+  .modal-overlay.modal-docked {
+    background: transparent;
+    align-items: stretch;
+    justify-content: flex-end;
+    pointer-events: none;
+  }
+  .modal-overlay.modal-docked .modal.modal-docked-panel {
+    pointer-events: auto;
+    width: 440px;
+    max-width: 440px;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    border-left: 1px solid var(--c-border);
+    box-shadow: -8px 0 32px rgba(26,26,46,.18);
+    margin: 0;
+  }
+}

@@ -68,6 +68,8 @@ window.VuePipeline = {
       modal: null,
       exportOuvert: false,
       exportFiltres: { debut: '', fin: '', periode: 'MOIS' },
+      triCol: null, triSens: 'asc',
+      selection: new Set(),
     };
     this.render();
     try {
@@ -220,7 +222,7 @@ window.VuePipeline = {
     }
   },
 
-  async deplacer(id, statut) {
+  async deplacer(id, statut, { silencieux = false } = {}) {
     const lead = this.state.leads.find(l => String(l.ID_Prospect) === String(id));
     if (!lead) return;
     const champs = { STATUT_EMPOWER: statut };
@@ -236,14 +238,16 @@ window.VuePipeline = {
     try {
       await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', id, champs);
       Object.assign(lead, champs, { _statut: statut });
-      this.state.modal = null;
-      Toast.afficher(`✅ ${lead.Nom_Compte} → ${this.STATUTS.find(s => s.id === statut).lbl}`, 'succes');
-      this.render();
+      if (!silencieux) {
+        this.state.modal = null;
+        Toast.afficher(`✅ ${lead.Nom_Compte} → ${this.STATUTS.find(s => s.id === statut).lbl}`, 'succes');
+        this.render();
+      }
       if (doCreerCompte) this._creerCompteDepuisLead(lead).catch(() => {});
     } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
   },
 
-  async attribuer(id, pin) {
+  async attribuer(id, pin, { silencieux = false } = {}) {
     const lead = this.state.leads.find(l => String(l.ID_Prospect) === String(id));
     if (!lead || !pin) return;
     try {
@@ -254,9 +258,11 @@ window.VuePipeline = {
       });
       await SheetsAPI.viderCache('EMPOWER_MDB', '📋_PROSPECTS');
       Object.assign(lead, { PIN_CDS_Assigne: Number(pin), STATUT_EMPOWER: 'ASSIGNE', _statut: 'ASSIGNE' });
-      this.state.modal = null;
-      Toast.afficher(`🎯 ${lead.Nom_Compte} → ${this._nomCDS(pin)}`, 'succes');
-      this.render();
+      if (!silencieux) {
+        this.state.modal = null;
+        Toast.afficher(`🎯 ${lead.Nom_Compte} → ${this._nomCDS(pin)}`, 'succes');
+        this.render();
+      }
     } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
   },
 
@@ -366,6 +372,65 @@ window.VuePipeline = {
 
   setMode(m) { this.modeAffichage = m; this.render(); },
 
+  // ── Datagrid desktop (Bloc 3) : tri de colonnes ──
+  _valeurTri(l, col) {
+    switch (col) {
+      case 'nom':       return normaliserNom(l.Nom_Compte || '');
+      case 'canal':     return String(l.CANAL || '');
+      case 'statut':    return this.STATUTS.findIndex(s => s.id === l._statut);
+      case 'potentiel': return ({ Fort: 3, Moyen: 2, Faible: 1 })[l.POTENTIEL] || 0;
+      case 'cds':       return this._nomCDS(l.PIN_CDS_Assigne) || '';
+      case 'action':    return l.Date_prochaine_action ? new Date(l.Date_prochaine_action).getTime() : 0;
+      default:          return '';
+    }
+  },
+  triParColonne(col) {
+    if (this.state.triCol === col) {
+      this.state.triSens = this.state.triSens === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.state.triCol = col;
+      this.state.triSens = 'asc';
+    }
+    this.render();
+  },
+  _indicateurTri(col) {
+    if (this.state.triCol !== col) return '';
+    return this.state.triSens === 'asc' ? ' ▲' : ' ▼';
+  },
+
+  // ── Datagrid desktop (Bloc 3) : sélection multiple + actions groupées ──
+  basculerSelection(id) {
+    const s = this.state.selection;
+    if (s.has(id)) s.delete(id); else s.add(id);
+    this.render();
+  },
+  basculerSelectionTout(idsVisibles) {
+    const s = this.state.selection;
+    const touslesCoches = idsVisibles.every(id => s.has(id));
+    if (touslesCoches) idsVisibles.forEach(id => s.delete(id));
+    else idsVisibles.forEach(id => s.add(id));
+    this.render();
+  },
+  viderSelection() { this.state.selection.clear(); this.render(); },
+
+  async attribuerSelection(pin) {
+    if (!pin || !this.state.selection.size) return;
+    const ids = [...this.state.selection];
+    this.state.selection.clear();
+    for (const id of ids) await this.attribuer(id, pin, { silencieux: true });
+    Toast.afficher(`🎯 ${ids.length} lead(s) attribué(s) à ${this._nomCDS(pin)}`, 'succes');
+    this.render();
+  },
+  async archiverSelection() {
+    if (!this.state.selection.size) return;
+    const ids = [...this.state.selection];
+    if (!confirm(`Archiver ${ids.length} lead(s) sélectionné(s) ?`)) return;
+    this.state.selection.clear();
+    for (const id of ids) await this.deplacer(id, 'ARCHIVE', { silencieux: true });
+    Toast.afficher(`🗄 ${ids.length} lead(s) archivé(s)`, 'succes');
+    this.render();
+  },
+
   setRecherche: debounce(function(v) {
     VuePipeline.state.recherche = v;
     // Quand on tape une recherche, on affiche tout pour ne rien masquer
@@ -403,7 +468,7 @@ window.VuePipeline = {
                   onclick="VuePipeline.setMode('kanban')">
             📋 Kanban <span class="tab-num">${leads.length}</span>
           </button>
-          <button class="tab-btn-premium ${this.modeAffichage === 'table' ? 'actif' : ''}"
+          <button class="tab-btn-premium tab-tableau-desktop ${this.modeAffichage === 'table' ? 'actif' : ''}"
                   onclick="VuePipeline.setMode('table')">
             ☰ Tableau
           </button>
@@ -526,24 +591,54 @@ window.VuePipeline = {
     `;
   },
 
-  _renderTableau(leads, voitTous) {
-    if (leads.length === 0) return `
+  _renderTableau(leadsEntree, voitTous) {
+    if (leadsEntree.length === 0) return `
       <div class="vide" style="text-align:center;padding:40px 20px;color:var(--c-text-2)">
         <div style="font-size:32px;margin-bottom:12px">📭</div>
         <div style="font-weight:700;color:var(--c-title);margin-bottom:6px">Aucun résultat</div>
       </div>`;
 
     const statutLabel = id => (this.STATUTS.find(s => s.id === id) || {}).lbl || id;
+    const peutBatch = this._peutAssigner();
+
+    // Tri de colonnes (Bloc 3 — datagrid desktop)
+    let leads = leadsEntree;
+    if (this.state.triCol) {
+      const col = this.state.triCol, sens = this.state.triSens === 'asc' ? 1 : -1;
+      leads = [...leadsEntree].sort((a, b) => {
+        const va = this._valeurTri(a, col), vb = this._valeurTri(b, col);
+        if (va < vb) return -1 * sens;
+        if (va > vb) return  1 * sens;
+        return 0;
+      });
+    }
+
+    const th = (col, lbl, extra = '') => `<th style="cursor:pointer;user-select:none;${extra}" onclick="VuePipeline.triParColonne('${col}')">${lbl}${this._indicateurTri(col)}</th>`;
+    const idsVisibles = leads.map(l => l.ID_Prospect);
+    const selection = this.state.selection;
+    const nbSelect = selection.size;
+
     return `
+      ${peutBatch && nbSelect > 0 ? `
+      <div class="tracker-batch-bar">
+        <span><strong>${nbSelect}</strong> lead(s) sélectionné(s)</span>
+        <select onchange="if(this.value){VuePipeline.attribuerSelection(this.value);this.value=''}">
+          <option value="">Attribuer à…</option>
+          ${(this.CDS.length ? this.CDS : this.CDS_FALLBACK).map(c => `<option value="${c.pin}">${this._nomCDS(c.pin)}</option>`).join('')}
+        </select>
+        <button class="btn-secondaire" style="width:auto;padding:6px 12px;font-size:12px" onclick="VuePipeline.archiverSelection()">🗄 Archiver</button>
+        <button class="btn-secondaire" style="width:auto;padding:6px 12px;font-size:12px" onclick="VuePipeline.viderSelection()">Désélectionner</button>
+      </div>` : ''}
       <div class="desktop-table-wrap avec-nav" style="margin:12px">
         <table class="desktop-table-data-view">
           <thead><tr>
-            <th>Compte</th>
-            <th>Canal</th>
-            <th>Statut</th>
-            <th>Potentiel</th>
-            ${voitTous ? '<th>CDS</th>' : ''}
-            <th>Action</th>
+            ${peutBatch ? `<th style="width:32px"><input type="checkbox" ${idsVisibles.length && idsVisibles.every(id => selection.has(id)) ? 'checked' : ''} onchange="VuePipeline.basculerSelectionTout(${JSON.stringify(idsVisibles).replace(/"/g,'&quot;')})"/></th>` : ''}
+            ${th('nom', 'Compte')}
+            ${th('canal', 'Canal')}
+            ${th('statut', 'Statut')}
+            ${th('potentiel', 'Potentiel')}
+            ${voitTous ? th('cds', 'CDS') : ''}
+            ${th('action', 'Action')}
             <th>Alertes</th>
             <th>Source</th>
             <th style="min-width:80px">Actions</th>
@@ -554,6 +649,7 @@ window.VuePipeline = {
               const contact45j = this._alerte45jSansContact(l);
               const activite7j = !contact45j && this._alerteSansActivite(l);
               return `<tr style="${wpRetard || contact45j ? 'background:rgba(217,48,37,0.04)' : ''}">
+              ${peutBatch ? `<td onclick="event.stopPropagation()"><input type="checkbox" ${selection.has(l.ID_Prospect) ? 'checked' : ''} onchange="VuePipeline.basculerSelection('${l.ID_Prospect}')"/></td>` : ''}
               <td class="compte-nom" onclick="VuePipeline.ouvrirLead('${l.ID_Prospect}')" style="cursor:pointer;font-weight:600">
                 ${l.Nom_Compte}
               </td>
@@ -693,8 +789,8 @@ window.VuePipeline = {
     const FLAGS = ['SAISIE','A_RELANCER','EN_COURS','A_RAPPELER','INTERESSE','WELCOME_PACK_ENVOYE','NON_INTERESSE','PERDU'];
 
     return `
-    <div class="modal-overlay" onclick="if(event.target===this)VuePipeline.fermerModal()">
-      <div class="modal">
+    <div class="modal-overlay modal-docked" onclick="if(event.target===this)VuePipeline.fermerModal()">
+      <div class="modal modal-docked-panel">
         <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px">
           <div style="flex:1">
             <h3 style="margin:0 0 4px">${l.Nom_Compte}</h3>
