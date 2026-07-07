@@ -959,6 +959,8 @@ window.VueVisites = {
           ? j.visites.filter(v => String(v.PIN_CDS || '') === this.state.commercialSelectionne)
           : j.visites,
       }));
+      // Densité desktop (Bloc 5) : plus d'aperçus par jour quand la largeur le permet
+      const maxParJour = window.innerWidth >= 900 ? 8 : 3;
       contenu = `
         ${this.state.commercialSelectionne ? this._boutonRetourCommerciaux() : ''}
         <div class="planning-semaine">
@@ -967,12 +969,12 @@ window.VueVisites = {
                  onclick="VueVisites.state.dateVue='${j.iso}';VueVisites.state.modeVue='jour';VueVisites.render()">
               <div class="pj-label">${j.label}</div>
               <div class="pj-count">${j.visites.length ? j.visites.length + 'v' : ''}</div>
-              ${j.visites.slice(0, 3).map(v => `
+              ${j.visites.slice(0, maxParJour).map(v => `
                 <div class="pj-item" style="border-left:3px solid ${this.STATUT_COULEURS[this._statutEffectif(v)] || 'var(--c-text-2)'}">
                   <span class="pj-heure">${v.Heure || '—'}</span>
                   <span class="pj-nom">${(v.Nom_Compte || '').slice(0, 14)}</span>
                 </div>`).join('')}
-              ${j.visites.length > 3 ? `<div class="pj-plus">+${j.visites.length - 3}</div>` : ''}
+              ${j.visites.length > maxParJour ? `<div class="pj-plus">+${j.visites.length - maxParJour}</div>` : ''}
             </div>
           `).join('')}
         </div>`;

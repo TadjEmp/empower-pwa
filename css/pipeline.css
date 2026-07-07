@@ -101,8 +101,11 @@
 .cv-actions { display: flex; gap: 8px; margin-top: 4px; }
 
 /* ── Planning semaine ── */
+/* 5 colonnes (Lun→Ven, week-end volontairement exclu — cf. vue-visites.js
+   visitesSemaine) — corrige un décalage avec le JS qui ne générait que
+   5 jours pour une grille déclarée à 7 colonnes (Bloc 5). */
 .planning-semaine {
-  display: grid; grid-template-columns: repeat(7, 1fr);
+  display: grid; grid-template-columns: repeat(5, 1fr);
   gap: 4px; overflow-x: auto;
 }
 .planning-jour {
@@ -119,6 +122,14 @@
 .pj-heure { color: var(--c-text-2); flex-shrink: 0; }
 .pj-nom   { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--c-title); }
 .pj-plus  { font-size: 10px; color: var(--c-primary); text-align: center; font-weight: 700; }
+
+/* Densité desktop (Bloc 5) : la grille profite de la largeur disponible
+   pour afficher plus d'aperçus par jour au lieu de rester figée à 3. */
+@media (min-width: 900px) {
+  .planning-jour { min-height: 220px; padding: 10px 8px; }
+  .pj-label { font-size: 12px; }
+  .pj-item  { font-size: 11px; padding: 4px 6px; }
+}
 
 /* Le mode Tableau (.desktop-table-data-view) est masqué par défaut <900px
    (base.css) sans repli carte — masque l'onglet pour éviter un écran vide

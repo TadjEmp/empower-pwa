@@ -742,25 +742,9 @@ details[open] > .cv-rapport-toggle::before { transform: rotate(90deg); }
   box-shadow: 0 0 0 1px rgba(217,48,37,.15), var(--shadow) !important;
 }
 
-/* ── Planning semaine ── */
-.planning-semaine {
-  display: grid; grid-template-columns: repeat(7, 1fr);
-  gap: 6px; overflow-x: auto;
-}
-.planning-jour {
-  background: var(--c-surface); border-radius: var(--radius-sm);
-  padding: 8px 6px; cursor: pointer; min-height: 80px;
-  border: 1.5px solid var(--c-border);
-  transition: border-color .15s;
-}
-.planning-jour:hover { border-color: var(--c-primary); }
-.planning-jour-today { border-color: var(--c-primary) !important; background: rgba(255,109,104,0.08); }
-.pj-label { font-size: 11px; font-weight: 700; text-align: center; margin-bottom: 4px; color: var(--c-title); }
-.pj-count { font-size: 10px; color: var(--c-text-2); text-align: center; margin-bottom: 6px; }
-.pj-item  { font-size: 10px; padding: 3px 4px; margin-bottom: 2px; border-radius: 3px; background: var(--bg-surface); overflow: hidden; }
-.pj-heure { font-weight: 700; margin-right: 3px; }
-.pj-nom   { color: var(--c-text-2); }
-.pj-plus  { font-size: 10px; color: var(--c-primary); text-align: center; margin-top: 4px; }
+/* Planning semaine : voir css/pipeline.css (.planning-semaine/.planning-jour/.pj-*)
+   — définition unique, ce fichier chargeant avant pipeline.css la version ici
+   était intégralement masquée par cascade (doublon retiré, Bloc 5). */
 
 /* ── Stats mini (objectifs) ── */
 .stat-mini {

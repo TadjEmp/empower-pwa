@@ -60,14 +60,26 @@ window.VueVisitesFDV = {
     `;
   },
 
+  // ── Bloc 5 refonte desktop : comparatif rapide par commercial ──
+  _resumeVisites(visites) {
+    const norm = s => String(s || '').toLowerCase();
+    const realisees = visites.filter(v => norm(v.Statut_Visite) === 'réalisée').length;
+    const planifiees = visites.filter(v => ['planifiée', 'planifiee'].includes(norm(v.Statut_Visite))).length;
+    const manquees = visites.filter(v => norm(v.Statut_Visite) === 'manquée').length;
+    return { total: visites.length, realisees, planifiees, manquees };
+  },
+
   _renderListeCommerciaux() {
     const groupes = this._grouperParCommercial();
     if (!groupes.length) return `<div class="vide-liste">Aucune visite enregistrée par la force de vente.</div>`;
-    return groupes.map(g => `
+    return groupes.map(g => {
+      const r = this._resumeVisites(g.visites);
+      return `
       <div class="carte-visite" style="cursor:pointer" onclick="VueVisitesFDV.selectionnerCommercial('${g.pin}')">
         <div class="cv-nom">${g.nom}</div>
-        <div class="cv-type">${g.visites.length} visite${g.visites.length > 1 ? 's' : ''}</div>
-      </div>`).join('');
+        <div class="cv-type">${r.total} visite${r.total > 1 ? 's' : ''} · <span style="color:var(--c-success)">${r.realisees} réalisée${r.realisees > 1 ? 's' : ''}</span> · <span style="color:var(--c-primary)">${r.planifiees} planifiée${r.planifiees > 1 ? 's' : ''}</span>${r.manquees ? ` · <span style="color:var(--c-danger)">${r.manquees} manquée${r.manquees > 1 ? 's' : ''}</span>` : ''}</div>
+      </div>`;
+    }).join('');
   },
 
   _renderDetailCommercial(pin) {
