@@ -61,6 +61,57 @@ window.VueVisites = {
     extractOuvert: false,
     extractOnglet: 'visites',
     extractFiltres: { debut: '', fin: '', statut: 'TOUS', cds: 'TOUS' },
+    // Bloc 9 refonte desktop — fiche compte en panneau docké (split-view),
+    // même traitement que VueComptes.ouvrirFiche (≥900px uniquement).
+    ficheDockee: null, ficheDockeeChargement: false,
+  },
+
+  // ── Bloc 9 — fiche compte : docké sur desktop, plein écran sur mobile ──
+  ouvrirFiche(idCompte) {
+    if (!idCompte) return;
+    if (window.innerWidth < 900) { Router.aller('#/compte/' + idCompte); return; }
+    this.state.ficheDockee = idCompte;
+    this.state.ficheDockeeChargement = true;
+    this.render();
+    VueFicheCompte._chargerDonnees(idCompte)
+      .then(() => { this.state.ficheDockeeChargement = false; this.render(); })
+      .catch(e => {
+        this.state.ficheDockeeChargement = false;
+        Toast.afficher('❌ ' + e.message, 'erreur');
+        this.state.ficheDockee = null;
+        this.render();
+      });
+  },
+  fermerFicheDockee() {
+    this.state.ficheDockee = null;
+    this.render();
+  },
+  _renderFicheDockee() {
+    if (this.state.ficheDockeeChargement) {
+      return `
+        <div class="modal-overlay modal-docked" onclick="if(event.target===this)VueVisites.fermerFicheDockee()">
+          <div class="modal modal-docked-panel">
+            <div class="spinner-centre">Chargement de la fiche…</div>
+          </div>
+        </div>`;
+    }
+    const c = VueFicheCompte.state.compte;
+    return `
+      <div class="modal-overlay modal-docked" onclick="if(event.target===this)VueVisites.fermerFicheDockee()">
+        <div class="modal modal-docked-panel" style="overflow-y:auto">
+          <div class="bloc-titre" style="position:sticky;top:0;background:var(--c-surface);z-index:1;padding-bottom:8px">
+            ${c.Nom_Compte}
+            <button class="btn-lien" style="margin-left:auto;font-size:13px" onclick="VueVisites.fermerFicheDockee()">✕ Fermer</button>
+          </div>
+          ${VueFicheCompte.renderContenuFiche()}
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+            <button class="btn-action btn-visite" style="width:auto;flex:1" onclick="Router.aller('#/questionnaire/${c.ID_Compte}')">📋 Visite</button>
+            <button class="btn-action btn-appel" style="width:auto;flex:1" onclick="Router.aller('#/phoning/${c.ID_Compte}')">📞 Appeler</button>
+            <button class="btn-action" style="width:auto;flex:1;background:var(--c-text-2);color:#fff" onclick="VueFicheCompte.ouvrirRapportPhoning()">📊 Rapport</button>
+          </div>
+          ${VueFicheCompte.state.modalRapportPhoning ? VueFicheCompte._renderModalRapportPhoning() : ''}
+        </div>
+      </div>`;
   },
 
   async init(sousVue = 'planning', param = null) {
@@ -877,7 +928,7 @@ window.VueVisites = {
           ` : ''}
           ${(!isPlanif && !isEnCours && v.ID_Cible !== 'HORS_BASE' && v.Source_Visite !== 'ESI_VISITE_FROID') ? `
             <button class="btn-secondaire" style="padding:6px 12px;font-size:12px;width:auto"
-                    onclick="Router.aller('#/compte/${v.ID_Cible || ''}')">
+                    onclick="VueVisites.ouvrirFiche('${v.ID_Cible || ''}')">
               Fiche compte
             </button>` : ''}
           ${peutModif ? `
@@ -1018,6 +1069,7 @@ window.VueVisites = {
       ${this._renderConfirmDelete()}
       ${this._renderExtraction()}
       ${this._renderModalConversion()}
+      ${this.state.ficheDockee ? this._renderFicheDockee() : ''}
     `;
   },
 
