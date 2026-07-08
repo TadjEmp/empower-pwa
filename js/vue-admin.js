@@ -1139,10 +1139,17 @@ window.VueAdmin = {
       ['maintenance',  '🧹 Maintenance'],
     ];
 
+    // Bloc 8 refonte desktop : le libellé de l'onglet interne actif est exposé
+    // via un marqueur lu par Topbar (utils.js) pour compléter le fil d'Ariane
+    // (Admin › Administration › Journal) — la nav par tabs était jusque-là
+    // invisible du fil d'Ariane global (audit UX desktop § "Administration").
+    const adminTabLabel = (ADMIN_TABS.find(([t]) => t === adminTab) || [null, ''])[1].replace(/^\S+\s/, '');
+
     app.innerHTML = `
       <header class="header-vue">
         <button onclick="Router.aller('#/manager')" class="btn-retour">←</button>
         <h1>⚙️ Administration</h1>
+        <span class="js-tab-label" hidden>${adminTabLabel}</span>
       </header>
 
       <!-- Bloc 8 refonte desktop : sous-navigation par onglets au lieu d'un scroll unique -->

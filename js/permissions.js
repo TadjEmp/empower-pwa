@@ -23,8 +23,14 @@
     ],
     // V5 BUG5 — Alexandra : conserve OBJECTIFS ; jamais Visites/Phoning/Primes (raw CDS).
     // Section 9 cahier des charges — vues consolidées lecture seule dédiées.
+    // 'reporting' retiré (audit UX desktop § "simplification nav") : pour
+    // CHANNEL_MANAGER, VueDashboardManager.init() bascule systématiquement sur
+    // initChannel() quel que soit le hash — #/manager et #/dashboard rendaient
+    // donc un contenu strictement identique sous deux entrées de nav distinctes.
+    // ADMIN garde 'reporting' : #/manager y affiche la vue équipe, différente
+    // de leur #/dashboard personnel.
     CHANNEL_MANAGER: [
-      'home', 'tracker', 'comptes', 'objectifs', 'reporting', 'photos', 'admin',
+      'home', 'tracker', 'comptes', 'objectifs', 'photos', 'admin',
       'visites_fdv', 'phoning_fdv',
     ],
     EXTERNE: [

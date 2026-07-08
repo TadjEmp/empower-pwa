@@ -206,10 +206,14 @@ function NavBar(actif) {
   ];
 
   // Sections groupées (desktop sidebar uniquement — labels + séparateurs)
+  // 'historiques' retiré (audit UX desktop § "simplification nav") : atteignable
+  // désormais via l'onglet "Historique CA" dans Comptes (vue-comptes.js /
+  // vue-comptes-historiques.js) plutôt qu'une entrée de nav de premier niveau —
+  // la route #/comptes-historiques reste valide et protégée par Permissions.
   const SECTIONS = [
     { lbl: null,        ids: ['home', 'tracker', 'comptes', 'reporting'] },
     { lbl: 'Activité',  ids: ['visites', 'phoning', 'visites_fdv', 'phoning_fdv', 'photos'] },
-    { lbl: 'Données',   ids: ['historiques', 'objectifs', 'primes'] },
+    { lbl: 'Données',   ids: ['objectifs', 'primes'] },
     { lbl: 'Admin',     ids: ['admin'] },
   ];
 
@@ -447,6 +451,22 @@ const DrawerMenu = (function () {
 const Topbar = (function () {
   let _observer = null;
 
+  // Section de nav pour chaque route — mêmes regroupements que NavBar.SECTIONS,
+  // dupliqués ici (volontairement) pour ne pas coupler Topbar au rendu de NavBar.
+  const SECTIONS_PAR_HASH = [
+    { base: '#/visites-fdv',         section: 'Activité' },
+    { base: '#/phoning-fdv',         section: 'Activité' },
+    { base: '#/visites',             section: 'Activité' },
+    { base: '#/phoning',             section: 'Activité' },
+    { base: '#/photos',              section: 'Activité' },
+    { base: '#/comptes-historiques', section: 'Données' },
+    { base: '#/objectifs',           section: 'Données' },
+    { base: '#/primes',              section: 'Données' },
+    { base: '#/admin',               section: 'Admin' },
+    { base: '#/compte',              section: 'Comptes' },
+    { base: '#/questionnaire',       section: 'Comptes' },
+  ];
+
   function _getRoot() {
     let root = document.getElementById('topbar-root');
     if (!root) {
@@ -464,6 +484,23 @@ const Topbar = (function () {
     return h1 ? h1.textContent.trim() : 'EMPOWER Sales Intelligence';
   }
 
+  // Retrouve la section de nav (Activité / Données / Admin / Comptes) de la route
+  // courante pour construire "Section › Titre" — null si route de premier niveau.
+  function _sourceSection() {
+    const hash = window.location.hash || '';
+    const hit = SECTIONS_PAR_HASH.find(s => hash === s.base || hash.startsWith(s.base + '/'));
+    return hit ? hit.section : null;
+  }
+
+  // Sous-onglet interne actif (ex. Admin → Journal), exposé par la vue via un
+  // marqueur `.js-tab-label` dans son .header-vue — complète le fil d'Ariane
+  // sur les pages qui ont leur propre navigation par tabs (cf. utils.js#Topbar).
+  function _sourceSousOnglet() {
+    const el = document.querySelector('#app .header-vue .js-tab-label');
+    const txt = el ? el.textContent.trim() : '';
+    return txt || null;
+  }
+
   function _render() {
     const root  = _getRoot();
     const titre = _sourceTitre();
@@ -474,11 +511,23 @@ const Topbar = (function () {
     }
     root.classList.remove('topbar-hidden');
 
+    // Fil d'Ariane à 2 ou 3 niveaux : Section › Titre [› Sous-onglet actif].
+    // Le sous-onglet (ex. Admin → Journal) vient d'un marqueur optionnel posé
+    // par la vue (.js-tab-label) — cf. vue-admin.js.
+    const section    = _sourceSection();
+    const sousOnglet = _sourceSousOnglet();
+    const sep = `<span class="topbar-crumb-sep"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>`;
+    const segments = [];
+    if (section) segments.push(`<span class="topbar-crumb-section">${section}</span>`);
+    segments.push(`<span class="${sousOnglet ? 'topbar-crumb-section' : 'topbar-titre'}">${titre}</span>`);
+    if (sousOnglet) segments.push(`<span class="topbar-titre">${sousOnglet}</span>`);
+    const crumbHtml = segments.join(sep);
+
     if (!root.firstElementChild) {
-      root.innerHTML = `<div class="topbar-desktop"><span class="topbar-titre"></span></div>`;
+      root.innerHTML = `<div class="topbar-desktop"><span class="topbar-crumb"></span></div>`;
     }
-    const span = root.querySelector('.topbar-titre');
-    if (span && span.textContent !== titre) span.textContent = titre;
+    const crumb = root.querySelector('.topbar-crumb');
+    if (crumb && crumb.innerHTML !== crumbHtml) crumb.innerHTML = crumbHtml;
   }
 
   function init() {

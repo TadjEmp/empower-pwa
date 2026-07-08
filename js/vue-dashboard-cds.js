@@ -306,6 +306,21 @@ window.VueDashboardCDS = {
     const nbAlertes = d.comptesRouges.length + d.nextStepsDepasses.length + d.leadsATraiter.length;
     const potCoul   = { Fort: '#00b27e', Moyen: '#f59e0b', Faible: '#626264' };
 
+    // ── Delta vs semaine précédente (Bloc 2 refonte desktop — audit UX §
+    //    "Home / cockpit") : activiteSemaines couvre déjà 6 semaines glissantes,
+    //    donc l'avant-dernière entrée est la semaine précédente réelle — pas de
+    //    donnée inventée, on n'affiche un delta que là où on a l'historique. ──
+    const semPrec = d.activiteSemaines[d.activiteSemaines.length - 2] || { visites: 0, appels: 0 };
+    const deltaPill = (valeur) => {
+      if (valeur === 0) return { txt: '= vs sem. dern.', bg: 'var(--c-bg)', color: 'var(--c-text-2)' };
+      const signe = valeur > 0 ? '+' : '';
+      return valeur > 0
+        ? { txt: `▲ ${signe}${valeur} vs sem. dern.`, bg: 'rgba(45,158,107,.10)', color: 'var(--c-success)' }
+        : { txt: `▼ ${valeur} vs sem. dern.`, bg: 'rgba(217,48,37,.08)', color: 'var(--c-danger)' };
+    };
+    const deltaVisites = deltaPill(d.visitesSem - semPrec.visites);
+    const deltaAppels  = deltaPill(d.appelsSem  - semPrec.appels);
+
     const initiales = (Session.nom || 'U').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
     app.innerHTML = `
       <!-- Header desktop Oltega — masqué mobile (CSS) -->
@@ -356,8 +371,8 @@ window.VueDashboardCDS = {
       <!-- KPI grid 4 cartes façon DASHBOARD_W09 -->
       <div class="kpi-grid-layout">
         ${kpiCard({ label: 'Comptes', value: d.nbComptes, accent: 'primary', onclick: "Router.aller('#/comptes')" })}
-        ${kpiCard({ label: 'Visites sem.', value: `${d.visitesSem}/${d.objVisites}`, accent: d.visitesSem >= d.objVisites ? 'teal' : 'amber', onclick: "Router.aller('#/visites')" })}
-        ${kpiCard({ label: 'Appels sem.', value: `${d.appelsSem}/${d.objAppels}`, accent: d.appelsSem >= d.objAppels ? 'teal' : 'coral', onclick: "Router.aller('#/phoning')" })}
+        ${kpiCard({ label: 'Visites sem.', value: `${d.visitesSem}/${d.objVisites}`, accent: d.visitesSem >= d.objVisites ? 'teal' : 'amber', onclick: "Router.aller('#/visites')", pills: [deltaVisites] })}
+        ${kpiCard({ label: 'Appels sem.', value: `${d.appelsSem}/${d.objAppels}`, accent: d.appelsSem >= d.objAppels ? 'teal' : 'coral', onclick: "Router.aller('#/phoning')", pills: [deltaAppels] })}
         ${kpiCard({ label: 'Leads actifs', value: d.leadsATraiter.length, accent: d.leadsATraiter.length > 0 ? 'indigo' : 'teal', onclick: "Router.aller('#/empower-tracker')" })}
       </div>
 

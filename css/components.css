@@ -298,6 +298,14 @@
   .nc-panneau { margin: 62px 28px 0; }
 }
 
+/* Pages avec bottom nav ET barre d'actions fixe (Fiche compte) : la cloche
+   doit flotter au-dessus des deux plutôt que se superposer à la barre. */
+@media (max-width: 899px) {
+  body:has(.nav-principale):has(.barre-actions-fixe) .nc-cloche {
+    bottom: calc(78px + var(--nav-h) + var(--safe-bottom));
+  }
+}
+
 /* ── prefers-reduced-motion PHONE OS §6.4 ── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

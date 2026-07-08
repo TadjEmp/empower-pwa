@@ -48,13 +48,26 @@ window.VueVisitesFDV = {
       return;
     }
     const pin = this.state.commercialSelectionne;
+    // Split desktop (Bloc 4 refonte — Visites FDV/Manager) : la liste des
+    // commerciaux reste visible en rail pendant la consultation du détail
+    // d'un commercial, au lieu de la remplacer entièrement (cf. audit UX
+    // desktop § "Vues Manager les plus pauvres" — cette vue groupait déjà
+    // par commercial mais perdait la liste au clic, comme Planning).
+    const desktopSplit = pin && window.innerWidth >= 900;
+    const contenu = desktopSplit
+      ? `<div class="layout-split">
+           <div class="layout-split-list">${this._renderListeCommerciaux(pin)}</div>
+           <div class="layout-split-detail">${this._renderDetailCommercial(pin)}</div>
+         </div>`
+      : (pin ? this._renderDetailCommercial(pin) : this._renderListeCommerciaux());
+
     app.innerHTML = `
       <header class="header-vue">
-        ${pin ? `<button class="btn-retour" onclick="VueVisitesFDV.retour()">←</button>` : ''}
+        ${pin && !desktopSplit ? `<button class="btn-retour" onclick="VueVisitesFDV.retour()">←</button>` : ''}
         <h1>Visites FDV</h1>
       </header>
       <div class="dash-body avec-nav" style="padding:12px">
-        ${pin ? this._renderDetailCommercial(pin) : this._renderListeCommerciaux()}
+        ${contenu}
       </div>
       ${NavBar('visites_fdv')}
     `;
@@ -69,13 +82,13 @@ window.VueVisitesFDV = {
     return { total: visites.length, realisees, planifiees, manquees };
   },
 
-  _renderListeCommerciaux() {
+  _renderListeCommerciaux(pinActif = null) {
     const groupes = this._grouperParCommercial();
     if (!groupes.length) return `<div class="vide-liste">Aucune visite enregistrée par la force de vente.</div>`;
     return groupes.map(g => {
       const r = this._resumeVisites(g.visites);
       return `
-      <div class="carte-visite" style="cursor:pointer" onclick="VueVisitesFDV.selectionnerCommercial('${g.pin}')">
+      <div class="carte-visite" style="cursor:pointer${g.pin === pinActif ? ';border-color:var(--c-primary);box-shadow:0 0 0 1.5px var(--c-primary)' : ''}" onclick="VueVisitesFDV.selectionnerCommercial('${g.pin}')">
         <div class="cv-nom">${g.nom}</div>
         <div class="cv-type">${r.total} visite${r.total > 1 ? 's' : ''} · <span style="color:var(--c-success)">${r.realisees} réalisée${r.realisees > 1 ? 's' : ''}</span> · <span style="color:var(--c-primary)">${r.planifiees} planifiée${r.planifiees > 1 ? 's' : ''}</span>${r.manquees ? ` · <span style="color:var(--c-danger)">${r.manquees} manquée${r.manquees > 1 ? 's' : ''}</span>` : ''}</div>
       </div>`;

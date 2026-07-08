@@ -157,6 +157,23 @@ window.VuePrimes = {
     };
   },
 
+  // ── Comparaisons (audit UX § "Primes" — un seul axe vs objectif jusqu'ici) ──
+  _quarterPrecedent(q) {
+    const ordre = ['Q1', 'Q2', 'Q3', 'Q4'];
+    const idx = ordre.indexOf(q);
+    return idx > 0 ? ordre[idx - 1] : null;
+  },
+
+  // Moyenne d'équipe sur le % d'atteinte Axe 1 — volontairement limitée au %
+  // (pas aux montants primes des collègues, qui restent une donnée RH sensible
+  // que la vue personnelle ne doit pas exposer).
+  _moyenneEquipePct(q) {
+    const liste = (this.state.cdsListe && this.state.cdsListe.length) ? this.state.cdsListe : this.CDS_FALLBACK;
+    if (!liste.length) return null;
+    const pcts = liste.map(c => this.calculer(c.pin, q).pct);
+    return Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length);
+  },
+
   // Bonus manager : objectif collectif équipe du quarter atteint
   bonusManager(q) {
     let ca = 0, obj = 0;
@@ -295,6 +312,16 @@ window.VuePrimes = {
 
   _renderCDS(pin, q, titre = null) {
     const c = this.calculer(pin, q);
+
+    // vs N-1 (quarter précédent) — sur le total de prime acquise
+    const qPrec = this._quarterPrecedent(q);
+    const cPrec = qPrec ? this.calculer(pin, qPrec) : null;
+    const deltaTotal = cPrec ? c.total - cPrec.total : null;
+
+    // vs équipe — moyenne du % d'atteinte Axe 1, pas les montants (donnée RH)
+    const moyEquipe = this._moyenneEquipePct(q);
+    const ecartEquipe = (moyEquipe !== null) ? c.pct - moyEquipe : null;
+
     const barre = (val, max) => `
       <div class="pace-barre" style="margin-top:6px"><div class="pace-barre-fill ${val >= max ? 'pace-ok' : 'pace-watch'}"
         style="width:${Math.min(100, max > 0 ? val / max * 100 : 0)}%"></div></div>`;
@@ -332,6 +359,10 @@ window.VuePrimes = {
           <strong style="color:var(--c-cta)">${c.total} €</strong>
           <span>/ ${this.PLAFOND} € plafond${c.p3 ? ' + 100 € P3 hors plafond' : ''}</span>
         </div>
+        ${cPrec ? `
+        <div style="font-size:12px;margin-top:6px;color:${deltaTotal >= 0 ? 'var(--c-success)' : 'var(--c-danger)'}">
+          ${deltaTotal > 0 ? '▲ +' : deltaTotal < 0 ? '▼ ' : '= '}${deltaTotal} € vs ${qPrec} (${cPrec.total} €)
+        </div>` : ''}
       </div>
 
       <!-- AXE 1 -->
@@ -341,6 +372,11 @@ window.VuePrimes = {
         </div>
         <div class="pace-chiffres"><strong>${fmtCA(c.ca)} €</strong><span>/ ${fmtCA(c.obj)} € → <b>${c.axe1 + c.p3} €</b></span></div>
         ${barre(c.pct, 100)}
+        ${moyEquipe !== null ? `
+        <p style="font-size:11px;color:var(--c-text-2);margin-top:6px">
+          Équipe : <strong style="color:var(--c-title)">${moyEquipe}%</strong> en moyenne —
+          <span style="color:${ecartEquipe >= 0 ? 'var(--c-success)' : 'var(--c-danger)'};font-weight:600">${ecartEquipe > 0 ? '+' : ''}${ecartEquipe} pt${Math.abs(ecartEquipe) > 1 ? 's' : ''} ${ecartEquipe >= 0 ? 'au-dessus' : 'en-dessous'}</span>
+        </p>` : ''}
         ${this._jaugePaliers(c.pct)}
         <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">&lt;80% : 0 € · 80-99% : 200 € · 100-119% : 400 € · ≥120% : 400 € + 100 € bonus P3</p>
         <div style="margin-top:10px">

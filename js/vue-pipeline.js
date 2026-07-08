@@ -73,11 +73,18 @@ window.VuePipeline = {
       pageTable: 1,
       colonnesMenuOuvert: false,
       colonnesTable: this._chargerPrefColonnes(),
+      // Densité Kanban (cartes complètes vs lignes compactes) — persistée comme
+      // les colonnes du tableau, pour éviter de la re-choisir à chaque visite.
+      kanbanDense: localStorage.getItem('esi_kanban_dense') === '1',
     };
     this.render();
     try {
       const [raw, params, objectifs, cdsApi] = await Promise.all([
-        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS'),
+        // nocache : 📋_PROSPECTS est alimenté en continu par plusieurs profils
+        // (CDS, Admin, Channel) sur des appareils différents — le cache IndexedDB
+        // partagé (TTL 30 min, api.js) masquait jusqu'à 30 min les leads ajoutés
+        // ailleurs. Même pattern déjà utilisé pour 🔔_NOTIFS (app.js).
+        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS', { nocache: true }),
         SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
         SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
         SheetsAPI.lireCDS(), // V5 BUG1 — liste CDS dynamique (inclut Alexandra)
@@ -193,6 +200,19 @@ window.VuePipeline = {
     return [...vues.values()].sort((a, b) => a.localeCompare(b, 'fr'));
   },
 
+  // Ancienneté dans l'étage courant — Date_Statut_Change posé à chaque déplacement/attribution.
+  // Fallback Timestamp/Date_Import pour les leads antérieurs au champ (rattrapage 07/2026).
+  _joursDansEtape(p) {
+    const ref = p.Date_Statut_Change || p.Timestamp || p.Date_Import;
+    if (!ref) return 0;
+    return Math.floor((Date.now() - new Date(ref).getTime()) / 86400000);
+  },
+  _badgeAge(p) {
+    const j = this._joursDansEtape(p);
+    const coul = j > 30 ? 'var(--c-danger)' : j > 7 ? 'var(--c-warning)' : 'var(--c-success)';
+    return `<span class="badge-age" style="font-size:10px;font-weight:700;color:${coul};border:1px solid ${coul};border-radius:99px;padding:1px 7px;white-space:nowrap">⏱ ${j}j</span>`;
+  },
+
   _retardWelcomePack(p) {
     if (p._statut !== 'COMPTE_CREE' || p.Welcome_Pack_Date) return false;
     const maintenant = new Date();
@@ -236,7 +256,7 @@ window.VuePipeline = {
   async deplacer(id, statut, { silencieux = false } = {}) {
     const lead = this.state.leads.find(l => String(l.ID_Prospect) === String(id));
     if (!lead) return;
-    const champs = { STATUT_EMPOWER: statut };
+    const champs = { STATUT_EMPOWER: statut, Date_Statut_Change: dateISOLocale() };
     if (statut === 'COMPTE_CREE') {
       if (!lead.Date_Creation_Compte) champs.Date_Creation_Compte = dateISOLocale();
     }
@@ -266,9 +286,10 @@ window.VuePipeline = {
         PIN_CDS_Assigne: Number(pin),
         STATUT_EMPOWER: 'ASSIGNE',
         FLAG_ACTION: 'ASSIGNE',
+        Date_Statut_Change: dateISOLocale(),
       });
       await SheetsAPI.viderCache('EMPOWER_MDB', '📋_PROSPECTS');
-      Object.assign(lead, { PIN_CDS_Assigne: Number(pin), STATUT_EMPOWER: 'ASSIGNE', _statut: 'ASSIGNE' });
+      Object.assign(lead, { PIN_CDS_Assigne: Number(pin), STATUT_EMPOWER: 'ASSIGNE', _statut: 'ASSIGNE', Date_Statut_Change: dateISOLocale() });
       if (!silencieux) {
         this.state.modal = null;
         Toast.afficher(`🎯 ${lead.Nom_Compte} → ${this._nomCDS(pin)}`, 'succes');
@@ -378,6 +399,15 @@ window.VuePipeline = {
 
   etendre(statut) {
     this.state.colonnesEtendues[statut] = true;
+    this.render();
+  },
+
+  // Densité Kanban — colonnes surchargées de cartes riches (audit UX § "Kanban
+  // dense") : une ligne compacte (nom + pastilles) au lieu de la carte complète,
+  // le détail restant à un clic (ouvrirLead), pas perdu.
+  toggleKanbanDense() {
+    this.state.kanbanDense = !this.state.kanbanDense;
+    localStorage.setItem('esi_kanban_dense', this.state.kanbanDense ? '1' : '0');
     this.render();
   },
 
@@ -554,7 +584,13 @@ window.VuePipeline = {
       </div>
 
       ${this.modeAffichage === 'kanban' ? `
-      <p style="font-size:11px;color:var(--c-text-2);text-align:center;padding:6px">← Glisser pour voir les statuts →</p>
+      <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:6px">
+        <p style="font-size:11px;color:var(--c-text-2);margin:0">← Glisser pour voir les statuts →</p>
+        <button class="btn-secondaire" style="width:auto;padding:4px 10px;font-size:11px;display:flex;align-items:center;gap:5px"
+                onclick="VuePipeline.toggleKanbanDense()" title="Basculer la densité des cartes">
+          ${this.state.kanbanDense ? '▦ Cartes' : '≡ Compact'}
+        </button>
+      </div>
 
       ${this.state.leads.length === 0 ? `
         <div class="vide" style="text-align:center;padding:40px 20px;color:var(--c-text-2)">
@@ -583,7 +619,10 @@ window.VuePipeline = {
               return dateOf(b) - dateOf(a);
             });
           const etendue = !!this.state.colonnesEtendues[st.id];
-          const affichees = etendue ? col : col.slice(0, this.LIMITE_COL);
+          // Lignes compactes ≈ 5x plus courtes qu'une carte complète — la même
+          // hauteur de colonne peut donc en montrer nettement plus avant "voir tous".
+          const limite = this.state.kanbanDense ? this.LIMITE_COL * 4 : this.LIMITE_COL;
+          const affichees = etendue ? col : col.slice(0, limite);
           const masques = col.length - affichees.length;
           return `
           <div class="kanban-col">
@@ -592,10 +631,23 @@ window.VuePipeline = {
               <span class="kanban-col-titre">${st.lbl}</span>
               <span class="badge-compteur">${col.length}</span>
             </div>
-            ${affichees.map(l => `
+            ${this.state.kanbanDense ? affichees.map(l => {
+              const alerte = this._retardWelcomePack(l) || this._alerte45jSansContact(l);
+              const potCoul = { fort: 'var(--c-success)', moyen: 'var(--c-warning)', faible: 'var(--c-text-2)' }[(l.POTENTIEL || '').toLowerCase()] || 'var(--c-border)';
+              return `
+              <div class="kanban-ligne" onclick="VuePipeline.ouvrirLead('${l.ID_Prospect}')" title="${l.Nom_Compte}">
+                <span class="kanban-ligne-pot" style="background:${potCoul}"></span>
+                <span class="kanban-ligne-nom">${l.Nom_Compte}</span>
+                ${alerte ? '<span class="kanban-ligne-alerte">⚠️</span>' : ''}
+                <span class="kanban-ligne-cds">${this._nomCDS(l.PIN_CDS_Assigne).slice(0, 1)}</span>
+              </div>`;
+            }).join('') : affichees.map(l => `
               <div class="kanban-carte ${this._retardWelcomePack(l) ? 'kanban-alerte' : ''}"
                    onclick="VuePipeline.ouvrirLead('${l.ID_Prospect}')">
-                <div class="kanban-carte-nom">${l.Nom_Compte}</div>
+                <div class="kanban-carte-nom" style="display:flex;align-items:baseline;justify-content:space-between;gap:6px">
+                  <span>${l.Nom_Compte}</span>
+                  ${st.id !== 'ARCHIVE' ? this._badgeAge(l) : ''}
+                </div>
                 <div class="kanban-carte-meta">
                   ${l.POTENTIEL ? `<span class="pot-pill pot-${(l.POTENTIEL||'').toLowerCase()}">${l.POTENTIEL}</span>` : ''}
                   ${l.CANAL ? `<span style="font-size:10px;padding:1px 6px;border-radius:99px;background:var(--c-bg);border:1px solid var(--c-border);color:var(--c-text-2);white-space:nowrap">${l.CANAL}</span>` : ''}
@@ -624,7 +676,7 @@ window.VuePipeline = {
       </div>` : this._renderTableau(leads, voitTous)}
 
       ${peutSaisir ? '<button class="fab" onclick="VuePipeline.ouvrirSaisie()" title="Nouveau lead" style="bottom:140px">＋</button>' : ''}
-      ${(Session.estManager() || Session.estChannel()) ? `<button class="fab" onclick="VuePipeline.ouvrirExport()" title="Export Excel" style="bottom:210px;background:var(--c-success);font-size:18px">📥</button>` : ''}
+      ${(Session.estManager() || Session.estChannel()) ? `<button class="fab fab-export" onclick="VuePipeline.ouvrirExport()" title="Export Excel" style="bottom:210px;background:var(--c-success);font-size:18px">📥</button>` : ''}
       ${NavBar('tracker')}
       ${this._renderModal()}
       ${this._renderPanneauExport()}
@@ -670,6 +722,8 @@ window.VuePipeline = {
     return `
       <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin:12px 12px 0;position:relative">
         <span style="font-size:12px;color:var(--c-text-2)">${leads.length} lead(s)</span>
+        ${(Session.estManager() || Session.estChannel()) ? `
+        <button class="btn-secondaire tracker-export-inline" style="width:auto;padding:6px 12px;font-size:12px" onclick="VuePipeline.ouvrirExport()">📥 Export Excel</button>` : ''}
         <button class="btn-secondaire" style="width:auto;padding:6px 12px;font-size:12px" onclick="VuePipeline.ouvrirColonnesMenu()">⚙ Colonnes</button>
         ${this.state.colonnesMenuOuvert ? `
         <div style="position:absolute;top:100%;right:0;z-index:50;margin-top:4px;padding:10px;background:var(--bg-warm-white);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);box-shadow:var(--shadow-modal);min-width:180px">
@@ -1074,11 +1128,19 @@ window.VuePipeline = {
   },
   // ── Module 7 : Création compte depuis pipeline ──────────────────────
   async _creerCompteDepuisLead(lead) {
-    // Anti-doublon : vérifier si le compte existe déjà dans la base comptes
+    // Anti-doublon : si le compte existe déjà, on rebascule juste son flag Empower
+    // (BUG-01 fix : avant, on s'arrêtait ici sans jamais corriger Has_EMPOWER)
     try {
       const comptes = await SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES');
       const nomNorm = normaliserNom(lead.Nom_Compte || '');
-      if ((comptes || []).some(c => normaliserNom(c.Nom_Compte || '') === nomNorm)) return;
+      const existant = (comptes || []).find(c => normaliserNom(c.Nom_Compte || '') === nomNorm);
+      if (existant) {
+        if (String(existant.Has_EMPOWER || '').toLowerCase() !== 'oui') {
+          await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', existant._uuid, { Has_EMPOWER: 'Oui' });
+          await SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES');
+        }
+        return;
+      }
     } catch { /* si lecture échoue, on tente quand même l'insert */ }
 
     const idCompte = genId('COMP');
@@ -1100,7 +1162,7 @@ window.VuePipeline = {
       Statut:          'ACTIF',
       Source_Import:   'PIPELINE',
       Flag_Traite:     'NON',
-      Has_EMPOWER:     'Non',
+      Has_EMPOWER:     'Oui',
       Priorite:        priorite,
     });
 

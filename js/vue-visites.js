@@ -943,6 +943,28 @@ window.VueVisites = {
       </div>`;
   },
 
+  // Rail semaine compact (desktop, mode "jour") — reprend visitesSemaine mais en
+  // colonne étroite avec pastilles de statut au lieu des aperçus complets du mode
+  // "semaine". Cliquer un jour change dateVue sans quitter le mode "jour".
+  _renderRailSemaine() {
+    const today = dateISOLocale();
+    return `
+      <div class="layout-split-list planning-rail">
+        ${this.visitesSemaine.map(j => `
+          <div class="planning-rail-jour ${j.iso === this.state.dateVue ? 'actif' : ''} ${j.iso === today ? 'aujourdhui' : ''}"
+               onclick="VueVisites.state.dateVue='${j.iso}';VueVisites.render()">
+            <div class="pr-tete">
+              <span class="pr-label">${j.label}</span>
+              <span class="pr-count">${j.visites.length || ''}</span>
+            </div>
+            ${j.visites.length ? `
+            <div class="pr-dots">
+              ${j.visites.slice(0, 10).map(v => `<span class="pr-dot" style="background:${this.STATUT_COULEURS[this._statutEffectif(v)] || 'var(--c-text-2)'}" title="${v.Heure || ''} · ${v.Nom_Compte || ''}"></span>`).join('')}
+            </div>` : `<div class="pr-vide">—</div>`}
+          </div>`).join('')}
+      </div>`;
+  },
+
   render() {
     const app = document.getElementById('app');
     if (this.state.chargement) {
@@ -1000,6 +1022,14 @@ window.VueVisites = {
              </div>`
           : vjFiltre.map(v => this._carteVisite(v)).join('');
         if (this.state.commercialSelectionne) contenu = this._boutonRetourCommerciaux() + contenu;
+
+        // Split desktop (Bloc 4 refonte — Planning) : la semaine reste visible en rail
+        // à gauche pendant qu'on consulte/édite le détail d'un jour à droite, au lieu
+        // de perdre le contexte semaine à chaque clic sur un jour (cf. audit UX desktop
+        // § "Aucun split jour/détail réellement câblé").
+        if (window.innerWidth >= 900) {
+          contenu = `<div class="layout-split">${this._renderRailSemaine()}<div class="layout-split-detail">${contenu}</div></div>`;
+        }
       }
     } else if (groupeActif) {
       contenu = this._renderCartesCommerciaux(this.visitesSemaine.flatMap(j => j.visites));

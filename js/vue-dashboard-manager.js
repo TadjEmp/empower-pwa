@@ -41,7 +41,9 @@ window.VueDashboardManager = {
     this.render();
     try {
       const [prospects, objectifs, params] = await Promise.all([
-        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS'),
+        // nocache : même correctif que le Tracker (vue-pipeline.js) — la home
+        // Channel affichait des compteurs de leads périmés jusqu'à 30 min.
+        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS', { nocache: true }),
         SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
         SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
       ]);

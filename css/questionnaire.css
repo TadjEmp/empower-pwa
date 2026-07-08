@@ -38,6 +38,22 @@
   padding: 0 16px 120px;
 }
 .q-champs { display: flex; flex-direction: column; gap: 16px; padding: 8px 0; }
+
+/* ─── Desktop — Questionnaire & Phoning (audit UX § "Phoning") ───
+   .q-contenu/.q-champs n'avaient aucun traitement desktop : le formulaire
+   s'étirait sur toute la largeur d'écran, chaque ligne (checkbox, input,
+   qualification) collée à gauche avec un vide énorme à droite. Une largeur
+   de lecture centrée règle le symptôme sans toucher au flux d'appel (PRE →
+   CALL → POST), qui reste volontairement plein écran comme Questionnaire —
+   un appel en cours a besoin d'attention complète, pas d'un panneau annexe. */
+@media (min-width: 900px) {
+  .q-contenu {
+    max-width: 720px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 24px 24px 120px;
+  }
+}
 .q-intro  { font-size: 14px; color: var(--c-text-2); }
 .q-label  { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 500; }
 .q-input, .q-select, .q-textarea {

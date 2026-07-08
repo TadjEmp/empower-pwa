@@ -25,6 +25,8 @@ window.VueObjectifs = {
     modalCA: false,
     formCA: { quarter: null, montant: '' },
     savingCA: false,
+    ongletManager: 'detail', // 'detail' | 'radar' — Bloc 3 refonte desktop
+    radarCDS: null,
   },
 
   async init() {
@@ -202,6 +204,80 @@ window.VueObjectifs = {
     }
   },
 
+  // ── Radar performance multi-axes (pattern retenu du mockup de référence,
+  //    section 9 de l'audit UX desktop) — 3 axes réels d'Objectifs (CA, NSB,
+  //    Onboarding), pas les 5 axes génériques du mockup qui n'ont pas
+  //    d'équivalent dans les données ESI. Isolé dans un onglet dédié plutôt
+  //    qu'ajouté à l'Accueil déjà chargé. ──
+  _svgRadar(individu, equipe, labels) {
+    const cx = 100, cy = 92, R = 66;
+    const angleFor = i => (-90 + i * 120) * Math.PI / 180;
+    const pt = (v, i) => {
+      const r = Math.max(0, Math.min(100, v)) / 100 * R;
+      return [cx + r * Math.cos(angleFor(i)), cy + r * Math.sin(angleFor(i))];
+    };
+    const poly = vals => vals.map((v, i) => pt(v, i).join(',')).join(' ');
+    const ring = frac => labels.map((_, i) => pt(frac * 100, i).join(',')).join(' ');
+    const axes = labels.map((_, i) => {
+      const [x, y] = pt(100, i);
+      return `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--c-border)" stroke-width="1"/>`;
+    }).join('');
+    const texteAxes = labels.map((lbl, i) => {
+      const [x, y] = pt(122, i);
+      return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" font-size="10" fill="var(--c-text-2)">${lbl}</text>`;
+    }).join('');
+    return `
+      <svg viewBox="0 0 200 190" style="width:100%;max-width:280px;display:block;margin:8px auto">
+        ${[0.25, 0.5, 0.75, 1].map(f => `<polygon points="${ring(f)}" fill="none" stroke="var(--c-border)" stroke-width="1"/>`).join('')}
+        ${axes}
+        <polygon points="${poly(equipe)}" fill="var(--c-text-2)" fill-opacity=".14" stroke="var(--c-text-2)" stroke-width="1.5"/>
+        <polygon points="${poly(individu)}" fill="var(--c-primary)" fill-opacity=".20" stroke="var(--c-primary)" stroke-width="2"/>
+        ${texteAxes}
+      </svg>`;
+  },
+
+  _renderRadarEquipe(CDS) {
+    const q = this.state.quarter;
+    const donnees = CDS.map(c => {
+      const d  = this._donneesCDS(c.pin);
+      const a2 = this._axe2CDS(c.pin);
+      const a3 = this._axe3CDS(c.pin);
+      const axe1 = Math.min(100, d.pct);
+      const axe2 = a2.obj2 > 0 ? Math.min(100, Math.round(a2.valide / a2.obj2 * 100)) : (a2.valide > 0 ? 100 : 0);
+      const axe3 = a3.obj3 > 0 ? Math.min(100, Math.round(a3.integres / a3.obj3 * 100)) : (a3.integres > 0 ? 100 : 0);
+      return { pin: c.pin, nom: c.nom, axe1, axe2, axe3 };
+    });
+    if (!donnees.length) return '<div class="vide-liste">Aucune donnée disponible.</div>';
+
+    const moy = { axe1: 0, axe2: 0, axe3: 0 };
+    ['axe1', 'axe2', 'axe3'].forEach(k => { moy[k] = Math.round(donnees.reduce((s, d) => s + d[k], 0) / donnees.length); });
+
+    const selPin = this.state.radarCDS ?? donnees[0].pin;
+    const cds = donnees.find(d => d.pin === selPin) || donnees[0];
+    const labels = ['Axe 1 · CA', 'Axe 2 · NSB', 'Axe 3 · Onboarding'];
+
+    return `
+      <div class="bloc-fiche">
+        <div class="bloc-titre">Radar de performance — ${q}
+          <select style="margin-left:auto;font-size:12px;padding:4px 8px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);background:var(--c-surface);color:var(--c-title)"
+                  onchange="VueObjectifs.state.radarCDS=Number(this.value);VueObjectifs.render()">
+            ${donnees.map(d => `<option value="${d.pin}" ${d.pin === cds.pin ? 'selected' : ''}>${d.nom}</option>`).join('')}
+          </select>
+        </div>
+        ${this._svgRadar([cds.axe1, cds.axe2, cds.axe3], [moy.axe1, moy.axe2, moy.axe3], labels)}
+        <div style="display:flex;justify-content:center;gap:16px;margin-top:4px">
+          <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--c-text-2)"><span style="width:9px;height:9px;border-radius:50%;background:var(--c-primary);display:inline-block"></span>${cds.nom}</span>
+          <span style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--c-text-2)"><span style="width:9px;height:9px;border-radius:50%;background:var(--c-text-2);display:inline-block"></span>Moyenne équipe</span>
+        </div>
+        <div class="objectifs-grille" style="margin-top:12px">
+          <div class="stat-mini"><div>${cds.axe1}%</div><div>Axe 1 · CA</div></div>
+          <div class="stat-mini"><div>${cds.axe2}%</div><div>Axe 2 · NSB</div></div>
+          <div class="stat-mini"><div>${cds.axe3}%</div><div>Axe 3 · Onboarding</div></div>
+        </div>
+        <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">Chaque axe est plafonné à 100% de l'objectif du quarter — permet de comparer l'équilibre entre les 3 axes plutôt que leur seule valeur brute.</p>
+      </div>`;
+  },
+
   render() {
     const app = document.getElementById('app');
     if (this.state.chargement) {
@@ -319,8 +395,18 @@ window.VueObjectifs = {
           <div class="pace-chiffres"><strong>${fmtEUR(totalCA)}</strong><span>/ ${fmtEUR(totalObj)}</span></div>
           ${this._barreProgression(pctTotal, paceTotal)}
         </div>
+
+        <div class="q-chips" style="padding:0;margin-bottom:12px">
+          <button class="q-chip ${this.state.ongletManager !== 'radar' ? 'active' : ''}" onclick="VueObjectifs.state.ongletManager='detail';VueObjectifs.render()">Détail par CDS</button>
+          <button class="q-chip ${this.state.ongletManager === 'radar' ? 'active' : ''}" onclick="VueObjectifs.state.ongletManager='radar';VueObjectifs.render()">Radar équipe</button>
+        </div>
+
+        ${this.state.ongletManager === 'radar' ? this._renderRadarEquipe(CDS) : `
         ${tableauComparatif}
+        <div class="dash-grid-2col">
         ${CDS.map(c => renderCDS(c.pin, c.nom)).join('')}
+        </div>
+        `}
       `;
     } else {
       // CDS : vue personnelle + bouton déclaration CA

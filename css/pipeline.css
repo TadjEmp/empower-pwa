@@ -36,6 +36,30 @@
 .kanban-carte-note { font-size: 12px; color: var(--c-text-2); line-height: 1.4; }
 .kanban-carte-pied { font-size: 11px; color: var(--c-text-2); border-top: 1px solid var(--c-border); padding-top: 6px; }
 
+/* ── Ligne compacte (densité Kanban — audit UX § "Kanban dense plusieurs
+   cards") : nom + pastille potentiel + alerte + initiale CDS sur une seule
+   ligne, au lieu de la carte complète. Détail toujours accessible au clic
+   (ouvrirLead) — rien n'est perdu, juste pas affiché en permanence. ── */
+.kanban-ligne {
+  display: flex; align-items: center; gap: 7px;
+  background: var(--c-surface); border-radius: 6px;
+  padding: 6px 9px; cursor: pointer;
+  border: 1px solid transparent;
+}
+.kanban-ligne:hover, .kanban-ligne:active { border-color: var(--c-primary); }
+.kanban-ligne-pot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.kanban-ligne-nom {
+  flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; color: var(--c-title);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.kanban-ligne-alerte { font-size: 10px; flex-shrink: 0; }
+.kanban-ligne-cds {
+  width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+  background: var(--c-bg); color: var(--c-text-2);
+  font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+
 /* Pills potentiel — PHONE OS statut teinté */
 .pot-pill { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 99px; }
 .pot-fort   { background: var(--status-chaud-bg);    color: var(--status-inactif); }
@@ -131,11 +155,43 @@
   .pj-item  { font-size: 11px; padding: 4px 6px; }
 }
 
+/* ── Rail semaine (mode "jour" desktop, split via .layout-split) ──
+   Colonne verticale compacte : un jour par ligne, pastilles de statut au
+   lieu des aperçus texte du mode "semaine" — la semaine reste consultable
+   sans quitter le détail du jour sélectionné. */
+.planning-rail { gap: 6px; }
+.planning-rail-jour {
+  background: var(--c-surface); border-radius: var(--radius-sm);
+  padding: 10px 12px; cursor: pointer;
+  border: 1.5px solid transparent; transition: border-color .15s, background .15s;
+}
+.planning-rail-jour:hover { border-color: var(--c-border); }
+.planning-rail-jour.aujourdhui { background: rgba(168,132,255,.08); }
+.planning-rail-jour.actif {
+  border-color: var(--c-primary);
+  background: color-mix(in srgb, var(--c-primary) 8%, var(--c-surface));
+}
+.pr-tete { display: flex; justify-content: space-between; align-items: baseline; }
+.pr-label { font-size: 13px; font-weight: 600; color: var(--c-title); text-transform: capitalize; }
+.pr-count { font-size: 11px; font-weight: 700; color: var(--c-primary); }
+.pr-dots  { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.pr-dot   { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.pr-vide  { font-size: 11px; color: var(--c-text-2); margin-top: 4px; }
+
 /* Le mode Tableau (.desktop-table-data-view) est masqué par défaut <900px
    (base.css) sans repli carte — masque l'onglet pour éviter un écran vide
    sur mobile ; le Kanban couvre déjà correctement ce cas. */
 @media (max-width: 899px) {
   .tab-tableau-desktop { display: none; }
+}
+
+/* ── Export Tracker : FAB flottant sur mobile, bouton inline dans la barre
+   du tableau sur desktop (mockup de référence § "Détail Pipeline") — évite
+   les deux à la fois. ── */
+.tracker-export-inline { display: none; }
+@media (min-width: 900px) {
+  .tracker-export-inline { display: inline-flex; align-items: center; gap: 4px; }
+  .fab-export { display: none; }
 }
 
 /* ── Bloc 3 refonte desktop — barre d'actions groupées (datagrid Tracker) ── */

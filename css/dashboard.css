@@ -149,6 +149,11 @@
 .dash-page-header { display: none; }
 
 @media (min-width: 900px) {
+  /* Largeur de page desktop — source unique, référencée par dash-page-header,
+     kpi-grid-layout et dash-body (auparavant trois valeurs 1280px dupliquées
+     indépendamment, cf. audit UX desktop § "Conteneurs dupliqués"). */
+  :root { --page-max-width: 1280px; }
+
   /* Héro mobile masqué sur desktop — remplacé par dash-page-header */
   .dash-hero { display: none !important; }
 
@@ -166,7 +171,7 @@
     display: flex;
     align-items: center;
     gap: 16px;
-    max-width: 1280px;
+    max-width: var(--page-max-width);
     margin: 0 auto;
     padding: 24px 40px 8px;
     width: 100%;
@@ -219,7 +224,7 @@
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 16px;
-    max-width: 1280px;
+    max-width: var(--page-max-width);
     margin: 0 auto;
     padding: 12px 40px;
     width: 100%;
@@ -235,12 +240,21 @@
 
   /* Body : grille 2 colonnes */
   .dash-body {
-    max-width: 1280px;
+    max-width: var(--page-max-width);
     padding: 4px 40px 32px;
     display: grid;
     grid-template-columns: minmax(0, 1fr) 300px;
     gap: 20px;
     align-items: start;
+  }
+
+  /* Pages à colonne unique (Objectifs, Primes) : sans .dash-col-side, la
+     grille 2 colonnes laissait 300px de vide à droite (audit UX desktop
+     § "Objectifs" / "Primes" — aucun breakpoint dédié). Repli sur une seule
+     colonne centrée à une largeur de lecture, plutôt qu'un espace mort. */
+  .dash-body:not(:has(.dash-col-side)) {
+    grid-template-columns: minmax(0, 900px);
+    justify-content: center;
   }
 
   .dash-col-main { gap: 16px; }

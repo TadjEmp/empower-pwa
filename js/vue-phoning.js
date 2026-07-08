@@ -36,6 +36,8 @@ window.VuePhoning = {
         statutCallPills: '',
         empowerQ: [false, false, false, false, false],
       },
+      // Wizard pas-à-pas de la phase CALL (1 = Résultat & Qualification, 2 = Notes & Ressources)
+      callStep: 1,
       geminiAnalyse: null, geminiEnCours: false,
       // BUG-09 — planning phoning
       planning: [],
@@ -43,6 +45,7 @@ window.VuePhoning = {
       formPlanif: null,        // null = fermé; objet = formulaire ouvert
       filtrePlanning: 'SEMAINE', // SEMAINE | MOIS | TOUS
       idPlanifEnCours: null,   // ID_Appel du plan lancé
+      commercialSelectionne: null, // groupement planning par commercial (Manager/Channel)
       // R5 — historique appels + edit/delete
       journal: [],
       journalChargement: false,
@@ -216,6 +219,7 @@ window.VuePhoning = {
     this.state.typeSource = 'EXISTANT';
     this.state.mode       = 'APPEL';
     this.state.phase      = 'CALL';   // accès direct depuis Base — pas de friction PRE
+    this.state.callStep   = 1;
     this.state.recherche  = c.Nom_Compte;
     this.state.geminiAnalyse = null;
     Object.assign(this.state.d, { objectif:'Prospection Empower', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'', typeAppel:'', interetScore:0, concurrentActuel:'', potentielEstime:'', statutCallPills:'', empowerQ:[false,false,false,false,false] });
@@ -366,6 +370,7 @@ window.VuePhoning = {
       if (!s.cible) { Toast.afficher('Sélectionnez un compte', 'warning'); return; }
     }
     s.phase = 'CALL';
+    s.callStep = 1;
     this._demarrerTimerAppel();
     this.render();
   },
@@ -1182,7 +1187,21 @@ window.VuePhoning = {
       { lbl: 'Pas intéressé',  col: 'var(--c-danger)'   },
     ];
 
-    const EQ = [
+    // Compte déjà onboardé Empower (HAS_EMPOWER=TRUE, même convention que
+    // vue-visites.js:208) → questionnaire de SUIVI plutôt que d'onboarding :
+    // ça n'a pas de sens de redemander "Accord pour créer le compte Empower ?"
+    // à un revendeur qui l'a déjà. Ne s'applique qu'aux comptes existants
+    // (typeSource EXISTANT) — un prospect/appel à froid n'a par définition pas
+    // encore de compte, l'onboarding reste la bonne grille.
+    const dejaOnboarde = s.typeSource === 'EXISTANT' && String(c?.HAS_EMPOWER || '').toUpperCase() === 'TRUE';
+
+    const EQ = dejaOnboarde ? [
+      { label: 'Utilise activement son compte Empower ?',                 pts: 1 },
+      { label: 'Satisfait du programme (revshare, renouvellements) ?',    pts: 2 },
+      { label: 'Aucun blocage technique ou de facturation signalé ?',     pts: 1 },
+      { label: 'Intéressé pour étendre Empower à d\'autres postes ?',     pts: 2 },
+      { label: 'Nouvelle commande Empower envisagée ce trimestre ?',      pts: 3 },
+    ] : [
       { label: 'Connaît le portail Empower Norton ?',        pts: 1 },
       { label: 'Intéressé par 25% récurrents sur 3 ans ?',   pts: 2 },
       { label: 'A accès internet pour commander en ligne ?', pts: 1 },
@@ -1192,9 +1211,13 @@ window.VuePhoning = {
     const eqArr = d.empowerQ || [false,false,false,false,false];
     const eqScore = EQ.reduce((acc, q, i) => acc + (eqArr[i] ? q.pts : 0), 0);
     const eqPct   = Math.round((eqScore / 9) * 100);
-    const maturite = eqScore <= 2 ? { lbl: 'FROID',    col: 'var(--c-text-2)', bg: 'rgba(154,171,184,.12)' }
-                   : eqScore <= 5 ? { lbl: 'CHAUD',    col: '#f59e0b',          bg: 'rgba(245,158,11,.10)'  }
-                   :                { lbl: 'BRÛLANT 🔥', col: 'var(--c-danger)',  bg: 'rgba(186,26,26,.08)'   };
+    const maturite = dejaOnboarde
+      ? (eqScore <= 2 ? { lbl: 'À RÉACTIVER', col: 'var(--c-text-2)', bg: 'rgba(154,171,184,.12)' }
+       : eqScore <= 5 ? { lbl: 'ENGAGÉ',      col: '#f59e0b',          bg: 'rgba(245,158,11,.10)'  }
+       :                { lbl: 'AMBASSADEUR 🌟', col: 'var(--c-success)', bg: 'rgba(45,158,107,.10)' })
+      : (eqScore <= 2 ? { lbl: 'FROID',    col: 'var(--c-text-2)', bg: 'rgba(154,171,184,.12)' }
+       : eqScore <= 5 ? { lbl: 'CHAUD',    col: '#f59e0b',          bg: 'rgba(245,158,11,.10)'  }
+       :                { lbl: 'BRÛLANT 🔥', col: 'var(--c-danger)',  bg: 'rgba(186,26,26,.08)'   });
 
     const OBJECTIONS = [
       { cat: '🎯 Image & Positionnement', col: 'var(--c-danger)', items: [
@@ -1231,25 +1254,14 @@ window.VuePhoning = {
       ]},
     ];
 
-    return `<div class="q-champs">
+    // Wizard pas-à-pas (2 étapes) au lieu d'un seul écran à scroller — la
+    // qualification (pills + checklist /9) puis les notes/ressources sont
+    // maintenant deux étapes distinctes avec navigation Suivant/Précédent,
+    // même convention que VueQuestionnaire (.q-nav-fixe).
+    const ETAPES_CALL = ['Résultat & Qualification', 'Notes & Ressources'];
+    const etapeIdx = s.callStep === 2 ? 1 : 0;
 
-      <!-- Fiche contact pendant l'appel -->
-      <div style="background:var(--c-surface);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <div style="font-weight:700;font-size:16px;color:var(--c-title)">${c?.Nom_Compte || '—'}</div>
-          <div style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:700;color:var(--c-primary);font-variant-numeric:tabular-nums">
-            <span style="width:7px;height:7px;border-radius:50%;background:var(--c-danger);animation:pulse-appel 1.4s infinite"></span>
-            <span id="phoning-timer-appel">00:00</span>
-          </div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:5px">
-          ${c?.Tel ? `<a class="lien-tel" href="tel:${String(c.Tel).replace(/\s/g,'')}">📞 ${c.Tel}</a>` : '<span style="font-size:12px;color:var(--c-text-2)">Pas de téléphone enregistré</span>'}
-          ${c?.Email ? `<span style="font-size:12px;color:var(--c-text-2)">✉ ${c.Email}</span>` : ''}
-          ${(c?.Adresse || c?.Ville) ? `<span style="font-size:12px;color:var(--c-text-2)">📍 ${[c.Adresse, c.Ville].filter(Boolean).join(' · ')}</span>` : ''}
-          ${(c?.CANAL || c?.CA_FY26) ? `<span style="font-size:11px;color:var(--c-text-2)">${[c?.CANAL, c?.CA_FY26 ? 'CA FY26 : ' + fmtCA(c.CA_FY26) + ' €' : ''].filter(Boolean).join(' · ')}</span>` : ''}
-        </div>
-      </div>
-
+    const etape1 = `
       <!-- Pills résultat -->
       <div style="margin-bottom:14px">
         <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:7px">Résultat de l'appel</div>
@@ -1269,7 +1281,7 @@ window.VuePhoning = {
       <!-- Questionnaire Empower /9 -->
       <div style="background:var(--c-surface);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <span style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;text-transform:uppercase">Qualification Empower</span>
+          <span style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;text-transform:uppercase">${dejaOnboarde ? 'Suivi Empower' : 'Qualification Empower'}</span>
           <div style="display:flex;align-items:center;gap:8px">
             <span style="font-size:14px;font-weight:800;color:var(--c-title)">${eqScore} / 9</span>
             <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:${maturite.bg};color:${maturite.col};border:1px solid ${maturite.col}20">● ${maturite.lbl}</span>
@@ -1290,8 +1302,9 @@ window.VuePhoning = {
               <div style="font-size:10px;color:var(--c-text-2);font-weight:500;margin-top:2px">${q.pts} pt${q.pts > 1 ? 's' : ''}${q.pts === 3 ? ' ⭐' : ''}</div>
             </div>
           </label>`).join('')}
-      </div>
+      </div>`;
 
+    const etape2 = `
       <!-- Notes pendant l'appel -->
       <label class="q-label">Notes d'appel
         <textarea class="q-textarea" rows="3" placeholder="Objections rencontrées, nom interlocuteur, points clés…"
@@ -1334,14 +1347,46 @@ window.VuePhoning = {
           ${s.enregistre ? '⏹ Arrêter l\'enregistrement (IA)' : '⏺ Enregistrer résumé vocal (IA — 30s)'}
         </button>
         ${s.enregistre ? '<p style="font-size:11px;color:var(--c-text-2);text-align:center;margin:0">Résumez l\'échange à voix haute — l\'IA transcrira et qualifiera automatiquement.</p>' : ''}
+      </div>`;
+
+    return `<div class="q-champs">
+
+      <!-- Fiche contact pendant l'appel -->
+      <div style="background:var(--c-surface);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-weight:700;font-size:16px;color:var(--c-title)">${c?.Nom_Compte || '—'}</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:700;color:var(--c-primary);font-variant-numeric:tabular-nums">
+            <span style="width:7px;height:7px;border-radius:50%;background:var(--c-danger);animation:pulse-appel 1.4s infinite"></span>
+            <span id="phoning-timer-appel">00:00</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          ${c?.Tel ? `<a class="lien-tel" href="tel:${String(c.Tel).replace(/\s/g,'')}">📞 ${c.Tel}</a>` : '<span style="font-size:12px;color:var(--c-text-2)">Pas de téléphone enregistré</span>'}
+          ${c?.Email ? `<span style="font-size:12px;color:var(--c-text-2)">✉ ${c.Email}</span>` : ''}
+          ${(c?.Adresse || c?.Ville) ? `<span style="font-size:12px;color:var(--c-text-2)">📍 ${[c.Adresse, c.Ville].filter(Boolean).join(' · ')}</span>` : ''}
+          ${(c?.CANAL || c?.CA_FY26) ? `<span style="font-size:11px;color:var(--c-text-2)">${[c?.CANAL, c?.CA_FY26 ? 'CA FY26 : ' + fmtCA(c.CA_FY26) + ' €' : ''].filter(Boolean).join(' · ')}</span>` : ''}
+        </div>
       </div>
 
-      <button type="button" class="btn-primaire" onclick="VuePhoning.passerAuPost()">
-        Saisie post-appel →
-      </button>
+      <!-- Barre de progression étape (Bloc — wizard pas-à-pas Phoning) -->
+      <div style="font-size:11px;color:var(--c-text-2);font-weight:600;margin-bottom:6px">Étape ${etapeIdx + 1}/${ETAPES_CALL.length} · ${ETAPES_CALL[etapeIdx]}</div>
+      <div style="height:6px;background:var(--c-border);border-radius:3px;margin-bottom:14px;overflow:hidden">
+        <div style="height:100%;width:${(etapeIdx + 1) / ETAPES_CALL.length * 100}%;background:var(--c-cta);transition:width .3s ease"></div>
+      </div>
 
+      ${s.callStep === 2 ? etape2 : etape1}
+    </div>
+
+    <div class="q-nav-fixe">
+      ${s.callStep === 2
+        ? `<button class="btn-q-nav btn-q-precedent" onclick="VuePhoning.setCallStep(1)">← Précédent</button>
+           <button class="btn-q-nav btn-q-suivant" onclick="VuePhoning.passerAuPost()">Saisie post-appel →</button>`
+        : `<button class="btn-q-nav btn-q-suivant" style="flex:1" onclick="VuePhoning.setCallStep(2)">Suivant →</button>`
+      }
     </div>`;
   },
+
+  setCallStep(n) { this.state.callStep = n; this.render(); },
 
   _phasePOST() {
     const s = this.state, d = s.d;
@@ -1471,6 +1516,45 @@ window.VuePhoning = {
 
   // ── BUG-09 : Planning phoning ──────────────────────────────────────────────
 
+  // ── Groupement du planning par commercial (Manager/Channel) — même pattern
+  //    que VueVisites._grouperParCommercial / _renderCartesCommerciaux. ──
+  _grouperParCommercialPlanning(liste) {
+    const map = new Map();
+    (liste || []).forEach(a => {
+      const pin = String(a.PIN_CDS || '');
+      if (!map.has(pin)) map.set(pin, { pin, nom: resolveCDS(a.PIN_CDS || a.Nom_CDS), appels: [] });
+      map.get(pin).appels.push(a);
+    });
+    return [...map.values()].sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
+  },
+
+  _renderCartesCommerciauxPlanning(liste) {
+    const groupes = this._grouperParCommercialPlanning(liste);
+    const auj = dateISOLocale();
+    if (!groupes.length) {
+      return `<div style="padding:32px;text-align:center;color:var(--c-text-2)">Aucun appel planifié pour cette période.</div>`;
+    }
+    return groupes.map(g => {
+      const enRetard = g.appels.filter(a => (a.Date_Planifiee || '').slice(0, 10) < auj).length;
+      return `
+      <div style="background:var(--c-surface);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;cursor:pointer"
+           onclick="VuePhoning.selectionnerCommercialPlanning('${g.pin}')">
+        <div style="font-weight:700;font-size:15px;color:var(--c-title)">${g.nom}</div>
+        <div style="font-size:12px;color:var(--c-text-2);margin-top:2px">
+          ${g.appels.length} appel${g.appels.length > 1 ? 's' : ''} planifié${g.appels.length > 1 ? 's' : ''}
+          ${enRetard ? ` · <span style="color:var(--c-danger);font-weight:700">${enRetard} en retard</span>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  },
+
+  _boutonRetourCommerciauxPlanning() {
+    return `<button class="btn-secondaire" style="width:auto;padding:6px 12px;font-size:12px;margin-bottom:10px" onclick="VuePhoning.retourCommerciauxPlanning()">← Tous les commerciaux</button>`;
+  },
+
+  selectionnerCommercialPlanning(pin) { this.state.commercialSelectionne = pin; this.render(); },
+  retourCommerciauxPlanning() { this.state.commercialSelectionne = null; this.render(); },
+
   _renderPlanning() {
     const s = this.state;
     if (s.planningChargement) return '<div class="spinner-centre">Chargement planning…</div>';
@@ -1505,6 +1589,48 @@ window.VuePhoning = {
       'en_cours': { bg: 'var(--c-warning)', lbl: 'En cours' },
     };
 
+    // Groupement par commercial (Manager/Channel), même pattern que Planning
+    // Visites (vue-visites.js) — audit UX § "Vues Manager les plus pauvres".
+    const groupeActif = Session.voitTout() && !s.commercialSelectionne;
+    if (s.commercialSelectionne) liste = liste.filter(a => String(a.PIN_CDS || '') === s.commercialSelectionne);
+
+    const listeHtml = groupeActif
+      ? this._renderCartesCommerciauxPlanning(liste)
+      : `${s.commercialSelectionne ? this._boutonRetourCommerciauxPlanning() : ''}
+        ${liste.length === 0
+          ? `<div style="padding:32px;text-align:center;color:var(--c-text-2)">
+               <div style="font-size:32px;margin-bottom:8px">📭</div>
+               <div style="font-size:14px">Aucun appel planifié pour cette période</div>
+               <div style="font-size:12px;margin-top:4px">Cliquez "Planifier un appel" pour en créer un.</div>
+             </div>`
+          : liste.map(a => {
+              const estPasse = (a.Date_Planifiee || '').slice(0, 10) < now;
+              const badge = badges[String(a.Statut_Appel || '').toLowerCase()] || badges['planifié'];
+              return `
+            <div style="background:var(--c-surface);border:1.5px solid ${estPasse ? 'var(--c-danger)' : 'var(--c-border)'};border-radius:var(--radius-sm);padding:12px;margin-bottom:8px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                <span style="font-weight:700;font-size:15px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.Reseller || a.Nom_Compte || '—'}</span>
+                ${Session.voitTout() ? `<span style="font-size:11px;color:var(--c-text-2);flex-shrink:0">${resolveCDS(a.PIN_CDS || a.Nom_CDS)}</span>` : ''}
+                <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;background:${badge.bg};color:#fff;flex-shrink:0">${badge.lbl}</span>
+              </div>
+              <div style="font-size:12px;color:var(--c-text-2);margin-bottom:8px">
+                ${a.Date_Planifiee ? a.Date_Planifiee.slice(0, 16).replace('T', ' ') : '—'}
+                ${estPasse ? ' <span style="color:var(--c-danger);font-weight:700">· En retard</span>' : ''}
+                ${a.Objectif_Appel ? ` · ${a.Objectif_Appel}` : ''}
+              </div>
+              ${a.Note_Preparation ? `<div style="font-size:12px;color:var(--c-text-2);font-style:italic;margin-bottom:8px">${String(a.Note_Preparation).slice(0, 80)}</div>` : ''}
+              <div style="display:flex;gap:8px">
+                <button class="btn-primaire" style="flex:2;font-size:13px;padding:9px"
+                        onclick="VuePhoning.lancerAppelPlanifie('${a.ID_Appel}')">
+                  Lancer l'appel
+                </button>
+                <button class="btn-secondaire" style="flex:1;font-size:13px;padding:9px"
+                        onclick="VuePhoning.supprimerPlanif('${a.ID_Appel}')">🗑</button>
+              </div>
+            </div>`;
+            }).join('')
+        }`;
+
     return `<div class="q-champs">
       <!-- Tabs navigation -->
       <div style="display:flex;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:4px;background:var(--c-surface);margin-bottom:14px">
@@ -1536,39 +1662,8 @@ window.VuePhoning = {
                   onclick="VuePhoning.setFiltrePlanning('${v}')">${l}</button>`).join('')}
       </div>
 
-      <!-- Liste des appels planifiés -->
-      ${liste.length === 0
-        ? `<div style="padding:32px;text-align:center;color:var(--c-text-2)">
-             <div style="font-size:32px;margin-bottom:8px">📭</div>
-             <div style="font-size:14px">Aucun appel planifié pour cette période</div>
-             <div style="font-size:12px;margin-top:4px">Cliquez "Planifier un appel" pour en créer un.</div>
-           </div>`
-        : liste.map(a => {
-            const estPasse = (a.Date_Planifiee || '').slice(0, 10) < now;
-            const badge = badges[String(a.Statut_Appel || '').toLowerCase()] || badges['planifié'];
-            return `
-          <div style="background:var(--c-surface);border:1.5px solid ${estPasse ? 'var(--c-danger)' : 'var(--c-border)'};border-radius:var(--radius-sm);padding:12px;margin-bottom:8px">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-              <span style="font-weight:700;font-size:15px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.Reseller || a.Nom_Compte || '—'}</span>
-              <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;background:${badge.bg};color:#fff;flex-shrink:0">${badge.lbl}</span>
-            </div>
-            <div style="font-size:12px;color:var(--c-text-2);margin-bottom:8px">
-              ${a.Date_Planifiee ? a.Date_Planifiee.slice(0, 16).replace('T', ' ') : '—'}
-              ${estPasse ? ' <span style="color:var(--c-danger);font-weight:700">· En retard</span>' : ''}
-              ${a.Objectif_Appel ? ` · ${a.Objectif_Appel}` : ''}
-            </div>
-            ${a.Note_Preparation ? `<div style="font-size:12px;color:var(--c-text-2);font-style:italic;margin-bottom:8px">${String(a.Note_Preparation).slice(0, 80)}</div>` : ''}
-            <div style="display:flex;gap:8px">
-              <button class="btn-primaire" style="flex:2;font-size:13px;padding:9px"
-                      onclick="VuePhoning.lancerAppelPlanifie('${a.ID_Appel}')">
-                Lancer l'appel
-              </button>
-              <button class="btn-secondaire" style="flex:1;font-size:13px;padding:9px"
-                      onclick="VuePhoning.supprimerPlanif('${a.ID_Appel}')">🗑</button>
-            </div>
-          </div>`;
-          }).join('')
-      }
+      <!-- Liste des appels planifiés (ou cartes commerciaux si Manager/Channel) -->
+      ${listeHtml}
     </div>`;
   },
 

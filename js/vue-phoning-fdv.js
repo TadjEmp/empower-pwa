@@ -150,6 +150,55 @@ window.VuePhoningFDV = {
     `;
   },
 
+  // ── Appels de la période courante (jour/semaine/historique), TOUS commerciaux
+  //    confondus — sert de base à la répartition par commercial ci-dessous,
+  //    indépendamment du filtre commercial actif. ──
+  _appelsPeriodeTousCommerciaux() {
+    const mode = this.state.modeVue;
+    if (mode === 'jour') {
+      return this.state.appels.filter(a => (a.Date || '').slice(0, 10) === this.state.dateVue);
+    }
+    if (mode === 'semaine') {
+      const jours = this.semaineAppels.map(j => j.iso);
+      const debut = jours[0], fin = jours[jours.length - 1];
+      return this.state.appels.filter(a => {
+        const d = (a.Date || '').slice(0, 10);
+        return d >= debut && d <= fin;
+      });
+    }
+    return this.state.appels;
+  },
+
+  // ── Bloc 3 refonte desktop — répartition par commercial (audit UX § "Rapport
+  //    Phoning" / "Pipeline par CDS") : la vue Manager n'affichait qu'un total
+  //    global, jamais de comparaison entre commerciaux à moins de les filtrer
+  //    un par un. Masqué si un seul commercial est actif sur la période. ──
+  _renderParCommercial() {
+    if (this.state.commercialFiltre) return '';
+    const appels = this._appelsPeriodeTousCommerciaux();
+    const map = new Map();
+    appels.forEach(a => {
+      const pin = String(a.PIN_CDS || '');
+      if (!pin) return;
+      if (!map.has(pin)) map.set(pin, { nom: resolveCDS(a.PIN_CDS || a.Nom_CDS), total: 0 });
+      map.get(pin).total++;
+    });
+    const lignes = [...map.values()].sort((a, b) => b.total - a.total);
+    if (lignes.length < 2) return '';
+    const max = Math.max(...lignes.map(l => l.total), 1);
+    return `
+      <div class="bloc-fiche" style="margin-bottom:12px">
+        <div class="bloc-titre">Par commercial</div>
+        <div class="perf-cds">
+          ${lignes.map(l => `
+            <div>
+              <div class="perf-ligne-lbl"><span>${l.nom}</span><span>${l.total} appel${l.total > 1 ? 's' : ''}</span></div>
+              <div class="perf-barre"><div class="perf-barre-fill" style="width:${Math.round(l.total / max * 100)}%"></div></div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  },
+
   _renderAppelDetail(a) {
     const nom = a.Reseller || a.Nom_Enseigne || '—';
     return `
@@ -208,6 +257,7 @@ window.VuePhoningFDV = {
             ` : ''}
           </div>
         </div>
+        ${this._renderParCommercial()}
         ${mode === 'semaine' ? this._renderModeSemaine()
         : mode === 'jour' ? this._renderModeJour()
         : this._renderModeHistorique()}

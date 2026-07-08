@@ -325,7 +325,7 @@ window.VueFicheCompte = {
         <h1 class="header-titre-tronque">${c.Nom_Compte}</h1>
       </header>
 
-      <div class="fiche-body">
+      <div class="fiche-body avec-nav">
         ${this.renderContenuFiche()}
       </div>
 
@@ -338,6 +338,8 @@ window.VueFicheCompte = {
       </div>
 
       ${this.state.modalRapportPhoning ? this._renderModalRapportPhoning() : ''}
+
+      ${NavBar('comptes')}
     `;
   },
 };

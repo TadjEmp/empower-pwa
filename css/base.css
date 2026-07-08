@@ -452,6 +452,17 @@ body {
 /* Réserve la hauteur de la bottom nav */
 .avec-nav { padding-bottom: calc(72px + var(--safe-bottom)) !important; }
 
+/* Décale les barres d'action fixes (Fiche compte, Questionnaire) au-dessus de
+   la bottom nav mobile plutôt que de les superposer — nécessaire depuis que
+   la Fiche compte affiche désormais NavBar() sur toutes tailles d'écran.
+   Desktop non concerné : la nav y est une sidebar latérale, pas une barre basse. */
+@media (max-width: 899px) {
+  body:has(.nav-principale) .barre-actions-fixe,
+  body:has(.nav-principale) .q-nav-fixe {
+    bottom: calc(var(--nav-h) + var(--safe-bottom));
+  }
+}
+
 /* Items sidebar-only : cachés sur mobile (drawer gère) */
 .nav-sidebar-only { display: none !important; }
 /* Footer sidebar : caché sur mobile */
@@ -663,7 +674,7 @@ body {
 
 @media (min-width: 900px) {
   .topbar-desktop {
-    display: flex; align-items: center;
+    display: flex; align-items: center; gap: 6px;
     position: fixed; top: 0; left: 240px; right: 0; height: 56px;
     padding: 0 28px;
     background: var(--bg-warm-white);
@@ -674,6 +685,18 @@ body {
   body.sidebar-collapsed .topbar-desktop { left: 58px; }
   #topbar-root.topbar-hidden .topbar-desktop { display: none; }
 
+  .topbar-crumb {
+    display: flex; align-items: center; gap: 6px; min-width: 0;
+  }
+  .topbar-crumb-section {
+    font-size: 13px; font-weight: 500; color: var(--c-text-2);
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .topbar-crumb-sep {
+    color: var(--c-text-2); opacity: .5; flex-shrink: 0;
+    display: flex; align-items: center;
+  }
+  .topbar-crumb-sep svg { width: 13px; height: 13px; }
   .topbar-titre {
     font-size: 15px; font-weight: 700; color: var(--c-title);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -983,13 +1006,25 @@ details[open] > .cv-rapport-toggle::before { transform: rotate(90deg); }
 .status-integre    { background: rgba(45,158,107,.10);  color: #2D9E6B; }
 .status-archive    { background: rgba(217,48,37,.08);   color: #D93025; }
 
-/* Visites split layout desktop */
+/* ─── Gabarit split desktop réutilisable ───
+   Liste/contexte à gauche (largeur fixe, scroll propre) + panneau de détail
+   flexible à droite. Remplace .visites-split-layout (grille 1fr/1fr jamais
+   câblée en JS, cf. audit UX desktop § "Layout mort") par un gabarit générique
+   destiné à Planning (jour/détail visite), Phoning (liste d'appels/fiche) et
+   la Fiche compte (contexte/détail). */
 @media (min-width: 900px) {
-  .visites-split-layout {
+  .layout-split {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 32px;
+    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
   }
+  .layout-split-list {
+    display: flex; flex-direction: column; gap: 10px;
+    max-height: calc(100vh - 56px - 48px);
+    overflow-y: auto;
+  }
+  .layout-split-detail { min-width: 0; }
 }
 .pace-risk  { background: rgba(217,48,37,.08); color: var(--c-danger); }
 

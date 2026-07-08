@@ -219,6 +219,14 @@ window.VueComptes = {
         <span class="badge-compteur">${liste.length}/${total}</span>
       </header>
 
+      <!-- Onglets Comptes actifs / Historique CA (audit UX § "simplification nav" —
+           fusionne Historique CA, auparavant une entrée de nav séparée, en onglet
+           interne du même domaine de données que Comptes). -->
+      <div class="tabs-premium" style="padding:10px 12px;background:var(--c-surface);border-bottom:1px solid var(--c-border)">
+        <button class="tab-btn-premium actif">Comptes actifs</button>
+        <button class="tab-btn-premium" onclick="Router.aller('#/comptes-historiques')">Historique CA</button>
+      </div>
+
       <!-- KPI synthèse façon DASHBOARD_W09 -->
       <div class="kpi-grid-layout">
         ${kpiCard({ label: 'Comptes',      value: total,    accent: 'primary' })}

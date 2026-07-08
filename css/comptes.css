@@ -39,6 +39,28 @@
   background: var(--c-surface); border-radius: var(--radius);
   padding: 16px; box-shadow: var(--shadow);
 }
+
+/* ─── Fiche compte desktop — audit UX § "La fiche compte, zéro média query" ───
+   La route plein écran #/compte/:id (accès direct depuis Pipeline, Phoning,
+   recherche, lien partagé — hors panneau docké de Comptes) restait un simple
+   empilement vertical à toute largeur d'écran. Sur desktop, les blocs (Identité,
+   CA Historique, Prochaine action, Visites, Appels) se répartissent en 2
+   colonnes via colonnes CSS — pas de restructuration du HTML nécessaire,
+   les blocs se répartissent automatiquement dans l'ordre de hauteur. */
+@media (min-width: 900px) {
+  .fiche-body {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 40px calc(100px + var(--safe-bottom));
+    display: block;
+    column-count: 2;
+    column-gap: 20px;
+  }
+  .fiche-body .bloc-fiche {
+    break-inside: avoid;
+    margin-bottom: 20px;
+  }
+}
 .bloc-titre { font-size: 14px; font-weight: 700; margin-bottom: 12px; color: var(--c-text); }
 .grille-identite { display: flex; flex-direction: column; gap: 8px; }
 .id-ligne { display: flex; justify-content: space-between; align-items: center; font-size: 14px; border-bottom: 1px solid var(--c-border); padding-bottom: 8px; }
