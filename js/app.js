@@ -13,10 +13,24 @@
   // 3. Init routeur (déclenchera la bonne vue)
   Router.init();
 
-  // 4. Enregistrer le Service Worker
+  // 4. Enregistrer le Service Worker + auto-reload dès qu'une nouvelle version prend la main
+  //    (le SW est network-first pour le shell — voir sw.js — donc un simple reload suffit
+  //    désormais à récupérer le code à jour, plus besoin de vider le cache manuellement).
   if ('serviceWorker' in navigator) {
+    let dejaRecharge = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (dejaRecharge) return;
+      dejaRecharge = true;
+      window.location.reload();
+    });
     navigator.serviceWorker.register('sw.js')
-      .then(() => console.info('[SW] Enregistré'))
+      .then(reg => {
+        console.info('[SW] Enregistré');
+        // Revérifie une nouvelle version à chaque retour sur l'onglet.
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') reg.update().catch(() => {});
+        });
+      })
       .catch(e  => console.warn('[SW] Erreur :', e));
   }
 

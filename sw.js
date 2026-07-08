@@ -1,9 +1,14 @@
 // ═══════════════════════════════════════
-//  sw.js — Service Worker EMPOWER v4.1
-//  Cache-first pour assets statiques
+//  sw.js — Service Worker EMPOWER v5.0
+//  Network-first pour le shell (HTML/JS/CSS) : chaque reload en ligne
+//  récupère le code à jour sans jamais avoir besoin de vider le cache.
+//  Cache-first uniquement pour les assets immuables (images/icônes).
+//  Le cache ne sert plus que de secours hors-ligne.
 // ═══════════════════════════════════════
 
-const CACHE_NAME  = 'esi-v5-65';
+const CACHE_NAME  = 'esi-v5-66';
+// Assets immuables (jamais modifiés après publication) → cache-first.
+const STATIC_RE = /\.(png|jpe?g|svg|webp|gif|ico|woff2?|ttf)$/i;
 // Chemins relatifs : fonctionne à la racine d'un domaine comme en sous-dossier GitHub Pages
 const ASSETS_CORE = [
   './',
@@ -54,19 +59,36 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
-self.addEventListener('fetch', e => {
-  // Passer les requêtes vers l'API Google sans cache
-  if (e.request.url.includes('script.google.com')) return;
+async function metEnCache(request, resp) {
+  if (resp && resp.status === 200 && resp.type === 'basic') {
+    const c = await caches.open(CACHE_NAME);
+    c.put(request, resp.clone());
+  }
+  return resp;
+}
 
-  e.respondWith(
-    caches.match(e.request).then(cached => {
-      if (cached) return cached;
-      return fetch(e.request).then(resp => {
-        if (!resp || resp.status !== 200 || resp.type !== 'basic') return resp;
-        const clone = resp.clone();
-        caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
-        return resp;
-      });
-    })
-  );
+// Shell (HTML/JS/CSS) : réseau d'abord — repli sur le cache seulement hors-ligne.
+async function networkFirst(request) {
+  try {
+    return await metEnCache(request, await fetch(request));
+  } catch (e) {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    throw e;
+  }
+}
+
+// Assets immuables : cache d'abord, réseau seulement si absent du cache.
+async function cacheFirst(request) {
+  const cached = await caches.match(request);
+  if (cached) return cached;
+  return metEnCache(request, await fetch(request));
+}
+
+self.addEventListener('fetch', e => {
+  // Passer les requêtes vers les API externes (Google, Supabase) sans intercepter
+  if (e.request.url.includes('script.google.com')) return;
+  if (e.request.method !== 'GET') return; // ne jamais intercepter les écritures (POST/PATCH Supabase)
+
+  e.respondWith(STATIC_RE.test(e.request.url) ? cacheFirst(e.request) : networkFirst(e.request));
 });
