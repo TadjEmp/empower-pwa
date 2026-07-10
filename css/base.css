@@ -1031,20 +1031,28 @@ details[open] > .cv-rapport-toggle::before { transform: rotate(90deg); }
 
 /* ═══════════════════════════════════════
    v5.0 BUG1 — Anti pinch-zoom & sélection PWA
+   Audit UX 2026-07 — user-select:none était global (body), donc appliqué
+   aussi en desktop web où il n'y a ni pinch-zoom ni geste tactile à
+   protéger : impossible de sélectionner/copier un nom de compte, un
+   téléphone, une note, etc. Restreint au contexte mobile/tactile (≤899px,
+   même seuil que le reste du responsive de l'app) ; touch-action reste
+   global (inoffensif au clavier/souris).
    ═══════════════════════════════════════ */
 html {
   touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
 }
-body {
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
-  overscroll-behavior-y: none;
-}
-input, textarea, select, [contenteditable="true"], .selectable {
-  -webkit-user-select: text;
-  user-select: text;
+@media (max-width: 899px) {
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    overscroll-behavior-y: none;
+  }
+  input, textarea, select, [contenteditable="true"], .selectable {
+    -webkit-user-select: text;
+    user-select: text;
+  }
 }
 
 /* ═══════════════════════════════════════
