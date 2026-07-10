@@ -156,9 +156,13 @@ window.VueComptes = {
       // calculées en direct depuis visites/phoning, pas depuis les champs figés
       // sur comptes (Date_Derniere_Action peut être désynchronisé).
       this.state.datesLive = this._calculerDatesLive(visites, appels);
-      // V5 BUG1 — source de vérité lireCDS (Alexandra incluse) ; fallback OBJECTIFS_PRIMES
+      // BUG1 audit 2026-07 — le filtre "commercial affecté" doit lister les pins
+      // qui apparaissent réellement dans PIN_CDS_Assigne (ADMIN + CDS), jamais les
+      // Channels (5000/5001/5002) : un compte n'est jamais assigné à un Channel,
+      // donc ces entrées ne filtraient jamais rien et polluaient le menu.
       this._cdsListe = (Array.isArray(cdsApi) && cdsApi.length)
-        ? cdsApi.map(c => ({ pin: Number(c.pin), nom: String(c.nom) }))
+        ? cdsApi.filter(c => ['ADMIN', 'CDS'].includes(String(c.role).toUpperCase()))
+                .map(c => ({ pin: Number(c.pin), nom: String(c.nom) }))
         : objectifs.map(o => ({ pin: Number(o.PIN_CDS), nom: o.Nom_CDS }));
       this.state.chargement = false;
       this.render();
@@ -272,7 +276,6 @@ window.VueComptes = {
     const cdsList = (this._cdsListe || [
       { pin: 1000, nom: 'Tadjidine' }, { pin: 4001, nom: 'Lyes' },
       { pin: 4002, nom: 'Mehdi' },     { pin: 4003, nom: 'Johanne' },
-      { pin: 5000, nom: 'Alexandra' }, // V5 BUG1
     ]);
 
     app.innerHTML = `
