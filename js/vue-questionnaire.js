@@ -536,7 +536,10 @@ window.VueQuestionnaire = {
     // (cf. QuestionnaireBranching, Phase 0) — une seule fonction pour ce calcul.
     const typeVisite = QuestionnaireBranching.deriverTypeVisite(d.objectifsVisite);
 
-    const arbEMPOWER = d.resultatVisite === 'Positif' && d.prochaineAction === 'Onboarding EMPOWER' ? 'COMMANDE'
+    // Fix — les options radio portent un emoji ('✅ Positif'/'🟡 Mitigé'/'❌ Négatif'),
+    // la comparaison stricte à 'Positif' ne matchait donc jamais.
+    const resultatNorm = String(d.resultatVisite || '');
+    const arbEMPOWER = resultatNorm.includes('Positif') && d.prochaineAction === 'Onboarding EMPOWER' ? 'COMMANDE'
       : empowerAlerte ? 'INTERESSE'
       : d.empowerPartenaire === 'OUI' ? 'EN_COURS'
       : 'N/A';
@@ -622,9 +625,19 @@ window.VueQuestionnaire = {
       // FIX-B/C : pas de mise à jour pour les visites à froid (idCible = 'HORS_BASE')
       if (idCible !== 'HORS_BASE') {
         if (estProspect) {
-          await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', idCible, {
-            Date_prochaine_action: d.prochaineActionDate, Flag_traite: 'TRUE',
-          });
+          // Audit 2026-07 — une visite terrain réalisée sur un lead Tracker ne faisait
+          // jamais avancer son statut pipeline (STATUT_EMPOWER), contrairement à un
+          // appel phoning (cf. VuePhoning.valider()) : le lead restait bloqué sur son
+          // statut d'attribution (ASSIGNE) même après une visite concluante ou négative.
+          const majProspect = { Date_prochaine_action: d.prochaineActionDate, Flag_traite: 'TRUE' };
+          if (resultatNorm.includes('Négatif')) {
+            majProspect.STATUT_EMPOWER = 'ARCHIVE';
+            majProspect.FLAG_ACTION = 'ARCHIVE';
+          } else if (resultatNorm.includes('Positif') || resultatNorm.includes('Mitigé')) {
+            majProspect.STATUT_EMPOWER = 'EN_COURS';
+            majProspect.FLAG_ACTION = 'EN_COURS';
+          }
+          await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', idCible, majProspect);
         } else {
           await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', idCible, {
             Date_Prochaine_Action: d.prochaineActionDate,
