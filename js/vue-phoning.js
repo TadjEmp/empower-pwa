@@ -97,7 +97,8 @@ window.VuePhoning = {
       ]);
       // Roster complet — un commercial sans appel (Journal) ou sans visite
       // (Visites FDV) ne doit pas disparaître de la liste par commercial.
-      this.state.cdsListe = (Array.isArray(cdsApi) ? cdsApi : [])
+      this._rosterComplet = Array.isArray(cdsApi) ? cdsApi : []; // Bug2 — pour notifs dynamiques
+      this.state.cdsListe = this._rosterComplet
         .filter(c => ['CDS', 'ADMIN'].includes(String(c.role).toUpperCase()));
       // BUG-09 + BLOC 3 : base phoning = comptes attribués au CDS,
       // restreinte aux comptes HISTORIQUES (STATUT_COMPTE RÉACTIVER ou ACTIF).
@@ -237,6 +238,7 @@ window.VuePhoning = {
     this.state.recherche  = '';
     this.state.geminiAnalyse = null;
     Object.assign(this.state.d, { objectif:'', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'', typeAppel:'', interetScore:0, concurrentActuel:'', potentielEstime:'', statutCallPills:'', empowerQ:[false,false,false,false,false], norton360:[], opCommerciale:[] });
+    this._trackerAjoute = false; this._modalAjoutTracker = null;
     this.render();
   },
 
@@ -261,6 +263,7 @@ window.VuePhoning = {
     this.state.recherche  = c.Nom_Compte;
     this.state.geminiAnalyse = null;
     Object.assign(this.state.d, { objectif:'Prospection Empower', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'', typeAppel:'', interetScore:0, concurrentActuel:'', potentielEstime:'', statutCallPills:'', empowerQ:[false,false,false,false,false], norton360:[], opCommerciale:[] });
+    this._trackerAjoute = false; this._modalAjoutTracker = null;
     this._demarrerTimerAppel();
     this.render();
   },
@@ -277,6 +280,7 @@ window.VuePhoning = {
     this.state.recherche  = c.Nom_Compte;
     this.state.geminiAnalyse = null;
     Object.assign(this.state.d, { objectif:'Prospection Empower', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'', typeAppel:'', interetScore:0, concurrentActuel:'', potentielEstime:'', statutCallPills:'', empowerQ:[false,false,false,false,false], norton360:[], opCommerciale:[] });
+    this._trackerAjoute = false; this._modalAjoutTracker = null;
     this.render();
   },
 
@@ -320,6 +324,156 @@ window.VuePhoning = {
     this.state.cible = this.suggestions[i];
     this.state.recherche = this.state.cible.Nom_Compte;
     this.render();
+  },
+
+  // ── Bug2 — Ajout au Tracker Empower depuis un appel intéressé (parité avec
+  // vue-questionnaire.js/ouvrirAjoutTracker, jusque-là totalement absent en Phoning) ──
+  _modalAjoutTracker: null,
+  _trackerAjoute: false,
+  _ajoutTrackerEnCours: false,
+
+  _destinatairesAlerteTracker() {
+    const pins = (this._rosterComplet || [])
+      .filter(u => ['ADMIN', 'CHANNEL_MANAGER'].includes(String(u.role).toUpperCase()))
+      .map(u => Number(u.pin));
+    return [...new Set(pins.length ? pins : [1000, 5000])];
+  },
+
+  ouvrirAjoutTracker() {
+    const c = this.state.cible;
+    this._modalAjoutTracker = {
+      nomCompte:   c?.Nom_Compte || '',
+      adresse:     c?.Adresse || '',
+      ville:       c?.Ville || '',
+      departement: c?.Departement || '',
+      tel:         c?.Tel || '',
+      email:       c?.Email || '',
+      contactNom:      c?.CONTACT_NOM || '',
+      contactFonction: c?.CONTACT_FONCTION || '',
+    };
+    this._rafraichirZoneTracker();
+  },
+
+  fermerAjoutTracker() { this._modalAjoutTracker = null; this._rafraichirZoneTracker(); },
+
+  forcerAjoutTracker() {
+    this._modalAjoutTracker.doublonExistant = null;
+    this._modalAjoutTracker._forcerDoublon = true;
+    this.confirmerAjoutTracker();
+  },
+
+  _rafraichirZoneTracker() {
+    const zone = document.getElementById('ph-zone-tracker');
+    if (zone) zone.innerHTML = this._renderZoneTracker();
+  },
+
+  async confirmerAjoutTracker() {
+    const m = this._modalAjoutTracker;
+    if (!m || !m.nomCompte.trim()) { Toast.afficher('Nom du compte requis', 'warning'); return; }
+
+    const normNom = normaliserNom(m.nomCompte);
+    const dejaCompte = this.state.comptes.find(c => normaliserNom(c.Nom_Compte) === normNom);
+    const dejaLead   = this.state.prospects.find(p => normaliserNom(p.Nom_Compte) === normNom);
+    const doublon = dejaCompte || dejaLead;
+    if (doublon && !m._forcerDoublon) {
+      this._modalAjoutTracker.doublonExistant = { ...doublon, _typeDoublon: dejaCompte ? 'compte' : 'lead' };
+      this._rafraichirZoneTracker();
+      return;
+    }
+    if (this._ajoutTrackerEnCours) return;
+    this._ajoutTrackerEnCours = true;
+    this._rafraichirZoneTracker();
+    try {
+      const lead = {
+        ID_Prospect: genId('PROS'),
+        Nom_Compte: m.nomCompte, Adresse: m.adresse, Ville: m.ville, Departement: m.departement,
+        Tel: m.tel, Email: m.email,
+        PIN_CDS_Assigne: Session.pin, Nom_CDS: Session.nom,
+        STATUT_EMPOWER: 'SAISIE', FLAG_ACTION: 'SAISIE',
+        Source_Import: 'ESI_PHONING', ORIGINE: 'PHONING',
+        Flag_traite: 'FALSE', Flag_converti: 'FALSE',
+        CONTACT_NOM: m.contactNom, CONTACT_FONCTION: m.contactFonction,
+        Note_initiale: `Ajouté depuis appel téléphonique du ${dateISOLocale()} (intérêt EMPOWER : ${this.state.d.interetEmpower || '—'}).`,
+        Date_Import: dateISOLocale(),
+        Timestamp: new Date().toISOString(),
+      };
+      await SheetsAPI.ecrire('EMPOWER_MDB', '📋_PROSPECTS', lead);
+      this.state.prospects.unshift(lead);
+      for (const dest of this._destinatairesAlerteTracker()) {
+        SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
+          ID_Notif: genId('NOTIF'), Date_Envoi: new Date().toISOString(),
+          PIN_Destinataire: dest, Type_Notif: 'NOUVEAU_LEAD',
+          Message: `🎯 Nouveau lead depuis appel téléphonique (${Session.nom}) : ${m.nomCompte}`,
+          ID_Cible: lead.ID_Prospect, Statut_Lu: false, Timestamp: new Date().toISOString(),
+        }).catch(() => {});
+      }
+      this._modalAjoutTracker = null;
+      this._trackerAjoute = true;
+      Toast.afficher(`✅ Ajouté au Tracker : ${m.nomCompte}`, 'succes', 5000);
+      this._rafraichirZoneTracker();
+    } catch(e) {
+      Toast.afficher('❌ ' + e.message, 'erreur');
+    } finally {
+      this._ajoutTrackerEnCours = false;
+    }
+  },
+
+  // Bouton + modal, regroupés dans une seule zone rafraîchissable sans
+  // toucher au reste de l'écran de succès post-appel.
+  _renderZoneTracker() {
+    const interesse = ['Fort', 'Moyen'].includes(this.state.d.interetEmpower);
+    if (!interesse) return '';
+    return `
+      <button type="button" class="btn-primaire" style="margin-top:10px;width:100%"
+              onclick="VuePhoning.ouvrirAjoutTracker()" ${this._trackerAjoute ? 'disabled' : ''}>
+        ${this._trackerAjoute ? '✅ Ajouté au Tracker Empower' : '➕ Ajouter au Tracker Empower'}
+      </button>
+      ${this._renderModalAjoutTracker()}`;
+  },
+
+  _renderModalAjoutTracker() {
+    const m = this._modalAjoutTracker;
+    if (!m) return '';
+    return `
+    <div class="modal-overlay" onclick="if(event.target===this)VuePhoning.fermerAjoutTracker()">
+      <div class="modal">
+        <h3>Ajouter au Tracker Empower</h3>
+        ${m.doublonExistant ? `
+        <div style="background:color-mix(in srgb,var(--c-warning) 12%,transparent);border:1px solid var(--c-warning);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">
+          <div style="font-weight:700;color:var(--c-warning);margin-bottom:6px">Ce nom existe déjà — ${m.doublonExistant._typeDoublon === 'compte' ? 'compte actif' : 'lead Tracker'}</div>
+          <div style="font-size:13px;margin-bottom:10px"><strong>${m.doublonExistant.Nom_Compte}</strong></div>
+          <button class="btn-primaire" style="width:100%;font-size:12px" onclick="VuePhoning.forcerAjoutTracker()">Ajouter quand même</button>
+        </div>` : ''}
+        <p style="font-size:13px;color:var(--c-text-2);margin-bottom:12px">Relire les informations avant création du lead (statut initial : SAISIE).</p>
+        <label>Nom de l'enseigne *
+          <input required value="${m.nomCompte}"
+                 oninput="VuePhoning._modalAjoutTracker.nomCompte=this.value"/></label>
+        <label>Adresse
+          <input value="${m.adresse}"
+                 oninput="VuePhoning._modalAjoutTracker.adresse=this.value"/></label>
+        <div style="display:flex;gap:8px">
+          <label style="flex:1">Département
+            <input placeholder="ex : 75" maxlength="3" value="${m.departement}"
+                   oninput="VuePhoning._modalAjoutTracker.departement=this.value"/></label>
+          <label style="flex:2">Ville
+            <input placeholder="ex : Paris" value="${m.ville}"
+                   oninput="VuePhoning._modalAjoutTracker.ville=this.value"/></label>
+        </div>
+        <label>Téléphone <span style="color:var(--c-text-2);font-weight:400">(optionnel)</span>
+          <input type="tel" value="${m.tel}"
+                 oninput="VuePhoning._modalAjoutTracker.tel=this.value"/></label>
+        <label>Email <span style="color:var(--c-text-2);font-weight:400">(optionnel)</span>
+          <input type="email" value="${m.email}"
+                 oninput="VuePhoning._modalAjoutTracker.email=this.value"/></label>
+        <div class="modal-btns">
+          <button type="button" onclick="VuePhoning.fermerAjoutTracker()">Annuler</button>
+          <button type="button" class="btn-primaire"
+                  onclick="VuePhoning.confirmerAjoutTracker()" ${this._ajoutTrackerEnCours ? 'disabled' : ''}>
+            ${this._ajoutTrackerEnCours ? 'Ajout…' : 'Ajouter au Tracker'}
+          </button>
+        </div>
+      </div>
+    </div>`;
   },
 
   // Sélectionner un prospect → BLOC 3 : passer par l'ÉTAPE 1 (objectif) avant l'appel
@@ -646,6 +800,7 @@ window.VuePhoning = {
             ${d.prochaineAction ? `<div>${d.prochaineAction}${d.dateRappel ? ' — ' + dateRelative(d.dateRappel) : ''}</div>` : ''}
             ${s.qualif?.resume ? `<div>${s.qualif.resume}</div>` : ''}
           </div>
+          <div id="ph-zone-tracker">${this._renderZoneTracker()}</div>
           <div class="succes-btns">
             ${aUnSuivant ? `<button class="btn-primaire" style="background:var(--c-success)" onclick="VuePhoning.appelSuivant()">☎ Appel suivant →</button>` : ''}
             <button class="btn-primaire" onclick="Router.aller('#/dashboard')">← Dashboard</button>

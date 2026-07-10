@@ -148,12 +148,16 @@ window.VueQuestionnaire = {
     this.state = this._etatInitial();
     this.render();
     try {
-      const [comptes, prospects] = await Promise.all([
+      const [comptes, prospects, roster] = await Promise.all([
         SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
         SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS'),
+        SheetsAPI.lireCDS(),
       ]);
       this.state.comptes   = comptes.filter(c => Session.voitTout() || Number(c.PIN_CDS_Assigne) === Session.pin);
       this.state.prospects = prospects.filter(p => Session.voitTout() || !p.PIN_CDS_Assigne || Number(p.PIN_CDS_Assigne) === Session.pin);
+      // Bug2 audit 2026-07 — roster complet pour routage dynamique des notifs
+      // Tracker (Alexandra + tous les Channels actifs), plus de PIN codés en dur.
+      this._rosterComplet = Array.isArray(roster) ? roster : [];
 
       // FIX-B/C : détection visite à froid via _visitePlanifiee (posé par ouvrirCR avant routing)
       const estFroid = this._visitePlanifiee && (
@@ -252,6 +256,16 @@ window.VueQuestionnaire = {
 
   fermerAjoutTracker() { this._modalAjoutTracker = null; this.render(); },
 
+  // Bug2 audit 2026-07 — pins actifs à notifier sur tout nouvel ajout au
+  // Tracker : Alexandra + tous les Channels actifs (plus jamais [1000, 5000]
+  // en dur, qui ne notifiait que Tadjidine et Alexandra, jamais Sabine/Sophie).
+  _destinatairesAlerteTracker() {
+    const pins = (this._rosterComplet || [])
+      .filter(u => ['ADMIN', 'CHANNEL_MANAGER'].includes(String(u.role).toUpperCase()))
+      .map(u => Number(u.pin));
+    return [...new Set(pins.length ? pins : [1000, 5000])]; // fallback si roster indisponible
+  },
+
   forcerAjoutTracker() {
     this._modalAjoutTracker.doublonExistant = null;
     this._modalAjoutTracker._forcerDoublon = true;
@@ -291,8 +305,10 @@ window.VueQuestionnaire = {
       };
       await SheetsAPI.ecrire('EMPOWER_MDB', '📋_PROSPECTS', lead);
       this.state.prospects.unshift(lead);
-      // Notifications PIN 1000 (Tadjidine) + PIN 5000 (Alexandra) — même convention que confirmerConversion()
-      for (const dest of [1000, 5000]) {
+      // Notifications dynamiques : Alexandra + tous les Channels actifs (routage
+      // par rôle, plus par secteur/enseigne — aucune table de mapping secteur→Channel
+      // n'existe aujourd'hui ; à affiner si un tel mapping est créé).
+      for (const dest of this._destinatairesAlerteTracker()) {
         SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
           ID_Notif: genId('NOTIF'), Date_Envoi: new Date().toISOString(),
           PIN_Destinataire: dest, Type_Notif: 'NOUVEAU_LEAD',
@@ -654,6 +670,18 @@ window.VueQuestionnaire = {
           GPS_Lng:      '',
           Timestamp:    new Date().toISOString(),
         });
+        // Bug2 audit 2026-07 — le log 📊_ACTIONS ci-dessus n'était jamais lu par
+        // le centre de notifications (qui ne lit que 🔔_NOTIFS) : le toast promettait
+        // une alerte envoyée à Alexandra qui n'existait nulle part. Écrit désormais
+        // une vraie notification, routée dynamiquement (Alexandra + Channels actifs).
+        for (const dest of this._destinatairesAlerteTracker()) {
+          SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
+            ID_Notif: genId('NOTIF'), Date_Envoi: new Date().toISOString(),
+            PIN_Destinataire: dest, Type_Notif: 'ALERTE_EMPOWER',
+            Message: `🔔 Intérêt EMPOWER détecté en visite (${Session.nom}) : ${s.cible.Nom_Compte}`,
+            ID_Cible: idCible !== 'HORS_BASE' ? idCible : null, Statut_Lu: false, Timestamp: new Date().toISOString(),
+          }).catch(() => {});
+        }
         Toast.afficher('🔔 Alerte EMPOWER envoyée à Alexandra', 'info', 4000);
       }
 
@@ -1018,7 +1046,7 @@ window.VueQuestionnaire = {
         <div class="q-recap-ligne"><span>GPS</span><strong>${s.gps.lat?'📍 capturé':'—'}</strong></div>
       </div>
 
-      ${this._modeFroid && empowerAlerte ? `
+      ${d.empowerInteresse === 'OUI' ? `
         <button type="button" class="btn-primaire" style="margin-top:4px"
                 onclick="VueQuestionnaire.ouvrirAjoutTracker()" ${this._trackerAjoute ? 'disabled' : ''}>
           ${this._trackerAjoute ? '✅ Ajouté au Tracker Empower' : '➕ Ajouter au Tracker Empower'}
