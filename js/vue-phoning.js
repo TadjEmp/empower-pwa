@@ -934,6 +934,8 @@ window.VuePhoning = {
                 onclick="VuePhoning.demarrerAppelCompte('${c.ID_Compte}')">▶ Démarrer l'appel</button>
         <button class="btn-secondaire" style="flex:2;font-size:12px;padding:8px"
                 onclick="VuePhoning.demarrerSaisiePostAppel('${c.ID_Compte}')" title="Renseigner un appel déjà passé">📝 Saisie post appel</button>
+        <button class="btn-secondaire" style="flex:1;font-size:12px;padding:8px"
+                onclick="VuePhoning.ouvrirFormPlanif('${c.ID_Compte}')" title="Planifier un appel pour ce compte (apparaît dans Planning)">📅</button>
       </div>
     </div>`;
       }).join('') + `</div>`;
