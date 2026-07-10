@@ -59,7 +59,7 @@ window.VueDashboardManager = {
       ]);
       // BUG-07 : peuple le registre CDS avant le calcul des taux par CDS
       if (typeof initCDSRegistry === 'function') initCDSRegistry(objectifs);
-      this.state.dc = this._calculerChannel({ prospects, objectifs, params });
+      this.state.dc = this._calculerChannel({ prospects, objectifs, params, visites, appels });
       // Conservé brut pour les camemberts/CA cumulé (cf. dashboard-activite.js),
       // recalculés à chaque render() sans re-fetch — même pattern que VueDashboardCDS.
       this._raw = { comptes, visites, appels, objectifs, params };
@@ -77,9 +77,23 @@ window.VueDashboardManager = {
   toggleSemaineCamembert() { FilterState.set({ semaine: FilterState.get().semaine ? null : FiscalWeeks.codeDe() }); this.render(); },
   _donneesFiltrables() { return this._raw ? window.calculerCamembertsActivite(this._raw) : null; },
 
-  _calculerChannel({ prospects, objectifs, params }) {
+  _calculerChannel({ prospects, objectifs, params, visites, appels }) {
     const norm = v => String(v || '').trim().toUpperCase();
     const now  = Date.now();
+    // Audit UX 2026-07 — dernier contact réel (visite ou appel) par lead, ID_Cible
+    // pointant vers ID_Prospect. Sans ça, l'alerte "sans contact +45j" ne reflétait
+    // jamais l'activité terrain (cf. dernierContactLead ci-dessous).
+    const dernierContactLead = new Map();
+    [...(visites || []), ...(appels || [])].forEach(a => {
+      const id = String(a.ID_Cible || '');
+      if (!id) return;
+      const d = a.Date || a.Date_Planifiee || a.Timestamp;
+      if (!d) return;
+      const t = new Date(d).getTime();
+      if (!t) return;
+      const prev = dernierContactLead.get(id);
+      if (!prev || t > prev) dernierContactLead.set(id, t);
+    });
     // BUG-07 : quarter dynamique depuis PARAMS
     const paramMap = Object.fromEntries((params || []).map(p => [p.Parametre, p.Valeur]));
     const quarter  = paramMap.QuarterActif || 'Q1';
@@ -182,21 +196,28 @@ window.VueDashboardManager = {
       }))
       .sort((a, b) => (b.jours || 0) - (a.jours || 0));
 
-    // ── Alerte 45j sans contact ──
+    // ── Alerte 45j sans contact — dernier contact = plus récent entre visite/appel
+    // réel et date d'attribution/import (fallback si jamais contacté depuis). ──
+    const dernierContactTime = p => {
+      const reel = dernierContactLead.get(String(p.ID_Prospect || ''));
+      const fallback = p.Date_Attribution || p.Date_Import || p.Timestamp;
+      const fallbackT = fallback ? new Date(fallback).getTime() : 0;
+      return Math.max(reel || 0, fallbackT || 0) || null;
+    };
     const alerte45j = leads
       .filter(p => {
         const s = norm(p.STATUT_EMPOWER);
         if (['ARCHIVE', 'INTEGRE', 'SAISIE', 'A_TRAITER'].includes(s)) return false;
-        const ref = p.Date_Attribution || p.Date_Import || p.Timestamp;
-        if (!ref) return false;
-        return (now - new Date(ref).getTime()) / 86400000 > 45;
+        const t = dernierContactTime(p);
+        if (!t) return false;
+        return (now - t) / 86400000 > 45;
       })
       .map(p => {
-        const ref = p.Date_Attribution || p.Date_Import || p.Timestamp;
+        const t = dernierContactTime(p);
         return {
           nom:   p.Nom_Compte || '—',
           cds:   resolveCDS(p.PIN_CDS_Assigne || p.Nom_CDS),
-          jours: Math.floor((now - new Date(ref).getTime()) / 86400000),
+          jours: Math.floor((now - t) / 86400000),
           statut: p.STATUT_EMPOWER || '—',
         };
       })

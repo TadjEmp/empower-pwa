@@ -76,7 +76,7 @@ window.VueVisitesFDV = {
 
     app.innerHTML = `
       <header class="header-vue">
-        ${pin && !desktopSplit ? `<button class="btn-retour" onclick="VueVisitesFDV.retour()">←</button>` : ''}
+        ${pin ? `<button class="btn-retour" onclick="VueVisitesFDV.retour()" title="Tout désélectionner">←</button>` : ''}
         <h1>Visites FDV</h1>
       </header>
       <div class="dash-body avec-nav" style="padding:12px">

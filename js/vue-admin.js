@@ -840,15 +840,19 @@ window.VueAdmin = {
   },
 
   // ── Exports CSV thématiques ──
+  // Audit UX 2026-07 — séparateur virgule : Excel FR interprète la virgule comme
+  // séparateur décimal, pas de colonne — chaque ligne atterrissait donc entière
+  // dans une seule cellule ("lignes mélangées et illisibles"). Point-virgule,
+  // même convention que generateCSV() (js/utils.js) qui fonctionnait déjà.
   _toCSV(rows) {
     if (!rows || !rows.length) return '';
     const headers = Object.keys(rows[0]);
     const esc = v => {
       const s = v === null || v === undefined ? '' : String(v);
-      return s.includes(',') || s.includes('"') || s.includes('\n')
+      return s.includes(';') || s.includes('"') || s.includes('\n') || s.includes('\r')
         ? '"' + s.replace(/"/g, '""') + '"' : s;
     };
-    return [headers.join(','), ...rows.map(r => headers.map(h => esc(r[h])).join(','))].join('\r\n');
+    return [headers.join(';'), ...rows.map(r => headers.map(h => esc(r[h])).join(';'))].join('\r\n');
   },
 
   _telechargerCSV(csv, nom) {
@@ -875,28 +879,31 @@ window.VueAdmin = {
     } catch {}
   },
 
-  // Exports organisés par thème — confirmés pour le reporting manager
+  // Exports organisés par thème — confirmés pour le reporting manager.
+  // dateChamp : colonne utilisée pour appliquer le filtre de période (voir
+  // filtrePickupHtml/exporterDonnees) — absent = extrait toujours complet,
+  // car la donnée n'a pas de notion de période (roster, config).
   EXPORT_GROUPES: [
     {
       titre: '📋 Prospects & Pipeline',
       exports: [
-        { id: 'prospects', label: 'Pipeline complet (tous statuts)',    fichier: 'EMPOWER_MDB', onglet: '📋_PROSPECTS',          desc: 'Tous les prospects avec statut EMPOWER, potentiel, assignation CDS' },
-        { id: 'comptes',   label: 'Comptes actifs',                      fichier: 'EMPOWER_MDB', onglet: '🏢_COMPTES',             desc: 'Base clients avec CA FY25/FY26/Q1FY27, statuts, CDS assignés' },
+        { id: 'prospects', label: 'Pipeline complet (tous statuts)',    fichier: 'EMPOWER_MDB', onglet: '📋_PROSPECTS',          desc: 'Tous les prospects avec statut EMPOWER, potentiel, assignation CDS', dateChamp: 'Date_Import' },
+        { id: 'comptes',   label: 'Comptes actifs',                      fichier: 'EMPOWER_MDB', onglet: '🏢_COMPTES',             desc: 'Base clients avec CA FY25/FY26/Q1FY27, statuts, CDS assignés — extrait complet (roster, non filtré par période)' },
       ],
     },
     {
       titre: '📞 Activité terrain',
       exports: [
-        { id: 'visites',   label: 'Visites terrain',                     fichier: 'EMPOWER_MDB', onglet: '🗺️_VISITES',            desc: 'Toutes les visites planifiées et réalisées avec CR, questionnaire, GPS' },
-        { id: 'phoning',   label: 'Activité phoning',                    fichier: 'EMPOWER_MDB', onglet: '📞_PHONING',             desc: 'Historique des appels : statut, intérêt EMPOWER, freins, rappels' },
-        { id: 'actions',   label: 'Journal des actions (📊_ACTIONS)',    fichier: 'EMPOWER_MDB', onglet: '📊_ACTIONS',             desc: 'Toutes les actions logguées : alertes, exports, avancement pipeline' },
+        { id: 'visites',   label: 'Visites terrain',                     fichier: 'EMPOWER_MDB', onglet: '🗺️_VISITES',            desc: 'Toutes les visites planifiées et réalisées avec CR, questionnaire, GPS', dateChamp: 'Date' },
+        { id: 'phoning',   label: 'Activité phoning',                    fichier: 'EMPOWER_MDB', onglet: '📞_PHONING',             desc: 'Historique des appels : statut, intérêt EMPOWER, freins, rappels', dateChamp: 'Date' },
+        { id: 'actions',   label: 'Journal des actions (📊_ACTIONS)',    fichier: 'EMPOWER_MDB', onglet: '📊_ACTIONS',             desc: 'Toutes les actions logguées : alertes, exports, avancement pipeline', dateChamp: 'Date_Action' },
       ],
     },
     {
       titre: '🏆 Financier & Objectifs',
       exports: [
-        { id: 'objectifs', label: 'Objectifs & Primes FY27',             fichier: 'EMPOWER_MDB', onglet: '🎯_OBJECTIFS_PRIMES',   desc: 'Objectifs Q1-Q4 révisés, CA réalisé, primes par CDS' },
-        { id: 'sell_in',   label: 'Sell-In historique (FY25-FY26-FY27)', fichier: 'EMPOWER_MDB', onglet: '📉_SELL_IN_HISTORIQUE', desc: 'CA trimestriel historique par compte, canal, secteur' },
+        { id: 'objectifs', label: 'Objectifs & Primes FY27',             fichier: 'EMPOWER_MDB', onglet: '🎯_OBJECTIFS_PRIMES',   desc: 'Objectifs Q1-Q4 révisés, CA réalisé, primes par CDS — extrait complet (non filtré par période)' },
+        { id: 'sell_in',   label: 'Sell-In historique (FY25-FY26-FY27)', fichier: 'EMPOWER_MDB', onglet: '📉_SELL_IN_HISTORIQUE', desc: 'CA trimestriel historique par compte, canal, secteur — extrait complet (non filtré par période)' },
       ],
     },
   ],
@@ -912,7 +919,18 @@ window.VueAdmin = {
     const btn = document.getElementById(`btn-export-${id}`);
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Chargement…'; }
     try {
-      const data = await SheetsAPI.lire(exp.fichier, exp.onglet);
+      let data = await SheetsAPI.lire(exp.fichier, exp.onglet);
+      // Audit UX 2026-07 — le filtre "Pickup Date" n'était appliqué qu'à l'export
+      // Tracker EMPOWER ; les 7 autres exportaient toujours la table entière,
+      // quelle que soit la période sélectionnée à l'écran.
+      if (exp.dateChamp && (this.state.filtrePickupDe || this.state.filtrePickupA)) {
+        const de = this.state.filtrePickupDe ? new Date(this.state.filtrePickupDe).getTime() : 0;
+        const au = this.state.filtrePickupA  ? new Date(this.state.filtrePickupA + 'T23:59:59').getTime() : Infinity;
+        data = data.filter(r => {
+          const t = new Date(r[exp.dateChamp] || 0).getTime();
+          return t >= de && t <= au;
+        });
+      }
       const rows = this._aplatirExport(id, data);
       const csv  = this._toCSV(rows);
       const date = dateISOLocale();
@@ -1059,7 +1077,10 @@ window.VueAdmin = {
           <button class="btn-secondaire" style="padding:7px 12px;width:auto;align-self:flex-end"
                   onclick="VueAdmin.state.filtrePickupDe='';VueAdmin.state.filtrePickupA='';VueAdmin.render()">✕ Reset</button>
         </div>
-        <div style="font-size:11px;color:var(--c-text-2);margin-top:6px">Appliqué sur l'export Tracker EMPOWER (Date_Import).</div>
+        <div style="font-size:11px;color:var(--c-text-2);margin-top:6px">
+          Appliqué sur Tracker EMPOWER, Pipeline complet, Visites, Phoning et Journal des actions.
+          Comptes, Objectifs et Sell-In sont toujours extraits en entier (données non datées).
+        </div>
       </div>
     `;
     const trackerExportHtml = `
@@ -1113,6 +1134,7 @@ window.VueAdmin = {
                            color:${tab===t?'var(--c-primary)':'var(--c-text-2)'};cursor:pointer">${l}</button>`).join('')}
         </div>
         <div class="dash-body avec-nav">
+          <div class="dash-col-main">
           ${tab === 'suivi' ? this._renderSuivi()
           : tab === 'exports' ? `
             <div class="bloc-fiche">
@@ -1122,6 +1144,7 @@ window.VueAdmin = {
               </p>
               ${this._renderExports()}
             </div>` : this._renderFormLead()}
+          </div>
         </div>
         ${NavBar('home')}`;
       return;
