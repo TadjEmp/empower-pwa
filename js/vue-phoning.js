@@ -10,6 +10,22 @@ window.VuePhoning = {
   state: null,
   sessionAppels: 0, // Bloc 6 — compteur d'appels de la session (hors state : survit aux re-init())
 
+  // Bloc 3 §3 — questionnaire EMPOWER (compte déjà onboardé) : références Norton
+  // et opérations commerciales, sélection non obligatoire.
+  NORTON_PRODUITS: [
+    'Norton 360 · 1 poste', 'Norton 360 · 3 postes', 'Norton 360 · 5 postes', 'Norton 360 · 10 postes',
+    'Norton 360 Gamer', 'Norton Small Business', 'Norton VPN', 'Norton Utilities',
+  ],
+  OP_COMMERCIALES: ['2+1', '1+1', '-50%', '-70%'],
+
+  // Toggle générique pour les sélections multiples (widget QuestionnaireBranching.chipsMultiSelect).
+  toggleMultiSelect(champ, valeur) {
+    const arr = this.state.d[champ] || [];
+    const idx = arr.indexOf(valeur);
+    if (idx === -1) arr.push(valeur); else arr.splice(idx, 1);
+    this.render();
+  },
+
   _etatInitial() {
     return {
       phase: 'PRE',
@@ -35,6 +51,9 @@ window.VuePhoning = {
         // Qualification pendant appel (PhoneOS)
         statutCallPills: '',
         empowerQ: [false, false, false, false, false],
+        // Bloc 3 §3 — questionnaire EMPOWER (compte déjà onboardé) : sélection
+        // non obligatoire, stockée dans phoning.questionnaire_json.
+        norton360: [], opCommerciale: [],
       },
       // Wizard pas-à-pas de la phase CALL (1 = Résultat & Qualification, 2 = Notes & Ressources)
       callStep: 1,
@@ -51,6 +70,9 @@ window.VuePhoning = {
       journalChargement: false,
       modalEditAppel: null,
       confirmDeleteAppelId: null,
+      // Bloc 3 §4 — Rapport Phoning intégré : sous-vue Jour/Semaine/Historique
+      // au sein du Journal (remplace l'ancien onglet séparé vue-phoning-fdv.js).
+      journalVue: 'semaine', journalDate: dateISOLocale(),
       // EX-2 — extraction
       extractOuvert: false,
       extractFiltres: { debut: '', fin: '', cds: 'TOUS', resultat: 'TOUS' },
@@ -63,6 +85,9 @@ window.VuePhoning = {
   async init(idCible = null) {
     this._arreterTimerAppel(); // Bloc 6 — évite un timer orphelin si on quitte un appel en cours
     this.state = this._etatInitial();
+    // Bloc 3 §4 — Alexandra atterrit directement sur le Journal (ex-Rapport
+    // Phoning), seul mode auquel elle a accès (cf. setMode()).
+    if (Session.role === 'CHANNEL_MANAGER') this.state.mode = 'HISTORIQUE';
     this.render();
     try {
       const [comptes, planning] = await Promise.all([
@@ -103,6 +128,9 @@ window.VuePhoning = {
       this._restaurerBrouillon();
       this.state.chargement = false;
       this.render();
+      // Chargé systématiquement (pas seulement en mode Journal) — alimente aussi
+      // les KPI cards de l'onglet Base (Bloc 3 §1/§5).
+      this._chargerJournal();
     } catch(e) {
       this.state.chargement = false;
       document.getElementById('app').innerHTML = `<div class="erreur">Erreur : ${e.message}</div>`;
@@ -186,6 +214,11 @@ window.VuePhoning = {
 
   setSource(s)  { this.state.typeSource = s; this.state.cible = null; this.state.recherche = ''; this.render(); },
   setMode(m) {
+    // Bloc 3 §4 — Alexandra (CHANNEL_MANAGER) reste cantonnée au Journal lecture
+    // seule (elle n'a jamais eu accès à Planning/Base — ex-Visites/Phoning/Primes
+    // "raw CDS", cf. permissions.js) : seul l'ancien onglet Rapport Phoning séparé
+    // lui était ouvert, désormais fusionné ici.
+    if (Session.role === 'CHANNEL_MANAGER' && m !== 'HISTORIQUE') return;
     this.state.mode = m;
     if (m === 'HISTORIQUE') this._chargerJournal();
     this.render();
@@ -198,7 +231,7 @@ window.VuePhoning = {
     this.state.phase      = 'PRE';
     this.state.recherche  = '';
     this.state.geminiAnalyse = null;
-    Object.assign(this.state.d, { objectif:'', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'', typeAppel:'', interetScore:0, concurrentActuel:'', potentielEstime:'', statutCallPills:'', empowerQ:[false,false,false,false,false] });
+    Object.assign(this.state.d, { objectif:'', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'', typeAppel:'', interetScore:0, concurrentActuel:'', potentielEstime:'', statutCallPills:'', empowerQ:[false,false,false,false,false], norton360:[], opCommerciale:[] });
     this.render();
   },
 
@@ -222,8 +255,23 @@ window.VuePhoning = {
     this.state.callStep   = 1;
     this.state.recherche  = c.Nom_Compte;
     this.state.geminiAnalyse = null;
-    Object.assign(this.state.d, { objectif:'Prospection Empower', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'', typeAppel:'', interetScore:0, concurrentActuel:'', potentielEstime:'', statutCallPills:'', empowerQ:[false,false,false,false,false] });
+    Object.assign(this.state.d, { objectif:'Prospection Empower', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'', typeAppel:'', interetScore:0, concurrentActuel:'', potentielEstime:'', statutCallPills:'', empowerQ:[false,false,false,false,false], norton360:[], opCommerciale:[] });
     this._demarrerTimerAppel();
+    this.render();
+  },
+
+  // Bloc 3 §2 — "Saisie post appel" : renseigner un appel déjà passé (hors app),
+  // sans passer par la phase CALL chronométrée. Va directement en phase POST.
+  demarrerSaisiePostAppel(idCompte) {
+    const c = this.state.comptes.find(x => String(x.ID_Compte) === String(idCompte));
+    if (!c) { Toast.afficher('Compte introuvable', 'warning'); return; }
+    this.state.cible      = c;
+    this.state.typeSource = 'EXISTANT';
+    this.state.mode       = 'APPEL';
+    this.state.phase      = 'POST';
+    this.state.recherche  = c.Nom_Compte;
+    this.state.geminiAnalyse = null;
+    Object.assign(this.state.d, { objectif:'Prospection Empower', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'', typeAppel:'', interetScore:0, concurrentActuel:'', potentielEstime:'', statutCallPills:'', empowerQ:[false,false,false,false,false], norton360:[], opCommerciale:[] });
     this.render();
   },
 
@@ -453,7 +501,7 @@ window.VuePhoning = {
       await SheetsAPI.ecrire('EMPOWER_MDB', '📞_PHONING', {
         ID_Appel: genId('APPEL'),
         Date: dateISOLocale(),
-        Semaine_ISO: getISOWeek(),
+        Semaine_ISO: FiscalWeeks.codeDe(),
         PIN_CDS: Session.pin, Nom_CDS: Session.nom,
         ID_Cible: idCible, Reseller: c.Nom_Compte,
         Type_Appel: d.typeAppel || '',
@@ -468,6 +516,9 @@ window.VuePhoning = {
           empower_score:     (d.empowerQ || []).reduce((acc, v, i) => acc + (v ? [1,2,1,2,3][i] : 0), 0),
           empower_q:         d.empowerQ || [],
           statut_call:       d.statutCallPills || '',
+          // Bloc 3 §3 — sélection Norton 360/Op commerciale (compte EMPOWER, facultatif)
+          norton360:         d.norton360 || [],
+          op_commerciale:    d.opCommerciale || [],
         }),
         Frein_Principal: d.frein,
         Prochaine_Action: d.prochaineAction,
@@ -603,6 +654,31 @@ window.VuePhoning = {
     }
   },
 
+  // ── Bloc 3 §1/§5 — KPI cards "Aujourd'hui" sur l'onglet Base (pattern
+  //    .ch-stats généralisé) : nombre d'appels, réussis, sans réponse,
+  //    intéressés, commandes acceptées — de mon activité du jour. ──
+  _renderKpiBase() {
+    const auj = dateISOLocale();
+    const mesAppelsAuj = (this.state.journal || []).filter(a =>
+      Number(a.PIN_CDS) === Session.pin && (a.Date || '').slice(0, 10) === auj
+    );
+    const stats = {
+      total:       mesAppelsAuj.length,
+      reussis:     mesAppelsAuj.filter(a => a.Statut_Appel === 'Répondu').length,
+      sansReponse: mesAppelsAuj.filter(a => a.Statut_Appel === 'Répondeur').length,
+      interesses:  mesAppelsAuj.filter(a => ['Fort', 'Moyen'].includes(a.Interet_EMPOWER)).length,
+      commandes:   mesAppelsAuj.filter(a => a.Commande_Annoncee === 'Oui').length,
+    };
+    return `
+      <div class="ch-stats" style="border-radius:var(--radius-sm);margin-bottom:12px">
+        <div class="ch-stat"><div class="ch-stat-val">${stats.total}</div><div class="ch-stat-lbl">Appels</div></div>
+        <div class="ch-stat bleu"><div class="ch-stat-val">${stats.reussis}</div><div class="ch-stat-lbl">Réussis</div></div>
+        <div class="ch-stat coral"><div class="ch-stat-val">${stats.sansReponse}</div><div class="ch-stat-lbl">Sans réponse</div></div>
+        <div class="ch-stat"><div class="ch-stat-val">${stats.interesses}</div><div class="ch-stat-lbl">Intéressés</div></div>
+        <div class="ch-stat"><div class="ch-stat-val">${stats.commandes}</div><div class="ch-stat-lbl">Commandes</div></div>
+      </div>`;
+  },
+
   // ── Mode BASE : liste des comptes à appeler ──
   _renderBaseComptes() {
     const s = this.state;
@@ -627,11 +703,12 @@ window.VuePhoning = {
 
     return `<div class="q-champs">
       ${_tabs()}
+      ${this._renderKpiBase()}
       <input class="q-input" placeholder="🔍 Filtrer mes comptes…" value="${s.rechercheBase || ''}"
              oninput="VuePhoning.state.rechercheBase=this.value;VuePhoning.render()" style="margin-bottom:12px"/>
       ${liste.length === 0
         ? '<div style="padding:24px;text-align:center;color:var(--c-text-2)">Aucun résultat</div>'
-        : liste.map(c => {
+        : `<div class="phoning-base-grid">` + liste.map(c => {
             const statut = c.STATUT_COMPTE || '—';
             const silence = (() => { const ref = c.Date_Derniere_Action; return ref ? Math.floor((Date.now() - new Date(ref).getTime()) / (7*86400000)) : null; })();
             return `
@@ -648,10 +725,12 @@ window.VuePhoning = {
             <div style="display:flex;gap:8px">
               ${c.Tel ? `<a class="btn-secondaire" style="flex:1;font-size:12px;text-decoration:none;text-align:center;padding:8px" href="tel:${String(c.Tel).replace(/\s/g,'')}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${c.Tel}</a>` : ''}
               <button class="btn-primaire" style="flex:2;font-size:12px;padding:8px"
-                      onclick="VuePhoning.demarrerAppelCompte('${c.ID_Compte}')">▶ Appeler</button>
+                      onclick="VuePhoning.demarrerAppelCompte('${c.ID_Compte}')">▶ Démarrer l'appel</button>
+              <button class="btn-secondaire" style="flex:2;font-size:12px;padding:8px"
+                      onclick="VuePhoning.demarrerSaisiePostAppel('${c.ID_Compte}')" title="Renseigner un appel déjà passé">📝 Saisie post appel</button>
             </div>
           </div>`;
-          }).join('')}
+          }).join('') + `</div>`}
     </div>`;
   },
 
@@ -675,7 +754,7 @@ window.VuePhoning = {
   ouvrirEditAppel(id) {
     const a = this.state.journal.find(x => x.ID_Appel === id);
     if (!a) return;
-    if (!Session.voitTout() && Number(a.PIN_CDS) !== Session.pin) {
+    if (Session.role !== 'ADMIN' && Number(a.PIN_CDS) !== Session.pin) {
       Toast.afficher('Vous ne pouvez modifier que vos propres appels', 'warning'); return;
     }
     this.state.modalEditAppel = {
@@ -719,7 +798,7 @@ window.VuePhoning = {
   demanderSuppressionAppel(id) {
     const a = this.state.journal.find(x => x.ID_Appel === id);
     if (!a) return;
-    if (!Session.voitTout() && Number(a.PIN_CDS) !== Session.pin) {
+    if (Session.role !== 'ADMIN' && Number(a.PIN_CDS) !== Session.pin) {
       Toast.afficher('Vous ne pouvez supprimer que vos propres appels', 'warning'); return;
     }
     this.state.confirmDeleteAppelId = id;
@@ -820,13 +899,120 @@ window.VuePhoning = {
     if (s.journalChargement) {
       return `<div class="q-champs">${tabs}<div style="padding:32px;text-align:center;color:var(--c-text-2)">Chargement du journal…</div></div>`;
     }
-    if (!s.journal.length) {
-      return `<div class="q-champs">${tabs}<div style="padding:32px;text-align:center;color:var(--c-text-2)">Aucun appel enregistré.</div></div>`;
+    // Bloc 3 §4 — Rapport Phoning intégré : Manager/Admin voient les sessions
+    // groupées par commercial tant qu'aucun n'est choisi (même pattern que
+    // Planning, cf. _grouperParCommercialPlanning) — remplace l'ancien onglet
+    // séparé vue-phoning-fdv.js.
+    if (Session.voitTout() && !s.commercialSelectionne) {
+      return `<div class="q-champs">${tabs}${this._renderCartesCommerciauxJournal()}</div>`;
     }
-    const COUL = { Répondu: 'var(--c-success)', Répondeur: 'var(--c-warning)', Occupé: 'var(--c-warning)', 'Faux numéro': 'var(--c-danger)', Refus: 'var(--c-danger)' };
     return `<div class="q-champs">${tabs}
-      ${s.journal.map(a => {
-        const peutModif = Session.voitTout() || Number(a.PIN_CDS) === Session.pin;
+      ${Session.voitTout() ? this._boutonRetourCommerciauxPlanning() : ''}
+      ${this._renderSousOngletsJournal()}
+    </div>`;
+  },
+
+  // ── Bloc 3 §4 — cartes par commercial pour le Journal (Manager/Admin) ──
+  _renderCartesCommerciauxJournal() {
+    const map = new Map();
+    this.state.journal.forEach(a => {
+      const pin = String(a.PIN_CDS || '');
+      if (!pin) return;
+      if (!map.has(pin)) map.set(pin, { pin, nom: resolveCDS(a.PIN_CDS || a.Nom_CDS), total: 0, dernier: null });
+      const g = map.get(pin);
+      g.total++;
+      const d = (a.Date || '').slice(0, 10);
+      if (d && (!g.dernier || d > g.dernier)) g.dernier = d;
+    });
+    const groupes = [...map.values()].sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
+    if (!groupes.length) return `<div style="padding:32px;text-align:center;color:var(--c-text-2)">Aucun appel enregistré.</div>`;
+    return groupes.map(g => `
+      <div style="background:var(--c-surface);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;cursor:pointer"
+           onclick="VuePhoning.selectionnerCommercialPlanning('${g.pin}')">
+        <div style="font-weight:700;font-size:15px;color:var(--c-title)">${g.nom}</div>
+        <div style="font-size:12px;color:var(--c-text-2);margin-top:2px">
+          ${g.total} appel${g.total > 1 ? 's' : ''} · dernier ${g.dernier ? dateRelative(g.dernier) : '—'}
+        </div>
+      </div>`).join('');
+  },
+
+  setJournalVue(v) { this.state.journalVue = v; this.render(); },
+  journalPrecedent() {
+    const d = new Date(this.state.journalDate);
+    d.setDate(d.getDate() - (this.state.journalVue === 'semaine' ? 7 : 1));
+    this.state.journalDate = dateISOLocale(d);
+    this.render();
+  },
+  journalSuivant() {
+    const d = new Date(this.state.journalDate);
+    d.setDate(d.getDate() + (this.state.journalVue === 'semaine' ? 7 : 1));
+    this.state.journalDate = dateISOLocale(d);
+    this.render();
+  },
+
+  // Appels du commercial sélectionné (Manager) ou de soi-même (CDS, déjà
+  // filtré à l'origine par _chargerJournal()).
+  _appelsCommercialJournal() {
+    const pin = this.state.commercialSelectionne;
+    return pin ? this.state.journal.filter(a => String(a.PIN_CDS || '') === String(pin)) : this.state.journal;
+  },
+
+  _journalAppelsPeriode() {
+    const appels = this._appelsCommercialJournal();
+    if (this.state.journalVue === 'historique') return appels;
+    if (this.state.journalVue === 'jour') {
+      const iso = this.state.journalDate;
+      return appels.filter(a => (a.Date || '').slice(0, 10) === iso);
+    }
+    // semaine : lundi → dimanche de journalDate
+    const d = new Date(this.state.journalDate);
+    const lundi = new Date(d);
+    lundi.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    const debut = dateISOLocale(lundi);
+    const finD = new Date(lundi); finD.setDate(lundi.getDate() + 6);
+    const fin = dateISOLocale(finD);
+    return appels.filter(a => { const dt = (a.Date || '').slice(0, 10); return dt >= debut && dt <= fin; });
+  },
+
+  // ── Bloc 3 §4 — sous-onglets Jour/Semaine/Historique + KPI cards (pattern
+  //    .ch-stats généralisé, cf. Bloc 3 §1) + liste détaillée. ──
+  _renderSousOngletsJournal() {
+    const s = this.state;
+    const appels = this._journalAppelsPeriode();
+    const stats = {
+      total:       appels.length,
+      reussis:     appels.filter(a => a.Statut_Appel === 'Répondu').length,
+      sansReponse: appels.filter(a => a.Statut_Appel === 'Répondeur').length,
+      interesses:  appels.filter(a => ['Fort', 'Moyen'].includes(a.Interet_EMPOWER)).length,
+      commandes:   appels.filter(a => a.Commande_Annoncee === 'Oui').length,
+    };
+    const dateLbl = s.journalVue === 'jour'
+      ? new Date(s.journalDate + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+      : `Semaine du ${s.journalDate}`;
+    const COUL = { Répondu: 'var(--c-success)', Répondeur: 'var(--c-warning)', Occupé: 'var(--c-warning)', 'Faux numéro': 'var(--c-danger)', Refus: 'var(--c-danger)' };
+
+    return `
+      <div class="tabs-premium" style="margin-bottom:10px">
+        <button class="tab-btn-premium ${s.journalVue === 'jour' ? 'actif' : ''}" onclick="VuePhoning.setJournalVue('jour')">Jour</button>
+        <button class="tab-btn-premium ${s.journalVue === 'semaine' ? 'actif' : ''}" onclick="VuePhoning.setJournalVue('semaine')">Semaine</button>
+        <button class="tab-btn-premium ${s.journalVue === 'historique' ? 'actif' : ''}" onclick="VuePhoning.setJournalVue('historique')">Historique</button>
+      </div>
+      ${s.journalVue !== 'historique' ? `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <button class="btn-filtre" style="width:auto;padding:6px 10px" onclick="VuePhoning.journalPrecedent()">←</button>
+        <span style="font-size:13px;font-weight:600;flex:1;text-transform:capitalize">${dateLbl}</span>
+        <button class="btn-filtre" style="width:auto;padding:6px 10px" onclick="VuePhoning.journalSuivant()">→</button>
+      </div>` : ''}
+      <div class="ch-stats" style="margin-bottom:12px">
+        <div class="ch-stat"><div class="ch-stat-val">${stats.total}</div><div class="ch-stat-lbl">Appels</div></div>
+        <div class="ch-stat bleu"><div class="ch-stat-val">${stats.reussis}</div><div class="ch-stat-lbl">Réussis</div></div>
+        <div class="ch-stat coral"><div class="ch-stat-val">${stats.sansReponse}</div><div class="ch-stat-lbl">Sans réponse</div></div>
+        <div class="ch-stat"><div class="ch-stat-val">${stats.interesses}</div><div class="ch-stat-lbl">Intéressés</div></div>
+        <div class="ch-stat"><div class="ch-stat-val">${stats.commandes}</div><div class="ch-stat-lbl">Commandes</div></div>
+      </div>
+      ${appels.length === 0 ? `<div style="padding:32px;text-align:center;color:var(--c-text-2)">Aucun appel pour cette période.</div>` : appels.map(a => {
+        // Alexandra (CHANNEL_MANAGER) : lecture seule, jamais d'édition de données CDS brutes.
+        const peutModif = Session.role === 'ADMIN' || Number(a.PIN_CDS) === Session.pin;
         const coul = COUL[a.Statut_Appel] || 'var(--c-text-2)';
         return `
         <div style="background:var(--c-surface);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:11px;margin-bottom:8px">
@@ -847,7 +1033,7 @@ window.VuePhoning = {
           </div>` : ''}
         </div>`;
       }).join('')}
-    </div>`;
+    `;
   },
 
   // ── Modal édition appel ──
@@ -1001,12 +1187,16 @@ window.VuePhoning = {
           ${s.cible && s.mode === 'APPEL' ? `<span class="badge-compteur">${s.cible.Nom_Compte.slice(0, 14)}</span>` : ''}
         </div>
       </header>
-      <div class="q-contenu avec-nav">
+      <!-- Bloc 3 §1/§5 — desktop dense pour les modes liste/pilotage (Planning,
+           Base, Journal) ; le flux d'appel (PRE/CALL/POST) reste centré et
+           focalisé, cf. commentaire questionnaire.css. -->
+      <div class="q-contenu avec-nav ${['PLANNING','BASE','HISTORIQUE'].includes(s.mode) ? 'q-contenu-large' : ''}">
         ${s.mode === 'PLANNING'    ? this._renderPlanning()
         : s.mode === 'BASE'        ? this._renderBaseComptes()
         : s.mode === 'HISTORIQUE'  ? this._renderJournal()
         : this['_phase' + s.phase]()}
       </div>
+      ${(s.mode === 'BASE' || s.mode === 'PLANNING' || s.mode === 'HISTORIQUE') && Session.role !== 'CHANNEL_MANAGER' ? `<button class="fab" onclick="VuePhoning.demarrerAppelDirect()" title="Créer un appel (base ou à froid)" style="bottom:140px">＋</button>` : ''}
       ${NavBar('phoning')}
       ${this._renderModalEditAppel()}
       ${this._renderConfirmDeleteAppel()}
@@ -1187,13 +1377,13 @@ window.VuePhoning = {
       { lbl: 'Pas intéressé',  col: 'var(--c-danger)'   },
     ];
 
-    // Compte déjà onboardé Empower (HAS_EMPOWER=TRUE, même convention que
-    // vue-visites.js:208) → questionnaire de SUIVI plutôt que d'onboarding :
-    // ça n'a pas de sens de redemander "Accord pour créer le compte Empower ?"
-    // à un revendeur qui l'a déjà. Ne s'applique qu'aux comptes existants
-    // (typeSource EXISTANT) — un prospect/appel à froid n'a par définition pas
-    // encore de compte, l'onboarding reste la bonne grille.
-    const dejaOnboarde = s.typeSource === 'EXISTANT' && String(c?.HAS_EMPOWER || '').toUpperCase() === 'TRUE';
+    // Compte déjà onboardé Empower (via window.estEmpower, source unique du
+    // statut EMPOWER — cf. utils.js) → questionnaire de SUIVI plutôt que
+    // d'onboarding : ça n'a pas de sens de redemander "Accord pour créer le
+    // compte Empower ?" à un revendeur qui l'a déjà. Ne s'applique qu'aux
+    // comptes existants (typeSource EXISTANT) — un prospect/appel à froid n'a
+    // par définition pas encore de compte, l'onboarding reste la bonne grille.
+    const dejaOnboarde = s.typeSource === 'EXISTANT' && window.estEmpower(c);
 
     const EQ = dejaOnboarde ? [
       { label: 'Utilise activement son compte Empower ?',                 pts: 1 },
@@ -1490,7 +1680,18 @@ window.VuePhoning = {
           ${d.montantEstime ? `<span style="font-size:11px;color:var(--c-text-2)">${fmtCA(d.montantEstime) === '—' ? 'Montant invalide → —' : '≈ ' + fmtCA(d.montantEstime) + ' €'}</span>` : ''}
         </label>` : ''}
         <label class="q-label">Statut final ${this._r('statutFinal', ['EN_COURS', 'INTEGRE', 'ARCHIVE'])}</label>
-      </div>`}
+      </div>
+      ${window.estEmpower(s.cible) ? `
+      <div style="background:var(--c-surface);border:1.5px solid var(--c-primary);border-radius:var(--radius-sm);padding:12px;margin-bottom:4px">
+        <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.04em;margin-bottom:8px">RÉFÉRENCES NORTON — compte EMPOWER (facultatif)</div>
+        <label class="q-label" style="margin-top:0">Produits qui intéressent le revendeur
+          ${window.QuestionnaireBranching.chipsMultiSelect({ champ: 'norton360', options: this.NORTON_PRODUITS, valeurs: d.norton360, onToggle: 'VuePhoning.toggleMultiSelect' })}
+        </label>
+        <label class="q-label">Opération commerciale envisagée
+          ${window.QuestionnaireBranching.chipsMultiSelect({ champ: 'opCommerciale', options: this.OP_COMMERCIALES, valeurs: d.opCommerciale, onToggle: 'VuePhoning.toggleMultiSelect' })}
+        </label>
+      </div>` : ''}
+      `}
 
       <label class="q-label">Frein principal
         <input class="q-input" placeholder="ex : Prix" value="${d.frein}" oninput="VuePhoning.set('frein', this.value)"/></label>
@@ -1813,7 +2014,7 @@ window.VuePhoning = {
         ID_Appel: genId('APPEL'),
         Date_Planifiee: f.datePlanifiee,
         Date: dateISOLocale(),
-        Semaine_ISO: getISOWeek(),
+        Semaine_ISO: FiscalWeeks.codeDe(),
         PIN_CDS: Session.pin, Nom_CDS: Session.nom,
         ID_Cible: f.modeFroid ? '' : f.idCompte,
         Reseller: f.modeFroid ? f.froidNom : (c ? c.Nom_Compte : f.nomCompte),

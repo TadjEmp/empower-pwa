@@ -567,14 +567,14 @@ window.VueAdmin = {
           <div style="display:flex;gap:10px">
             <label style="flex:1">Canal probable
               <select onchange="VueAdmin.state.formLead.canal=this.value">
-                ${['EMPOWER','TD SYNNEX','INGRAM','LECLERC','Autre'].map(c =>
+                ${['EMPOWER','TD SYNNEX','INGRAM','Autre'].map(c =>
                   `<option value="${c}" ${f.canal === c ? 'selected' : ''}>${c}</option>`
                 ).join('')}
               </select>
             </label>
             <label style="flex:2">Type de revendeur
               <select onchange="VueAdmin.state.formLead.type=this.value">
-                ${['Revendeur IT','Leclerc','Bureau Vallée','Grande Surface','Autre'].map(t =>
+                ${['Revendeur IT','Bureau Vallée','Grande Surface','Autre'].map(t =>
                   `<option value="${t}" ${f.type === t ? 'selected' : ''}>${t}</option>`
                 ).join('')}
               </select>

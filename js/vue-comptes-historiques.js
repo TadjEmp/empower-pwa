@@ -8,7 +8,6 @@ window.VueComptesHistoriques = {
 
   state: {
     comptes: [], chargement: true, erreur: null,
-    filtreType: 'TOUS',   // TOUS | LECLERC | REVENDEURS
     filtreStatut: 'TOUS',
     recherche: '',
     triPar: 'PRIORITE',
@@ -50,13 +49,6 @@ window.VueComptesHistoriques = {
 
       this.state.comptes = rawV17.map(r => {
         const mdb = mapMDB.get(normaliserNom(r.RESELLER || '')) || null;
-        const canal = (r.CANAL || '').toUpperCase();
-        const reseller = (r.RESELLER || '').toUpperCase();
-        // LECLERC : matching inclusif case-insensitive (Bloc 9 #3)
-        const isLeclerc = canal === 'LECLERC'
-          || canal.includes('GMS') || canal.includes('GSA') || canal.includes('GRANDE SURFACE')
-          || reseller.includes('LECLERC')
-          || (canal.includes('DRIVE') && reseller.includes('LECLERC'));
 
         // parseCA robuste : valeurs corrompues (dates "11/4/1903") → null (Bloc 9 #2)
         const caFy25   = window.parseCA(r['CA FY25 €']  || r.CA_FY25  || null);
@@ -72,7 +64,6 @@ window.VueComptesHistoriques = {
           id:       mdb?.ID_Compte || null,
           nom:      r.RESELLER || '—',
           canal:    r.CANAL || '—',
-          type:     isLeclerc ? 'LECLERC' : 'REVENDEURS',
           caFy25,
           caFy26,
           caQ1Fy27,
@@ -101,8 +92,6 @@ window.VueComptesHistoriques = {
     // Recherche case-insensitive via normaliserNom (Bloc 9 #3)
     const q = normaliserNom(this.state.recherche);
     if (q) l = l.filter(c => normaliserNom(c.nom).includes(q));
-    // Filtre type LECLERC — matching sur type pré-calculé case-insensitive (Bloc 9 #3)
-    if (this.state.filtreType !== 'TOUS') l = l.filter(c => c.type === this.state.filtreType);
     if (this.state.filtreStatut !== 'TOUS') l = l.filter(c => {
       const st = (c.statut   || '').toUpperCase();
       const pr = (c.priorite || '').toUpperCase();
@@ -133,11 +122,6 @@ window.VueComptesHistoriques = {
     return l;
   },
 
-  _pillType(type) {
-    const map = { LECLERC: '#0050FF', REVENDEURS: '#FF6D68' };
-    return `<span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px;background:${map[type]||'#888'};color:#fff">${type}</span>`;
-  },
-
   render() {
     const app = document.getElementById('app');
     if (this.state.chargement) {
@@ -154,8 +138,6 @@ window.VueComptesHistoriques = {
     const total = this.state.comptes.length;
     // caTotal : null → 0 pour la somme (Bloc 9 #2)
     const caTotal = this.state.comptes.reduce((s, c) => s + (c.caFy26 || 0), 0);
-    const nbLeclerc = this.state.comptes.filter(c => c.type === 'LECLERC').length;
-    const nbRevendeurs = this.state.comptes.filter(c => c.type === 'REVENDEURS').length;
 
     app.innerHTML = `
       <header class="header-vue">
@@ -173,8 +155,6 @@ window.VueComptesHistoriques = {
       <!-- Stats rapides — KPI cards façon DASHBOARD_W09 -->
       <div class="kpi-grid-layout">
         ${kpiCard({ label: 'Comptes',    value: total,        accent: 'primary' })}
-        ${kpiCard({ label: 'Leclerc',    value: nbLeclerc,    accent: 'indigo' })}
-        ${kpiCard({ label: 'Revendeurs', value: nbRevendeurs, accent: 'coral' })}
         ${kpiCard({ label: 'CA FY26',    value: window.fmtCA(caTotal) !== '—' ? window.fmtCA(caTotal) : '—', unit: '€', accent: 'teal' })}
       </div>
 
@@ -184,11 +164,6 @@ window.VueComptesHistoriques = {
                style="border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:8px 12px;font-size:14px;width:100%"
                oninput="VueComptesHistoriques.setRecherche(this.value)"/>
         <div class="filtres-flags">
-          ${['TOUS','LECLERC','REVENDEURS'].map(t => `
-            <button class="btn-filtre ${this.state.filtreType === t ? 'actif' : ''}"
-                    onclick="VueComptesHistoriques.setType('${t}')">${t}</button>`).join('')}
-        </div>
-        <div class="filtres-flags" style="margin-top:6px">
           ${['TOUS','REACTIVER','CHURN','INACTIF','ACTIF'].map(s => `
             <button class="btn-filtre ${this.state.filtreStatut===s?'actif':''}"
                     onclick="VueComptesHistoriques.setStatut('${s}')">${s}</button>`).join('')}
@@ -218,8 +193,7 @@ window.VueComptesHistoriques = {
             return `
           <div class="carte-compte-v2">
             <div class="cc-pills" onclick="${c.id ? `Router.aller('#/compte/${c.id}')` : 'void(0)'}">
-              ${this._pillType(c.type)}
-              <span style="margin-left:auto;font-size:13px;font-weight:700;color:var(--c-title)">${caFy26Affiche}<span style="font-size:11px;font-weight:400;color:var(--c-text-2)"> FY26</span></span>
+              <span style="font-size:13px;font-weight:700;color:var(--c-title)">${caFy26Affiche}<span style="font-size:11px;font-weight:400;color:var(--c-text-2)"> FY26</span></span>
             </div>
             <div class="cc-nom" onclick="${c.id ? `Router.aller('#/compte/${c.id}')` : 'void(0)'}">${c.nom !== '—' ? c.nom : '—'}</div>
             <div class="cc-infos">
@@ -246,7 +220,6 @@ window.VueComptesHistoriques = {
         <div class="desktop-table-wrap">
           <table class="desktop-table-data-view">
             <thead><tr>
-              <th>Type</th>
               <th style="cursor:pointer" onclick="VueComptesHistoriques.triParColonneHist('compte')">Compte${this._indicateurTriHist('compte')}</th>
               <th style="cursor:pointer" onclick="VueComptesHistoriques.triParColonneHist('canal')">Canal${this._indicateurTriHist('canal')}</th>
               <th class="num" style="cursor:pointer" onclick="VueComptesHistoriques.triParColonneHist('fy25')">CA FY25${this._indicateurTriHist('fy25')}</th>
@@ -260,7 +233,6 @@ window.VueComptesHistoriques = {
                 const caFy25Fmt   = window.fmtCA(c.caFy25);
                 const caQ1Fy27Fmt = window.fmtCA(c.caQ1Fy27);
                 return `<tr>
-                  <td>${this._pillType(c.type)}</td>
                   <td class="compte-nom" onclick="${c.id ? `Router.aller('#/compte/${c.id}')` : 'void(0)'}">${c.nom !== '—' ? c.nom : '—'}</td>
                   <td>${c.canal !== '—' ? c.canal : '—'}</td>
                   <td class="num">${caFy25Fmt !== '—' ? caFy25Fmt + ' €' : '—'}</td>
@@ -287,7 +259,6 @@ window.VueComptesHistoriques = {
   },
 
   setRecherche: debounce(function(v) { VueComptesHistoriques.state.recherche = v; VueComptesHistoriques.render(); }, 250),
-  setType(t)   { this.state.filtreType   = t; this.render(); },
   setStatut(s) { this.state.filtreStatut = s; this.render(); },
   setTri(t)    { this.state.triPar = t; this.state.triCol = null; this.render(); },
 };

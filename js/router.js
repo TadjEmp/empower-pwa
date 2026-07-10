@@ -23,6 +23,9 @@ const Router = {
 
     // ── Navigation V2.1 ──
     { pattern: /^#\/dashboard$/,                    vue: 'VueDashboardCDS',       auth: true  },
+    // Bloc 2 §1 — Reporting personnel CDS : même vue que #/dashboard, mode
+    // "analyse" activé en interne via _contexteReporting() (cf. VueDashboardCDS).
+    { pattern: /^#\/reporting-cds$/,                vue: 'VueDashboardCDS',       auth: true  },
     { pattern: /^#\/empower-tracker$/,              vue: 'VuePipeline',           auth: true  },
     { pattern: /^#\/comptes-historiques$/,          vue: 'VueComptesHistoriques', auth: true  },
     { pattern: /^#\/phoning$/,                      vue: 'VuePhoning',            auth: true  },
@@ -33,7 +36,7 @@ const Router = {
     { pattern: /^#\/objectifs$/,                    vue: 'VueObjectifs',          auth: true  },
     { pattern: /^#\/primes$/,                       vue: 'VuePrimes',             auth: true  },
     { pattern: /^#\/visites-fdv$/,                  vue: 'VueVisitesFDV',         auth: true  },
-    { pattern: /^#\/phoning-fdv$/,                  vue: 'VuePhoningFDV',         auth: true  },
+    // #/phoning-fdv retiré (Bloc 3 §4) — intégré dans l'onglet Journal de #/phoning.
 
     // ── Routes auxiliaires ──
     { pattern: /^#\/photos$/,                       vue: 'VuePhotos',             auth: true  },

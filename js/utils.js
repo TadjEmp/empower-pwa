@@ -70,13 +70,6 @@ function formatEuro(val) {
   return formatEUR(val);
 }
 
-function getISOWeek(date = new Date()) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return `S${String(Math.ceil((((d - yearStart) / 86400000) + 1) / 7)).padStart(2, '0')}`;
-}
-
 function dateRelative(isoStr) {
   if (!isoStr) return '—';
   const d = new Date(isoStr);
@@ -93,6 +86,15 @@ function estDepassee(isoStr) {
   if (!isoStr) return false;
   return new Date(isoStr) < new Date();
 }
+
+// ── estEmpower(compte) — source unique du statut EMPOWER d'un compte ──
+// Tolérant aux variantes de casse du mapping GAS-compat (Has_EMPOWER / HAS_EMPOWER / has_empower)
+// pour ne pas reproduire le bug de lecture trouvé dans vue-fiche-compte.js / vue-visites.js / vue-phoning.js.
+function estEmpower(compte) {
+  const v = compte && (compte.Has_EMPOWER ?? compte.HAS_EMPOWER ?? compte.has_empower);
+  return String(v || '').trim().toLowerCase() === 'oui';
+}
+window.estEmpower = estEmpower;
 
 function slugify(str = '') {
   return str.toLowerCase().trim()
@@ -181,6 +183,10 @@ function NavBar(actif) {
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v8h4"/><path d="M18 9h2a2 2 0 0 1 2 2v11h-4"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>' },
     { id: 'reporting',   hash: '#/manager',             mobileNav: true,  lbl: 'Reporting',
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="4" height="12" x="2" y="6" rx="1"/><rect width="4" height="16" x="9" y="2" rx="1"/><rect width="4" height="8" x="16" y="10" rx="1"/></svg>' },
+    // Bloc 2 §1 — Reporting personnel CDS (tabId distinct de 'reporting' car
+    // route différente : #/reporting-cds → VueDashboardCDS, pas #/manager).
+    { id: 'reporting_cds', hash: '#/reporting-cds',     mobileNav: true,  lbl: 'Reporting',
+      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="4" height="12" x="2" y="6" rx="1"/><rect width="4" height="16" x="9" y="2" rx="1"/><rect width="4" height="8" x="16" y="10" rx="1"/></svg>' },
     // Activité (sidebar desktop uniquement)
     { id: 'visites',     hash: '#/visites',             mobileNav: false, lbl: 'Mon Planning',
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="8" y1="18" x2="8" y2="18"/><line x1="12" y1="18" x2="12" y2="18"/></svg>' },
@@ -188,11 +194,10 @@ function NavBar(actif) {
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>' },
     { id: 'photos',      hash: '#/photos',              mobileNav: false, lbl: 'Mes Photos',
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>' },
-    // Section 9 cahier des charges — vues consolidées Channel (lecture seule FDV)
+    // Section 9 cahier des charges — vue consolidée Channel (lecture seule FDV)
+    // 'phoning_fdv' retiré (Bloc 3 §4) — intégré dans l'onglet Journal de #/phoning.
     { id: 'visites_fdv', hash: '#/visites-fdv',         mobileNav: false, lbl: 'Visites FDV',
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' },
-    { id: 'phoning_fdv', hash: '#/phoning-fdv',         mobileNav: false, lbl: 'Rapport Phoning',
-      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>' },
     // Données (sidebar desktop uniquement)
     { id: 'historiques', hash: '#/comptes-historiques', mobileNav: false, lbl: 'Historique CA',
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>' },
@@ -211,8 +216,8 @@ function NavBar(actif) {
   // vue-comptes-historiques.js) plutôt qu'une entrée de nav de premier niveau —
   // la route #/comptes-historiques reste valide et protégée par Permissions.
   const SECTIONS = [
-    { lbl: null,        ids: ['home', 'tracker', 'comptes', 'reporting'] },
-    { lbl: 'Activité',  ids: ['visites', 'phoning', 'visites_fdv', 'phoning_fdv', 'photos'] },
+    { lbl: null,        ids: ['home', 'tracker', 'comptes', 'reporting', 'reporting_cds'] },
+    { lbl: 'Activité',  ids: ['visites', 'phoning', 'visites_fdv', 'photos'] },
     { lbl: 'Données',   ids: ['objectifs', 'primes'] },
     { lbl: 'Admin',     ids: ['admin'] },
   ];
@@ -326,9 +331,8 @@ const DrawerMenu = (function () {
   // Items de navigation secondaire du drawer
   const ITEMS = [
     { id: 'visites',     hash: '#/visites',              ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', lbl: 'Mon Planning',   roles: ['ADMIN','CDS'] },
-    { id: 'phoning',     hash: '#/phoning',              ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>', lbl: 'Phoning',          roles: ['ADMIN','CDS'] },
+    { id: 'phoning',     hash: '#/phoning',              ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>', lbl: 'Phoning',          roles: ['ADMIN','CDS','CHANNEL_MANAGER'] },
     { id: 'visites_fdv', hash: '#/visites-fdv',          ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', lbl: 'Visites FDV',       roles: ['CHANNEL_MANAGER'] },
-    { id: 'phoning_fdv', hash: '#/phoning-fdv',          ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>', lbl: 'Rapport Phoning',   roles: ['CHANNEL_MANAGER', 'ADMIN'] },
     { id: 'photos',      hash: '#/photos',               ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>', lbl: 'Mes Photos',        roles: ['ADMIN','CDS','CHANNEL_MANAGER'] },
     { id: 'historiques', hash: '#/comptes-historiques',  ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>', lbl: 'Historique CA',   roles: ['ADMIN','CDS','CHANNEL_MANAGER'] },
     { id: 'objectifs',   hash: '#/objectifs',            ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', lbl: 'Mes Objectifs',    roles: ['ADMIN','CDS'] },
@@ -455,7 +459,6 @@ const Topbar = (function () {
   // dupliqués ici (volontairement) pour ne pas coupler Topbar au rendu de NavBar.
   const SECTIONS_PAR_HASH = [
     { base: '#/visites-fdv',         section: 'Activité' },
-    { base: '#/phoning-fdv',         section: 'Activité' },
     { base: '#/visites',             section: 'Activité' },
     { base: '#/phoning',             section: 'Activité' },
     { base: '#/photos',              section: 'Activité' },
@@ -697,6 +700,67 @@ function skeletonKPI(cols = 4) {
     ${Array.from({length: cols}, () =>
       `<div class="skeleton-box" style="height:90px;border-radius:10px"></div>`
     ).join('')}
+  </div>`;
+}
+
+// ── svgDonut(segments, opts) — camembert SVG générique, réutilisable ──
+// segments: [{label, value, color, onclick?}] — value en compte brut, % calculé ici.
+// opts: {size?, epaisseur?, centreLabel?, centreValeur?}
+// Chaque secteur cliquable si `onclick` est fourni (attribut JS string, ex. "Foo.bar('x')").
+function svgDonut(segments, opts = {}) {
+  const size = opts.size || 120;
+  const ep   = opts.epaisseur || 18;
+  const r    = (size - ep) / 2;
+  const cx = size / 2, cy = size / 2;
+  const total = (segments || []).reduce((s, x) => s + (Number(x.value) || 0), 0);
+
+  if (!total) {
+    return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--c-border)" stroke-width="${ep}"/>
+      <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" font-size="11" fill="var(--c-text-2)">—</text>
+    </svg>`;
+  }
+
+  let angleDebut = -90;
+  const arcs = segments.filter(s => s.value > 0).map(s => {
+    const part = s.value / total;
+    const angleFin = angleDebut + part * 360;
+    const grandArc = (angleFin - angleDebut) > 180 ? 1 : 0;
+    const toRad = a => (a - 90) * Math.PI / 180;
+    // Point de départ/fin sur le cercle moyen (rayon r), tracé en arc épais via stroke.
+    const x1 = cx + r * Math.cos(toRad(angleDebut + 90)), y1 = cy + r * Math.sin(toRad(angleDebut + 90));
+    const x2 = cx + r * Math.cos(toRad(angleFin + 90)),   y2 = cy + r * Math.sin(toRad(angleFin + 90));
+    const pct = Math.round(part * 100);
+    const clic = s.onclick ? ` style="cursor:pointer" onclick="${s.onclick}"` : '';
+    const html = `<path d="M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${grandArc} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}"
+      fill="none" stroke="${s.color}" stroke-width="${ep}"${clic}><title>${s.label} · ${pct}% (${s.value})</title></path>`;
+    angleDebut = angleFin;
+    return html;
+  }).join('');
+
+  const centreLabel  = opts.centreLabel  || '';
+  const centreValeur = opts.centreValeur ?? total;
+
+  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
+    ${arcs}
+    <text x="${cx}" y="${cy - (centreLabel ? 6 : 0)}" text-anchor="middle" dominant-baseline="middle" font-size="18" font-weight="700" fill="var(--c-title)">${centreValeur}</text>
+    ${centreLabel ? `<text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="9" fill="var(--c-text-2)">${centreLabel}</text>` : ''}
+  </svg>`;
+}
+
+// Légende HTML associée à un svgDonut — même tableau `segments`, avec %.
+function legendeDonut(segments) {
+  const total = (segments || []).reduce((s, x) => s + (Number(x.value) || 0), 0);
+  return `<div class="donut-legende">
+    ${(segments || []).map(s => {
+      const pct = total > 0 ? Math.round(s.value / total * 100) : 0;
+      const clic = s.onclick ? ` style="cursor:pointer" onclick="${s.onclick}"` : '';
+      return `<div class="donut-legende-item"${clic}>
+        <span class="donut-legende-puce" style="background:${s.color}"></span>
+        <span class="donut-legende-lbl">${s.label}</span>
+        <span class="donut-legende-val">${s.value} <span style="opacity:.6">(${pct}%)</span></span>
+      </div>`;
+    }).join('')}
   </div>`;
 }
 

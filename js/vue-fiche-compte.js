@@ -30,6 +30,22 @@ window.VueFicheCompte = {
     }
   },
 
+  // Bloc 1 §6.2 — dates dernière visite / dernier appel / prochaine visite,
+  // calculées depuis this.state.visites/appels (déjà chargés) plutôt que lues
+  // sur un champ figé de la fiche compte.
+  _dateLigne(iso) { return iso ? dateRelative(String(iso).slice(0, 10)) : '—'; },
+  _dernierVisiteRealisee() {
+    const v = (this.state.visites || []).find(x => String(x.Statut_Visite || '').toLowerCase() === 'realisee');
+    return v ? v.Date : null;
+  },
+  _prochaineVisitePlanifiee() {
+    const today = dateISOLocale();
+    const futures = (this.state.visites || [])
+      .filter(x => ['planifiee', 'en_cours'].includes(String(x.Statut_Visite || '').toLowerCase()) && String(x.Date || '').slice(0, 10) >= today)
+      .sort((a, b) => new Date(a.Date) - new Date(b.Date));
+    return futures[0]?.Date || null;
+  },
+
   // Extrait de init() — chargement pur des données, sans toucher #app.
   // Réutilisé par le panneau docké desktop (VueComptes.ouvrirFiche) qui ne
   // doit pas remplacer la vue Comptes en arrière-plan.
@@ -40,7 +56,12 @@ window.VueFicheCompte = {
       SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES'),
       SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING'),
     ]);
-    const compte = comptes.find(c => String(c.ID_Compte) === String(idCompte));
+    // ID_Compte (id_compte_gas) est un identifiant legacy pas garanti non-null sur
+    // tous les chemins d'écriture — on tente d'abord la vraie clé primaire Supabase
+    // (_uuid) avant de retomber sur ID_Compte, pour ne pas échouer silencieusement
+    // sur un compte dont l'ID legacy ne serait pas renseigné.
+    const compte = comptes.find(c => String(c._uuid) === String(idCompte))
+                || comptes.find(c => String(c.ID_Compte) === String(idCompte));
     if (!compte) throw new Error(`Compte ${idCompte} introuvable`);
 
     const nomNorm = normaliserNom(compte.Nom_Compte);
@@ -227,7 +248,10 @@ window.VueFicheCompte = {
           <div class="id-ligne"><span>Téléphone</span><strong>${c.Tel ? `<a class="lien-tel" href="tel:${c.Tel.replace(/\s/g,'')}">${c.Tel}</a>` : '—'}</strong></div>
           <div class="id-ligne"><span>Email</span><strong>${c.Email ? `<a class="lien-email" href="mailto:${c.Email}">${c.Email}</a>` : '—'}</strong></div>
           <div class="id-ligne"><span>CDS</span><strong>${window.resolveCDS(c.PIN_CDS_Assigne || c.Nom_CDS)}</strong></div>
-          <div class="id-ligne"><span>EMPOWER</span><strong>${c.HAS_EMPOWER || '—'}</strong></div>
+          <div class="id-ligne"><span>EMPOWER</span><strong>${window.estEmpower(c) ? 'Oui' : 'Non'}</strong></div>
+          <div class="id-ligne"><span>Dernière visite</span><strong>${this._dateLigne(this._dernierVisiteRealisee())}</strong></div>
+          <div class="id-ligne"><span>Dernier appel</span><strong>${this._dateLigne(this.state.appels[0]?.Date)}</strong></div>
+          <div class="id-ligne"><span>Prochaine visite</span><strong>${this._dateLigne(this._prochaineVisitePlanifiee())}</strong></div>
           <div class="id-ligne"><span>CA FY25</span><strong>${window.fmtCA(this.state.v17?.['CA FY25 €'] ?? c.CA_FY25)} €</strong></div>
           <div class="id-ligne"><span>CA FY26</span><strong>${window.fmtCA(this.state.v17?.['CA FY26 €'] ?? c.CA_FY26)} €</strong></div>
           <div class="id-ligne"><span>Dernier Q (Q1·27)</span><strong>${(window.parseCA(this.state.v17?.['CA Q1FY27 €'] ?? c.CA_Q1FY27) !== null ? window.fmtCA(window.parseCA(this.state.v17?.['CA Q1FY27 €'] ?? c.CA_Q1FY27)) : '—')} €</strong></div>

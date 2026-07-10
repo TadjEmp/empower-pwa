@@ -45,8 +45,11 @@ window.VueObjectifs = {
       this.state.params     = paramMap;
       this.state.nsb        = nsb;
       this.state.prospects  = prospects;
-      this.state.quarter    = paramMap.QuarterActif || 'Q1';
-      this.state.semaine    = getISOWeek();
+      // Bloc 2 §3 — quarter persisté via FilterState (survit à la navigation),
+      // recale sur QuarterActif seulement si l'utilisateur n'a encore rien choisi.
+      FilterState.ensureQuarterDefault(paramMap.QuarterActif || 'Q1');
+      this.state.quarter    = FilterState.get().quarter;
+      this.state.semaine    = FiscalWeeks.codeDe();
       this.state.chargement = false;
       this.render();
     } catch(e) {
@@ -136,6 +139,15 @@ window.VueObjectifs = {
   },
   fermerModalSaisie() { this.state.modalSaisie = false; this.render(); },
 
+  // Bloc 2 §3 — consultation Q1-Q4 : les données/calculs sont déjà génériques
+  // par quarter (${q}_CA_Realise, ${q}_Obj_Revise, …), il ne manquait que le
+  // sélecteur pour les parcourir depuis l'écran Objectifs.
+  setQuarter(q) {
+    this.state.quarter = q;
+    FilterState.set({ quarter: q });
+    this.render();
+  },
+
   ouvrirModalCA() {
     this.state.formCA = { quarter: this.state.quarter, montant: '' };
     this.state.modalCA = true;
@@ -155,7 +167,7 @@ window.VueObjectifs = {
     this.state.savingCA = true;
     this.render();
     try {
-      await SheetsAPI.mettreAJourCA(quarter, val);
+      await SheetsAPI.mettreAJourCA(`${quarter}FY27`, val);
       SheetsAPI.viderCache('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES');
       Toast.afficher('✅ CA déclaré avec succès', 'succes');
       this.state.modalCA = false;
@@ -427,8 +439,11 @@ window.VueObjectifs = {
       </header>
       <div class="avec-nav dash-body" style="padding:12px">
         <div class="dash-col-main">
+        <div class="q-chips" style="padding:0;margin-bottom:10px">
+          ${['Q1', 'Q2', 'Q3', 'Q4'].map(qt => `<button class="q-chip ${q === qt ? 'active' : ''}" onclick="VueObjectifs.setQuarter('${qt}')">${qt} FY27</button>`).join('')}
+        </div>
         <p style="font-size:12px;color:var(--c-text-2);margin-bottom:8px">
-          Quarter actif : <strong>${q}</strong> FY27 · ${this.state.semaine}
+          Quarter consulté : <strong>${q}</strong> FY27${q === (this.state.params.QuarterActif || 'Q1') ? ' (en cours)' : ''} · ${this.state.semaine}
         </p>
         ${corps}
         </div>

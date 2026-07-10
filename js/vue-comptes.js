@@ -6,13 +6,62 @@ window.VueComptes = {
 
   state: {
     comptes: [], recherche: '', filtreStatut: 'TOUS',
-    filtreCanal: 'TOUS',   // BUG-04 : TOUS | LECLERC | REVENDEURS
+    filtreEmpower: 'TOUS', // TOUS | EMPOWER | GROSSISTE — dérivé de has_empower (cf. décisions Bloc 1 §6.4)
     filtreCDSPin: 'TOUS',  // BUG-06 : filtre Manager par CDS
     triPar: 'PRIORITE', chargement: true,
     triCol: null, triSens: 'asc', // Bloc 4 — tri de colonnes datagrid desktop
     // Bloc 9 refonte desktop — fiche compte en panneau docké (split-view),
     // la liste reste visible et cliquable derrière (≥900px uniquement).
     ficheDockee: null, ficheDockeeChargement: false,
+    datesLive: new Map(), // Bloc 1 §6.2 — clé ID_Compte, cf. _calculerDatesLive
+  },
+
+  // ── Bloc 1 §6.2 — dates dernière visite / dernier appel / prochaine visite,
+  //    calculées depuis visites/phoning plutôt que lues sur un champ figé.
+  _calculerDatesLive(visites, appels) {
+    const map = new Map();
+    const today = dateISOLocale();
+    const entree = id => {
+      if (!map.has(id)) map.set(id, { dernierVisite: null, dernierAppel: null, prochaineVisite: null });
+      return map.get(id);
+    };
+    (visites || []).forEach(v => {
+      const id = String(v.ID_Cible || '').trim();
+      if (!id || v.deleted) return;
+      const d = String(v.Date || '').slice(0, 10);
+      if (!d) return;
+      const e = entree(id);
+      const statut = String(v.Statut_Visite || '').toLowerCase();
+      if (statut === 'realisee') {
+        if (!e.dernierVisite || d > e.dernierVisite) e.dernierVisite = d;
+      } else if (['planifiee', 'en_cours'].includes(statut) && d >= today) {
+        if (!e.prochaineVisite || d < e.prochaineVisite) e.prochaineVisite = d;
+      }
+    });
+    (appels || []).forEach(a => {
+      const id = String(a.ID_Cible || '').trim();
+      if (!id || a.deleted) return;
+      const d = String(a.Date || '').slice(0, 10);
+      if (!d) return;
+      const e = entree(id);
+      if (!e.dernierAppel || d > e.dernierAppel) e.dernierAppel = d;
+    });
+    return map;
+  },
+
+  // Dernier contact (visite OU appel, le plus récent des deux) pour un compte —
+  // retombe sur le champ figé Date_Derniere_Action si aucune ligne visites/phoning
+  // n'existe encore pour ce compte (ex. comptes importés jamais encore travaillés).
+  _dernierContact(c) {
+    const live = this.state.datesLive.get(String(c.ID_Compte || ''));
+    const dates = [live?.dernierVisite, live?.dernierAppel].filter(Boolean);
+    if (dates.length) return dates.sort().pop();
+    return c.Date_Derniere_Action || c.date_derniere_action || null;
+  },
+
+  _prochaineVisite(c) {
+    const live = this.state.datesLive.get(String(c.ID_Compte || ''));
+    return live?.prochaineVisite || c.Date_prochaine_action || null;
   },
 
   // ── Bloc 9 — fiche compte : docké sur desktop, plein écran sur mobile ──
@@ -70,7 +119,7 @@ window.VueComptes = {
       case 'canal':  return normaliserNom(c.CANAL || '');
       case 'fy26':   return window.parseCA(c.CA_FY26) || 0;
       case 'q1fy27': return window.parseCA(c.CA_Q1FY27) || 0;
-      case 'action': return c.Date_prochaine_action ? new Date(c.Date_prochaine_action).getTime() : 0;
+      case 'action': { const d = this._prochaineVisite(c); return d ? new Date(d).getTime() : 0; }
       case 'cds':    return window.resolveCDS(c.PIN_CDS_Assigne) || '';
       default:       return '';
     }
@@ -91,16 +140,22 @@ window.VueComptes = {
     this.state.chargement = true;
     this.render();
     try {
-      const [raw, objectifs, cdsApi] = await Promise.all([
+      const [raw, objectifs, cdsApi, visites, appels] = await Promise.all([
         SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
         SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
         SheetsAPI.lireCDS(), // V5 BUG1 — liste CDS dynamique (inclut Alexandra)
+        SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES').catch(() => []),
+        SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING').catch(() => []),
       ]);
       initCDSRegistry(objectifs); // BUG-02
       // BUG-06 : CDS ne voit que ses comptes dès l'ouverture
       this.state.comptes = raw.filter(c =>
         Session.voitTout() || Number(c.PIN_CDS_Assigne) === Session.pin
       );
+      // Bloc 1 §6.2 — dates dernière visite / dernier appel / prochaine visite
+      // calculées en direct depuis visites/phoning, pas depuis les champs figés
+      // sur comptes (Date_Derniere_Action peut être désynchronisé).
+      this.state.datesLive = this._calculerDatesLive(visites, appels);
       // V5 BUG1 — source de vérité lireCDS (Alexandra incluse) ; fallback OBJECTIFS_PRIMES
       this._cdsListe = (Array.isArray(cdsApi) && cdsApi.length)
         ? cdsApi.map(c => ({ pin: Number(c.pin), nom: String(c.nom) }))
@@ -137,11 +192,11 @@ window.VueComptes = {
       normaliserNom(c.SECTEUR      || '').includes(q)
     );
 
-    // Filtre LECLERC / REVENDEURS — case-insensitive inclusif
-    if (this.state.filtreCanal === 'LECLERC') {
-      l = l.filter(c => normaliserNom(c.CANAL || '').includes('LECLERC'));
-    } else if (this.state.filtreCanal === 'REVENDEURS') {
-      l = l.filter(c => !normaliserNom(c.CANAL || '').includes('LECLERC'));
+    // Filtre EMPOWER / GROSSISTE — dérivé de has_empower, pas de string-matching
+    if (this.state.filtreEmpower === 'EMPOWER') {
+      l = l.filter(c => window.estEmpower(c));
+    } else if (this.state.filtreEmpower === 'GROSSISTE') {
+      l = l.filter(c => !window.estEmpower(c));
     }
 
     // Filtre statut calculé dynamiquement (parseCA — résistant aux dates corrompues)
@@ -187,6 +242,14 @@ window.VueComptes = {
     return p ? `<span class="badge-priorite ${map[p] || ''}">${p}</span>` : '';
   },
 
+  // Flag EMPOWER / GROSSISTE — visible au premier coup d'œil (Bloc 1 §6.3/6.4).
+  // Le flag "éclair" sur un compte GROSSISTE signale un potentiel onboarding.
+  _badgeEmpower(c) {
+    return window.estEmpower(c)
+      ? `<span class="badge-empower badge-empower-oui" title="Compte Empower">⭐ Empower</span>`
+      : `<span class="badge-empower badge-empower-non" title="Grossiste — potentiel onboarding Empower">⚡ Grossiste</span>`;
+  },
+
   render() {
     const app = document.getElementById('app');
     if (this.state.chargement) {
@@ -201,7 +264,7 @@ window.VueComptes = {
     const nbReact   = _cs.filter(c => this._statutCompte(c) === 'a_reactiver').length;
     const caTotalP  = _cs.reduce((s, c) => s + (window.parseCA(c.CA_Q1FY27) || window.parseCA(c.CA_FY26) || 0), 0);
     const nb45j     = _cs.filter(c => {
-      const d = c.Date_Derniere_Action || c.date_derniere_action;
+      const d = this._dernierContact(c);
       if (!d) return false;
       return (Date.now() - new Date(d).getTime()) / 86400000 > 45;
     }).length;
@@ -256,14 +319,14 @@ window.VueComptes = {
                   onclick="VueComptes.setFiltre('SANS_CDS')">Sans CDS</button>` : ''}
         </div>
 
-        <!-- BUG-04 : filtres LECLERC / REVENDEURS -->
+        <!-- Filtre EMPOWER / GROSSISTE — dérivé de has_empower (Bloc 1 §6.4) -->
         <div class="filtres-flags">
-          <button class="btn-filtre ${this.state.filtreCanal === 'TOUS' ? 'actif' : ''}"
-                  onclick="VueComptes.setFiltreCanal('TOUS')">Tous canaux</button>
-          <button class="btn-filtre ${this.state.filtreCanal === 'LECLERC' ? 'actif' : ''}"
-                  onclick="VueComptes.setFiltreCanal('LECLERC')">Leclerc</button>
-          <button class="btn-filtre ${this.state.filtreCanal === 'REVENDEURS' ? 'actif' : ''}"
-                  onclick="VueComptes.setFiltreCanal('REVENDEURS')">Revendeurs</button>
+          <button class="btn-filtre ${this.state.filtreEmpower === 'TOUS' ? 'actif' : ''}"
+                  onclick="VueComptes.setFiltreEmpower('TOUS')">Tous</button>
+          <button class="btn-filtre ${this.state.filtreEmpower === 'EMPOWER' ? 'actif' : ''}"
+                  onclick="VueComptes.setFiltreEmpower('EMPOWER')">⭐ Empower</button>
+          <button class="btn-filtre ${this.state.filtreEmpower === 'GROSSISTE' ? 'actif' : ''}"
+                  onclick="VueComptes.setFiltreEmpower('GROSSISTE')">⚡ Grossiste</button>
         </div>
 
         <div class="filtres-statut" style="display:flex;gap:8px;flex-wrap:wrap">
@@ -296,8 +359,10 @@ window.VueComptes = {
               : (c.Nom_CDS ? window.resolveCDS(c.Nom_CDS) : null);
             // Alexandra (CHANNEL_MANAGER) : vue lecture seule — pas d'actions terrain
             const estLectureSeule = Session.role === 'CHANNEL_MANAGER';
-            // D1 — Badge "Dernière visite" façon Marvin Sales
-            const dernActDate = c.Date_Derniere_Action || c.date_derniere_action || '';
+            // D1 — Badge "Dernière visite" façon Marvin Sales (calcul live, cf. Bloc 1 §6.2)
+            const live = this.state.datesLive.get(String(c.ID_Compte || '')) || {};
+            const prochaineVisite = this._prochaineVisite(c);
+            const dernActDate = this._dernierContact(c) || '';
             const dernActJours = dernActDate
               ? Math.max(0, Math.floor((Date.now() - new Date(dernActDate).getTime()) / 86400000))
               : null;
@@ -318,6 +383,7 @@ window.VueComptes = {
             ${alerteInactivite}
             <div class="cc-pills" onclick="VueComptes.ouvrirFiche('${c.ID_Compte}')">
               ${badgeStatutCompte(c)}
+              ${this._badgeEmpower(c)}
               ${badgeDernier}
               ${this._badgePriorite(c.Priorite)}
               <span style="margin-left:auto;font-size:12px;color:var(--c-muted)">FY26 ${caFY26}</span>
@@ -327,8 +393,9 @@ window.VueComptes = {
             <div class="cc-infos" onclick="VueComptes.ouvrirFiche('${c.ID_Compte}')">
               <span><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> ${c.Ville || '—'}</span>
               <span>${c.CANAL || '—'}</span>
-              ${c.Date_prochaine_action ? `
-                <span class="${estDepassee(c.Date_prochaine_action) ? 'prochaine-action alerte' : ''}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${dateRelative(c.Date_prochaine_action)}</span>` : ''}
+              ${live.dernierAppel ? `<span title="Dernier appel">📞 ${dateRelative(live.dernierAppel)}</span>` : ''}
+              ${prochaineVisite ? `
+                <span class="${estDepassee(prochaineVisite) ? 'prochaine-action alerte' : ''}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${dateRelative(prochaineVisite)}</span>` : ''}
             </div>
             ${estLectureSeule ? `` : `
             <div class="cc-actions">
@@ -372,10 +439,12 @@ window.VueComptes = {
                   ? window.resolveCDS(c.PIN_CDS_Assigne)
                   : (c.Nom_CDS ? window.resolveCDS(c.Nom_CDS) : null);
                 const estLectureSeule = Session.role === 'CHANNEL_MANAGER';
-                const pa = c.Date_prochaine_action
-                  ? `<span class="${estDepassee(c.Date_prochaine_action) ? 'prochaine-action alerte' : ''}">⏰ ${dateRelative(c.Date_prochaine_action)}</span>`
-                  : '—';
-                const dteDA = c.Date_Derniere_Action || c.date_derniere_action || '';
+                const liveRow = this.state.datesLive.get(String(c.ID_Compte || '')) || {};
+                const prochaineVisiteRow = this._prochaineVisite(c);
+                const pa = prochaineVisiteRow
+                  ? `<span class="${estDepassee(prochaineVisiteRow) ? 'prochaine-action alerte' : ''}">⏰ ${dateRelative(prochaineVisiteRow)}</span>${liveRow.dernierAppel ? `<br><span style="font-size:10px;color:var(--c-muted)">📞 ${dateRelative(liveRow.dernierAppel)}</span>` : ''}`
+                  : (liveRow.dernierAppel ? `<span style="font-size:11px;color:var(--c-muted)">📞 ${dateRelative(liveRow.dernierAppel)}</span>` : '—');
+                const dteDA = this._dernierContact(c) || '';
                 const joursDA = dteDA ? Math.max(0, Math.floor((Date.now() - new Date(dteDA).getTime()) / 86400000)) : null;
                 const rowStyle = (joursDA !== null && joursDA > 45) ? 'border-left:3px solid var(--c-danger);background:rgba(217,48,37,.04)' : '';
                 // Delta % — Q1FY27 annualisé (×4) vs CA FY26, coloré vert/rouge (Bloc 4)
@@ -388,7 +457,7 @@ window.VueComptes = {
                   deltaHtml = `<br><span style="font-size:10px;font-weight:700;color:${coul}">${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)}% (annualisé)</span>`;
                 }
                 return `<tr style="${rowStyle}">
-                  <td>${badgeStatutCompte(c)}${joursDA !== null && joursDA > 45 ? `<br><span style="font-size:10px;font-weight:700;color:var(--c-danger)">⚠ ${joursDA}j</span>` : ''}</td>
+                  <td>${badgeStatutCompte(c)} ${this._badgeEmpower(c)}${joursDA !== null && joursDA > 45 ? `<br><span style="font-size:10px;font-weight:700;color:var(--c-danger)">⚠ ${joursDA}j</span>` : ''}</td>
                   <td class="compte-nom" onclick="VueComptes.ouvrirFiche('${c.ID_Compte}')">${c.Nom_Compte || '—'}</td>
                   <td>${c.Ville || '—'}</td>
                   <td>${c.CANAL || '—'}</td>
@@ -442,7 +511,7 @@ window.VueComptes = {
 
   setRecherche:   debounce(function(v) { VueComptes.state.recherche = v;      VueComptes.render(); }, 250),
   setFiltre(s)    { this.state.filtreStatut = s; this.render(); },
-  setFiltreCanal(c) { this.state.filtreCanal = c; this.render(); },
+  setFiltreEmpower(c) { this.state.filtreEmpower = c; this.render(); },
   setFiltreCDS(p) { this.state.filtreCDSPin = p; this.render(); },
   setTri(t)       { this.state.triPar = t; this.state.triCol = null; this.render(); },
 };

@@ -40,16 +40,24 @@ window.VueDashboardManager = {
     this.state = { chargement: true, dc: null, exportDirOuvert: false };
     this.render();
     try {
-      const [prospects, objectifs, params] = await Promise.all([
+      const [prospects, objectifs, params, visites, appels, comptes] = await Promise.all([
         // nocache : même correctif que le Tracker (vue-pipeline.js) — la home
         // Channel affichait des compteurs de leads périmés jusqu'à 30 min.
         SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS', { nocache: true }),
         SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
         SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
+        // Bloc 1 §2 — camemberts visites/appels, mêmes règles de visibilité que
+        // l'Accueil Admin (Session.voitTout() couvre déjà CHANNEL_MANAGER).
+        SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES'),
+        SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING'),
+        SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
       ]);
       // BUG-07 : peuple le registre CDS avant le calcul des taux par CDS
       if (typeof initCDSRegistry === 'function') initCDSRegistry(objectifs);
       this.state.dc = this._calculerChannel({ prospects, objectifs, params });
+      // Conservé brut pour les camemberts/CA cumulé (cf. dashboard-activite.js),
+      // recalculés à chaque render() sans re-fetch — même pattern que VueDashboardCDS.
+      this._raw = { comptes, visites, appels, objectifs, params };
       this.state.chargement = false;
       this.render();
     } catch(e) {
@@ -57,6 +65,12 @@ window.VueDashboardManager = {
       document.getElementById('app').innerHTML = `<div class="erreur">Erreur : ${e.message}</div>`;
     }
   },
+
+  // Camemberts/CA cumulé mutualisés avec VueDashboardCDS — cf. js/dashboard-activite.js.
+  setQuarterCamembert(q) { FilterState.set({ quarter: q }); this.render(); },
+  setCommercialCamembert(pin) { FilterState.set({ pinCommercial: pin ? Number(pin) : null }); this.render(); },
+  toggleSemaineCamembert() { FilterState.set({ semaine: FilterState.get().semaine ? null : FiscalWeeks.codeDe() }); this.render(); },
+  _donneesFiltrables() { return this._raw ? window.calculerCamembertsActivite(this._raw) : null; },
 
   _calculerChannel({ prospects, objectifs, params }) {
     const norm = v => String(v || '').trim().toUpperCase();
@@ -205,7 +219,7 @@ window.VueDashboardManager = {
   _calculer({ objectifs, visites, appels, prospects, comptes, params }) {
     const paramMap   = Object.fromEntries(params.map(p => [p.Parametre, p.Valeur]));
     const quarter    = paramMap.QuarterActif || 'Q1';
-    const semaine    = getISOWeek();
+    const semaine    = FiscalWeeks.codeDe();
     const seuilRouge = Number(paramMap.SEUIL_ROUGE_JOURS || 5);
 
     // Périmètre pipeline : exclure imports base + hors-base Visites + supprimés
@@ -274,7 +288,7 @@ window.VueDashboardManager = {
     const semaines6 = Array.from({length: 6}, (_, i) => {
       const d = new Date();
       d.setDate(d.getDate() - (5 - i) * 7);
-      return getISOWeek(d);
+      return FiscalWeeks.codeDe(d);
     });
     const activiteEquipe = semaines6.map(sem => ({
       sem,
@@ -454,7 +468,7 @@ window.VueDashboardManager = {
       return `
         <rect x="${x}" y="${BASE - hV}" width="${bw}" height="${hV}" fill="var(--c-primary)" rx="2" opacity=".8"/>
         <rect x="${x + bw + 2}" y="${BASE - hA}" width="${bw}" height="${hA}" fill="var(--c-cta)" rx="2" opacity=".8"/>
-        <text x="${x + slotW / 2 - 1}" y="${H - 2}" text-anchor="middle" font-size="9" fill="var(--c-title)">${d.sem.replace('S', '')}</text>
+        <text x="${x + slotW / 2 - 1}" y="${H - 2}" text-anchor="middle" font-size="9" fill="var(--c-title)">${(d.sem || '').split('-')[1] || d.sem}</text>
       `;
     }).join('');
     return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"
@@ -487,6 +501,7 @@ window.VueDashboardManager = {
   renderChannel() {
     const app = document.getElementById('app');
     const dc  = this.state.dc;
+    const f   = this._donneesFiltrables();
     const modeReporting = this._contexteReporting();
     const dateFr = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -534,6 +549,12 @@ window.VueDashboardManager = {
             <button class="btn-lien no-print" onclick="Router.aller('#/empower-tracker')"
                     style="font-size:12px;margin-top:8px">Voir le Tracker →</button>
           </div>
+
+          <!-- CAMEMBERTS DYNAMIQUES VISITES/APPELS + CA CUMULÉ — Bloc 1 §2/§3
+               (mêmes règles de visibilité que l'Accueil Admin, mutualisé via
+               js/dashboard-activite.js — cf. Bloc 4 anti-duplication) -->
+          ${f ? window.renderBlocCamemberts(f, this._raw, 'VueDashboardManager') : ''}
+          ${f ? window.renderBlocCAHebdo(f, 'VueDashboardManager', formatEuro) : ''}
           </div><!-- /dash-col-main -->
 
           <div class="dash-col-side">

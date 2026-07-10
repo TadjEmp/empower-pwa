@@ -476,6 +476,17 @@ window.VueQuestionnaire = {
     }
   },
 
+  // Bloc 1 §6.2 gap trouvé à l'audit : le type de visite (typeVisite) était
+  // calculé mais jamais utilisé pour adapter les questions posées — une visite
+  // de suivi EMPOWER recevait le même parcours qu'une prospection à froid.
+  // "Concurrents" est une étape de découverte concurrentielle : elle n'a pas de
+  // sens pour un partenaire déjà engagé (suivi actif / onboarding en cours).
+  _etapeMasquee(idx) {
+    if (this.ETAPES[idx] !== 'Concurrents') return false;
+    const type = QuestionnaireBranching.deriverTypeVisite(this.state.d.objectifsVisite);
+    return !QuestionnaireBranching.visible(['PROSPECTION_FROIDE'], type);
+  },
+
   suivant() {
     if (this.state.etape === 0 && !this.state.cible) {
       Toast.afficher('Sélectionnez un compte ou un prospect', 'warning'); return;
@@ -483,12 +494,16 @@ window.VueQuestionnaire = {
     if (this.state.etape === 0 && this.state.typeSource === 'FROID' && !(this.state.cible?.Nom_Compte || '').trim()) {
       Toast.afficher('Indiquez le nom de l\'enseigne', 'warning'); return;
     }
-    this.state.etape = Math.min(this.state.etape + 1, this.ETAPES.length - 1);
+    let next = this.state.etape + 1;
+    while (next < this.ETAPES.length - 1 && this._etapeMasquee(next)) next++;
+    this.state.etape = Math.min(next, this.ETAPES.length - 1);
     this.render(); window.scrollTo(0, 0);
   },
   precedent() {
     if (this.state.etape === 0) { history.back(); return; }
-    this.state.etape--; this.render(); window.scrollTo(0, 0);
+    let prev = this.state.etape - 1;
+    while (prev > 0 && this._etapeMasquee(prev)) prev--;
+    this.state.etape = prev; this.render(); window.scrollTo(0, 0);
   },
 
   async valider() {
@@ -501,10 +516,9 @@ window.VueQuestionnaire = {
     const dureeMin = Math.round((Date.now() - s.debut) / 60000);
     const empowerAlerte = d.empowerPartenaire === 'NON' && d.empowerInteresse === 'OUI';
 
-    const typeVisite = d.objectifsVisite.includes('🚀 Intégration EMPOWER') ? 'ONBOARDING_EMPOWER'
-      : d.objectifsVisite.includes('❄️ Prospection à froid') ? 'PROSPECTION_FROIDE'
-      : d.objectifsVisite.includes('🔄 Renouvellement partenariat') ? 'SUIVI_ACTIF'
-      : 'SUIVI_ACTIF';
+    // Dérivation mutualisée avec _etapeMasquee() ci-dessus et avec le phoning
+    // (cf. QuestionnaireBranching, Phase 0) — une seule fonction pour ce calcul.
+    const typeVisite = QuestionnaireBranching.deriverTypeVisite(d.objectifsVisite);
 
     const arbEMPOWER = d.resultatVisite === 'Positif' && d.prochaineAction === 'Onboarding EMPOWER' ? 'COMMANDE'
       : empowerAlerte ? 'INTERESSE'
@@ -530,7 +544,7 @@ window.VueQuestionnaire = {
         ID_Visite:               idVisite,
         Date:                    d.date,
         Heure:                   d.heure,
-        Semaine_ISO:             getISOWeek(new Date(d.date)),
+        Semaine_ISO:             FiscalWeeks.codeDe(new Date(d.date)),
         PIN_CDS:                 Session.pin,
         Nom_CDS:                 Session.nom,
         ID_Cible:                idCible,

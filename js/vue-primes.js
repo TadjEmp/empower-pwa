@@ -56,12 +56,19 @@ window.VuePrimes = {
         SheetsAPI.lireCDS(),
       ]);
       const paramMap = Object.fromEntries((params || []).map(p => [p.Parametre, p.Valeur]));
-      this.state.quarter   = this.state.quarter || paramMap.QuarterActif || 'Q1';
+      // Quarter persisté via FilterState (survit à la navigation entre onglets) —
+      // ne recale sur QuarterActif que si l'utilisateur n'a encore jamais choisi.
+      FilterState.ensureQuarterDefault(paramMap.QuarterActif || 'Q1');
+      this.state.quarter   = FilterState.get().quarter;
       this.state.objectifs = objectifs || [];
       this.state.nsb       = nsb || [];
       this.state.prospects = prospects || [];
+      // Tadjidine (PIN 1000) est ADMIN mais aussi commercial actif (cf. CDS_FALLBACK
+      // et le tableau "Primes par CDS" plus bas) — un filtre strict role==='CDS'
+      // l'excluait de cette liste dynamique alors qu'il apparaît partout ailleurs
+      // dans ce fichier. CHANNEL_MANAGER/EXTERNE restent exclus (pas des commerciaux).
       this.state.cdsListe  = (Array.isArray(cdsApi) && cdsApi.length)
-        ? cdsApi.filter(c => String(c.role).toUpperCase() === 'CDS').map(c => ({ pin: Number(c.pin), nom: c.nom }))
+        ? cdsApi.filter(c => ['CDS','ADMIN'].includes(String(c.role).toUpperCase())).map(c => ({ pin: Number(c.pin), nom: c.nom }))
         : this.CDS_FALLBACK;
       this.state.chargement = false;
       this.render();
@@ -273,7 +280,7 @@ window.VuePrimes = {
   // Alias rétro-compat (ancien nom interne)
   validerNSB(id) { return this.validerDeclaration(id); },
 
-  setQuarter(q) { this.state.quarter = q; this.render(); },
+  setQuarter(q) { this.state.quarter = q; FilterState.set({ quarter: q }); this.render(); },
 
   // ── RENDER ──
   render() {

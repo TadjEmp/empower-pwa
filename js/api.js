@@ -554,7 +554,8 @@ const SheetsAPI = {
         'Q3FY27': 'q3_ca_realise', 'Q4FY27': 'q4_ca_realise',
         'Q1FY26': 'q1_ca_realise', 'Q2FY26': 'q2_ca_realise',
       }
-      const col = colMap[quarter] || 'q1_ca_realise'
+      const col = colMap[quarter]
+      if (!col) throw new Error(`Quarter inconnu: ${quarter}`)
       const { error } = await this._sb.from('objectifs_primes')
         .update({ [col]: montant }).eq('pin_cds', pin)
       if (error) throw new Error(error.message)

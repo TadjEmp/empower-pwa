@@ -27,12 +27,20 @@ window.NotifCenter = {
   fermer()   { this._ouvert = false; this._render(); },
 
   // Table de routage Type_Notif -> route contextuelle (insensible à la casse).
+  // Source unique — vue-dashboard-cds.js (card "Alertes actives") appelle cette
+  // même fonction au lieu d'en garder une copie (cf. audit Bloc 4 anti-duplication).
   _route(typeNotif, idCible) {
     if (!idCible) return '#/dashboard';
     const t = String(typeNotif || '').toUpperCase();
-    if (['COMPTE_CREE', 'VISITE_REALISEE'].includes(t)) return '#/compte/' + idCible;
+    if (['COMPTE_CREE', 'VISITE_REALISEE', 'CONVERSION_FROID'].includes(t)) return '#/compte/' + idCible;
     if (['LEAD_ASSIGNE', 'NOUVEAU_LEAD', 'STATUT_CHANGE', 'STATUT_ARCHIVE', 'STATUT_EN_COURS', 'STATUT_INTEGRE'].includes(t)) return '#/empower-tracker';
     if (t === 'IMPORT_TRACKER') return '#/empower-tracker';
+    // SCORE_GROQ / SCORE_GROQ_CHANNEL ciblent soit un compte (ID_Compte, préfixe
+    // "COMP_"), soit un prospect (ID_Prospect, préfixe "PROS_") selon que l'appel
+    // phoning était sur la base ou à froid — cf. vue-phoning.js:449.
+    if (['SCORE_GROQ', 'SCORE_GROQ_CHANNEL'].includes(t)) {
+      return String(idCible).startsWith('PROS') ? '#/empower-tracker' : '#/compte/' + idCible;
+    }
     return '#/dashboard';
   },
 

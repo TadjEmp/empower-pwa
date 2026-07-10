@@ -205,7 +205,7 @@ window.VueVisites = {
       CANAL:         c.CANAL || '',
       caFy26,
       potentiel:     c.POTENTIEL || c.Priorite || '—',
-      hasEmpower:    String(c.HAS_EMPOWER || '').toUpperCase() === 'TRUE',
+      hasEmpower:    window.estEmpower(c),
       silence,
       urgent,
       score,
@@ -536,7 +536,7 @@ window.VueVisites = {
         Date:                   f.date,
         Heure:                  f.heure,
         Duree_Prevue:           f.dureeVisite || '60',
-        Semaine_ISO:            getISOWeek(new Date(f.date)),
+        Semaine_ISO:            FiscalWeeks.codeDe(new Date(f.date)),
         PIN_CDS:                Session.pin,
         Nom_CDS:                Session.nom,
         ID_Cible:               idCibleFinal || 'HORS_BASE',
@@ -612,7 +612,7 @@ window.VueVisites = {
         Statut_Visite:          m.statut,
         Note_Privee:            m.commentairePrep,
         Prochaine_Action_Texte: m.prochaineEtape,
-        Semaine_ISO:            getISOWeek(new Date(m.date)),
+        Semaine_ISO:            FiscalWeeks.codeDe(new Date(m.date)),
       };
       await SheetsAPI.mettreAJour('EMPOWER_MDB', '🗺️_VISITES', m.id, maj);
       const local = this.state.visites.find(v => v.ID_Visite === m.id);
@@ -677,7 +677,7 @@ window.VueVisites = {
       ID_Visite:              genId('VIS'),
       Date:                   dateDup,
       Heure:                  v.Heure || '09:00',
-      Semaine_ISO:            getISOWeek(d7),
+      Semaine_ISO:            FiscalWeeks.codeDe(d7),
       PIN_CDS:                Session.pin,
       Nom_CDS:                Session.nom,
       ID_Cible:               v.ID_Cible || '',

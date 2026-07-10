@@ -785,9 +785,10 @@ details[open] > .cv-rapport-toggle::before { transform: rotate(90deg); }
   gap: 10px;
 }
 
-/* ── Comptes Historiques stats ── */
+/* ── Cards KPI génériques (Comptes Historiques, Journal Phoning, …) —
+   pattern .ch-stats généralisé, cf. Bloc 3 §1/§5 refonte desktop. ── */
 .ch-stats {
-  display: grid; grid-template-columns: repeat(4, 1fr);
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(74px, 1fr));
   gap: 8px; padding: 10px 12px;
   background: var(--c-surface); border-bottom: 1px solid var(--c-border);
 }

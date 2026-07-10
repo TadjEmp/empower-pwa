@@ -21,6 +21,9 @@ window.VueDashboardCDS = {
         SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
         SheetsAPI.lire('EMPOWER_MDB', '🔔_NOTIFS').catch(() => []),
       ]);
+      // Conservé brut pour recalculer les camemberts/CA cumulé au changement de
+      // filtre (Quarter/commercial) sans re-fetch réseau — cf. _donneesFiltrables.
+      this._raw = { comptes, visites, appels, objectifs, params };
       this.state.donnees = this._calculer({ comptes, visites, appels, objectifs, prospects, params, notifs });
       this.state.chargement = false;
       this.render();
@@ -35,19 +38,98 @@ window.VueDashboardCDS = {
     return Session.voitTout() || Number(pinChamp) === Session.pin;
   },
 
-  // Table de routage Type_Notif -> route contextuelle (miroir de NotifCenter._route).
+  _contexteReporting() { return window.location.hash.includes('/reporting-cds'); },
+
+  // ── Bloc 2 §1 — Reporting personnel : comparatif Q1→Q4 (CA réalisé vs
+  //    objectif, par trimestre), que l'Accueil ne montre pas (il n'affiche
+  //    que le quarter actuellement filtré). Réutilise this._raw déjà chargé
+  //    par init() — aucun nouveau fetch réseau. ──
+  _renderReporting() {
+    const app = document.getElementById('app');
+    const raw = this._raw;
+    const CA = v => (typeof window.parseCA === 'function' ? (window.parseCA(v) ?? 0) : Number(v) || 0);
+    const fmtEUR = v => {
+      const s = (typeof window.fmtCA === 'function') ? window.fmtCA(v) : null;
+      return (s && s !== '—') ? `${s} €` : '—';
+    };
+    const o = raw.objectifs.find(x => Number(x.PIN_CDS) === Session.pin) || {};
+    const quarters = ['Q1', 'Q2', 'Q3', 'Q4'].map(q => {
+      const ca  = CA(o[`${q}_CA_Realise`]);
+      const obj = CA(o[`${q}_Obj_Revise`]) || CA(o[`${q}_Obj_Initial`]);
+      const pct = obj > 0 ? Math.round(ca / obj * 100) : 0;
+      const pace = pct >= 100 ? 'ON_TRACK' : pct >= 80 ? 'WATCH' : 'AT_RISK';
+      return { q, ca, obj, pct, pace };
+    });
+    const caFY27Total = quarters.reduce((s, x) => s + x.ca, 0);
+    const objFY27Total = quarters.reduce((s, x) => s + x.obj, 0);
+    const PACE_BADGE = { ON_TRACK: 'pace-ok', WATCH: 'pace-watch', AT_RISK: 'pace-risk' };
+    const PACE_LBL   = { ON_TRACK: 'ON TRACK', WATCH: 'WATCH', AT_RISK: 'AT RISK' };
+    const dateFr = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+    const f = window.calculerCamembertsActivite ? window.calculerCamembertsActivite(raw) : null;
+
+    app.innerHTML = `
+      <header class="dash-page-header">
+        <div class="dash-ph-left">
+          <div class="dash-ph-title">Reporting — ${Session.nom || '—'}</div>
+          <div class="dash-ph-date">${dateFr}</div>
+        </div>
+      </header>
+      <div class="dash-body avec-nav">
+        <div class="dash-col-main">
+          <div class="bloc-fiche">
+            <div class="bloc-titre">FY27 — Q1 → Q4
+              <span class="badge-compteur">${fmtEUR(caFY27Total)} / ${fmtEUR(objFY27Total)}</span>
+            </div>
+            <div class="tableau-equipe">
+              <div class="te-ligne te-head" style="grid-template-columns:0.6fr 1.4fr 0.6fr 0.8fr">
+                <span>Quarter</span><span>CA / Objectif</span><span>%</span><span>Pace</span>
+              </div>
+              ${quarters.map(x => `
+              <div class="te-ligne" style="grid-template-columns:0.6fr 1.4fr 0.6fr 0.8fr;cursor:pointer"
+                   onclick="FilterState.set({quarter:'${x.q}'});Router.aller('#/objectifs')" title="Voir le détail dans Objectifs">
+                <span><strong>${x.q}</strong></span>
+                <span style="font-size:12px">${fmtEUR(x.ca)} / ${fmtEUR(x.obj)}</span>
+                <span style="font-weight:700">${x.obj > 0 ? x.pct + '%' : '—'}</span>
+                <span class="pace-badge ${PACE_BADGE[x.pace]}">${x.obj > 0 ? PACE_LBL[x.pace] : '—'}</span>
+              </div>`).join('')}
+            </div>
+            <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">Cliquez un trimestre pour le détail complet (axes NSB/Onboarding) dans Objectifs.</p>
+          </div>
+
+          ${f ? window.renderBlocCamemberts(f, raw, 'VueDashboardCDS') : ''}
+          ${f ? window.renderBlocCAHebdo(f, 'VueDashboardCDS', fmtEUR) : ''}
+
+          <div class="bloc-fiche">
+            <div class="bloc-titre">Aller plus loin</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button class="btn-secondaire" style="flex:1;min-width:140px" onclick="Router.aller('#/objectifs')">📊 Détail Objectifs</button>
+              <button class="btn-secondaire" style="flex:1;min-width:140px" onclick="Router.aller('#/primes')">🏅 Mes Primes</button>
+              <button class="btn-secondaire" style="flex:1;min-width:140px" onclick="Router.aller('#/comptes-historiques')">📁 Historique CA</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      ${NavBar('reporting_cds')}
+    `;
+  },
+
+  // Camemberts/CA cumulé mutualisés avec VueDashboardManager — cf.
+  // js/dashboard-activite.js (Bloc 4 anti-duplication).
+  setQuarterCamembert(q) { FilterState.set({ quarter: q }); this.render(); },
+  setCommercialCamembert(pin) { FilterState.set({ pinCommercial: pin ? Number(pin) : null }); this.render(); },
+  toggleSemaineCamembert() { FilterState.set({ semaine: FilterState.get().semaine ? null : FiscalWeeks.codeDe() }); this.render(); },
+  _donneesFiltrables() { return this._raw ? window.calculerCamembertsActivite(this._raw) : null; },
+
+  // Routage Type_Notif -> route contextuelle : délègue à NotifCenter._route (source
+  // unique, cf. notif-center.js) au lieu d'une copie maintenue séparément.
   _routeNotif(typeNotif, idCible) {
-    if (!idCible) return '#/dashboard';
-    const t = String(typeNotif || '').toUpperCase();
-    if (['COMPTE_CREE', 'VISITE_REALISEE'].includes(t)) return '#/compte/' + idCible;
-    if (['LEAD_ASSIGNE', 'NOUVEAU_LEAD', 'STATUT_CHANGE', 'STATUT_ARCHIVE', 'STATUT_EN_COURS', 'STATUT_INTEGRE'].includes(t)) return '#/empower-tracker';
-    if (t === 'IMPORT_TRACKER') return '#/empower-tracker';
-    return '#/dashboard';
+    return window.NotifCenter ? NotifCenter._route(typeNotif, idCible) : '#/dashboard';
   },
 
   _calculer({ comptes, visites, appels, objectifs, prospects, params, notifs }) {
     const pin      = Session.pin;
-    const semaine  = getISOWeek();
+    const semaine  = FiscalWeeks.codeDe();
     const paramMap = Object.fromEntries(params.map(p => [p.Parametre, p.Valeur]));
     const quarter  = paramMap.QuarterActif || 'Q1';
     const CA = v => (typeof window.parseCA === 'function' ? (window.parseCA(v) ?? 0) : Number(v) || 0);
@@ -141,20 +223,10 @@ window.VueDashboardCDS = {
         statut: String(x.c.STATUT_COMPTE || '').toUpperCase() || '—',
       }));
 
-    // ── Graphique CA hebdo FY27 vs FY26 (W1→W13 du quarter courant) ──
-    // Pas de granularité hebdo réelle en base : on répartit le CA Q réalisé
-    // (FY27) et le CA FY26 de SES comptes sur 13 semaines, cumulé, comme
-    // courbe de référence. Aucune valeur inventée hors de ces deux totaux réels.
+    // Le graphique CA hebdo (W1→W13) est désormais calculé par _donneesFiltrables()
+    // au moment du render, pas ici — cf. Bloc 1 §3 (filtres Quarter/commercial).
     const caFY26Mes = mesComptes.reduce((s, c) => s + CA(c.CA_FY26 ?? c['CA FY26 €']), 0);
-    const caFY26Q   = caFY26Mes / 4; // base trimestrielle FY26 (4 quarters)
-    const caHebdo = Array.from({ length: 13 }, (_, i) => {
-      const frac = (i + 1) / 13;
-      return {
-        wk:   `W${i + 1}`,
-        fy27: Math.round(caRealise * frac),
-        fy26: Math.round(caFY26Q   * frac),
-      };
-    });
+    const caFY26Q   = caFY26Mes / 4; // base trimestrielle FY26 (4 quarters) — encore utilisé plus bas
 
     // ── Alertes actives lues depuis 🔔_NOTIFS (PIN_Destinataire = pin) ──
     const mesNotifs = (Array.isArray(notifs) ? notifs : [])
@@ -186,7 +258,7 @@ window.VueDashboardCDS = {
     const semaines6 = Array.from({length: 6}, (_, i) => {
       const d = new Date();
       d.setDate(d.getDate() - (5 - i) * 7);
-      return getISOWeek(d);
+      return FiscalWeeks.codeDe(d);
     });
     const activiteSemaines = semaines6.map(sem => ({
       sem,
@@ -209,75 +281,10 @@ window.VueDashboardCDS = {
       comptesRouges, nextStepsDepasses, leadsATraiter,
       visitesAujourdhui, comptesAReactiver,
       visitesSem, appelsSem, objVisites, objAppels,
-      top5, top5Actifs, caHebdo, mesNotifs,
+      top5, top5Actifs, mesNotifs,
       nbComptes: mesComptes.length, primesEstimees,
       activiteSemaines, mesProspects,
     };
-  },
-
-  // ── Graphique SVG : activité hebdomadaire (barres visites + appels) ──
-  _svgActivite(data) {
-    if (!data || !data.length) return '';
-    const maxVal = Math.max(...data.flatMap(d => [d.visites, d.appels]), 1);
-    const W = 300, H = 84, BASE = H - 18, PAD = 2;
-    const slotW = (W - PAD * 2) / data.length;
-    const bw    = Math.max(3, Math.floor(slotW / 2) - 3);
-    const scl   = (BASE - 14) / maxVal;
-
-    const bars = data.map((d, i) => {
-      const x  = PAD + i * slotW;
-      const hV = d.visites > 0 ? Math.max(3, Math.round(d.visites * scl)) : 0;
-      const hA = d.appels  > 0 ? Math.max(3, Math.round(d.appels  * scl)) : 0;
-      return `
-        <rect x="${x}" y="${BASE - hV}" width="${bw}" height="${hV}" fill="#0050FF" rx="2" opacity=".85"/>
-        <rect x="${x + bw + 2}" y="${BASE - hA}" width="${bw}" height="${hA}" fill="#FF6D68" rx="2" opacity=".85"/>
-        <text x="${x + slotW / 2 - 1}" y="${H - 2}" text-anchor="middle" font-size="9" fill="#626264">${d.sem.replace('S', '')}</text>
-        ${d.visites ? `<text x="${x + bw/2}" y="${BASE - hV - 2}" text-anchor="middle" font-size="8" fill="#0050FF">${d.visites}</text>` : ''}
-        ${d.appels  ? `<text x="${x + bw + 2 + bw/2}" y="${BASE - hA - 2}" text-anchor="middle" font-size="8" fill="#FF6D68">${d.appels}</text>` : ''}
-      `;
-    }).join('');
-
-    return `
-      <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"
-           style="width:100%;height:auto;display:block;margin:10px 0 4px">
-        ${bars}
-        <rect x="2" y="2" width="8" height="8" fill="#0050FF" rx="1"/>
-        <text x="13" y="10" font-size="9" fill="#626264">Visites</text>
-        <rect x="68" y="2" width="8" height="8" fill="#FF6D68" rx="1"/>
-        <text x="79" y="10" font-size="9" fill="#626264">Appels</text>
-      </svg>`;
-  },
-
-  // ── Graphique SVG : CA hebdo cumulé FY27 vs FY26 (W1→W13) ──
-  _svgCAHebdo(data) {
-    if (!data || !data.length) return '';
-    const maxVal = Math.max(...data.flatMap(d => [d.fy27, d.fy26]), 1);
-    const W = 300, H = 96, PADL = 4, PADR = 4, TOP = 16, BASE = H - 16;
-    const n = data.length;
-    const xOf = i => PADL + (i * (W - PADL - PADR) / (n - 1));
-    const yOf = v => BASE - (v / maxVal) * (BASE - TOP);
-
-    const ligne = (key, color) => {
-      const pts = data.map((d, i) => `${xOf(i).toFixed(1)},${yOf(d[key]).toFixed(1)}`).join(' ');
-      return `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
-    };
-    const labels = data.map((d, i) =>
-      (i % 2 === 0)
-        ? `<text x="${xOf(i).toFixed(1)}" y="${H - 3}" text-anchor="middle" font-size="8" fill="#626264">${d.wk}</text>`
-        : ''
-    ).join('');
-
-    return `
-      <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"
-           style="width:100%;height:auto;display:block;margin:8px 0 4px">
-        ${ligne('fy26', '#9aa0a6')}
-        ${ligne('fy27', '#0050FF')}
-        ${labels}
-        <rect x="4" y="2" width="8" height="8" fill="#0050FF" rx="1"/>
-        <text x="15" y="10" font-size="9" fill="#1a1a1a">CA FY27</text>
-        <rect x="78" y="2" width="8" height="8" fill="#9aa0a6" rx="1"/>
-        <text x="89" y="10" font-size="9" fill="#626264">CA FY26 (réf.)</text>
-      </svg>`;
   },
 
   render() {
@@ -291,7 +298,14 @@ window.VueDashboardCDS = {
         <br><br><button class="btn-secondaire" onclick="VueDashboardCDS.init()">Réessayer</button></div>`;
       return;
     }
+    // Bloc 2 §1 — Reporting personnel CDS : même vue/données que l'Accueil,
+    // rendu différent (analyse structurée plutôt que cockpit du jour) — même
+    // principe que VueDashboardManager._contexteReporting(), sans dupliquer
+    // les widgets déjà présents sur l'Accueil (camemberts/CA cumulé, déjà
+    // filtrables par quarter/semaine/commercial depuis Phase 1).
+    if (this._contexteReporting()) return this._renderReporting();
     const d = this.state.donnees;
+    const f = this._donneesFiltrables();
     // BLOC 9 : CA via fmtCA → '—' si invalide/NaN, jamais de valeur incohérente
     const fmtEUR = v => {
       const s = (typeof window.fmtCA === 'function') ? window.fmtCA(v) : null;
@@ -379,25 +393,10 @@ window.VueDashboardCDS = {
       <div class="dash-body avec-nav">
         <div class="dash-col-main">
 
-        <!-- GRAPHIQUE ACTIVITÉ 6 SEMAINES -->
-        <div class="bloc-fiche">
-          <div class="bloc-titre">Activité — 6 dernières semaines</div>
-          ${this._svgActivite(d.activiteSemaines)}
-          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--c-text-2);margin-top:4px;padding:0 2px">
-            <span>Semaine ${d.activiteSemaines[0]?.sem || '—'}</span>
-            <span>Semaine en cours : <strong>${d.visitesSem}v · ${d.appelsSem}a</strong></span>
-          </div>
-        </div>
-
-        <!-- GRAPHIQUE CA HEBDO FY27 vs FY26 (W1→W13) -->
-        <div class="bloc-fiche">
-          <div class="bloc-titre">CA cumulé ${d.quarter} FY27 vs FY26</div>
-          ${this._svgCAHebdo(d.caHebdo)}
-          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--c-text-2);margin-top:2px;padding:0 2px">
-            <span>W1 → W13</span>
-            <span>FY27 : <strong style="color:var(--c-primary)">${fmtEUR(d.caRealise)}</strong> · OBJ ${d.pct}%</span>
-          </div>
-        </div>
+        <!-- CAMEMBERTS DYNAMIQUES VISITES/APPELS + CA CUMULÉ — Bloc 1 §2/§3
+             (mutualisés avec VueDashboardManager, cf. js/dashboard-activite.js) -->
+        ${window.renderBlocCamemberts(f, this._raw, 'VueDashboardCDS')}
+        ${window.renderBlocCAHebdo(f, 'VueDashboardCDS', fmtEUR)}
 
         <!-- TOP 5 COMPTES ACTIFS + TOP 5 RELANCES — sous-grille 2 colonnes desktop large -->
         <div class="dash-grid-2col">

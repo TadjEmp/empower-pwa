@@ -281,3 +281,37 @@
   }
   .dash-grid-2col .bloc-fiche { margin-bottom: 0; }
 }
+
+/* ── Camemberts dynamiques Accueil (Bloc 1 §2) ── */
+.dash-filtres-camembert {
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  margin-bottom: 12px;
+}
+.dash-filtres-camembert select {
+  border: 1.5px solid var(--c-border); border-radius: var(--radius-sm);
+  padding: 6px 10px; font-size: 12px; background: var(--c-surface); color: var(--c-title);
+}
+.dash-camemberts-grid {
+  display: grid; grid-template-columns: 1fr; gap: 16px;
+}
+@media (min-width: 640px) {
+  .dash-camemberts-grid { grid-template-columns: 1fr 1fr; }
+}
+.dash-camembert-bloc { display: flex; gap: 14px; align-items: center; }
+.dash-camembert-bloc svg { flex-shrink: 0; }
+.donut-legende { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
+.donut-legende-item {
+  display: flex; align-items: center; gap: 6px; font-size: 12px;
+  padding: 3px 4px; border-radius: 6px; transition: background .15s;
+}
+.donut-legende-item[style*="cursor:pointer"]:hover { background: var(--c-bg); }
+.donut-legende-puce { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.donut-legende-lbl { flex: 1; color: var(--c-text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.donut-legende-val { font-weight: 700; color: var(--c-title); white-space: nowrap; }
+.dash-camembert-actif-pin {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
+  background: color-mix(in srgb, var(--c-primary) 10%, transparent);
+  color: var(--c-primary); border: 1px solid color-mix(in srgb, var(--c-primary) 30%, transparent);
+  padding: 4px 10px; border-radius: 99px; margin-bottom: 10px;
+}
+.dash-camembert-actif-pin button { background: none; border: none; color: inherit; cursor: pointer; font-weight: 700; padding: 0; }

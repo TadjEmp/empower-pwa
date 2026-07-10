@@ -15,11 +15,13 @@
     ADMIN: [
       'home', 'tracker', 'historiques', 'phoning', 'visites',
       'objectifs', 'primes', 'comptes', 'manager', 'admin',
-      'questionnaire', 'reporting', 'photos', 'phoning_fdv',
+      'questionnaire', 'reporting', 'photos',
     ],
+    // Bloc 2 §1 — 'reporting_cds' : espace d'analyse personnel distinct de
+    // l'Accueil (#/dashboard), cf. VueDashboardCDS._contexteReporting().
     CDS: [
       'home', 'tracker', 'historiques', 'phoning', 'visites',
-      'objectifs', 'primes', 'questionnaire', 'comptes', 'photos',
+      'objectifs', 'primes', 'questionnaire', 'comptes', 'photos', 'reporting_cds',
     ],
     // V5 BUG5 — Alexandra : conserve OBJECTIFS ; jamais Visites/Phoning/Primes (raw CDS).
     // Section 9 cahier des charges — vues consolidées lecture seule dédiées.
@@ -29,9 +31,12 @@
     // donc un contenu strictement identique sous deux entrées de nav distinctes.
     // ADMIN garde 'reporting' : #/manager y affiche la vue équipe, différente
     // de leur #/dashboard personnel.
+    // Bloc 3 §4 — 'phoning' remplace 'phoning_fdv' (onglet séparé supprimé, son
+    // contenu vit maintenant dans l'onglet Journal de vue-phoning.js) ; Alexandra
+    // reste cantonnée à ce Journal lecture seule (cf. vue-phoning.js init()/setMode()).
     CHANNEL_MANAGER: [
       'home', 'tracker', 'comptes', 'objectifs', 'photos', 'admin',
-      'visites_fdv', 'phoning_fdv',
+      'visites_fdv', 'phoning',
     ],
     EXTERNE: [
       'tracker',
@@ -48,6 +53,7 @@
     // #/manager sert de vue "reporting" pour CHANNEL_MANAGER et de dashboard
     // manager pour ADMIN — autorisé si l'un OU l'autre tab est accordé.
     if (/^#\/manager$/.test(h))                return ['manager', 'reporting'];
+    if (/^#\/reporting-cds$/.test(h))          return 'reporting_cds';
     if (/^#\/empower-tracker$/.test(h) ||
         /^#\/pipeline$/.test(h))               return 'tracker';
     if (/^#\/comptes-historiques$/.test(h) ||
@@ -55,7 +61,6 @@
     if (/^#\/phoning(\/.*)?$/.test(h))         return 'phoning';
     if (/^#\/visites(\/.*)?$/.test(h))         return 'visites';
     if (/^#\/visites-fdv$/.test(h))            return 'visites_fdv';
-    if (/^#\/phoning-fdv$/.test(h))            return 'phoning_fdv';
     if (/^#\/objectifs$/.test(h))              return 'objectifs';
     if (/^#\/primes$/.test(h))                 return 'primes';
     if (/^#\/comptes$/.test(h) ||
@@ -79,11 +84,11 @@
     comptes:       '#/comptes',
     manager:       '#/manager',
     reporting:     '#/manager',
+    reporting_cds: '#/reporting-cds',
     questionnaire: '#/questionnaire',
     admin:         '#/admin',
     photos:        '#/photos',
     visites_fdv:   '#/visites-fdv',
-    phoning_fdv:   '#/phoning-fdv',
   };
 
   function onglets(role) {

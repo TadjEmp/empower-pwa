@@ -827,7 +827,7 @@ window.VuePipeline = {
             <label>Canal de vente
               <select id="nl-canal">
                 <option value="IT">IT Revendeur</option>
-                <option value="Grande Surface">Grande Surface (Drive / Leclerc)</option>
+                <option value="Grande Surface">Grande Surface / Drive</option>
                 <option value="Retail">Retail / Boutique</option>
                 <option value="Grossiste">Grossiste / Distributeur</option>
                 <option value="Autre">Autre</option>
