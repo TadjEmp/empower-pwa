@@ -113,7 +113,7 @@ window.VueAdmin = {
     if (!f.nom.trim() || !f.email.trim() || !f.pin || !f.motdepasse) {
       Toast.afficher('Champs requis manquants', 'warning'); return;
     }
-    if (f.motdepasse.length < 6) { Toast.afficher('Mot de passe trop court (6 caractères min)', 'warning'); return; }
+    if (f.motdepasse.length < 12) { Toast.afficher('Mot de passe trop court (12 caractères min)', 'warning'); return; }
     this.state.usersState.envoiEnCours = true;
     this.render();
     try {
@@ -179,7 +179,7 @@ window.VueAdmin = {
 
   async confirmerReset() {
     const us = this.state.usersState;
-    if (!us.resetMdp || us.resetMdp.length < 6) { Toast.afficher('Mot de passe trop court (6 caractères min)', 'warning'); return; }
+    if (!us.resetMdp || us.resetMdp.length < 12) { Toast.afficher('Mot de passe trop court (12 caractères min)', 'warning'); return; }
     try {
       const r = await fetch(`${SUPABASE_URL}/functions/v1/admin-users`, {
         method: 'POST',
@@ -276,7 +276,7 @@ window.VueAdmin = {
               <select onchange="VueAdmin.state.usersState.formCreation.role=this.value">
                 ${Object.keys(Permissions.MATRICE).map(r => `<option value="${r}" ${f.role === r ? 'selected' : ''}>${r}</option>`).join('')}
               </select></label>
-            <label>Mot de passe initial * (6 caractères min)
+            <label>Mot de passe initial * (12 caractères min)
               <input type="password" class="q-input" required value="${f.motdepasse}" oninput="VueAdmin.state.usersState.formCreation.motdepasse=this.value"/></label>
             <div style="display:flex;gap:8px;margin-top:14px">
               <button type="button" class="btn-secondaire" onclick="VueAdmin.fermerModalCreation()">Annuler</button>
@@ -293,7 +293,7 @@ window.VueAdmin = {
       <div class="modal-overlay" onclick="if(event.target===this) VueAdmin.fermerModalReset()">
         <div class="modal">
           <h3>🔑 Réinitialiser le mot de passe — ${us.resetTarget.nom}</h3>
-          <label>Nouveau mot de passe (6 caractères min)
+          <label>Nouveau mot de passe (12 caractères min)
             <input type="password" class="q-input" value="${us.resetMdp}" oninput="VueAdmin.state.usersState.resetMdp=this.value"/></label>
           <div style="display:flex;gap:8px;margin-top:14px">
             <button type="button" class="btn-secondaire" onclick="VueAdmin.fermerModalReset()">Annuler</button>
