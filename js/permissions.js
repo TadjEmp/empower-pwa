@@ -23,20 +23,17 @@
       'home', 'tracker', 'historiques', 'phoning', 'visites',
       'objectifs', 'primes', 'questionnaire', 'comptes', 'photos', 'reporting_cds',
     ],
-    // V5 BUG5 — Alexandra : conserve OBJECTIFS ; jamais Visites/Phoning/Primes (raw CDS).
-    // Section 9 cahier des charges — vues consolidées lecture seule dédiées.
-    // 'reporting' retiré (audit UX desktop § "simplification nav") : pour
-    // CHANNEL_MANAGER, VueDashboardManager.init() bascule systématiquement sur
-    // initChannel() quel que soit le hash — #/manager et #/dashboard rendaient
-    // donc un contenu strictement identique sous deux entrées de nav distinctes.
-    // ADMIN garde 'reporting' : #/manager y affiche la vue équipe, différente
-    // de leur #/dashboard personnel.
+    // V5 BUG5 — Alexandra : conserve OBJECTIFS ; jamais Primes (raw CDS).
+    // 'reporting' réactivé : #/manager affiche désormais pour elle la Vue équipe
+    // COPIL complète (identique à ADMIN, CA/objectifs équipe inclus — niveau
+    // quasi-admin explicitement demandé), distincte de sa home Onboarding sur
+    // #/dashboard (cf. VueDashboardManager.init()). Ce n'est plus un doublon.
     // Bloc 3 §4 — 'phoning' remplace 'phoning_fdv' (onglet séparé supprimé, son
-    // contenu vit maintenant dans l'onglet Journal de vue-phoning.js) ; Alexandra
-    // reste cantonnée à ce Journal lecture seule (cf. vue-phoning.js init()/setMode()).
+    // contenu vit maintenant dans l'onglet Journal de vue-phoning.js), niveau
+    // quasi-admin sur le Tracker également (cf. vue-pipeline.js _peutAssigner).
     CHANNEL_MANAGER: [
       'home', 'tracker', 'comptes', 'objectifs', 'photos', 'admin',
-      'visites_fdv', 'phoning',
+      'visites_fdv', 'phoning', 'reporting',
     ],
     EXTERNE: [
       'tracker',

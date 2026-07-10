@@ -30,7 +30,7 @@ window.VuePhoning = {
     return {
       phase: 'PRE',
       chargement: true, envoiEnCours: false,
-      comptes: [], tousComptes: [], prospects: [],
+      comptes: [], tousComptes: [], prospects: [], cdsListe: [],
       typeSource: 'EXISTANT', cible: null,
       mode: 'BASE',            // BASE | PLANNING | APPEL | HISTORIQUE
       filtreListe: 'TOUS',
@@ -90,10 +90,15 @@ window.VuePhoning = {
     if (Session.role === 'CHANNEL_MANAGER') this.state.mode = 'HISTORIQUE';
     this.render();
     try {
-      const [comptes, planning] = await Promise.all([
+      const [comptes, planning, cdsApi] = await Promise.all([
         SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
         SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING'),
+        SheetsAPI.lireCDS(),
       ]);
+      // Roster complet — un commercial sans appel (Journal) ou sans visite
+      // (Visites FDV) ne doit pas disparaître de la liste par commercial.
+      this.state.cdsListe = (Array.isArray(cdsApi) ? cdsApi : [])
+        .filter(c => ['CDS', 'ADMIN'].includes(String(c.role).toUpperCase()));
       // BUG-09 + BLOC 3 : base phoning = comptes attribués au CDS,
       // restreinte aux comptes HISTORIQUES (STATUT_COMPTE RÉACTIVER ou ACTIF).
       const STATUTS_PHONING = ['REACTIVER', 'RÉACTIVER', 'ACTIF'];
@@ -915,6 +920,12 @@ window.VuePhoning = {
   // ── Bloc 3 §4 — cartes par commercial pour le Journal (Manager/Admin) ──
   _renderCartesCommerciauxJournal() {
     const map = new Map();
+    // Amorce avec tous les commerciaux actifs (0 appel affiché explicitement),
+    // pas seulement ceux qui ont déjà au moins une ligne dans le journal.
+    this.state.cdsListe.forEach(c => {
+      const pin = String(c.pin);
+      map.set(pin, { pin, nom: resolveCDS(c.pin) !== '—' ? resolveCDS(c.pin) : c.nom, total: 0, dernier: null });
+    });
     this.state.journal.forEach(a => {
       const pin = String(a.PIN_CDS || '');
       if (!pin) return;

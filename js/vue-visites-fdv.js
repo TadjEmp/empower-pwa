@@ -6,14 +6,21 @@
 
 window.VueVisitesFDV = {
 
-  state: { chargement: true, erreur: null, visites: [], commercialSelectionne: null },
+  state: { chargement: true, erreur: null, visites: [], cdsListe: [], commercialSelectionne: null },
 
   async init() {
-    this.state = { chargement: true, erreur: null, visites: [], commercialSelectionne: null };
+    this.state = { chargement: true, erreur: null, visites: [], cdsListe: [], commercialSelectionne: null };
     this.render();
     try {
-      const visites = await SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES');
+      const [visites, cdsApi] = await Promise.all([
+        SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES'),
+        SheetsAPI.lireCDS(),
+      ]);
       this.state.visites = (visites || []).filter(v => String(v.deleted || '').toUpperCase() !== 'TRUE');
+      // Bloc "aucun bug" — un commercial sans visite (ex. Lyes) disparaissait
+      // sinon totalement de la liste (même pattern déjà corrigé sur les Photos).
+      this.state.cdsListe = (Array.isArray(cdsApi) ? cdsApi : [])
+        .filter(c => ['CDS', 'ADMIN'].includes(String(c.role).toUpperCase()));
       this.state.chargement = false;
       this.render();
     } catch(e) {
@@ -25,6 +32,12 @@ window.VueVisitesFDV = {
 
   _grouperParCommercial() {
     const map = new Map();
+    // Amorce avec tous les commerciaux actifs (0 visite affiché explicitement),
+    // pas seulement ceux qui ont déjà au moins une ligne dans 🗺️_VISITES.
+    this.state.cdsListe.forEach(c => {
+      const pin = String(c.pin);
+      map.set(pin, { pin, nom: resolveCDS(c.pin) !== '—' ? resolveCDS(c.pin) : c.nom, visites: [] });
+    });
     this.state.visites.forEach(v => {
       const pin = String(v.PIN_CDS || '');
       if (!pin) return;

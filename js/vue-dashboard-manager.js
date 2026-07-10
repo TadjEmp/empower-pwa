@@ -10,8 +10,13 @@ window.VueDashboardManager = {
 
   async init() {
     if (!Session.voitTout()) { Router.aller('#/dashboard'); return; }
-    // BLOC 4 — Alexandra (CHANNEL_MANAGER) a une home onboarding dédiée, lecture seule.
-    if (Session.estChannel && Session.estChannel()) { return this.initChannel(); }
+    // BLOC 4 — Alexandra (CHANNEL_MANAGER) garde sa home onboarding dédiée sur
+    // #/dashboard. Sur #/manager, elle accède désormais à la Vue équipe COPIL
+    // complète (identique à ADMIN, CA/objectifs inclus) — niveau quasi-admin
+    // explicitement demandé, remplace l'ancienne restriction "lecture seule
+    // onboarding uniquement" qui la redirigeait ici quel que soit le hash.
+    const veutCopil = window.location.hash.includes('/manager');
+    if (Session.estChannel && Session.estChannel() && !veutCopil) { return this.initChannel(); }
     this.state = { chargement: true, d: null };
     this.render();
     try {

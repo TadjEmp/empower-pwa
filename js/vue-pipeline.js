@@ -51,12 +51,11 @@ window.VuePipeline = {
   // ── Droits (Bloc 4) ──
   // Voir tous les leads : ADMIN + CHANNEL_MANAGER (Alexandra). CDS : ses propres leads. EXTERNE (Flavie) : saisie.
   _voitTous()    { return Session.voitTout(); },
-  // Attribuer / avancer / éditer un lead : ADMIN uniquement. Alexandra (CHANNEL_MANAGER) = lecture seule.
+  // Attribuer / avancer / éditer un lead : ADMIN + CHANNEL_MANAGER (Alexandra a un niveau
+  // proche de l'admin sur le Tracker, pas une simple lecture seule).
   _peutAssigner(){ return Session.estManager() || Session.estChannel(); },
   // Saisir un nouveau lead : ADMIN + CHANNEL_MANAGER (Alexandra) + CDS (commercial terrain).
   _peutSaisir()  { return Session.estManager() || Session.estChannel() || Session.estCDS(); },
-  // Lecture seule (Alexandra) : voit tout mais ne peut rien modifier hormis la saisie.
-  _lectureSeule(){ return Session.estChannel(); },
 
   async init() {
     this.state = {
@@ -520,7 +519,6 @@ window.VuePipeline = {
     const leads = this.leadsFiltres;
     const voitTous = this._voitTous();      // filtres par CDS (ADMIN + CHANNEL_MANAGER)
     const peutSaisir = this._peutSaisir();   // bouton nouveau lead
-    const lectureSeule = this._lectureSeule(); // Alexandra
     const cdsList = this.CDS.length ? this.CDS : this.CDS_FALLBACK;
 
     app.innerHTML = `
@@ -528,7 +526,6 @@ window.VuePipeline = {
         <button onclick="Router.aller('#/dashboard')" class="btn-retour">←</button>
         <h1>EMPOWER TRACKER</h1>
         <span class="badge-compteur">${leads.length} leads</span>
-        ${lectureSeule ? '<span class="badge-compteur" style="background:var(--c-text-2);color:#fff" title="Vue lecture seule">👁 Lecture seule</span>' : ''}
       </header>
 
       <!-- Toggle Kanban / Table — tabs premium -->
