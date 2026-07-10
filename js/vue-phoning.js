@@ -90,11 +90,15 @@ window.VuePhoning = {
     if (Session.role === 'CHANNEL_MANAGER') this.state.mode = 'HISTORIQUE';
     this.render();
     try {
-      const [comptes, planning, cdsApi] = await Promise.all([
+      const [comptes, planning, cdsApi, prospects] = await Promise.all([
         SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
         SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING'),
         SheetsAPI.lireCDS(),
+        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS'),
       ]);
+      // Base des prospects pour l'appel (sourceListe/suggestions PROSPECT) —
+      // manquait jusqu'ici : state.prospects restait toujours vide.
+      this.state.prospects = prospects.filter(p => Session.voitTout() || !p.PIN_CDS_Assigne || Number(p.PIN_CDS_Assigne) === Session.pin);
       // Roster complet — un commercial sans appel (Journal) ou sans visite
       // (Visites FDV) ne doit pas disparaître de la liste par commercial.
       this._rosterComplet = Array.isArray(cdsApi) ? cdsApi : []; // Bug2 — pour notifs dynamiques
@@ -121,12 +125,22 @@ window.VuePhoning = {
           (Session.voitTout() || Number(a.PIN_CDS) === Session.pin)
         )
         .sort((a, b) => (a.Date_Planifiee || '').localeCompare(b.Date_Planifiee || ''));
-      // Si idCible passé (depuis fiche compte), ouvrir le formulaire de planification pré-rempli
+      // Si idCible passé (depuis fiche compte OU depuis un lead Tracker), ouvrir
+      // le formulaire de planification pré-rempli. Le bouton "Planifier appel"
+      // du Tracker (vue-pipeline.js) route vers #/phoning/:id avec un ID_Prospect,
+      // qui ne matche jamais 🏢_COMPTES — d'où la recherche en second recours
+      // dans 📋_PROSPECTS (sinon le formulaire ne s'ouvrait jamais pour un lead).
       if (idCible) {
         const c = comptes.find(x => String(x.ID_Compte) === String(idCible));
+        const p = !c && this.state.prospects.find(x => String(x.ID_Prospect) === String(idCible));
         if (c) {
           this.state.formPlanif = {
             idCompte: c.ID_Compte, nomCompte: c.Nom_Compte,
+            datePlanifiee: '', objectif: '', note: '',
+          };
+        } else if (p) {
+          this.state.formPlanif = {
+            idCompte: p.ID_Prospect, nomCompte: p.Nom_Compte,
             datePlanifiee: '', objectif: '', note: '',
           };
         }

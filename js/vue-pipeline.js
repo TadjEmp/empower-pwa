@@ -1038,7 +1038,7 @@ window.VuePipeline = {
                 style="background:var(--c-danger,#e53935);color:#fff;border:none;border-radius:var(--radius-sm);padding:10px 18px;cursor:pointer;font-size:13px"
                 onclick="VuePipeline.supprimerLead('${l.ID_Prospect}')">🗑 Supprimer</button>`
             : ''}
-          <button type="button" class="btn-primaire" onclick="Router.aller('#/phoning')">📞 Planifier appel</button>
+          <button type="button" class="btn-primaire" onclick="Router.aller('#/phoning/${l.ID_Prospect}')">📞 Planifier appel</button>
         </div>
       </div>
     </div>`;
