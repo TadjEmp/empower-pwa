@@ -17,8 +17,11 @@ window.VuePipeline = {
     { id: 'ARCHIVE',     lbl: 'Archivé',      coul: 'var(--c-text-2)' },
   ],
 
-  // BLOC 1 : 4004 Anthony retiré du fallback · V5 BUG1 : Alexandra (5000) ajoutée
-  CDS_FALLBACK: [ { pin: 4001, nom: 'Lyes' }, { pin: 4002, nom: 'Mehdi' }, { pin: 4003, nom: 'Johanne' }, { pin: 1000, nom: 'Tadjidine' }, { pin: 5000, nom: 'Alexandra' } ],
+  // BLOC 1 : 4004 Anthony retiré du fallback · Bloc D2 (07/2026) : Alexandra
+  // (5000) retirée définitivement — elle fournit les leads (CHANNEL_MANAGER),
+  // ce n'est pas une commerciale terrain, elle ne doit apparaître ni dans les
+  // filtres ni dans les attributions de CDS.
+  CDS_FALLBACK: [ { pin: 4001, nom: 'Lyes' }, { pin: 4002, nom: 'Mehdi' }, { pin: 4003, nom: 'Johanne' }, { pin: 1000, nom: 'Tadjidine' } ],
   CDS: [],
 
   LIMITE_COL: 20,
@@ -30,19 +33,23 @@ window.VuePipeline = {
   CHANNELS: [],
 
   _chargerCDS(params, objectifs, cdsApi) {
-    // V5 BUG1 — source de vérité = lireCDS (backend). Inclut Alexandra (5000).
-    // GARANTIE ABSOLUE : si l'API est indisponible, fallback codé en dur (5 entrées).
+    // Bloc D2 (07/2026) — source de vérité = lireCDS (backend), mais Alexandra
+    // (5000) est explicitement exclue même si le backend la renvoie : elle
+    // fournit les leads (CHANNEL_MANAGER), ce n'est pas une commerciale
+    // terrain, elle ne doit apparaître ni dans le filtre "Filtrer par CDS" ni
+    // dans les dropdowns d'attribution du Tracker.
+    // GARANTIE ABSOLUE : si l'API est indisponible, fallback codé en dur (4 entrées).
     // Ne dépend plus de ⚙️_PARAMS (évite tout bug de cache IDB ou PINS_CDS erronée).
     if (Array.isArray(cdsApi) && cdsApi.length) {
-      this.CDS = cdsApi.map(c => ({ pin: Number(c.pin), nom: String(c.nom) }));
+      this.CDS = cdsApi.map(c => ({ pin: Number(c.pin), nom: String(c.nom) })).filter(c => c.pin !== 5000);
     } else {
-      const NOMS = { 1000:'Tadjidine', 4001:'Lyes', 4002:'Mehdi', 4003:'Johanne', 5000:'Alexandra' };
+      const NOMS = { 1000:'Tadjidine', 4001:'Lyes', 4002:'Mehdi', 4003:'Johanne' };
       const nomMap = {};
       (objectifs || []).forEach(o => {
         const pin = Number(o.PIN_CDS), nom = String(o.Nom_CDS || '').trim();
         if (pin && nom) nomMap[pin] = nom;
       });
-      this.CDS = [1000, 4001, 4002, 4003, 5000].map(pin => ({ pin, nom: nomMap[pin] || NOMS[pin] }));
+      this.CDS = [1000, 4001, 4002, 4003].map(pin => ({ pin, nom: nomMap[pin] || NOMS[pin] }));
     }
     // Synchronise _CDS_REGISTRY pour resolveCDS() dans toute l'app
     this.CDS.forEach(c => { window._CDS_REGISTRY[String(c.pin)] = c.nom; });
@@ -86,7 +93,7 @@ window.VuePipeline = {
         SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS', { nocache: true }),
         SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
         SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
-        SheetsAPI.lireCDS(), // V5 BUG1 — liste CDS dynamique (inclut Alexandra)
+        SheetsAPI.lireCDS(), // liste CDS dynamique — Alexandra filtrée dans _chargerCDS (Bloc D2)
       ]);
       this._chargerCDS(params, objectifs, cdsApi);
       initCDSRegistry(objectifs); // BUG-02 : peuple le registre global
@@ -118,13 +125,12 @@ window.VuePipeline = {
           const k = normaliserNom(p.Nom_Compte);
           return arr.findIndex(x => normaliserNom(x.Nom_Compte) === k) === _i;
         })
-        // ADMIN + CHANNEL_MANAGER : tous les leads. CDS : uniquement les siens.
-        .filter(p => this._voitTous() || Number(p.PIN_CDS_Assigne) === Session.pin)
-        // BLOC 3.2 : Alexandra voit uniquement les leads actifs (hors INTEGRE/ARCHIVE) par défaut
-        .filter(p => {
-          if (!Session.estChannel()) return true;
-          return p._statut !== 'INTEGRE' && p._statut !== 'ARCHIVE';
-        });
+        // ADMIN + CHANNEL_MANAGER : tous les leads (y compris INTEGRE/ARCHIVE,
+        // cf. Bloc D1 07/2026 — CHANNEL_MANAGER doit voir les comptes intégrés/
+        // archivés au même titre qu'ADMIN ; l'exclusion par défaut d'avant
+        // (BLOC 3.2) masquait ces statuts sans possibilité de les afficher via
+        // le filtre Statut). CDS : uniquement les siens.
+        .filter(p => this._voitTous() || Number(p.PIN_CDS_Assigne) === Session.pin);
       this.state.chargement = false;
       this.render();
     } catch(e) {

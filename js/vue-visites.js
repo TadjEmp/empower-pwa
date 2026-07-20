@@ -252,6 +252,10 @@ window.VueVisites = {
       prochaineEtape: '',
       rechercheCompte: '',
       rechercheDept: '',
+      // Bloc replanification (07/2026) — non vide seulement quand le formulaire
+      // est ouvert depuis planifierSuiviVisite(), pour tracer le lien visite
+      // d'origine → nouvelle visite sans toucher à l'ancienne ligne.
+      idActionOrigine: '',
     };
   },
 
@@ -553,6 +557,7 @@ window.VueVisites = {
         Email:                  f.horsBase ? (f.emailLibre || '') : '',
         Note_Privee:            f.commentairePrep,
         Prochaine_Action_Texte: f.prochaineEtape,
+        ID_Action_Origine:      f.idActionOrigine || '',
         Timestamp:              new Date().toISOString(),
       };
       await SheetsAPI.ecrire('EMPOWER_MDB', '🗺️_VISITES', visite);
@@ -561,6 +566,7 @@ window.VueVisites = {
       f.horsBase = false;
       f.idCible  = idCibleFinal;
       f.nomCible = nomFinal;
+      f.idActionOrigine = '';
       this.state.dateVue = f.date;
       this.state.modalPlanif = false;
       Toast.afficher(
@@ -696,6 +702,45 @@ window.VueVisites = {
       Toast.afficher(`📋 Visite dupliquée → ${dateDup}`, 'succes');
       this.render();
     } catch(err) { Toast.afficher('❌ ' + err.message, 'erreur'); }
+  },
+
+  // ── Bloc replanification (07/2026) — remplace le "+1" (J+7 imposé, sans
+  // choix) pour les visites déjà réalisées : deux vraies actions de suivi,
+  // date libre, réutilisant les formulaires existants (visite ici, appel via
+  // VuePhoning) plutôt que de dupliquer la logique de planification. ──
+
+  // Choix 1 — planifier une visite de suivi : ouvre le formulaire de
+  // planification existant, pré-rempli avec le compte et un condensé
+  // lecture-seule de la visite d'origine (jamais de modification de l'ancienne
+  // ligne, jamais d'écrasement de ses notes).
+  planifierSuiviVisite(idVisite) {
+    const v = this.state.visites.find(x => x.ID_Visite === idVisite);
+    if (!v) return;
+    this._resetFormPlanif();
+    Object.assign(this.state.formPlanif, {
+      idCible:         v.ID_Cible || '',
+      nomCible:        v.Nom_Compte || '',
+      typeVisite:      v.Type_Visite || 'SUIVI_ACTIF',
+      commentairePrep: condenserVisite(v),
+      idActionOrigine: v.ID_Visite,
+    });
+    this.ouvrirModal();
+  },
+
+  // Choix 2 — planifier un appel de suivi : délègue entièrement au module
+  // Phoning (mêmes objectifs d'appel, même formulaire) au lieu de réinventer
+  // une logique d'appel dans Visites. Le condensé + l'ID de la visite d'origine
+  // transitent via window._suiviActionOrigine, consommés une seule fois par
+  // VuePhoning.init() au chargement de la route #/phoning/:id.
+  planifierSuiviAppel(idVisite) {
+    const v = this.state.visites.find(x => x.ID_Visite === idVisite);
+    if (!v) return;
+    if (!v.ID_Cible || v.ID_Cible === 'HORS_BASE') {
+      Toast.afficher('Impossible de planifier un appel : ce compte n\'est pas rattaché à une fiche', 'warning');
+      return;
+    }
+    window._suiviActionOrigine = { idVisite: v.ID_Visite, note: condenserVisite(v) };
+    Router.aller('#/phoning/' + v.ID_Cible);
   },
 
   // ── Synchroniser ──
@@ -906,6 +951,11 @@ window.VueVisites = {
         ${v.Type_Visite ? `<div class="cv-type">${String(v.Type_Visite).replace(/_/g,' ')}</div>` : ''}
         ${cdsNom && cdsNom !== '—' ? `<div class="cv-type" style="color:var(--c-text-2);font-size:11px">${cdsNom}</div>` : ''}
         ${(v.Note_Privee || v.Commentaire_Prep) ? `<div class="cv-note">${(v.Note_Privee || v.Commentaire_Prep).slice(0, 80)}</div>` : ''}
+        ${v.ID_Action_Origine ? (() => {
+          const origine = this.state.visites.find(x => x.ID_Visite === v.ID_Action_Origine);
+          const dateStr = origine?.Date ? new Date(origine.Date).toLocaleDateString('fr-FR') : null;
+          return `<div style="font-size:11px;color:var(--c-primary)">↳ suite de la visite${dateStr ? ' du ' + dateStr : ''}</div>`;
+        })() : ''}
         ${statut === 'réalisée' ? this._rapportVisite(v) : ''}
         <div class="cv-actions" style="gap:6px;flex-wrap:wrap">
           ${isPlanif ? `
@@ -934,8 +984,15 @@ window.VueVisites = {
           ${peutModif ? `
             <button class="btn-secondaire" title="Modifier" style="padding:10px 14px;font-size:15px;width:auto"
                     onclick="VueVisites.ouvrirEdition('${v.ID_Visite}')">✏</button>
+            ${statut === 'réalisée' ? `
+            <button class="btn-secondaire" title="Planifier une visite de suivi" style="padding:10px 14px;font-size:13px;width:auto"
+                    onclick="VueVisites.planifierSuiviVisite('${v.ID_Visite}')">🗓️ Visite</button>
+            <button class="btn-secondaire" title="Planifier un appel de suivi" style="padding:10px 14px;font-size:13px;width:auto"
+                    onclick="VueVisites.planifierSuiviAppel('${v.ID_Visite}')">📞 Appel</button>
+            ` : `
             <button class="btn-secondaire" title="Dupliquer (J+7)" style="padding:10px 14px;font-size:13px;width:auto"
                     onclick="VueVisites.dupliquerVisite('${v.ID_Visite}')">+1</button>
+            `}
             <button class="btn-secondaire" title="Supprimer" style="padding:10px 14px;font-size:15px;width:auto;color:var(--c-danger);border-color:var(--c-danger)"
                     onclick="VueVisites.demanderSuppression('${v.ID_Visite}')">✕</button>
           ` : ''}

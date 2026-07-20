@@ -71,6 +71,20 @@ window.VueFicheCompte = {
       .sort((a, b) => new Date(b.Date) - new Date(a.Date));
     this.state.appels  = appels.filter(a => String(a.ID_Cible) === String(idCompte))
       .sort((a, b) => new Date(b.Date) - new Date(a.Date));
+    this.state.chargement = false;
+  },
+
+  // Rend la fiche via le bon conteneur selon le contexte d'ouverture : panneau
+  // docké desktop (VueComptes.render(), qui réinjecte _renderFicheDockee()) ou
+  // page pleine mobile (this.render()). Sans ça, les actions de la fiche
+  // (édition coordonnées, rapport phoning...) appelées depuis le panneau docké
+  // écrasaient #app entier via le render() pleine page, qui restait bloqué sur
+  // le spinner de chargement car state.chargement n'est jamais levé sur ce
+  // chemin (VueComptes.ouvrirFiche() appelle _chargerDonnees() directement,
+  // jamais init()).
+  _rerender() {
+    if (window.VueComptes && VueComptes.state.ficheDockee) { VueComptes.render(); }
+    else { this.render(); }
   },
 
   ouvrirEditionCoordonnees() {
@@ -84,12 +98,12 @@ window.VueFicheCompte = {
       email:       c.Email       || '',
     };
     this.state.editCoord = true;
-    this.render();
+    this._rerender();
   },
 
   annulerEditionCoordonnees() {
     this.state.editCoord = false;
-    this.render();
+    this._rerender();
   },
 
   _syncDept() {
@@ -97,7 +111,7 @@ window.VueFicheCompte = {
     if (cp.length >= 2 && !this.state.formCoord.departement) {
       this.state.formCoord.departement = cp.slice(0, cp.startsWith('97') ? 3 : 2);
     }
-    this.render();
+    this._rerender();
   },
 
   async sauvegarderCoordonnees() {
@@ -115,7 +129,7 @@ window.VueFicheCompte = {
     };
 
     this.state.sauvegardeEnCours = true;
-    this.render();
+    this._rerender();
     try {
       await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', c.ID_Compte, champs);
       // Update local state
@@ -126,17 +140,17 @@ window.VueFicheCompte = {
       Toast.afficher('❌ ' + e.message, 'erreur');
     }
     this.state.sauvegardeEnCours = false;
-    this.render();
+    this._rerender();
   },
 
   ouvrirRapportPhoning() {
     this.state.modalRapportPhoning = true;
-    this.render();
+    this._rerender();
   },
 
   fermerRapportPhoning() {
     this.state.modalRapportPhoning = false;
-    this.render();
+    this._rerender();
   },
 
   _renderModalRapportPhoning() {
@@ -159,6 +173,16 @@ window.VueFicheCompte = {
           <button class="btn-secondaire" style="margin-top:8px" onclick="VueFicheCompte.fermerRapportPhoning()">Fermer</button>
         </div>
       </div>`;
+  },
+
+  // Bloc replanification (07/2026) — badge de traçabilité quand une visite ou
+  // un appel a été planifié depuis une visite déjà réalisée (ID_Action_Origine).
+  // Lecture seule, ne modifie jamais la ligne d'origine.
+  _libelleSuite(idActionOrigine) {
+    if (!idActionOrigine) return '';
+    const origine = this.state.visites.find(x => x.ID_Visite === idActionOrigine);
+    const dateStr = origine?.Date ? this._dateLigne(origine.Date) : null;
+    return `<div style="font-size:11px;color:var(--c-primary);margin-top:2px">↳ suite de la visite${dateStr ? ' du ' + dateStr : ''}</div>`;
   },
 
   _barreCA(label, val, max) {
@@ -319,6 +343,7 @@ window.VueFicheCompte = {
             <div class="visite-date">${v.Date || '—'} · ${v.Heure || ''} · ${window.resolveCDS(v.PIN_CDS || v.Nom_CDS)}</div>
             <div class="visite-resultat">${v.Resultat_Visite || v.Type_Visite || '—'}</div>
             <div class="visite-score">Réceptivité ${v.Slider_Receptivite != null && v.Slider_Receptivite !== '' ? v.Slider_Receptivite : '—'}/5${v.Prochaine_Action_Texte ? ` · → ${v.Prochaine_Action_Texte}` : ''}</div>
+            ${this._libelleSuite(v.ID_Action_Origine)}
           </div>`).join('')}
       </div>
 
@@ -331,6 +356,7 @@ window.VueFicheCompte = {
             <div class="appel-date">${a.Date || '—'} · ${window.resolveCDS(a.PIN_CDS || a.Nom_CDS)}</div>
             <div class="appel-resultat">${a.Statut_Appel || '—'} · Intérêt EMPOWER : ${a.Interet_EMPOWER || '—'}</div>
             <div class="appel-frein">${a.Frein_Principal ? `Frein : ${a.Frein_Principal}` : ''}${a.Prochaine_Action ? ` · → ${a.Prochaine_Action}` : ''}</div>
+            ${this._libelleSuite(a.ID_Action_Origine)}
           </div>`).join('')}
       </div>`;
   },

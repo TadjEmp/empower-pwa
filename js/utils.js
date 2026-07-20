@@ -18,6 +18,31 @@ function normaliserNom(str = '') {
   return (str || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim().replace(/\s+/g, ' ');
 }
 
+// Condensé lecture-seule d'une visite déjà réalisée — utilisé pour pré-remplir
+// la note d'une action de suivi (nouvelle visite OU appel planifié depuis
+// VueVisites.planifierSuiviVisite/planifierSuiviAppel) sans jamais modifier
+// la ligne d'origine. Mutualisé entre vue-visites.js et vue-phoning.js pour
+// ne pas dupliquer cette logique dans les deux modules.
+function condenserVisite(v) {
+  if (!v) return '';
+  const dateStr = v.Date ? new Date(v.Date).toLocaleDateString('fr-FR') : '—';
+  const parts = [`↳ Suite de la visite du ${dateStr}`];
+  if (v.Resultat_Visite) parts.push(`Résultat : ${v.Resultat_Visite}`);
+  let freins = '';
+  if (v.Freins_JSON) {
+    try {
+      const f = typeof v.Freins_JSON === 'string' ? JSON.parse(v.Freins_JSON) : v.Freins_JSON;
+      if (Array.isArray(f) && f.length) freins = f.join(', ');
+      else if (f && typeof f === 'object') freins = Object.values(f).filter(Boolean).join(', ');
+    } catch { freins = String(v.Freins_JSON); }
+  }
+  if (freins) parts.push(`Frein(s) : ${freins}`);
+  if (v.Concurrent_Actuel) parts.push(`Concurrent : ${v.Concurrent_Actuel}`);
+  if (v.Prochaine_Action_Texte) parts.push(`Prochaine action prévue : ${v.Prochaine_Action_Texte}`);
+  if (v.Note_Privee) parts.push(`Note : ${v.Note_Privee}`);
+  return parts.join('\n');
+}
+
 // ── Normalisation montants (Section 24 — anti-aberrants) ──
 function parseAmount(val) {
   if (val === null || val === undefined || val === '') return 0;

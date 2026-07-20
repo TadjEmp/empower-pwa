@@ -16,7 +16,11 @@ window.VueDashboardCDS = {
         SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
         SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES'),
         SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING'),
-        SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
+        // nocache : objectifs_primes.Qx_CA_Realise est mis à jour par la synchro
+        // Sell-In (sync-sellin) depuis le poste ADMIN — sans nocache, le
+        // Reporting CDS pouvait rester figé jusqu'à 30 min après une synchro
+        // faite ailleurs (07/2026).
+        SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES', { nocache: true }),
         SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS'),
         SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
         SheetsAPI.lire('EMPOWER_MDB', '🔔_NOTIFS').catch(() => []),

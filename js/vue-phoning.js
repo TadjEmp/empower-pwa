@@ -133,15 +133,22 @@ window.VuePhoning = {
       if (idCible) {
         const c = comptes.find(x => String(x.ID_Compte) === String(idCible));
         const p = !c && this.state.prospects.find(x => String(x.ID_Prospect) === String(idCible));
+        // Bloc replanification (07/2026) — contexte posé par
+        // VueVisites.planifierSuiviAppel() juste avant la navigation vers
+        // #/phoning/:id ; consommé une seule fois ici, jamais persisté au-delà.
+        const suivi = window._suiviActionOrigine;
+        window._suiviActionOrigine = null;
         if (c) {
           this.state.formPlanif = {
             idCompte: c.ID_Compte, nomCompte: c.Nom_Compte,
-            datePlanifiee: '', objectif: '', note: '',
+            datePlanifiee: '', objectif: '', note: suivi?.note || '',
+            idActionOrigine: suivi?.idVisite || '',
           };
         } else if (p) {
           this.state.formPlanif = {
             idCompte: p.ID_Prospect, nomCompte: p.Nom_Compte,
-            datePlanifiee: '', objectif: '', note: '',
+            datePlanifiee: '', objectif: '', note: suivi?.note || '',
+            idActionOrigine: suivi?.idVisite || '',
           };
         }
       }
@@ -2203,6 +2210,7 @@ window.VuePhoning = {
       note: '',
       modeFroid: false,
       froidNom: '', froidDept: '', froidVille: '', froidTel: '', froidEmail: '',
+      idActionOrigine: '',
     };
     this.render();
   },
@@ -2234,6 +2242,7 @@ window.VuePhoning = {
         Statut_Appel: 'planifié',
         Objectif_Appel: f.objectif,
         Note_Preparation: f.note,
+        ID_Action_Origine: f.idActionOrigine || '',
         Timestamp: new Date().toISOString(),
         ...(f.modeFroid ? {
           Nom_Enseigne: f.froidNom,

@@ -36,12 +36,12 @@ window.VueLogin = {
           <form class="login-form" onsubmit="VueLogin.soumettre(event)">
             <div class="login-champ">
               <span class="champ-icone">✉️</span>
-              <input type="email" id="login-email" placeholder="Adresse e-mail"
+              <input type="email" id="login-email" name="email" placeholder="Adresse e-mail"
                      autocomplete="username" autofocus required/>
             </div>
             <div class="login-champ">
               <span class="champ-icone">🔒</span>
-              <input type="password" id="login-mdp" placeholder="Mot de passe"
+              <input type="password" id="login-mdp" name="password" placeholder="Mot de passe"
                      autocomplete="current-password" required/>
               <button type="button" class="btn-oeil" id="btn-oeil"
                       onclick="VueLogin.toggleMdp()" aria-label="Afficher/masquer le mot de passe">
@@ -163,8 +163,18 @@ window.VueLogin = {
     const mdp   = document.getElementById('login-mdp').value;
     this.state.chargement = true;
     this.state.erreur = null;
-    this.render();
-    document.getElementById('login-email').value = email;
+    // Bloc F (07/2026) — ne PAS appeler this.render() ici : ça détruit le
+    // <form> qui vient de déclencher le submit (réécriture de #app.innerHTML),
+    // ce qui casse le lien que les navigateurs gardent entre "ce formulaire a
+    // été soumis" et "propose d'enregistrer le mot de passe" — le prompt ne
+    // se déclenchait jamais. On désactive juste le bouton en place ; le
+    // render() complet n'intervient qu'en cas d'erreur (le formulaire reste
+    // affiché, rien n'a été enregistré côté navigateur de toute façon). En
+    // cas de succès, Router.aller() change de vue — la destruction du form
+    // à ce moment n'a plus d'incidence, la navigation est déjà le signal de
+    // succès attendu par le navigateur.
+    const btn = e.target.querySelector('.btn-login');
+    if (btn) { btn.disabled = true; btn.textContent = 'Connexion…'; }
 
     const r = await Session.connecter(email, mdp);
     if (r.ok) {

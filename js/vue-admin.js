@@ -695,7 +695,17 @@ window.VueAdmin = {
       this.state.syncSellInResultat   = { ok: true, matched, nonMatch: nonMatch.length, ts };
       this.state.syncSellInNonMatcher = nonMatch;
       Toast.afficher(`✅ Sell-In synchronisé — ${matched} comptes mis à jour`, 'succes', 6000);
-      await SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES');
+      // Vérif dynamisme Reporting (07/2026) — l'edge function sync-sellin écrit
+      // aussi dans objectifs_primes (Qx_CA_Realise par CDS, source du Reporting
+      // CA-par-CDS pour ADMIN/CDS/CHANNEL_MANAGER), sellin_agregats et params ;
+      // seul 🏢_COMPTES était invalidé ici, laissant le Reporting figé jusqu'à
+      // 30 min (TTL cache IndexedDB) après une synchro.
+      await Promise.all([
+        SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES'),
+        SheetsAPI.viderCache('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
+        SheetsAPI.viderCache('EMPOWER_MDB', '📋 COMPTES HISTORIQUES'),
+        SheetsAPI.viderCache('EMPOWER_MDB', '⚙️_PARAMS'),
+      ]);
     } catch(e) {
       this.state.syncSellInResultat = { ok: false, message: e.message || String(e) };
       Toast.afficher('❌ Sync sell-in : ' + (e.message || e), 'erreur');

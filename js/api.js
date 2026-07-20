@@ -93,7 +93,7 @@ const SheetsAPI = {
   // ── DB → GAS : transformation colonnes lecture ────────
   _MAPS_DB_TO_GAS: {
     comptes: {
-      id_compte_gas: 'ID_Compte', nom_compte: 'Nom_Compte', ville: 'Ville',
+      id_compte_gas: 'ID_Compte', nom_compte: 'Nom_Compte', adresse: 'Adresse', ville: 'Ville',
       code_postal: 'Code_Postal', departement: 'Departement', tel: 'Tel', email: 'Email',
       pin_cds_assigne: 'PIN_CDS_Assigne', nom_cds: 'Nom_CDS',
       canal: 'CANAL', secteur: 'SECTEUR', has_empower: 'Has_EMPOWER',
@@ -149,6 +149,7 @@ const SheetsAPI = {
       empower_partenaire: 'Empower_Partenaire', empower_interesse: 'Empower_Interesse',
       decideur_rencontre: 'Decideur_Rencontre', decideur_nom: 'Decideur_Nom',
       decideur_fonction: 'Decideur_Fonction', concurrents_json: 'Concurrents_JSON',
+      id_action_origine: 'ID_Action_Origine',
       deleted: 'deleted', deleted_at: 'deleted_at', deleted_by: 'deleted_by',
       id: '_uuid',
     },
@@ -166,6 +167,7 @@ const SheetsAPI = {
       date_planifiee: 'Date_Planifiee',
       objectif_appel: 'Objectif_Appel',
       note_preparation: 'Note_Preparation',
+      id_action_origine: 'ID_Action_Origine',
       // Appel à froid (champs contact direct)
       nom_enseigne: 'Nom_Enseigne', departement: 'Departement',
       ville: 'Ville', telephone: 'Telephone', email_contact: 'Email_Contact',
@@ -251,7 +253,7 @@ const SheetsAPI = {
   // ── GAS → DB : transformation colonnes écriture ──────
   _MAPS_GAS_TO_DB: {
     comptes: {
-      'ID_Compte': 'id_compte_gas', 'Nom_Compte': 'nom_compte', 'Ville': 'ville',
+      'ID_Compte': 'id_compte_gas', 'Nom_Compte': 'nom_compte', 'Adresse': 'adresse', 'Ville': 'ville',
       'Code_Postal': 'code_postal', 'Departement': 'departement', 'Tel': 'tel', 'Email': 'email',
       'PIN_CDS_Assigne': 'pin_cds_assigne', 'Nom_CDS': 'nom_cds',
       'CANAL': 'canal', 'SECTEUR': 'secteur', 'Has_EMPOWER': 'has_empower',
@@ -291,6 +293,7 @@ const SheetsAPI = {
       'Decideur_Rencontre': 'decideur_rencontre', 'Decideur_Nom': 'decideur_nom',
       'Decideur_Fonction': 'decideur_fonction', 'Concurrents_JSON': 'concurrents_json',
       'Norton_Reference': 'produits_norton',
+      'ID_Action_Origine': 'id_action_origine',
     },
     phoning: {
       'ID_Appel': 'id_appel_gas', 'Date': 'date_appel', 'Semaine_ISO': 'semaine_iso',
@@ -306,6 +309,7 @@ const SheetsAPI = {
       'Date_Planifiee': 'date_planifiee',
       'Objectif_Appel': 'objectif_appel',
       'Note_Preparation': 'note_preparation',
+      'ID_Action_Origine': 'id_action_origine',
       // Appel à froid
       'Nom_Enseigne': 'nom_enseigne', 'Departement': 'departement',
       'Ville': 'ville', 'Telephone': 'telephone', 'Email_Contact': 'email_contact',
@@ -571,7 +575,7 @@ const SheetsAPI = {
       const blob   = await fetch(`data:image/jpeg;base64,${base64}`).then(r => r.blob())
       const path   = `photos/${nomFichier}`
       const { error } = await this._sb.storage.from('empower-photos').upload(path, blob, {
-        contentType: 'image/jpeg', upsert: true,
+        contentType: 'image/jpeg',
       })
       if (error) throw new Error(error.message)
       const { data: { publicUrl } } = this._sb.storage.from('empower-photos').getPublicUrl(path)

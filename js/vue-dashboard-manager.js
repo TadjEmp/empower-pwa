@@ -21,7 +21,11 @@ window.VueDashboardManager = {
     this.render();
     try {
       const [objectifs, visites, appels, prospects, comptes, params] = await Promise.all([
-        SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
+        // nocache : objectifs_primes.Qx_CA_Realise est mis à jour par la synchro
+        // Sell-In (sync-sellin) depuis le poste ADMIN — sans nocache, le
+        // Reporting (ADMIN Vue équipe + Channel) pouvait rester figé jusqu'à
+        // 30 min après une synchro faite ailleurs (07/2026).
+        SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES', { nocache: true }),
         SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES'),
         SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING'),
         SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS'),
@@ -49,7 +53,11 @@ window.VueDashboardManager = {
         // nocache : même correctif que le Tracker (vue-pipeline.js) — la home
         // Channel affichait des compteurs de leads périmés jusqu'à 30 min.
         SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS', { nocache: true }),
-        SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
+        // nocache : objectifs_primes.Qx_CA_Realise est mis à jour par la synchro
+        // Sell-In (sync-sellin) depuis le poste ADMIN — sans nocache, le
+        // Reporting (ADMIN Vue équipe + Channel) pouvait rester figé jusqu'à
+        // 30 min après une synchro faite ailleurs (07/2026).
+        SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES', { nocache: true }),
         SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
         // Bloc 1 §2 — camemberts visites/appels, mêmes règles de visibilité que
         // l'Accueil Admin (Session.voitTout() couvre déjà CHANNEL_MANAGER).
@@ -65,10 +73,28 @@ window.VueDashboardManager = {
       this._raw = { comptes, visites, appels, objectifs, params };
       this.state.chargement = false;
       this.render();
+      this._initPollingWelcome();
     } catch(e) {
       this.state.chargement = false;
       document.getElementById('app').innerHTML = `<div class="erreur">Erreur : ${e.message}</div>`;
     }
+  },
+
+  // Bloc C (07/2026) — la carte "Welcome Pack non envoyé" restait figée tant que
+  // le manager ne rechargeait pas la page ou ne cliquait pas "Actualiser" : un
+  // CDS qui marque un WP envoyé depuis son propre poste ne peut notifier le
+  // poste du manager (pas de canal temps réel côté app). Un polling léger,
+  // même pattern que _initPollingNotifs (app.js), referme cet écart sans
+  // dépendre d'un événement cross-device.
+  _initPollingWelcome() {
+    if (this._pollingWelcomeDemarre) return;
+    this._pollingWelcomeDemarre = true;
+    setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      if (!this.state || !this.state.dc) return;   // vue Channel plus montée
+      if (this._contexteReporting()) return;        // widget affiché uniquement sur l'Accueil
+      SheetsAPI.viderCache('EMPOWER_MDB', '📋_PROSPECTS').then(() => this.initChannel());
+    }, 90000);
   },
 
   // Camemberts/CA cumulé mutualisés avec VueDashboardCDS — cf. js/dashboard-activite.js.
@@ -180,10 +206,15 @@ window.VueDashboardManager = {
       const t = ref ? new Date(ref).getTime() : 0;
       return t ? Math.floor((now - t) / 86400000) : null;
     };
+    // Bloc C (07/2026) — restreint à COMPTE_CREE, seul statut où le CDS a
+    // effectivement un bouton "Marquer Welcome Pack envoyé" (cf. vue-pipeline.js
+    // _retardWelcomePack). Avant, tout lead non-ARCHIVE sans WP entrait dans la
+    // liste alors que rien ne permettait de l'en sortir tant qu'il n'était pas
+    // COMPTE_CREE — la liste paraissait figée.
     const alerteWelcome = leads
       .filter(p => {
         const s = norm(p.STATUT_EMPOWER);
-        if (s === 'ARCHIVE') return false;
+        if (s !== 'COMPTE_CREE') return false;
         const wp = String(p.Welcome_Pack_Date || '').trim();
         if (wp) return false;                 // Welcome Pack déjà envoyé
         const age = ancienneteJours(p);
@@ -438,7 +469,7 @@ window.VueDashboardManager = {
         </text>`;
     }).join('');
     return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"
-                 style="width:100%;height:auto;display:block;margin-top:10px">${bars}</svg>`;
+                 style="width:${W}px;max-width:100%;height:auto;display:block;margin-top:10px">${bars}</svg>`;
   },
 
   // ── SVG : barres CA par CDS ──
@@ -471,7 +502,7 @@ window.VueDashboardManager = {
       `;
     }).join('');
     return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"
-                 style="width:100%;height:auto;display:block;margin-top:8px">
+                 style="width:${W}px;max-width:100%;height:auto;display:block;margin-top:8px">
       ${bars}
     </svg>`;
   },
@@ -498,7 +529,7 @@ window.VueDashboardManager = {
       `;
     }).join('');
     return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"
-                 style="width:100%;height:auto;display:block;margin-top:8px">
+                 style="width:${W}px;max-width:100%;height:auto;display:block;margin-top:8px">
       ${bars}
       <rect x="2" y="2" width="8" height="8" fill="var(--c-primary)" rx="1"/>
       <text x="13" y="10" font-size="9" fill="var(--c-text-2)">Visites équipe</text>
@@ -691,8 +722,12 @@ window.VueDashboardManager = {
         <p class="dash-date" style="color:var(--c-text-2);font-family:Montserrat,sans-serif;font-size:13px">${dateFr} · Suivi FY27</p>
 
         ${section('🟣 Pipeline', '#9333ea', pipelineCorps)}
-        ${section('🟢 Performance par CDS', '#00b27e', performanceCorps)}
-        ${section('🔵 CA', '#0050FF', caCorps)}
+        <!-- Bloc E (07/2026) — grille 2 colonnes desktop (≥1200px) au lieu
+             d'un empilement plein-largeur, pour désencombrer le Reporting. -->
+        <div class="dash-grid-2col">
+          ${section('🟢 Performance par CDS', '#00b27e', performanceCorps)}
+          ${section('🔵 CA', '#0050FF', caCorps)}
+        </div>
         </div><!-- /dash-col-main -->
 
         <div class="dash-col-side">
@@ -761,6 +796,9 @@ window.VueDashboardManager = {
         </div>
 
         <!-- Section 10 cahier des charges : 4 sections thématiques cliquables, couleur distincte par KPI -->
+        <!-- Bloc E (07/2026) — grille 2 colonnes desktop (≥1200px) au lieu
+             d'un empilement plein-largeur, pour désencombrer le Reporting. -->
+        <div class="dash-grid-2col">
         ${this._sectionThematique('🔵 CA', '#0050FF', `
           <div class="bloc-fiche dash-pace" style="margin-bottom:12px">
             <div class="bloc-titre">Équipe — Pace CA ${d.quarter}
@@ -789,7 +827,9 @@ window.VueDashboardManager = {
             <span style="font-size:11px;color:var(--c-text-2)">Taux intégration : <strong>${d.tauxIntegration}%</strong></span>
           </div>
         `)}
+        </div><!-- /dash-grid-2col CA+Pipeline -->
 
+        <div class="dash-grid-2col">
         ${this._sectionThematique('🟦 Activité terrain', '#0EA5E9', `
           <p style="font-size:13px;color:var(--c-text-2);margin:0 0 10px">
             Cette semaine : <strong style="color:var(--c-text)">${d.equipe.reduce((s,e)=>s+e.visitesSem,0)} visite(s)</strong> ·
@@ -846,6 +886,7 @@ window.VueDashboardManager = {
             <div id="saisie-ca-feedback" style="font-size:13px;min-height:18px"></div>
           </div>
         `, false)}
+        </div><!-- /dash-grid-2col Activité+Objectifs -->
         </div><!-- /dash-col-main -->
 
         <div class="dash-col-side">

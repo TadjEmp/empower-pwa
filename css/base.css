@@ -247,6 +247,17 @@ body {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   color: var(--text-on-anchor);
 }
+/* Bloc E (07/2026) — bandeau sticky pleine largeur (inchangé), mais contenu
+   inséré à la même position que .dash-body/.dash-page-header en dessous
+   (padding calculé plutôt que max-width+margin:auto, pour ne pas avoir à
+   introduire un wrapper interne). Corrige le désalignement visuel "app
+   étirée" du Reporting desktop (Channel + Vue équipe ADMIN). */
+@media (min-width: 900px) {
+  .header-vue {
+    padding-left: calc(max((100vw - var(--page-max-width, 1280px)) / 2, 40px));
+    padding-right: calc(max((100vw - var(--page-max-width, 1280px)) / 2, 40px));
+  }
+}
 .btn-retour {
   width: 36px; height: 36px; border-radius: 50%;
   border: none; background: var(--bg-anchor-hover);

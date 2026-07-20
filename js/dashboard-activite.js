@@ -142,7 +142,7 @@ function svgCAHebdo(data) {
 
   return `
     <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"
-         style="width:100%;height:auto;display:block;margin:8px 0 4px">
+         style="width:${W}px;max-width:100%;height:auto;display:block;margin:8px 0 4px">
       ${ligne('fy26', '#9aa0a6')}
       ${ligne('fy27', '#0050FF')}
       ${marqueur}
