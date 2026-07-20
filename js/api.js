@@ -569,11 +569,19 @@ const SheetsAPI = {
   },
 
   // ── uploadPhoto ───────────────────────────────────────
+  // Décodage base64 → Blob en local (atob), sans passer par fetch()/le Service
+  // Worker : un fetch('data:...') transite par le SW comme n'importe quelle
+  // requête de la page, et une ancienne version du SW (cache agressif, corrigée
+  // depuis) pouvait la faire échouer silencieusement — d'où des photos jamais
+  // uploadées en visite terrain sans erreur visible côté réseau.
   async uploadPhoto(dataUrl, nomFichier) {
     try {
-      const base64 = dataUrl.split(',')[1] || dataUrl
-      const blob   = await fetch(`data:image/jpeg;base64,${base64}`).then(r => r.blob())
-      const path   = `photos/${nomFichier}`
+      const base64  = dataUrl.split(',')[1] || dataUrl
+      const binaire = atob(base64)
+      const octets  = new Uint8Array(binaire.length)
+      for (let i = 0; i < binaire.length; i++) octets[i] = binaire.charCodeAt(i)
+      const blob = new Blob([octets], { type: 'image/jpeg' })
+      const path = `photos/${nomFichier}`
       const { error } = await this._sb.storage.from('empower-photos').upload(path, blob, {
         contentType: 'image/jpeg',
       })
