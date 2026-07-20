@@ -13,9 +13,11 @@ window.VueDashboardCDS = {
     this.render();
     try {
       const [comptes, visites, appels, objectifs, prospects, params, notifs] = await Promise.all([
-        SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
-        SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES'),
-        SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING'),
+        // Bloc B (07/2026) — nocache : cards KPI Accueil (visites/appels/statuts
+        // comptes) restaient jusqu'à 30 min périmées après une activité terrain.
+        SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES', { nocache: true }),
+        SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES', { nocache: true }),
+        SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING', { nocache: true }),
         // nocache : objectifs_primes.Qx_CA_Realise est mis à jour par la synchro
         // Sell-In (sync-sellin) depuis le poste ADMIN — sans nocache, le
         // Reporting CDS pouvait rester figé jusqu'à 30 min après une synchro

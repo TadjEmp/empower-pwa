@@ -6,6 +6,14 @@
 
 window.VueFicheCompte = {
 
+  // Bloc C4 (07/2026) — mêmes 4 CDS assignables que le Tracker (Bloc D2,
+  // Alexandra exclue : elle fournit les leads, ce n'est pas une commerciale
+  // terrain). Attribution réservée à ADMIN/CHANNEL_MANAGER (Session.voitTout()).
+  CDS_ASSIGNABLES: [
+    { pin: 1000, nom: 'Tadjidine' }, { pin: 4001, nom: 'Lyes' },
+    { pin: 4002, nom: 'Mehdi' },     { pin: 4003, nom: 'Johanne' },
+  ],
+
   state: {
     compte: null, v17: null, visites: [], appels: [], chargement: true,
     editCoord: false,
@@ -143,6 +151,24 @@ window.VueFicheCompte = {
     this._rerender();
   },
 
+  // Bloc C4 (07/2026) — attribution/réattribution d'un CDS depuis la fiche
+  // compte, notamment pour les comptes créés non attribués par la synchro
+  // Sell-In (Bloc C). ADMIN/CHANNEL_MANAGER uniquement (contrôlé au rendu).
+  async changerCDS(idCompte, pin) {
+    try {
+      const champs = {
+        PIN_CDS_Assigne: pin || null,
+        Nom_CDS: pin ? resolveCDS(Number(pin)) : '',
+      };
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', idCompte, champs);
+      Object.assign(this.state.compte, champs);
+      Toast.afficher(pin ? '✅ Compte attribué' : '✅ Compte désattribué', 'succes');
+      this._rerender();
+    } catch(e) {
+      Toast.afficher('❌ ' + e.message, 'erreur');
+    }
+  },
+
   ouvrirRapportPhoning() {
     this.state.modalRapportPhoning = true;
     this._rerender();
@@ -271,7 +297,15 @@ window.VueFicheCompte = {
           <div class="id-ligne"><span>Canal / Secteur</span><strong>${c.CANAL || '—'} · ${c.SECTEUR || '—'}</strong></div>
           <div class="id-ligne"><span>Téléphone</span><strong>${c.Tel ? `<a class="lien-tel" href="tel:${c.Tel.replace(/\s/g,'')}">${c.Tel}</a>` : '—'}</strong></div>
           <div class="id-ligne"><span>Email</span><strong>${c.Email ? `<a class="lien-email" href="mailto:${c.Email}">${c.Email}</a>` : '—'}</strong></div>
-          <div class="id-ligne"><span>CDS</span><strong>${window.resolveCDS(c.PIN_CDS_Assigne || c.Nom_CDS)}</strong></div>
+          <div class="id-ligne"><span>CDS</span>${
+            Session.voitTout()
+              ? `<select onchange="VueFicheCompte.changerCDS('${c.ID_Compte}', this.value)"
+                         style="font-size:13px;padding:3px 6px;border:1px solid var(--c-border);border-radius:var(--radius-sm)">
+                  <option value="">— Non attribué —</option>
+                  ${this.CDS_ASSIGNABLES.map(x => `<option value="${x.pin}" ${Number(c.PIN_CDS_Assigne) === x.pin ? 'selected' : ''}>${x.nom}</option>`).join('')}
+                </select>`
+              : `<strong>${window.resolveCDS(c.PIN_CDS_Assigne || c.Nom_CDS)}</strong>`
+          }</div>
           <div class="id-ligne"><span>EMPOWER</span><strong>${window.estEmpower(c) ? 'Oui' : 'Non'}</strong></div>
           <div class="id-ligne"><span>Dernière visite</span><strong>${this._dateLigne(this._dernierVisiteRealisee())}</strong></div>
           <div class="id-ligne"><span>Dernier appel</span><strong>${this._dateLigne(this.state.appels[0]?.Date)}</strong></div>

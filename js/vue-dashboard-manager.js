@@ -26,10 +26,13 @@ window.VueDashboardManager = {
         // Reporting (ADMIN Vue équipe + Channel) pouvait rester figé jusqu'à
         // 30 min après une synchro faite ailleurs (07/2026).
         SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES', { nocache: true }),
-        SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES'),
-        SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING'),
+        // Bloc B (07/2026) — nocache : cards KPI Accueil (visites/appels/statuts
+        // comptes) restaient jusqu'à 30 min périmées après une activité terrain
+        // (même défaut que celui déjà corrigé pour objectifs_primes ci-dessus).
+        SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES', { nocache: true }),
+        SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING', { nocache: true }),
         SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS'),
-        SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
+        SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES', { nocache: true }),
         SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
       ]);
       this.state.d = this._calculer({ objectifs, visites, appels, prospects, comptes, params });
@@ -61,13 +64,14 @@ window.VueDashboardManager = {
         SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
         // Bloc 1 §2 — camemberts visites/appels, mêmes règles de visibilité que
         // l'Accueil Admin (Session.voitTout() couvre déjà CHANNEL_MANAGER).
-        SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES'),
-        SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING'),
-        SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
+        // Bloc B (07/2026) — nocache, même correctif que ci-dessus.
+        SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES', { nocache: true }),
+        SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING', { nocache: true }),
+        SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES', { nocache: true }),
       ]);
       // BUG-07 : peuple le registre CDS avant le calcul des taux par CDS
       if (typeof initCDSRegistry === 'function') initCDSRegistry(objectifs);
-      this.state.dc = this._calculerChannel({ prospects, objectifs, params, visites, appels });
+      this.state.dc = this._calculerChannel({ prospects, objectifs, params, visites, appels, comptes });
       // Conservé brut pour les camemberts/CA cumulé (cf. dashboard-activite.js),
       // recalculés à chaque render() sans re-fetch — même pattern que VueDashboardCDS.
       this._raw = { comptes, visites, appels, objectifs, params };
@@ -103,7 +107,7 @@ window.VueDashboardManager = {
   toggleSemaineCamembert() { FilterState.set({ semaine: FilterState.get().semaine ? null : FiscalWeeks.codeDe() }); this.render(); },
   _donneesFiltrables() { return this._raw ? window.calculerCamembertsActivite(this._raw) : null; },
 
-  _calculerChannel({ prospects, objectifs, params, visites, appels }) {
+  _calculerChannel({ prospects, objectifs, params, visites, appels, comptes }) {
     const norm = v => String(v || '').trim().toUpperCase();
     const now  = Date.now();
     // Audit UX 2026-07 — dernier contact réel (visite ou appel) par lead, ID_Cible
@@ -267,8 +271,13 @@ window.VueDashboardManager = {
     const tauxIntegration = (totalPipeline - cArchive) > 0
       ? Math.round(cIntegre / (totalPipeline - cArchive) * 100) : 0;
 
+    // Bloc C3 (07/2026) — comptes sans CDS attribué, visible aussi pour
+    // CHANNEL_MANAGER (feu vert du 21/07 : elle doit pouvoir attribuer un
+    // compte Sell-In au même titre qu'ADMIN).
+    const comptesNonAttribues = (comptes || []).filter(c => !c.PIN_CDS_Assigne);
+
     return {
-      compteurs, tauxParCDS, caParCDS, derniersIntegres,
+      compteurs, tauxParCDS, caParCDS, derniersIntegres, comptesNonAttribues,
       alerteWelcome, alerte45j, leadsArchive, totalPipeline, tauxIntegration,
     };
   },
@@ -353,8 +362,13 @@ window.VueDashboardManager = {
       appels:  appels.filter(a => a.Semaine_ISO === sem).length,
     }));
 
+    // Bloc C3 (07/2026) — comptes sans CDS attribué (notamment ceux créés
+    // automatiquement par la synchro Sell-In) : à traiter par un manager,
+    // cf. filtre "Sans CDS" déjà existant dans Comptes (VueComptes).
+    const comptesNonAttribues = comptes.filter(c => !c.PIN_CDS_Assigne);
+
     return {
-      quarter, semaine, equipe, leadsBloques, comptesRouges,
+      quarter, semaine, equipe, leadsBloques, comptesRouges, comptesNonAttribues,
       tauxIntegration, integres, assignes, caTotal, objTotal, caFY26Total,
       pctTotal: objTotal > 0 ? Math.round(caTotal / objTotal * 100) : 0,
       pipelineStages, activiteEquipe,
@@ -643,6 +657,20 @@ window.VueDashboardManager = {
             </div>` : '<div class="pas-de-donnees">Aucun lead sans contact +45j 🎉</div>'}
           </div>
 
+          ${dc.comptesNonAttribues.length ? `
+          <div class="bloc-fiche">
+            <div class="bloc-titre">🏢 Comptes non attribués
+              <span class="badge-compteur" style="background:var(--c-primary);color:#fff">${dc.comptesNonAttribues.length}</span>
+            </div>
+            <div class="dash-alertes">
+              ${dc.comptesNonAttribues.slice(0, 8).map(c => `
+                <div class="alerte-ligne" onclick="VueComptes.state.filtreStatut='SANS_CDS';Router.aller('#/comptes')" style="cursor:pointer">
+                  <strong>${c.Nom_Compte || '—'}</strong>${c.Source_Import === 'SYNC_SELLIN' ? ' · <span style="font-size:11px;color:var(--c-text-2)">via Sell-In</span>' : ''}
+                </div>`).join('')}
+            </div>
+            <button class="btn-lien no-print" onclick="VueComptes.state.filtreStatut='SANS_CDS';Router.aller('#/comptes')" style="font-size:12px;margin-top:8px">Attribuer un CDS →</button>
+          </div>` : ''}
+
           <div class="dash-raccourcis no-print">
             <button class="raccourci" onclick="Router.aller('#/empower-tracker')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Tracker</span></button>
             <button class="raccourci" onclick="Router.aller('#/comptes')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><line x1="10" y1="6" x2="10" y2="6.01"/><line x1="14" y1="6" x2="14" y2="6.01"/><line x1="10" y1="10" x2="10" y2="10.01"/><line x1="14" y1="10" x2="14" y2="10.01"/><line x1="10" y1="14" x2="10" y2="14.01"/><line x1="14" y1="14" x2="14" y2="14.01"/><line x1="10" y1="18" x2="10" y2="18.01"/><line x1="14" y1="18" x2="14" y2="18.01"/></svg><span>Comptes</span></button>
@@ -898,7 +926,8 @@ window.VueDashboardManager = {
               <div class="alerte-ligne">${PACE[e.pace].lbl} <strong>${e.nom}</strong> — ${e.pct}% de l'objectif ${d.quarter}</div>`).join('')}
             ${d.leadsBloques.length ? `<div class="alerte-ligne no-print" onclick="Router.aller('#/empower-tracker')"><strong>${d.leadsBloques.length}</strong> lead(s) sans action > 7 jours</div>` : ''}
             ${d.comptesRouges.length ? `<div class="alerte-ligne no-print" onclick="Router.aller('#/comptes')"><strong>${d.comptesRouges.length}</strong> compte(s) en retard d'action</div>` : ''}
-            ${!d.leadsBloques.length && !d.comptesRouges.length && d.equipe.every(e => e.pace === 'ON_TRACK') ? '<div class="pas-de-donnees">Aucune alerte active.</div>' : ''}
+            ${d.comptesNonAttribues.length ? `<div class="alerte-ligne no-print" onclick="VueComptes.state.filtreStatut='SANS_CDS';Router.aller('#/comptes')">🏢 <strong>${d.comptesNonAttribues.length}</strong> compte(s) non attribué(s) — dont Sell-In</div>` : ''}
+            ${!d.leadsBloques.length && !d.comptesRouges.length && !d.comptesNonAttribues.length && d.equipe.every(e => e.pace === 'ON_TRACK') ? '<div class="pas-de-donnees">Aucune alerte active.</div>' : ''}
           </div>
         </div>
 

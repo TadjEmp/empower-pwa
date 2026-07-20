@@ -689,12 +689,23 @@ window.VueAdmin = {
       });
       const data = await _r1.json();
       if (!_r1.ok || !data?.ok) throw new Error(data?.error || `HTTP ${_r1.status}`);
-      const matched   = data.comptesMisAJour ?? data.sellinLignes ?? '?';
+      // Bloc C (07/2026) — les noms de champs ci-dessous ne correspondaient à
+      // rien dans la réponse réelle de l'edge function (comptesMisAJour/
+      // sellinLignes/timestamp n'ont jamais existé côté serveur) : "matched"
+      // affichait donc toujours "?". Alignés sur la réponse réelle
+      // (comptes_maj/comptes_crees/nonMatcher, désormais alimenté).
+      const matched   = data.comptes_maj ?? '?';
+      const crees     = data.comptes_crees ?? 0;
       const nonMatch  = Array.isArray(data.nonMatcher) ? data.nonMatcher : [];
-      const ts        = data.timestamp ? new Date(data.timestamp).toLocaleString('fr-FR') : '';
-      this.state.syncSellInResultat   = { ok: true, matched, nonMatch: nonMatch.length, ts };
+      const ts        = new Date().toLocaleString('fr-FR');
+      this.state.syncSellInResultat   = { ok: true, matched, crees, nonMatch: nonMatch.length, ts };
       this.state.syncSellInNonMatcher = nonMatch;
-      Toast.afficher(`✅ Sell-In synchronisé — ${matched} comptes mis à jour`, 'succes', 6000);
+      Toast.afficher(
+        `✅ Sell-In synchronisé — ${matched} compte(s) mis à jour` +
+        (crees ? ` · ${crees} créé(s) (non attribués)` : '') +
+        (nonMatch.length ? ` · ${nonMatch.length} à valider` : ''),
+        'succes', 7000
+      );
       // Vérif dynamisme Reporting (07/2026) — l'edge function sync-sellin écrit
       // aussi dans objectifs_primes (Qx_CA_Realise par CDS, source du Reporting
       // CA-par-CDS pour ADMIN/CDS/CHANNEL_MANAGER), sellin_agregats et params ;
@@ -1324,21 +1335,28 @@ window.VueAdmin = {
             return `
               <div style="padding:10px 14px;border-radius:8px;margin-bottom:12px;font-size:13px;
                 background:rgba(16,185,129,.1);border:1px solid var(--c-success,#10b981)">
-                <div style="font-weight:700;margin-bottom:4px">✅ Synchronisation réussie${r.ts ? ' · ' + r.ts : ''}</div>
-                <div style="display:flex;gap:16px;font-size:12px">
+                <div style="font-weight:700;margin-bottom:4px">✅ Synchronisation réussie · ${r.ts}</div>
+                <div style="display:flex;gap:16px;font-size:12px;flex-wrap:wrap">
                   <span>✅ <strong>${r.matched}</strong> comptes mis à jour</span>
-                  ${r.nonMatch > 0 ? `<span style="color:var(--c-warning)">⚠️ <strong>${r.nonMatch}</strong> revendeurs sans correspondance</span>` : '<span>🎯 Tous les revendeurs matchés</span>'}
+                  ${r.crees > 0 ? `<span style="color:var(--c-primary)">🏢 <strong>${r.crees}</strong> créé(s), non attribués</span>` : ''}
+                  ${r.nonMatch > 0 ? `<span style="color:var(--c-warning)">⚠️ <strong>${r.nonMatch}</strong> à valider manuellement</span>` : '<span>🎯 Aucun cas à valider</span>'}
                 </div>
               </div>
               ${this.state.syncSellInNonMatcher.length > 0 ? `
               <div style="margin-bottom:12px">
                 <div style="font-size:12px;font-weight:700;color:var(--c-warning);margin-bottom:6px">
-                  ⚠️ Revendeurs Sell-In sans compte correspondant (${this.state.syncSellInNonMatcher.length})
+                  ⚠️ Revendeurs Sell-In à valider manuellement (${this.state.syncSellInNonMatcher.length})
                 </div>
-                <div style="max-height:140px;overflow-y:auto;background:var(--c-bg);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:8px">
-                  ${this.state.syncSellInNonMatcher.map(n => `<div style="font-size:12px;padding:2px 0;color:var(--c-text-2)">• ${n}</div>`).join('')}
+                <div style="max-height:180px;overflow-y:auto;background:var(--c-bg);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:8px">
+                  ${this.state.syncSellInNonMatcher.map(n => `
+                  <div style="font-size:12px;padding:4px 0;color:var(--c-text-2);border-bottom:1px solid var(--c-border)">
+                    • <strong>${n.reseller}</strong>
+                    ${n.raison === 'QUASI_DOUBLON'
+                      ? ` — ressemble à un compte déjà existant (${(n.candidats || []).length} candidat(s)) : à vérifier/fusionner manuellement dans Comptes`
+                      : ` — ${n.raison}`}
+                  </div>`).join('')}
                 </div>
-                <p style="font-size:11px;color:var(--c-text-2);margin-top:4px">Ces revendeurs sont dans le Sell-In mais n'ont pas de compte correspondant dans la base. Vérifier l'orthographe ou créer le compte.</p>
+                <p style="font-size:11px;color:var(--c-text-2);margin-top:4px">Aucune création automatique n'a été faite pour ces revendeurs (risque de doublon) — à traiter à la main dans l'onglet Comptes.</p>
               </div>` : ''}`;
           })() : ''}
 

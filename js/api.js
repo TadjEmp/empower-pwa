@@ -105,6 +105,11 @@ const SheetsAPI = {
       flag_traite: 'Flag_Traite', flag_converti: 'Flag_Converti',
       latitude: 'GPS_Lat', longitude: 'GPS_Lng',
       date_sync_sellin: 'Date_Sync_SelIn', semaine_sync: 'Semaine_Sync',
+      // Bloc C3 (07/2026) — source_import était écrit (_MAPS_GAS_TO_DB) mais
+      // jamais relu (même défaut déjà corrigé pour "adresse" — Bloc A1) : un
+      // compte créé par la synchro Sell-In (SYNC_SELLIN) ne pouvait jamais
+      // être distingué côté client.
+      source_import: 'Source_Import',
       badge_visite_froid: 'Badge_Visite_Froid', id: '_uuid',
     },
     sellin_agregats: {
@@ -464,6 +469,23 @@ const SheetsAPI = {
     }
   },
 
+  // Bloc A (07/2026) — quelques tentatives avant d'abandonner un appel réseau.
+  // Ne rattrape QUE les exceptions (fetch qui n'aboutit jamais — coupure
+  // courte, DNS, 4G qui bascule) : un rejet serveur/RLS résout la promesse
+  // avec { error }, il ne lève pas d'exception, donc il n'est jamais retenté
+  // ici (retenter un rejet métier ne changerait rien).
+  async _avecRetry(fn, tentatives = this.MAX_RETRY) {
+    let derniereErreur
+    for (let i = 0; i < tentatives; i++) {
+      try { return await fn() }
+      catch(e) {
+        derniereErreur = e
+        if (i < tentatives - 1) await new Promise(r => setTimeout(r, this.RETRY_BASE_MS * (i + 1)))
+      }
+    }
+    throw derniereErreur
+  },
+
   // ── ÉCRITURE ─────────────────────────────────────────
   async ecrire(fichier, onglet, donnee) {
     if (this._estTableVide(onglet)) return { ok: true, skipped: true }
@@ -475,8 +497,20 @@ const SheetsAPI = {
       Toast.afficher('📥 Sauvegardé hors-ligne', 'info')
       return { ok: true, offline: true }
     }
-    const { error } = await this._sb.from(table).insert(dbRow)
-    if (error) throw new Error(error.message)
+    let resultat
+    try {
+      resultat = await this._avecRetry(() => this._sb.from(table).insert(dbRow))
+    } catch(e) {
+      // Bloc A (07/2026) — échec réseau persistant malgré les tentatives :
+      // on ne perd plus la saisie (ex. planification Phoning), on la met en
+      // file d'attente comme en mode hors-ligne plutôt que de l'abandonner
+      // avec un message technique brut ("TypeError: Failed to fetch").
+      await this._queueAdd({ op: 'insert', table, row: dbRow })
+      await this._invalidate(table)
+      Toast.afficher('📥 Réseau instable — sauvegardé, sera synchronisé', 'warning', 5000)
+      return { ok: true, offline: true }
+    }
+    if (resultat.error) throw new Error(resultat.error.message)
     await this._invalidate(table)
     return { ok: true }
   },
@@ -504,8 +538,15 @@ const SheetsAPI = {
       Toast.afficher('📥 Modification en attente', 'info')
       return { ok: true, offline: true }
     }
-    const { error } = await this._sb.from(table).update(dbChamps).eq(idColonne, id)
-    if (error) throw new Error(error.message)
+    let resultat
+    try {
+      resultat = await this._avecRetry(() => this._sb.from(table).update(dbChamps).eq(idColonne, id))
+    } catch(e) {
+      await this._queueAdd({ op: 'update', table, id, idColonne, champs: dbChamps })
+      Toast.afficher('📥 Réseau instable — modification en attente', 'warning', 5000)
+      return { ok: true, offline: true }
+    }
+    if (resultat.error) throw new Error(resultat.error.message)
     await this._invalidate(table)
     return { ok: true }
   },

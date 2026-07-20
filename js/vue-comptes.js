@@ -317,7 +317,7 @@ window.VueComptes = {
                   onclick="VueComptes.setFiltre('a_reactiver')">À réactiver</button>
           <button class="btn-filtre ${this.state.filtreStatut === 'silencieux' ? 'actif' : ''}"
                   onclick="VueComptes.setFiltre('silencieux')">Silencieux</button>
-          ${Session.estManager() ? `
+          ${Session.voitTout() ? `
           <button class="btn-filtre ${this.state.filtreStatut === 'SANS_CDS' ? 'actif' : ''}"
                   onclick="VueComptes.setFiltre('SANS_CDS')">Sans CDS</button>` : ''}
         </div>

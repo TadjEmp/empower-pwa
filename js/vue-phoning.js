@@ -129,24 +129,18 @@ window.VuePhoning = {
       // le formulaire de planification pré-rempli. Le bouton "Planifier appel"
       // du Tracker (vue-pipeline.js) route vers #/phoning/:id avec un ID_Prospect,
       // qui ne matche jamais 🏢_COMPTES — d'où la recherche en second recours
-      // dans 📋_PROSPECTS (sinon le formulaire ne s'ouvrait jamais pour un lead).
+      // dans 📋_PROSPECTS via _resoudreCible() (sinon le formulaire ne s'ouvrait
+      // jamais pour un lead).
       if (idCible) {
-        const c = comptes.find(x => String(x.ID_Compte) === String(idCible));
-        const p = !c && this.state.prospects.find(x => String(x.ID_Prospect) === String(idCible));
+        const resolu = this._resoudreCible(idCible, comptes, this.state.prospects);
         // Bloc replanification (07/2026) — contexte posé par
         // VueVisites.planifierSuiviAppel() juste avant la navigation vers
         // #/phoning/:id ; consommé une seule fois ici, jamais persisté au-delà.
         const suivi = window._suiviActionOrigine;
         window._suiviActionOrigine = null;
-        if (c) {
+        if (resolu) {
           this.state.formPlanif = {
-            idCompte: c.ID_Compte, nomCompte: c.Nom_Compte,
-            datePlanifiee: '', objectif: '', note: suivi?.note || '',
-            idActionOrigine: suivi?.idVisite || '',
-          };
-        } else if (p) {
-          this.state.formPlanif = {
-            idCompte: p.ID_Prospect, nomCompte: p.Nom_Compte,
+            idCompte: resolu.id, nomCompte: resolu.nom,
             datePlanifiee: '', objectif: '', note: suivi?.note || '',
             idActionOrigine: suivi?.idVisite || '',
           };
@@ -2191,6 +2185,20 @@ window.VuePhoning = {
       </div>`).join('');
   },
 
+  // Bloc A (07/2026) — résout un ID_Cible générique (compte OU lead Tracker)
+  // vers l'objet complet. Centralisé pour que init() et lancerAppelPlanifie()
+  // partagent la même logique de repli comptes→prospects — avant ce fix,
+  // seul init() la connaissait ; lancerAppelPlanifie() ne cherchait que dans
+  // comptes et échouait ("Compte introuvable") pour tout appel planifié
+  // depuis un lead Tracker.
+  _resoudreCible(idCible, comptes, prospects) {
+    const c = (comptes || []).find(x => String(x.ID_Compte) === String(idCible));
+    if (c) return { type: 'COMPTE', obj: c, id: c.ID_Compte, nom: c.Nom_Compte };
+    const p = (prospects || []).find(x => String(x.ID_Prospect) === String(idCible));
+    if (p) return { type: 'PROSPECT', obj: p, id: p.ID_Prospect, nom: p.Nom_Compte };
+    return null;
+  },
+
   _choisirComptePlanif(id, nom) {
     if (!this.state.formPlanif) return;
     this.state.formPlanif.idCompte = id;
@@ -2288,15 +2296,15 @@ window.VuePhoning = {
       return;
     }
     const allC = this.state.tousComptes || this.state.comptes;
-    const c = allC.find(x => String(x.ID_Compte) === String(plan.ID_Cible));
-    if (!c) { Toast.afficher('Compte introuvable — vérifiez vos comptes attribués', 'warning'); return; }
-    this.state.cible          = c;
-    this.state.typeSource     = 'EXISTANT';
+    const resolu = this._resoudreCible(plan.ID_Cible, allC, this.state.prospects);
+    if (!resolu) { Toast.afficher('Compte introuvable — vérifiez vos comptes attribués', 'warning'); return; }
+    this.state.cible          = resolu.obj;
+    this.state.typeSource     = resolu.type === 'PROSPECT' ? 'PROSPECT' : 'EXISTANT';
     this.state.idPlanifEnCours = id;
     this.state.mode           = 'APPEL';
     this.state.phase          = 'PRE';
     this.state.d.objectif     = plan.Objectif_Appel || '';
-    this.state.recherche      = c.Nom_Compte;
+    this.state.recherche      = resolu.nom;
     this.render();
   },
 
