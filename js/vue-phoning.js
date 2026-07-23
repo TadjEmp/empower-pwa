@@ -131,13 +131,15 @@ window.VuePhoning = {
       // qui ne matche jamais 🏢_COMPTES — d'où la recherche en second recours
       // dans 📋_PROSPECTS via _resoudreCible() (sinon le formulaire ne s'ouvrait
       // jamais pour un lead).
+      // Bloc replanification (07/2026) — contexte posé par
+      // VueVisites.planifierSuiviAppel() juste avant la navigation vers
+      // #/phoning(/:id) ; consommé une seule fois ici, jamais persisté au-delà.
+      // Couvre aussi le suivi d'une visite à froid (pas de idCible du tout,
+      // contact repris depuis suivi.froid) — cf. correctif ci-dessous.
+      const suivi = window._suiviActionOrigine;
+      window._suiviActionOrigine = null;
       if (idCible) {
         const resolu = this._resoudreCible(idCible, comptes, this.state.prospects);
-        // Bloc replanification (07/2026) — contexte posé par
-        // VueVisites.planifierSuiviAppel() juste avant la navigation vers
-        // #/phoning/:id ; consommé une seule fois ici, jamais persisté au-delà.
-        const suivi = window._suiviActionOrigine;
-        window._suiviActionOrigine = null;
         if (resolu) {
           this.state.formPlanif = {
             idCompte: resolu.id, nomCompte: resolu.nom,
@@ -145,6 +147,18 @@ window.VuePhoning = {
             idActionOrigine: suivi?.idVisite || '',
           };
         }
+      } else if (suivi?.froid) {
+        // Suivi d'une visite à froid (prospection sans compte en base) :
+        // le mode "Appel à froid" du formulaire existe déjà, on le pré-remplit
+        // avec le contact saisi lors de la visite plutôt que de bloquer.
+        this.state.formPlanif = {
+          idCompte: null, nomCompte: '', rechercheCompte: '',
+          datePlanifiee: '', objectif: '', note: suivi.note || '',
+          modeFroid: true,
+          froidNom: suivi.froid.nom, froidDept: suivi.froid.dept, froidVille: suivi.froid.ville,
+          froidTel: suivi.froid.tel, froidEmail: suivi.froid.email,
+          idActionOrigine: suivi.idVisite || '',
+        };
       }
       this._restaurerBrouillon();
       this.state.chargement = false;

@@ -731,16 +731,29 @@ window.VueVisites = {
   // Phoning (mêmes objectifs d'appel, même formulaire) au lieu de réinventer
   // une logique d'appel dans Visites. Le condensé + l'ID de la visite d'origine
   // transitent via window._suiviActionOrigine, consommés une seule fois par
-  // VuePhoning.init() au chargement de la route #/phoning/:id.
+  // VuePhoning.init() au chargement de la route #/phoning(/:id).
   planifierSuiviAppel(idVisite) {
     const v = this.state.visites.find(x => x.ID_Visite === idVisite);
     if (!v) return;
-    if (!v.ID_Cible || v.ID_Cible === 'HORS_BASE') {
-      Toast.afficher('Impossible de planifier un appel : ce compte n\'est pas rattaché à une fiche', 'warning');
+    const note = condenserVisite(v);
+    if (v.ID_Cible && v.ID_Cible !== 'HORS_BASE') {
+      window._suiviActionOrigine = { idVisite: v.ID_Visite, note };
+      Router.aller('#/phoning/' + v.ID_Cible);
       return;
     }
-    window._suiviActionOrigine = { idVisite: v.ID_Visite, note: condenserVisite(v) };
-    Router.aller('#/phoning/' + v.ID_Cible);
+    // Bug corrigé (07/2026) — une visite à froid (prospection sans compte en
+    // base, ID_Cible vide/HORS_BASE) bloquait ici avec un toast d'erreur,
+    // alors que Phoning gère déjà ce cas via son mode "Appel à froid". Le
+    // contact (nom/dept/ville/tel/email) est repris directement depuis les
+    // champs saisis sur la visite plutôt que d'être ressaisi.
+    window._suiviActionOrigine = {
+      idVisite: v.ID_Visite, note,
+      froid: {
+        nom: v.Nom_Compte || '', dept: v.Departement || '', ville: v.Ville || '',
+        tel: v.Tel || '', email: v.Email || '',
+      },
+    };
+    Router.aller('#/phoning');
   },
 
   // ── Synchroniser ──
