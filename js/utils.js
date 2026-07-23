@@ -14,12 +14,23 @@ function dateISOLocale(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-// Bloc Phoning (07/2026) — un appel "planifié" (Statut_Appel='planifié') n'a
-// pas encore eu lieu : ne doit jamais être compté comme un appel "effectué"
-// dans les KPI (cards Accueil, camemberts, activité équipe). Centralisé pour
-// que tous les compteurs "appels" de l'app appliquent la même règle.
+// Bloc Phoning (07/2026, corrigé) — une ligne 📞_PHONING avec Statut_Appel
+// 'planifié' OU 'réalisé' est une réservation de planning (créée par
+// sauvegarderPlanif, cf. bouton "+"), jamais un appel avec une vraie issue :
+// 'planifié' = pas encore passé ; 'réalisé' = juste la marque de fermeture
+// posée par valider() sur CETTE ligne quand l'appel a eu lieu (Statut_Appel
+// passé à 'réalisé' + Date/Semaine_ISO rafraîchis), mais SANS aucune donnée
+// d'issue (Interet_EMPOWER/Note/etc. restent vides dessus) — l'appel réel
+// avec son compte-rendu est écrit dans une AUTRE ligne PHONING distincte par
+// valider() (ID_Appel différent, Statut_Appel parmi Répondu/Répondeur/
+// Occupé/Refus/Intéressé/Rappel/Faux numéro/Non intéressé — jamais
+// littéralement "réalisé"). Compter aussi les lignes 'réalisé' aurait donc
+// doublé chaque appel planifié-puis-passé (la réservation fermée + le vrai
+// compte-rendu). Centralisé pour que tous les compteurs "appels" de l'app
+// appliquent la même règle.
 function estAppelRealise(a) {
-  return String(a?.Statut_Appel || '').toLowerCase() !== 'planifié';
+  const s = String(a?.Statut_Appel || '').trim().toLowerCase();
+  return s !== 'planifié' && s !== 'réalisé';
 }
 
 function normaliserNom(str = '') {

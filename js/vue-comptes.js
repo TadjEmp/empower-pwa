@@ -40,7 +40,10 @@ window.VueComptes = {
     });
     (appels || []).forEach(a => {
       const id = String(a.ID_Cible || '').trim();
-      if (!id || a.deleted) return;
+      // Bloc Phoning (07/2026) — une réservation planifiée/fermée n'est pas un
+      // appel réellement passé (cf. utils.js estAppelRealise) : sinon "dernier
+      // contact" avance à aujourd'hui dès qu'un appel futur est programmé.
+      if (!id || a.deleted || !estAppelRealise(a)) return;
       const d = String(a.Date || '').slice(0, 10);
       if (!d) return;
       const e = entree(id);

@@ -957,6 +957,9 @@ window.VuePhoning = {
       const data = await SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING');
       this.state.journal = data
         .filter(a => String(a.deleted || '').toUpperCase() !== 'TRUE')
+        // Bloc Phoning (07/2026) — une réservation planifiée/fermée n'est pas
+        // un compte-rendu d'appel, ne doit jamais polluer le Journal.
+        .filter(a => estAppelRealise(a))
         .filter(a => Session.voitTout() || Number(a.PIN_CDS) === Session.pin)
         .sort((a, b) => (b.Date || '').localeCompare(a.Date || ''))
         .slice(0, 100);

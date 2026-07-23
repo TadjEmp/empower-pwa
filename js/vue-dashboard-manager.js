@@ -116,6 +116,10 @@ window.VueDashboardManager = {
     const dernierContactLead = new Map();
     [...(visites || []), ...(appels || [])].forEach(a => {
       const id = String(a.ID_Cible || '');
+      // Bloc Phoning (07/2026) — une réservation planifiée/fermée n'est pas un
+      // contact réel : sinon programmer un appel futur supprime l'alerte "sans
+      // contact +45j" avant même que l'appel ait eu lieu.
+      if (a.Statut_Appel !== undefined && !estAppelRealise(a)) return;
       if (!id) return;
       const d = a.Date || a.Date_Planifiee || a.Timestamp;
       if (!d) return;

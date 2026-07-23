@@ -77,7 +77,9 @@ window.VueFicheCompte = {
     this.state.v17     = rawV17.find(r => normaliserNom(r.RESELLER) === nomNorm) || null;
     this.state.visites = visites.filter(v => String(v.ID_Cible) === String(idCompte))
       .sort((a, b) => new Date(b.Date) - new Date(a.Date));
-    this.state.appels  = appels.filter(a => String(a.ID_Cible) === String(idCompte))
+    // Bloc Phoning (07/2026) — une réservation planifiée/fermée n'est pas un
+    // vrai appel : exclue de "Appels (N)"/dernier appel (cf. estAppelRealise).
+    this.state.appels  = appels.filter(a => String(a.ID_Cible) === String(idCompte) && estAppelRealise(a))
       .sort((a, b) => new Date(b.Date) - new Date(a.Date));
     this.state.chargement = false;
   },
