@@ -309,7 +309,8 @@ window.VueDashboardManager = {
         pin, nom: o.Nom_CDS, ca, obj, pct, caFY26,
         pace:       pct >= 100 ? 'ON_TRACK' : pct >= 80 ? 'WATCH' : 'AT_RISK',
         visitesSem: visites.filter(v => Number(v.PIN_CDS) === pin && v.Semaine_ISO === semaine).length,
-        appelsSem:  appels.filter(a => Number(a.PIN_CDS) === pin && a.Semaine_ISO === semaine).length,
+        // Bloc Phoning (07/2026) — un appel planifié pas encore réalisé ne compte pas.
+        appelsSem:  appels.filter(a => Number(a.PIN_CDS) === pin && a.Semaine_ISO === semaine && estAppelRealise(a)).length,
         leadsEnCours: leadsTracker.filter(p =>
           Number(p.PIN_CDS_Assigne) === pin &&
           !['ARCHIVE','INTEGRE'].includes(String(p.STATUT_EMPOWER||'').toUpperCase())
@@ -359,7 +360,7 @@ window.VueDashboardManager = {
     const activiteEquipe = semaines6.map(sem => ({
       sem,
       visites: visites.filter(v => v.Semaine_ISO === sem).length,
-      appels:  appels.filter(a => a.Semaine_ISO === sem).length,
+      appels:  appels.filter(a => a.Semaine_ISO === sem && estAppelRealise(a)).length,
     }));
 
     // Bloc C3 (07/2026) — comptes sans CDS attribué (notamment ceux créés

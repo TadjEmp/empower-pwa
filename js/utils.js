@@ -14,6 +14,14 @@ function dateISOLocale(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+// Bloc Phoning (07/2026) — un appel "planifié" (Statut_Appel='planifié') n'a
+// pas encore eu lieu : ne doit jamais être compté comme un appel "effectué"
+// dans les KPI (cards Accueil, camemberts, activité équipe). Centralisé pour
+// que tous les compteurs "appels" de l'app appliquent la même règle.
+function estAppelRealise(a) {
+  return String(a?.Statut_Appel || '').toLowerCase() !== 'planifié';
+}
+
 function normaliserNom(str = '') {
   return (str || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim().replace(/\s+/g, ' ');
 }

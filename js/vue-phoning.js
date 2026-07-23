@@ -772,8 +772,15 @@ window.VuePhoning = {
       // 2b. Marquer l'appel planifié comme réalisé (BUG-09)
       if (s.idPlanifEnCours) {
         try {
+          // Bloc Phoning (07/2026) — Date/Semaine_ISO restaient celles de la
+          // planification (posées à la création par sauvegarderPlanif), jamais
+          // rafraîchies : un appel planifié S+2 puis réalisé en S+2 restait
+          // compté sur la semaine de saisie S. Alignées ici sur le moment réel
+          // de réalisation, même logique que la création d'un appel à chaud.
           await SheetsAPI.mettreAJour('EMPOWER_MDB', '📞_PHONING', s.idPlanifEnCours, {
             Statut_Appel: 'réalisé',
+            Date: dateISOLocale(),
+            Semaine_ISO: FiscalWeeks.codeDe(),
           });
         } catch(_) { /* non bloquant */ }
       }

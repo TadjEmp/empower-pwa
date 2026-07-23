@@ -200,7 +200,8 @@ window.VueDashboardCDS = {
 
     // ── Activité semaine ──
     const visitesSem = visites.filter(v => this._estMoi(v.PIN_CDS) && v.Semaine_ISO === semaine).length;
-    const appelsSem  = appels.filter(a => this._estMoi(a.PIN_CDS) && a.Semaine_ISO === semaine).length;
+    // Bloc Phoning (07/2026) — un appel planifié pas encore réalisé ne compte pas.
+    const appelsSem  = appels.filter(a => this._estMoi(a.PIN_CDS) && a.Semaine_ISO === semaine && estAppelRealise(a)).length;
     const objVisites = Number(paramMap.ObjVisitesCDS || 8);
     const objAppels  = Number(paramMap.ObjAppelsSemaine || 10);
 
@@ -269,7 +270,7 @@ window.VueDashboardCDS = {
     const activiteSemaines = semaines6.map(sem => ({
       sem,
       visites: visites.filter(v => this._estMoi(v.PIN_CDS) && v.Semaine_ISO === sem).length,
-      appels:  appels.filter(a => this._estMoi(a.PIN_CDS) && a.Semaine_ISO === sem).length,
+      appels:  appels.filter(a => this._estMoi(a.PIN_CDS) && a.Semaine_ISO === sem && estAppelRealise(a)).length,
     }));
 
     // ── Ma base prospects (assignés, non archivés, hors imports base) ──

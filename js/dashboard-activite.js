@@ -27,7 +27,8 @@ function calculerCamembertsActivite(raw) {
   };
 
   const visitesFiltrees = visites.filter(v => !v.deleted && matchFiltre(v.PIN_CDS) && dansPeriode(v.Semaine_ISO));
-  const appelsFiltres   = appels.filter(a => !a.deleted && matchFiltre(a.PIN_CDS) && dansPeriode(a.Semaine_ISO));
+  // Bloc Phoning (07/2026) — un appel planifié pas encore réalisé ne compte pas.
+  const appelsFiltres   = appels.filter(a => !a.deleted && matchFiltre(a.PIN_CDS) && dansPeriode(a.Semaine_ISO) && estAppelRealise(a));
 
   // Vue consolidée (aucun commercial choisi, rôle Admin/Channel) → répartition
   // par commercial. Vue personnelle (CDS, ou commercial choisi) → par statut.
