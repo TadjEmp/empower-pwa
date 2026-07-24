@@ -134,20 +134,19 @@ window.VuePhoning = {
       // Bloc replanification (07/2026) — contexte posé par
       // VueVisites.planifierSuiviAppel() juste avant la navigation vers
       // #/phoning(/:id) ; consommé une seule fois ici, jamais persisté au-delà.
-      // Couvre aussi le suivi d'une visite à froid (pas de idCible du tout,
-      // contact repris depuis suivi.froid) — cf. correctif ci-dessous.
+      // Couvre aussi le suivi d'une visite à froid (pas de idCible du tout).
+      //
+      // Bug corrigé (07/2026) — router.js retombe sur vue.init(Session.pin)
+      // quand la route #/phoning n'a pas de segment /:id (aucun autre appel
+      // de ce fichier n'en dépendait jusqu'ici) : idCible valait donc le PIN
+      // du CDS, jamais null/vide comme on pourrait s'y attendre. Le suivi à
+      // froid passait alors dans la branche idCible ci-dessous au lieu de
+      // celle-ci, _resoudreCible(pin,...) ne trouvait rien, et le formulaire
+      // s'ouvrait vide (ni compte, ni contact à froid pré-rempli). suivi.froid
+      // est donc vérifié EN PREMIER, sans dépendre de la valeur de idCible.
       const suivi = window._suiviActionOrigine;
       window._suiviActionOrigine = null;
-      if (idCible) {
-        const resolu = this._resoudreCible(idCible, comptes, this.state.prospects);
-        if (resolu) {
-          this.state.formPlanif = {
-            idCompte: resolu.id, nomCompte: resolu.nom,
-            datePlanifiee: '', objectif: '', note: suivi?.note || '',
-            idActionOrigine: suivi?.idVisite || '',
-          };
-        }
-      } else if (suivi?.froid) {
+      if (suivi?.froid) {
         // Suivi d'une visite à froid (prospection sans compte en base) :
         // le mode "Appel à froid" du formulaire existe déjà, on le pré-remplit
         // avec le contact saisi lors de la visite plutôt que de bloquer.
@@ -159,6 +158,15 @@ window.VuePhoning = {
           froidTel: suivi.froid.tel, froidEmail: suivi.froid.email,
           idActionOrigine: suivi.idVisite || '',
         };
+      } else if (idCible) {
+        const resolu = this._resoudreCible(idCible, comptes, this.state.prospects);
+        if (resolu) {
+          this.state.formPlanif = {
+            idCompte: resolu.id, nomCompte: resolu.nom,
+            datePlanifiee: '', objectif: '', note: suivi?.note || '',
+            idActionOrigine: suivi?.idVisite || '',
+          };
+        }
       }
       this._restaurerBrouillon();
       this.state.chargement = false;
