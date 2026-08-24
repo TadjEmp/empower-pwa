@@ -249,6 +249,21 @@ window.VueComptes = {
     return p ? `<span class="badge-priorite ${map[p] || ''}">${p}</span>` : '';
   },
 
+  // Demande commerciaux — un compte peut apparaître deux fois (import Sell-In
+  // + création manuelle/pipeline, notamment) sans que rien ne l'indique dans
+  // la liste. Calculé sur le portefeuille complet (pas la liste filtrée) pour
+  // rester correct même quand la recherche/le filtre courant ne montre qu'un
+  // des deux doublons. Comparaison par nom normalisé (accents/casse/espaces).
+  _doublonsSet() {
+    const compte = new Map();
+    (this.state.comptes || []).forEach(c => {
+      const nom = normaliserNom(c.Nom_Compte || '');
+      if (!nom) return;
+      compte.set(nom, (compte.get(nom) || 0) + 1);
+    });
+    return new Set([...compte.entries()].filter(([, n]) => n > 1).map(([nom]) => nom));
+  },
+
   // Flag EMPOWER / GROSSISTE — visible au premier coup d'œil (Bloc 1 §6.3/6.4).
   // Le flag "éclair" sur un compte GROSSISTE signale un potentiel onboarding.
   _badgeEmpower(c) {
@@ -265,6 +280,7 @@ window.VueComptes = {
     }
     const liste = this.listeFiltree;
     const total = this.state.comptes.length;
+    const doublons = this._doublonsSet();
     // KPI synthèse (façon DASHBOARD_W09) — calculés sur le portefeuille du rôle
     const _cs       = this.state.comptes;
     const nbActif   = _cs.filter(c => this._statutCompte(c) === 'actif').length;
@@ -384,12 +400,14 @@ window.VueComptes = {
             const alerteInactivite = inactif45
               ? `<div class="alerte-inactivite"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> INACTIF ${dernActJours}j — aucun contact</div>`
               : '';
+            const estDoublon = doublons.has(normaliserNom(c.Nom_Compte || ''));
             return `
           <div class="carte-compte-v2${inactif45 ? ' carte-compte-alerte' : ''}">
             ${alerteInactivite}
             <div class="cc-pills" onclick="VueComptes.ouvrirFiche('${c.ID_Compte}')">
               ${badgeStatutCompte(c)}
               ${this._badgeEmpower(c)}
+              ${estDoublon ? `<span style="font-size:11px;font-weight:700;color:var(--c-warning);background:color-mix(in srgb,var(--c-warning) 12%,transparent);padding:2px 8px;border-radius:99px;border:1px solid color-mix(in srgb,var(--c-warning) 30%,transparent)" title="Un autre compte porte le même nom — ouvrir la fiche pour supprimer le doublon">⚠️ Doublon</span>` : ''}
               ${badgeDernier}
               ${this._badgePriorite(c.Priorite)}
               <span style="margin-left:auto;font-size:12px;color:var(--c-muted)">FY26 ${caFY26}</span>
@@ -462,8 +480,9 @@ window.VueComptes = {
                   const coul = delta >= 0 ? 'var(--c-success)' : 'var(--c-danger)';
                   deltaHtml = `<br><span style="font-size:10px;font-weight:700;color:${coul}">${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)}% (annualisé)</span>`;
                 }
+                const estDoublonRow = doublons.has(normaliserNom(c.Nom_Compte || ''));
                 return `<tr style="${rowStyle}">
-                  <td>${badgeStatutCompte(c)} ${this._badgeEmpower(c)}${joursDA !== null && joursDA > 45 ? `<br><span style="font-size:10px;font-weight:700;color:var(--c-danger)">⚠ ${joursDA}j</span>` : ''}</td>
+                  <td>${badgeStatutCompte(c)} ${this._badgeEmpower(c)}${estDoublonRow ? `<br><span style="font-size:10px;font-weight:700;color:var(--c-warning)" title="Un autre compte porte le même nom">⚠️ Doublon</span>` : ''}${joursDA !== null && joursDA > 45 ? `<br><span style="font-size:10px;font-weight:700;color:var(--c-danger)">⚠ ${joursDA}j</span>` : ''}</td>
                   <td class="compte-nom" onclick="VueComptes.ouvrirFiche('${c.ID_Compte}')">${c.Nom_Compte || '—'}</td>
                   <td>${c.Ville || '—'}</td>
                   <td>${c.CANAL || '—'}</td>

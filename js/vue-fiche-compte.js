@@ -21,6 +21,7 @@ window.VueFicheCompte = {
     sauvegardeEnCours: false,
     modalRapportPhoning: false,
     empowerEnCours: false,
+    suppressionEnCours: false,
   },
 
   async init(idCompte) {
@@ -73,6 +74,7 @@ window.VueFicheCompte = {
     this.state.editCoord = false;
     this.state.formCoord = { adresse: '', ville: '', code_postal: '', departement: '', tel: '', email: '' };
     this.state.modalRapportPhoning = false;
+    this.state.suppressionEnCours = false;
     const [comptes, rawV17, visites, appels] = await Promise.all([
       SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
       SheetsAPI.lire('V17', '📋 COMPTES HISTORIQUES'),
@@ -206,6 +208,40 @@ window.VueFicheCompte = {
     }
     this.state.empowerEnCours = false;
     this._rerender();
+  },
+
+  // Demande du commercial — un compte peut apparaître deux fois (import
+  // Sell-In + création manuelle/pipeline, notamment) sans qu'aucun bouton ne
+  // permette de retirer le doublon soi-même (jusqu'ici réservé à un accès
+  // direct à la base). Soft-delete (colonne comptes.deleted, migration
+  // add_soft_delete_to_comptes) plutôt qu'un DELETE en dur : comptes est
+  // référencé par sellin/sellin_agregats/marketing/nsb_commandes/actions/
+  // visites.id_visite_origine (clés étrangères) — supprimer la ligne
+  // casserait cet historique. Le compte est simplement exclu de toutes les
+  // lectures (filtré à la source dans api.js#_lireAvecFallback, comme les
+  // visites), sans toucher aux données déjà rattachées.
+  async supprimerCompte(idCompte, nomCompte) {
+    if (this.state.suppressionEnCours) return;
+    if (!confirm(`Supprimer le compte "${nomCompte}" ?\n\nÀ utiliser uniquement si ce compte est un doublon d'un autre compte déjà existant — l'historique (visites, appels, CA) reste conservé mais ce compte n'apparaîtra plus dans les listes.`)) return;
+    this.state.suppressionEnCours = true;
+    this._rerender();
+    try {
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', idCompte, {
+        deleted: 'TRUE', deleted_at: dateISOLocale(), deleted_by: Session.nom,
+      });
+      await SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES');
+      Toast.afficher('🗑 Compte supprimé', 'succes');
+      if (window.VueComptes && VueComptes.state.ficheDockee) {
+        VueComptes.fermerFicheDockee();
+        VueComptes.init();
+      } else {
+        Router.aller('#/comptes');
+      }
+    } catch(e) {
+      Toast.afficher('❌ ' + e.message, 'erreur');
+      this.state.suppressionEnCours = false;
+      this._rerender();
+    }
   },
 
   ouvrirRapportPhoning() {
@@ -369,6 +405,14 @@ window.VueFicheCompte = {
           ❄️ Créé depuis visite à froid
         </div>` : ''}
         <div class="statut-fy27">${c.STATUT_COMPTE || '—'} · Priorité ${c.Priorite || '—'}</div>
+        <div style="margin-top:10px;text-align:right">
+          <button class="btn-lien" style="font-size:11px;color:var(--c-danger)"
+                  title="Compte en double — supprime ce compte, conserve l'historique lié"
+                  onclick="VueFicheCompte.supprimerCompte('${c.ID_Compte}', '${(c.Nom_Compte || '').replace(/'/g, "\\'")}')"
+                  ${this.state.suppressionEnCours ? 'disabled' : ''}>
+            🗑 Compte en double ? Supprimer
+          </button>
+        </div>
       </div>`;
   },
 
