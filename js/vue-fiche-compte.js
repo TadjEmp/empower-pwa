@@ -17,9 +17,10 @@ window.VueFicheCompte = {
   state: {
     compte: null, v17: null, visites: [], appels: [], chargement: true,
     editCoord: false,
-    formCoord: { ville: '', code_postal: '', departement: '', tel: '', email: '' },
+    formCoord: { adresse: '', ville: '', code_postal: '', departement: '', tel: '', email: '' },
     sauvegardeEnCours: false,
     modalRapportPhoning: false,
+    empowerEnCours: false,
   },
 
   async init(idCompte) {
@@ -58,6 +59,20 @@ window.VueFicheCompte = {
   // Réutilisé par le panneau docké desktop (VueComptes.ouvrirFiche) qui ne
   // doit pas remplacer la vue Comptes en arrière-plan.
   async _chargerDonnees(idCompte) {
+    // Bug profils (audit) — reset des états UI transitoires du compte
+    // précédemment affiché. Le panneau docké desktop (VueComptes.ouvrirFiche)
+    // appelle _chargerDonnees() directement sans jamais repasser par init(),
+    // et fermerFicheDockee() ne touche pas cet état : si une édition de
+    // coordonnées était ouverte sur le compte A (même jamais "Enregistrer",
+    // juste pas "Annuler" avant de fermer/changer de compte), editCoord et
+    // formCoord restaient à true / aux valeurs de A. Résultat : ouvrir un
+    // compte B affichait encore le formulaire pré-rempli avec les
+    // coordonnées de A — "les mêmes infos dans tous les contacts" — et
+    // Enregistrer écrivait les données de A sur le compte B (bon ID cible,
+    // mauvaises données).
+    this.state.editCoord = false;
+    this.state.formCoord = { adresse: '', ville: '', code_postal: '', departement: '', tel: '', email: '' };
+    this.state.modalRapportPhoning = false;
     const [comptes, rawV17, visites, appels] = await Promise.all([
       SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
       SheetsAPI.lire('V17', '📋 COMPTES HISTORIQUES'),
@@ -169,6 +184,28 @@ window.VueFicheCompte = {
     } catch(e) {
       Toast.afficher('❌ ' + e.message, 'erreur');
     }
+  },
+
+  // Bug profils (audit) — jusqu'ici Has_EMPOWER n'était basculé
+  // automatiquement que par le Tracker (intégration d'un lead), sans aucun
+  // contrôle manuel sur la fiche compte : impossible de requalifier un
+  // Grossiste en Empower directement (ex. conversion actée en appel/visite
+  // sans passer par le Tracker). estEmpower() (utils.js) reste la source de
+  // vérité pour l'affichage — ce toggle ne fait qu'écrire Has_EMPOWER.
+  async basculerEmpower(idCompte, devenirEmpower) {
+    if (this.state.empowerEnCours) return;
+    this.state.empowerEnCours = true;
+    this._rerender();
+    try {
+      const champs = { Has_EMPOWER: devenirEmpower ? 'Oui' : 'Non' };
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', idCompte, champs);
+      Object.assign(this.state.compte, champs);
+      Toast.afficher(devenirEmpower ? '⭐ Compte marqué EMPOWER' : '⚡ Compte repassé Grossiste', 'succes');
+    } catch(e) {
+      Toast.afficher('❌ ' + e.message, 'erreur');
+    }
+    this.state.empowerEnCours = false;
+    this._rerender();
   },
 
   ouvrirRapportPhoning() {
@@ -308,7 +345,16 @@ window.VueFicheCompte = {
                 </select>`
               : `<strong>${window.resolveCDS(c.PIN_CDS_Assigne || c.Nom_CDS)}</strong>`
           }</div>
-          <div class="id-ligne"><span>EMPOWER</span><strong>${window.estEmpower(c) ? 'Oui' : 'Non'}</strong></div>
+          <div class="id-ligne"><span>EMPOWER</span>
+            <span style="display:flex;align-items:center;gap:8px">
+              <strong>${window.estEmpower(c) ? 'Oui' : 'Non'}</strong>
+              <button class="btn-lien" style="font-size:12px"
+                      onclick="VueFicheCompte.basculerEmpower('${c.ID_Compte}', ${window.estEmpower(c) ? 'false' : 'true'})"
+                      ${this.state.empowerEnCours ? 'disabled' : ''}>
+                ${window.estEmpower(c) ? '↩︎ Repasser Grossiste' : '⭐ Marquer Empower'}
+              </button>
+            </span>
+          </div>
           <div class="id-ligne"><span>Dernière visite</span><strong>${this._dateLigne(this._dernierVisiteRealisee())}</strong></div>
           <div class="id-ligne"><span>Dernier appel</span><strong>${this._dateLigne(this.state.appels[0]?.Date)}</strong></div>
           <div class="id-ligne"><span>Prochaine visite</span><strong>${this._dateLigne(this._prochaineVisitePlanifiee())}</strong></div>
