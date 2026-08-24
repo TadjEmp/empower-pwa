@@ -456,7 +456,10 @@ const SheetsAPI = {
     if (frais) return cached
     try {
       let q = this._sb.from(table).select('*')
-      if (table === 'visites') q = q.neq('deleted', true)
+      // comptes : soft-delete (doublons supprimables par le commercial, cf.
+      // VueFicheCompte.supprimerCompte / VueComptes.supprimerCompte) — exclu
+      // à la source comme visites, pour ne dépendre d'aucun filtre côté vue.
+      if (table === 'visites' || table === 'comptes') q = q.neq('deleted', true)
       if (limit != null) q = q.range(offset || 0, (offset || 0) + limit - 1)
       const { data, error, count } = await q
       if (error) throw new Error(error.message)
