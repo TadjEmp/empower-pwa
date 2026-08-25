@@ -257,7 +257,11 @@ window.VueQuestionnaire = {
     this.render();
   },
 
-  setFroidChamp(champ, val) {
+  // Générique — utilisé par le formulaire à froid ET, depuis l'audit fiche
+  // contact, par les champs contact éditables en mode Existant/Prospect
+  // (cf. _etape0). Persisté sur le compte/prospect réel à la validation
+  // (valider()), sur la visite pour le mode Froid.
+  setContactChamp(champ, val) {
     if (!this.state.cible) return;
     this.state.cible[champ] = val;
   },
@@ -594,7 +598,7 @@ window.VueQuestionnaire = {
         ID_Cible:                idCible,
         Nom_Compte:              s.cible.Nom_Compte,
         // Bug audit (compte-rendu) — Adresse/Départ./Ville/Tel/Email saisis
-        // dans le formulaire à froid (setFroidChamp, cf. _etape0) n'étaient
+        // dans le formulaire à froid (setContactChamp, cf. _etape0) n'étaient
         // jusqu'ici jamais envoyés à l'enregistrement : la saisie semblait
         // fonctionner mais disparaissait silencieusement. Même convention que
         // vue-visites.js#planifier (branche horsBase) : uniquement pour une
@@ -660,12 +664,25 @@ window.VueQuestionnaire = {
       // Mise à jour fiche compte / prospect
       // FIX-B/C : pas de mise à jour pour les visites à froid (idCible = 'HORS_BASE')
       if (idCible !== 'HORS_BASE') {
+        // Bug audit (fiche contact) — quel que soit le type de visite (Existant
+        // ou Prospect), la fiche contact éditée à l'étape 0 (setContactChamp)
+        // doit être enregistrée sur le compte/prospect réel, pas seulement
+        // gardée en mémoire pour la durée du formulaire. Adresse vide non
+        // envoyée : un champ jamais affiché/édité ne doit pas écraser une
+        // valeur existante avec ''.
+        const majContact = {};
+        if (s.cible.Adresse     !== undefined) majContact.Adresse     = s.cible.Adresse;
+        if (s.cible.Departement !== undefined) majContact.Departement = s.cible.Departement;
+        if (s.cible.Ville       !== undefined) majContact.Ville       = s.cible.Ville;
+        if (s.cible.Tel         !== undefined) majContact.Tel         = s.cible.Tel;
+        if (s.cible.Email       !== undefined) majContact.Email       = s.cible.Email;
+
         if (estProspect) {
           // Audit 2026-07 — une visite terrain réalisée sur un lead Tracker ne faisait
           // jamais avancer son statut pipeline (STATUT_EMPOWER), contrairement à un
           // appel phoning (cf. VuePhoning.valider()) : le lead restait bloqué sur son
           // statut d'attribution (ASSIGNE) même après une visite concluante ou négative.
-          const majProspect = { Date_prochaine_action: d.prochaineActionDate, Flag_traite: 'TRUE' };
+          const majProspect = { ...majContact, Date_prochaine_action: d.prochaineActionDate, Flag_traite: 'TRUE' };
           if (resultatNorm.includes('Négatif')) {
             majProspect.STATUT_EMPOWER = 'ARCHIVE';
             majProspect.FLAG_ACTION = 'ARCHIVE';
@@ -676,6 +693,7 @@ window.VueQuestionnaire = {
           await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', idCible, majProspect);
         } else {
           await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', idCible, {
+            ...majContact,
             Date_Prochaine_Action: d.prochaineActionDate,
             Flag_Traite:           'TRUE',
             Date_Derniere_Action:  d.date,
@@ -771,7 +789,7 @@ window.VueQuestionnaire = {
         ID_Prospect:     genId('PROS'),
         Nom_Compte:      nom,
         // Bug audit (compte-rendu) — Adresse/Département/Ville/Tel/Email
-        // saisis à froid (cf. _etape0/setFroidChamp) n'étaient pas repris ici
+        // saisis à froid (cf. _etape0/setContactChamp) n'étaient pas repris ici
         // non plus : la fiche prospect nouvellement créée arrivait vide alors
         // que l'info venait d'être renseignée pendant la visite.
         Adresse:         s.cible.Adresse || '',
@@ -902,27 +920,27 @@ window.VueQuestionnaire = {
     const zoneRecherche = s.typeSource === 'FROID' ? `
       <label class="q-label">Nom de l'enseigne *
         <input class="q-input" placeholder="ex : MICRO PLUS INFORMATIQUE" value="${s.cible?.Nom_Compte || ''}"
-               oninput="VueQuestionnaire.setFroidChamp('Nom_Compte',this.value)" autocomplete="off"/>
+               oninput="VueQuestionnaire.setContactChamp('Nom_Compte',this.value)" autocomplete="off"/>
       </label>
       <label class="q-label">Adresse
         <input class="q-input" placeholder="ex : 12 rue de la Paix" value="${s.cible?.Adresse || ''}"
-               oninput="VueQuestionnaire.setFroidChamp('Adresse',this.value)"/>
+               oninput="VueQuestionnaire.setContactChamp('Adresse',this.value)"/>
       </label>
       <div style="display:flex;gap:12px">
         <label class="q-label" style="flex:1">Département
           <input class="q-input" placeholder="ex : 75" maxlength="3" value="${s.cible?.Departement || ''}"
-                 oninput="VueQuestionnaire.setFroidChamp('Departement',this.value)"/></label>
+                 oninput="VueQuestionnaire.setContactChamp('Departement',this.value)"/></label>
         <label class="q-label" style="flex:2">Ville
           <input class="q-input" placeholder="ex : Paris" value="${s.cible?.Ville || ''}"
-                 oninput="VueQuestionnaire.setFroidChamp('Ville',this.value)"/></label>
+                 oninput="VueQuestionnaire.setContactChamp('Ville',this.value)"/></label>
       </div>
       <div style="display:flex;gap:12px">
         <label class="q-label" style="flex:1">Téléphone
           <input class="q-input" type="tel" placeholder="ex : 01 23 45 67 89" value="${s.cible?.Tel || ''}"
-                 oninput="VueQuestionnaire.setFroidChamp('Tel',this.value)"/></label>
+                 oninput="VueQuestionnaire.setContactChamp('Tel',this.value)"/></label>
         <label class="q-label" style="flex:1">Email
           <input class="q-input" type="email" placeholder="ex : contact@enseigne.fr" value="${s.cible?.Email || ''}"
-                 oninput="VueQuestionnaire.setFroidChamp('Email',this.value)"/></label>
+                 oninput="VueQuestionnaire.setContactChamp('Email',this.value)"/></label>
       </div>` : `
       <label class="q-label">Compte ${s.typeSource==='EXISTANT'?'(base historique)':'(base prospects)'}
         <input class="q-input" placeholder="🔍 Rechercher…" value="${s.recherche}"
@@ -942,12 +960,31 @@ window.VueQuestionnaire = {
       </label>
       ${zoneRecherche}` : '<div id="q-suggestions"></div>'}
       ${s.cible && s.typeSource!=='FROID' ? `<div class="q-recap">
-        <div class="q-recap-ligne"><span>Ville</span><strong>${s.cible.Ville||'—'}</strong></div>
         <div class="q-recap-ligne"><span>Statut</span><strong>${s.cible.STATUT_COMPTE||s.cible.Statut||'—'}</strong></div>
-        <div class="q-recap-ligne"><span>Téléphone</span><strong>${s.cible.Tel||'—'}</strong></div>
-        <div class="q-recap-ligne"><span>Email</span><strong>${s.cible.Email||'—'}</strong></div>
-        ${s.cible.Adresse ? `<div class="q-recap-ligne"><span>Adresse</span><strong>${s.cible.Adresse}</strong></div>` : ''}
         ${s.cible.CA_FY25 ? `<div class="q-recap-ligne"><span>CA FY25</span><strong>${formatEuro(s.cible.CA_FY25)}</strong></div>` : ''}
+      </div>
+      <p class="q-intro" style="margin-top:14px">Fiche contact
+        <span style="color:var(--c-text-2);font-size:11px">(vérifiez/complétez — enregistré sur ${s.typeSource==='PROSPECT'?'le prospect':'le compte'} à la validation de la visite)</span>
+      </p>
+      <label class="q-label">Adresse
+        <input class="q-input" placeholder="ex : 12 rue de la Paix" value="${s.cible.Adresse || ''}"
+               oninput="VueQuestionnaire.setContactChamp('Adresse',this.value)"/>
+      </label>
+      <div style="display:flex;gap:12px">
+        <label class="q-label" style="flex:1">Département
+          <input class="q-input" placeholder="ex : 75" maxlength="3" value="${s.cible.Departement || ''}"
+                 oninput="VueQuestionnaire.setContactChamp('Departement',this.value)"/></label>
+        <label class="q-label" style="flex:2">Ville
+          <input class="q-input" placeholder="ex : Paris" value="${s.cible.Ville || ''}"
+                 oninput="VueQuestionnaire.setContactChamp('Ville',this.value)"/></label>
+      </div>
+      <div style="display:flex;gap:12px">
+        <label class="q-label" style="flex:1">Téléphone
+          <input class="q-input" type="tel" placeholder="ex : 01 23 45 67 89" value="${s.cible.Tel || ''}"
+                 oninput="VueQuestionnaire.setContactChamp('Tel',this.value)"/></label>
+        <label class="q-label" style="flex:1">Email
+          <input class="q-input" type="email" placeholder="ex : contact@enseigne.fr" value="${s.cible.Email || ''}"
+                 oninput="VueQuestionnaire.setContactChamp('Email',this.value)"/></label>
       </div>` : ''}
       ${s.cible && s.dernieresVisites?.length ? `
       <div class="q-recap" style="margin-top:8px">
