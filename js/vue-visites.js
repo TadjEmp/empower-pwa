@@ -105,7 +105,7 @@ window.VueVisites = {
           </div>
           ${VueFicheCompte.renderContenuFiche()}
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-            <button class="btn-action btn-visite" style="width:auto;flex:1" onclick="Router.aller('#/questionnaire/${c.ID_Compte}')">📋 Visite</button>
+            <button class="btn-action btn-visite" style="width:auto;flex:1" onclick="VueQuestionnaire._visitePlanifiee=null;Router.aller('#/questionnaire/${c.ID_Compte}')">📋 Visite</button>
             <button class="btn-action btn-appel" style="width:auto;flex:1" onclick="Router.aller('#/phoning/${c.ID_Compte}')">📞 Appeler</button>
             <button class="btn-action" style="width:auto;flex:1;background:var(--c-text-2);color:#fff" onclick="VueFicheCompte.ouvrirRapportPhoning()">📊 Rapport</button>
           </div>

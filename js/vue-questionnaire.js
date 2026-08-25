@@ -141,8 +141,23 @@ window.VueQuestionnaire = {
   },
 
   async init(idCible = null) {
-    // FIX-B/C : réinitialiser le mode froid sauf si déjà positionné par ouvrirCR
+    // Bug audit (compte-rendu) — _visitePlanifiee ne doit rester valide que
+    // pour LA visite qui vient de le poser (ouvrirCR, juste avant
+    // Router.aller, même tick synchrone). _visitePlanifiee n'est jamais
+    // remis à null tant que valider() n'a pas abouti : naviguer directement
+    // vers #/questionnaire[/:id] sans passer par ouvrirCR (bouton "📋 Visite"
+    // depuis Comptes/fiche compte, FAB "+ Nouvelle visite"…) laissait la
+    // visite précédente (potentiellement à froid) contaminer un compte-rendu
+    // sans rapport — "Visite à froid" verrouillée s'affichait pour un
+    // revendeur pourtant bien existant, sans aucun moyen de revenir en
+    // arrière (cf. _froidVerrouille, utilisé par _etape0()).
+    const visitePertinente = this._visitePlanifiee && (
+      (idCible === null && (this._visitePlanifiee.ID_Cible === 'HORS_BASE' || this._visitePlanifiee.Source_Visite === 'ESI_VISITE_FROID')) ||
+      (idCible !== null && String(this._visitePlanifiee.ID_Cible) === String(idCible))
+    );
+    if (!visitePertinente) this._visitePlanifiee = null;
     this._modeFroid = false;
+    this._froidVerrouille = false;
     this._modalAjoutTracker = null;
     this._trackerAjoute = false;
     this.state = this._etatInitial();
@@ -166,18 +181,28 @@ window.VueQuestionnaire = {
       );
 
       if (estFroid) {
-        // Créer une cible synthétique depuis la visite planifiée — pas de recherche requise
+        // Créer une cible synthétique depuis la visite planifiée — pas de
+        // recherche requise. Reprend aussi les coordonnées déjà saisies à la
+        // planification (cf. vue-visites.js#planifier, branche horsBase) —
+        // avant ce fix, Adresse/Départ./Tel/Email déjà capturés à la
+        // planification étaient silencieusement perdus à l'ouverture du
+        // compte-rendu (aucun moyen de les revoir ni de les compléter).
         const vp = this._visitePlanifiee;
         this.state.cible = {
           Nom_Compte:    vp.Nom_Compte || '(Prospect à froid)',
           ID_Compte:     'HORS_BASE',
           ID_Prospect:   null,
-          Ville:         '',
+          Adresse:       vp.Adresse     || '',
+          Departement:   vp.Departement || '',
+          Ville:         vp.Ville       || '',
+          Tel:           vp.Tel         || '',
+          Email:         vp.Email       || '',
           STATUT_COMPTE: 'Visite à froid',
         };
         this.state.typeSource = 'EXISTANT';
         this.state.recherche  = vp.Nom_Compte || '';
         this._modeFroid = true;
+        this._froidVerrouille = true;
       } else if (idCible && idCible !== 'HORS_BASE') {
         const c = comptes.find(x => String(x.ID_Compte) === String(idCible));
         const p = !c && prospects.find(x => String(x.ID_Prospect) === String(idCible));
@@ -232,7 +257,11 @@ window.VueQuestionnaire = {
     this.render();
   },
 
-  setFroidChamp(champ, val) {
+  // Générique — utilisé par le formulaire à froid ET, depuis l'audit fiche
+  // contact, par les champs contact éditables en mode Existant/Prospect
+  // (cf. _etape0). Persisté sur le compte/prospect réel à la validation
+  // (valider()), sur la visite pour le mode Froid.
+  setContactChamp(champ, val) {
     if (!this.state.cible) return;
     this.state.cible[champ] = val;
   },
@@ -568,6 +597,17 @@ window.VueQuestionnaire = {
         Nom_CDS:                 Session.nom,
         ID_Cible:                idCible,
         Nom_Compte:              s.cible.Nom_Compte,
+        // Bug audit (compte-rendu) — Adresse/Départ./Ville/Tel/Email saisis
+        // dans le formulaire à froid (setContactChamp, cf. _etape0) n'étaient
+        // jusqu'ici jamais envoyés à l'enregistrement : la saisie semblait
+        // fonctionner mais disparaissait silencieusement. Même convention que
+        // vue-visites.js#planifier (branche horsBase) : uniquement pour une
+        // visite à froid, vide sinon (l'info vit sur le compte/prospect réel).
+        Adresse:                 s.typeSource === 'FROID' ? (s.cible.Adresse || '') : '',
+        Departement:             s.typeSource === 'FROID' ? (s.cible.Departement || '') : '',
+        Ville:                   s.typeSource === 'FROID' ? (s.cible.Ville || '') : '',
+        Tel:                     s.typeSource === 'FROID' ? (s.cible.Tel || '') : '',
+        Email:                   s.typeSource === 'FROID' ? (s.cible.Email || '') : '',
         Type_Visite:             typeVisite,
         Statut_Visite:           'réalisée',
         Source_Visite:           'ESI_V21',
@@ -624,12 +664,25 @@ window.VueQuestionnaire = {
       // Mise à jour fiche compte / prospect
       // FIX-B/C : pas de mise à jour pour les visites à froid (idCible = 'HORS_BASE')
       if (idCible !== 'HORS_BASE') {
+        // Bug audit (fiche contact) — quel que soit le type de visite (Existant
+        // ou Prospect), la fiche contact éditée à l'étape 0 (setContactChamp)
+        // doit être enregistrée sur le compte/prospect réel, pas seulement
+        // gardée en mémoire pour la durée du formulaire. Adresse vide non
+        // envoyée : un champ jamais affiché/édité ne doit pas écraser une
+        // valeur existante avec ''.
+        const majContact = {};
+        if (s.cible.Adresse     !== undefined) majContact.Adresse     = s.cible.Adresse;
+        if (s.cible.Departement !== undefined) majContact.Departement = s.cible.Departement;
+        if (s.cible.Ville       !== undefined) majContact.Ville       = s.cible.Ville;
+        if (s.cible.Tel         !== undefined) majContact.Tel         = s.cible.Tel;
+        if (s.cible.Email       !== undefined) majContact.Email       = s.cible.Email;
+
         if (estProspect) {
           // Audit 2026-07 — une visite terrain réalisée sur un lead Tracker ne faisait
           // jamais avancer son statut pipeline (STATUT_EMPOWER), contrairement à un
           // appel phoning (cf. VuePhoning.valider()) : le lead restait bloqué sur son
           // statut d'attribution (ASSIGNE) même après une visite concluante ou négative.
-          const majProspect = { Date_prochaine_action: d.prochaineActionDate, Flag_traite: 'TRUE' };
+          const majProspect = { ...majContact, Date_prochaine_action: d.prochaineActionDate, Flag_traite: 'TRUE' };
           if (resultatNorm.includes('Négatif')) {
             majProspect.STATUT_EMPOWER = 'ARCHIVE';
             majProspect.FLAG_ACTION = 'ARCHIVE';
@@ -640,6 +693,7 @@ window.VueQuestionnaire = {
           await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', idCible, majProspect);
         } else {
           await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', idCible, {
+            ...majContact,
             Date_Prochaine_Action: d.prochaineActionDate,
             Flag_Traite:           'TRUE',
             Date_Derniere_Action:  d.date,
@@ -734,6 +788,15 @@ window.VueQuestionnaire = {
       await SheetsAPI.ecrire('EMPOWER_MDB', '📋_PROSPECTS', {
         ID_Prospect:     genId('PROS'),
         Nom_Compte:      nom,
+        // Bug audit (compte-rendu) — Adresse/Département/Ville/Tel/Email
+        // saisis à froid (cf. _etape0/setContactChamp) n'étaient pas repris ici
+        // non plus : la fiche prospect nouvellement créée arrivait vide alors
+        // que l'info venait d'être renseignée pendant la visite.
+        Adresse:         s.cible.Adresse || '',
+        Departement:     s.cible.Departement || '',
+        Ville:           s.cible.Ville || '',
+        Tel:             s.cible.Tel || '',
+        Email:           s.cible.Email || '',
         PIN_CDS_Assigne: Session.pin,
         Nom_CDS:         Session.nom,
         STATUT_EMPOWER:  'SAISIE',
@@ -818,29 +881,66 @@ window.VueQuestionnaire = {
   // ── BLOC 1 — Identification ──
   _etape0() {
     const s = this.state, d = s.d;
-    // FIX-B/C : en mode froid issu d'une visite planifiée, afficher la cible pré-remplie sans champ de recherche
-    const froidPlanifie = this._modeFroid && this._visitePlanifiee;
+    // FIX-B/C : en mode froid issu d'une visite planifiée, afficher la cible pré-remplie sans champ de recherche.
+    // Bug audit — dépendait auparavant de this._modeFroid (mutable par le
+    // toggle Existant/Prospect/Froid ci-dessous) au lieu du drapeau figé posé
+    // une seule fois par init() : cliquer "🆕 Visite à froid" pour un
+    // compte-rendu ouvert depuis une visite planifiée (froide ou non, cf.
+    // ouvrirCR qui pose toujours _visitePlanifiee) faisait passer
+    // froidPlanifie à true, ce qui masquait le toggle lui-même — plus aucun
+    // moyen de revenir sur "Existant", seul "Annuler" (history.back) restait
+    // cliquable, forçant à quitter la saisie.
+    const froidPlanifie = this._froidVerrouille;
+    // Bug audit — affiche (lecture seule) les coordonnées déjà saisies à la
+    // planification, sinon elles restaient invisibles pendant tout le
+    // compte-rendu alors qu'elles sont bien conservées (cf. init()).
+    const coordFroid = [
+      s.cible?.Ville ? `📍 ${s.cible.Ville}` : '',
+      s.cible?.Tel ? `☎ ${s.cible.Tel}` : '',
+      s.cible?.Email ? `✉ ${s.cible.Email}` : '',
+    ].filter(Boolean).join(' · ');
     const bannereFroid = froidPlanifie ? `
       <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fff8e1;border-radius:var(--radius-sm);border-left:4px solid #ffc107;margin-bottom:14px">
         <span style="font-size:22px">❄️</span>
         <div>
           <div style="font-size:13px;font-weight:700;color:#795548">Visite à froid</div>
           <div style="font-size:15px;font-weight:800">${s.cible?.Nom_Compte || ''}</div>
+          ${s.cible?.Adresse ? `<div style="font-size:11px;color:var(--c-text-2)">${s.cible.Adresse}</div>` : ''}
+          ${coordFroid ? `<div style="font-size:11px;color:var(--c-text-2)">${coordFroid}</div>` : ''}
           <div style="font-size:11px;color:var(--c-text-2)">Prospect hors base — non référencé dans vos comptes</div>
         </div>
       </div>` : '';
+    // Bug audit (compte-rendu) — Adresse/Département/Email manquaient ici alors
+    // que ce sont des colonnes VISITES déjà utilisées par le formulaire "Planifier
+    // visite" (vue-visites.js#planifier, branche horsBase) : un prospect à froid
+    // planifié à l'avance avec ces infos les perdait silencieusement à l'étape
+    // compte-rendu, et un prospect à froid saisi directement ici n'avait aucun
+    // moyen de les renseigner. Parité complète avec les 5 champs déjà écrits
+    // par planifier() (cf. aussi valider() ci-dessous qui les envoie désormais).
     const zoneRecherche = s.typeSource === 'FROID' ? `
       <label class="q-label">Nom de l'enseigne *
         <input class="q-input" placeholder="ex : MICRO PLUS INFORMATIQUE" value="${s.cible?.Nom_Compte || ''}"
-               oninput="VueQuestionnaire.setFroidChamp('Nom_Compte',this.value)" autocomplete="off"/>
+               oninput="VueQuestionnaire.setContactChamp('Nom_Compte',this.value)" autocomplete="off"/>
+      </label>
+      <label class="q-label">Adresse
+        <input class="q-input" placeholder="ex : 12 rue de la Paix" value="${s.cible?.Adresse || ''}"
+               oninput="VueQuestionnaire.setContactChamp('Adresse',this.value)"/>
       </label>
       <div style="display:flex;gap:12px">
-        <label class="q-label" style="flex:1">Ville
+        <label class="q-label" style="flex:1">Département
+          <input class="q-input" placeholder="ex : 75" maxlength="3" value="${s.cible?.Departement || ''}"
+                 oninput="VueQuestionnaire.setContactChamp('Departement',this.value)"/></label>
+        <label class="q-label" style="flex:2">Ville
           <input class="q-input" placeholder="ex : Paris" value="${s.cible?.Ville || ''}"
-                 oninput="VueQuestionnaire.setFroidChamp('Ville',this.value)"/></label>
+                 oninput="VueQuestionnaire.setContactChamp('Ville',this.value)"/></label>
+      </div>
+      <div style="display:flex;gap:12px">
         <label class="q-label" style="flex:1">Téléphone
           <input class="q-input" type="tel" placeholder="ex : 01 23 45 67 89" value="${s.cible?.Tel || ''}"
-                 oninput="VueQuestionnaire.setFroidChamp('Tel',this.value)"/></label>
+                 oninput="VueQuestionnaire.setContactChamp('Tel',this.value)"/></label>
+        <label class="q-label" style="flex:1">Email
+          <input class="q-input" type="email" placeholder="ex : contact@enseigne.fr" value="${s.cible?.Email || ''}"
+                 oninput="VueQuestionnaire.setContactChamp('Email',this.value)"/></label>
       </div>` : `
       <label class="q-label">Compte ${s.typeSource==='EXISTANT'?'(base historique)':'(base prospects)'}
         <input class="q-input" placeholder="🔍 Rechercher…" value="${s.recherche}"
@@ -860,9 +960,31 @@ window.VueQuestionnaire = {
       </label>
       ${zoneRecherche}` : '<div id="q-suggestions"></div>'}
       ${s.cible && s.typeSource!=='FROID' ? `<div class="q-recap">
-        <div class="q-recap-ligne"><span>Ville</span><strong>${s.cible.Ville||'—'}</strong></div>
         <div class="q-recap-ligne"><span>Statut</span><strong>${s.cible.STATUT_COMPTE||s.cible.Statut||'—'}</strong></div>
         ${s.cible.CA_FY25 ? `<div class="q-recap-ligne"><span>CA FY25</span><strong>${formatEuro(s.cible.CA_FY25)}</strong></div>` : ''}
+      </div>
+      <p class="q-intro" style="margin-top:14px">Fiche contact
+        <span style="color:var(--c-text-2);font-size:11px">(vérifiez/complétez — enregistré sur ${s.typeSource==='PROSPECT'?'le prospect':'le compte'} à la validation de la visite)</span>
+      </p>
+      <label class="q-label">Adresse
+        <input class="q-input" placeholder="ex : 12 rue de la Paix" value="${s.cible.Adresse || ''}"
+               oninput="VueQuestionnaire.setContactChamp('Adresse',this.value)"/>
+      </label>
+      <div style="display:flex;gap:12px">
+        <label class="q-label" style="flex:1">Département
+          <input class="q-input" placeholder="ex : 75" maxlength="3" value="${s.cible.Departement || ''}"
+                 oninput="VueQuestionnaire.setContactChamp('Departement',this.value)"/></label>
+        <label class="q-label" style="flex:2">Ville
+          <input class="q-input" placeholder="ex : Paris" value="${s.cible.Ville || ''}"
+                 oninput="VueQuestionnaire.setContactChamp('Ville',this.value)"/></label>
+      </div>
+      <div style="display:flex;gap:12px">
+        <label class="q-label" style="flex:1">Téléphone
+          <input class="q-input" type="tel" placeholder="ex : 01 23 45 67 89" value="${s.cible.Tel || ''}"
+                 oninput="VueQuestionnaire.setContactChamp('Tel',this.value)"/></label>
+        <label class="q-label" style="flex:1">Email
+          <input class="q-input" type="email" placeholder="ex : contact@enseigne.fr" value="${s.cible.Email || ''}"
+                 oninput="VueQuestionnaire.setContactChamp('Email',this.value)"/></label>
       </div>` : ''}
       ${s.cible && s.dernieresVisites?.length ? `
       <div class="q-recap" style="margin-top:8px">

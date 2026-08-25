@@ -507,7 +507,7 @@ window.VueFicheCompte = {
 
       <!-- ACTIONS -->
       <div class="barre-actions-fixe">
-        <button class="btn-action btn-visite" onclick="Router.aller('#/questionnaire/${c.ID_Compte}')">📋 Visite</button>
+        <button class="btn-action btn-visite" onclick="VueQuestionnaire._visitePlanifiee=null;Router.aller('#/questionnaire/${c.ID_Compte}')">📋 Visite</button>
         <button class="btn-action btn-appel" onclick="Router.aller('#/phoning/${c.ID_Compte}')">📞 Appeler</button>
         <button class="btn-action" style="background:var(--c-text-2);color:#fff" onclick="VueFicheCompte.ouvrirRapportPhoning()">📊 Rapport</button>
         <button class="btn-action btn-planning" onclick="VueVisites.state.formPlanif=VueVisites.state.formPlanif||{};VueVisites.ouvrirModal();Router.aller('#/visites')">🗓️ Planifier</button>

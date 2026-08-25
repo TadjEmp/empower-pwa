@@ -475,7 +475,7 @@ window.VueDashboardCDS = {
                 <div class="relance-meta">
                   <span class="statut-pill" style="background:var(--c-primary-10,#e6eeff);color:var(--c-primary)">planifiée</span>
                   ${v.Heure ? `<span style="font-size:12px;color:var(--c-text-2)">${v.Heure}</span>` : ''}
-                  <button class="btn-lien" onclick="event.stopPropagation();VueVisites.ouvrirCR('${v.ID_Visite}');Router.aller('#/questionnaire')" style="font-size:11px;margin-left:auto">CR →</button>
+                  <button class="btn-lien" onclick="event.stopPropagation();VueVisites.ouvrirCR('${v.ID_Visite}')" style="font-size:11px;margin-left:auto">CR →</button>
                 </div>
               </div>`).join('')
           }
