@@ -105,7 +105,7 @@ window.VueComptes = {
           </div>
           ${VueFicheCompte.renderContenuFiche()}
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-            <button class="btn-action btn-visite" style="width:auto;flex:1" onclick="Router.aller('#/questionnaire/${c.ID_Compte}')">📋 Visite</button>
+            <button class="btn-action btn-visite" style="width:auto;flex:1" onclick="VueQuestionnaire._visitePlanifiee=null;Router.aller('#/questionnaire/${c.ID_Compte}')">📋 Visite</button>
             <button class="btn-action btn-appel" style="width:auto;flex:1" onclick="Router.aller('#/phoning/${c.ID_Compte}')">📞 Appeler</button>
             <button class="btn-action" style="width:auto;flex:1;background:var(--c-text-2);color:#fff" onclick="VueFicheCompte.ouvrirRapportPhoning()">📊 Rapport</button>
           </div>
@@ -423,7 +423,7 @@ window.VueComptes = {
             </div>
             ${estLectureSeule ? `` : `
             <div class="cc-actions">
-              <button class="btn-visiter" onclick="Router.aller('#/questionnaire/${c.ID_Compte}')">Visiter</button>
+              <button class="btn-visiter" onclick="VueQuestionnaire._visitePlanifiee=null;Router.aller('#/questionnaire/${c.ID_Compte}')">Visiter</button>
               <button class="btn-tel-outline" onclick="Router.aller('#/phoning/${c.ID_Compte}')" title="Appeler"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></button>
             </div>`}
             ${Session.estManager() ? `
@@ -497,7 +497,7 @@ window.VueComptes = {
                       ${cdsList.map(x => `<option value="${x.pin}" ${Number(c.PIN_CDS_Assigne) === x.pin ? 'selected' : ''}>${x.nom}</option>`).join('')}
                     </select>` : (nomCDS || '—')}</td>
                   <td>${estLectureSeule ? '—' : `
-                    <button class="btn-visiter" style="padding:4px 10px;font-size:12px" onclick="Router.aller('#/questionnaire/${c.ID_Compte}')">Visiter</button>
+                    <button class="btn-visiter" style="padding:4px 10px;font-size:12px" onclick="VueQuestionnaire._visitePlanifiee=null;Router.aller('#/questionnaire/${c.ID_Compte}')">Visiter</button>
                     <button class="btn-tel-outline" style="padding:4px 8px" onclick="Router.aller('#/phoning/${c.ID_Compte}')" title="Appeler">📞</button>`}</td>
                 </tr>`;
               }).join('')}
@@ -506,7 +506,7 @@ window.VueComptes = {
         </div>`}
       </div>
 
-      ${Session.role !== 'CHANNEL_MANAGER' ? `<button class="fab" onclick="Router.aller('#/questionnaire')" title="Nouvelle visite" style="bottom:140px">＋</button>` : ''}
+      ${Session.role !== 'CHANNEL_MANAGER' ? `<button class="fab" onclick="VueQuestionnaire._visitePlanifiee=null;Router.aller('#/questionnaire')" title="Nouvelle visite" style="bottom:140px">＋</button>` : ''}
       ${NavBar('comptes')}
       ${this.state.ficheDockee ? this._renderFicheDockee() : ''}
     `;

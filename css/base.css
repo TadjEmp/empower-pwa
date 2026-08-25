@@ -437,7 +437,7 @@ body {
    Desktop ≥900px : sidebar anchor 240px */
 .nav-principale {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 150;
-  display: flex; align-items: center;
+  display: flex; align-items: center; justify-content: space-around;
   overflow-x: auto; overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
