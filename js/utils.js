@@ -7,6 +7,61 @@ function genId(prefix = 'ID') {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 }
 
+// ── decoderPhoto(file) → Promise<dataUrl> ────────────────────────────────
+// Redimensionne (≤800px) + recompresse en JPEG 0.7 via canvas. Bug audit
+// (photo visite) — décodage jusqu'ici sans AUCUNE gestion d'erreur : un
+// format que <img>/canvas ne sait pas décoder (HEIC de certains iPhone
+// notamment), un fichier volumineux ou un blob corrompu faisait rester
+// img.onload indéfiniment sans se déclencher — la Promise ne se résolvait
+// (ni ne rejetait) jamais, le bouton Caméra/Bibliothèque semblait "ne rien
+// faire". Timeout + onerror + repli FileReader (garde la photo d'origine
+// non recompressée plutôt que de la perdre) ajoutés. Mutualisé entre la
+// prise de photo en compte-rendu (vue-questionnaire.js) et l'ajout de photo
+// a posteriori sur une visite déjà validée (vue-visites.js).
+function decoderPhoto(file) {
+  return new Promise((resolve, reject) => {
+    let objectUrl;
+    const nettoyer = () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
+    (async () => {
+      try {
+        let dataUrl;
+        try {
+          dataUrl = await new Promise((res, rej) => {
+            objectUrl = URL.createObjectURL(file);
+            const img = new Image();
+            const timeout = setTimeout(() => rej(new Error('délai de décodage dépassé')), 15000);
+            img.onload = () => {
+              clearTimeout(timeout);
+              try {
+                const ratio = Math.min(1, 800 / Math.max(img.width, img.height, 1));
+                const cv = document.createElement('canvas');
+                cv.width  = Math.max(1, Math.round(img.width  * ratio));
+                cv.height = Math.max(1, Math.round(img.height * ratio));
+                cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+                res(cv.toDataURL('image/jpeg', 0.7));
+              } catch(e) { rej(e); }
+            };
+            img.onerror = () => { clearTimeout(timeout); rej(new Error('décodage impossible (format non supporté)')); };
+            img.src = objectUrl;
+          });
+        } catch {
+          // Repli — formats que <img>/canvas ne décodent pas nativement :
+          // garde la photo d'origine non recompressée plutôt que de la perdre.
+          dataUrl = await new Promise((res, rej) => {
+            const reader = new FileReader();
+            reader.onload = () => res(reader.result);
+            reader.onerror = () => rej(new Error('lecture du fichier impossible'));
+            reader.readAsDataURL(file);
+          });
+        }
+        resolve(dataUrl);
+      } catch(e) { reject(e); }
+      finally { nettoyer(); }
+    })();
+  });
+}
+window.decoderPhoto = decoderPhoto;
+
 // Date locale au format YYYY-MM-DD (≠ toISOString qui renvoie l'UTC).
 // Indispensable pour comparer avec les <input type="date"> (toujours locaux) :
 // sinon, entre minuit et l'offset UTC, "aujourd'hui" bascule d'un jour.

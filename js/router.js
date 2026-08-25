@@ -105,6 +105,18 @@ const Router = {
       if (sousVue === 'planning') vue.init('planning');
       else if (sousVue === 'cr')  vue.init('cr', param);
       else if (param)             vue.init(param);
+      // Bug audit (visite à froid planifiée) — VueQuestionnaire.init(idCible)
+      // est la SEULE vue dont l'argument par défaut ci-dessous est réellement
+      // utilisé (toutes les autres vues sans paramètre — dashboard, comptes,
+      // manager, admin… — ignorent l'argument passé). Pour #/questionnaire
+      // (sans ID, route empruntée par VueVisites#ouvrirCR pour une visite à
+      // froid via _visitePlanifiee), lui passer Session.pin comme s'il
+      // s'agissait d'un idCible faisait échouer la comparaison avec
+      // 'HORS_BASE' dans VueQuestionnaire.init() : _visitePlanifiee était
+      // aussitôt effacé, perdant la fiche contact déjà saisie à la
+      // planification ET forçant la création d'une visite en double au lieu
+      // de mettre à jour celle planifiée.
+      else if (vueNom === 'VueQuestionnaire') vue.init(null);
       else                        vue.init(Session.pin);
     } else if (typeof vue.render === 'function') {
       vue.render();

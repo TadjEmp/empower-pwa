@@ -585,6 +585,17 @@ window.VueVisites = {
     }
   },
 
+  // Reverse-parsing pour pré-remplir l'édition depuis une visite déjà
+  // enregistrée (mêmes conventions d'écriture que VueQuestionnaire.valider()).
+  _parseListeVirgule(str) {
+    return String(str || '').split(',').map(s => s.trim()).filter(Boolean);
+  },
+  _parseJSONListe(str) {
+    if (!str) return [];
+    try { const v = JSON.parse(str); return Array.isArray(v) ? v : []; }
+    catch { return []; }
+  },
+
   // ── R5 : Édition ──
   ouvrirEdition(idVisite) {
     const v = this.state.visites.find(x => x.ID_Visite === idVisite);
@@ -601,24 +612,141 @@ window.VueVisites = {
       commentairePrep: v.Note_Privee || v.Commentaire_Prep || '',
       prochaineEtape:  v.Prochaine_Action_Texte || '',
       statut:          v.Statut_Visite || 'planifiée',
+      // Bug audit (photos) — "une fois la visite validée, impossible de la
+      // modifier et d'ajouter des photos" : cette modale d'édition (seul
+      // moyen de retoucher une visite déjà 'réalisée', le compte-rendu
+      // complet n'étant pas ré-ouvrable) ne touchait ni n'affichait jamais
+      // Photo_URL. photos = déjà uploadées (existantes, supprimables) ;
+      // photosEnAttente = nouvelles, en base64, uploadées à l'enregistrement.
+      photos:          String(v.Photo_URL || '').split(' | ').map(u => u.trim()).filter(Boolean),
+      photosEnAttente: [],
+      photoEnCours:    false,
+      // Bug audit (édition limitée) — "le bouton modifier ne permet pas de
+      // modifier toute la visite mais seulement quelques éléments" : le nom
+      // du compte (nomCible) était déjà chargé ci-dessus mais jamais renvoyé
+      // à l'enregistrement, et aucun champ de fiche contact / résultat de
+      // visite n'était éditable ici. Complète avec la fiche contact et les
+      // principaux champs du compte-rendu, en réutilisant les mêmes listes
+      // que le questionnaire (VueQuestionnaire.*) pour ne pas les dupliquer.
+      // Volontairement laissés hors de cette modale (formulaire conditionnel
+      // trop complexe pour une édition ponctuelle) : freins + argumentaires,
+      // checklist Norton/EMPOWER/marketing/décideur.
+      adresse:         v.Adresse || '',
+      departement:     v.Departement || '',
+      ville:           v.Ville || '',
+      tel:             v.Tel || '',
+      email:           v.Email || '',
+      interlocuteurNom:      v.Interlocuteur_Nom || v.Interlocuteur || '',
+      interlocuteurFonction: v.Interlocuteur_Fonction || '',
+      resultatVisite:  v.Resultat_Visite || '',
+      score:           Number(v.Slider_Receptivite) || 3,
+      typeRevendeur:   this._parseListeVirgule(v.Type_Revendeur),
+      objectifsVisite: this._parseJSONListe(v.Objectifs_Visite),
+      concurrents:     this._parseJSONListe(v.Concurrents_JSON),
+      grossistes:      this._parseJSONListe(v.Grossistes_JSON),
     };
     this.render();
   },
 
   fermerEdition() { this.state.modalEdition = null; this.render(); },
 
+  toggleListeEdition(champ, val) {
+    const m = this.state.modalEdition;
+    if (!m) return;
+    const l = m[champ];
+    const i = l.indexOf(val);
+    i >= 0 ? l.splice(i, 1) : l.push(val);
+    this.render();
+  },
+
+  _chipsEdition(champ, options) {
+    const m = this.state.modalEdition;
+    return `<div class="q-chips">${options.map(o => `
+      <button type="button" class="q-chip ${m[champ].includes(o)?'active':''}"
+              onclick="VueVisites.toggleListeEdition('${champ}','${o.replace(/'/g,"\\'")}')">${o}</button>`).join('')}</div>`;
+  },
+
+  // Décodage mutualisé (utils.js#decoderPhoto) avec le compte-rendu de
+  // visite (vue-questionnaire.js) — même correctif anti-blocage silencieux.
+  async ajouterPhotoEdition(input) {
+    const m = this.state.modalEdition;
+    if (!m || !input.files?.length) return;
+    if (m.photos.length + m.photosEnAttente.length >= 4) { Toast.afficher('4 photos maximum', 'warning'); return; }
+    try {
+      const dataUrl = await decoderPhoto(input.files[0]);
+      m.photosEnAttente.push(dataUrl);
+      this.render();
+    } catch(e) {
+      Toast.afficher('❌ Photo illisible : ' + e.message, 'erreur', 5000);
+    }
+  },
+
+  supprimerPhotoEdition(url) {
+    const m = this.state.modalEdition;
+    if (!m) return;
+    m.photos = m.photos.filter(p => p !== url);
+    this.render();
+  },
+
+  supprimerPhotoEnAttenteEdition(i) {
+    const m = this.state.modalEdition;
+    if (!m) return;
+    m.photosEnAttente.splice(i, 1);
+    this.render();
+  },
+
   async sauvegarderEdition(e) {
     e.preventDefault();
     const m = this.state.modalEdition;
+    if (m.photoEnCours) return;
     try {
+      // Bug audit (photos) — les photos ajoutées a posteriori étaient jusqu'ici
+      // impossibles à sauvegarder faute de champ dans cette modale : upload
+      // vers Supabase Storage (même SheetsAPI.uploadPhoto que le compte-rendu),
+      // puis fusion avec les photos existantes conservées dans Photo_URL.
+      let nouvellesURLs = [];
+      if (m.photosEnAttente.length) {
+        m.photoEnCours = true;
+        this.render();
+        let echouees = 0;
+        for (const [i, p] of m.photosEnAttente.entries()) {
+          try {
+            const r = await SheetsAPI.uploadPhoto(p, `${m.id}_edit_${Date.now()}_${i + 1}.jpg`);
+            if (r?.url) nouvellesURLs.push(r.url); else echouees++;
+          } catch { echouees++; }
+        }
+        if (echouees > 0) Toast.afficher(`⚠️ ${echouees} photo(s) non uploadée(s) — vérifiez la connexion`, 'warning', 5000);
+      }
       const maj = {
         Date:                   m.date,
         Heure:                  m.heure,
+        Nom_Compte:             m.nomCible,
         Type_Visite:            m.typeVisite,
         Statut_Visite:          m.statut,
         Note_Privee:            m.commentairePrep,
         Prochaine_Action_Texte: m.prochaineEtape,
         Semaine_ISO:            FiscalWeeks.codeDe(new Date(m.date)),
+        Photo_URL:              [...m.photos, ...nouvellesURLs].join(' | '),
+        // Bug audit (édition limitée) — champs ajoutés à la modale (cf.
+        // ouvrirEdition) : fiche contact + interlocuteur + résultat/score +
+        // objectifs/concurrents/grossistes. Update ciblé uniquement — pas de
+        // ré-écriture de la fiche compte/prospect ni de renvoi d'alerte
+        // EMPOWER (réservés à la première validation, cf. valider()).
+        Adresse:                m.adresse,
+        Departement:            m.departement,
+        Ville:                  m.ville,
+        Tel:                    m.tel,
+        Email:                  m.email,
+        Interlocuteur_Nom:      m.interlocuteurNom,
+        Interlocuteur_Fonction: m.interlocuteurFonction,
+        Contact_Direct:         m.interlocuteurNom ? 'Oui' : 'Non',
+        Resultat_Visite:        m.resultatVisite,
+        Slider_Receptivite:     m.score,
+        Type_Revendeur:         m.typeRevendeur.join(', '),
+        Objectifs_Visite:       JSON.stringify(m.objectifsVisite),
+        Concurrent_Actuel:      m.concurrents.join(', '),
+        Concurrents_JSON:       JSON.stringify(m.concurrents),
+        Grossistes_JSON:        JSON.stringify(m.grossistes),
       };
       await SheetsAPI.mettreAJour('EMPOWER_MDB', '🗺️_VISITES', m.id, maj);
       const local = this.state.visites.find(v => v.ID_Visite === m.id);
@@ -627,7 +755,11 @@ window.VueVisites = {
       this.state.dateVue = m.date;
       Toast.afficher('✅ Visite modifiée', 'succes');
       this.render();
-    } catch(err) { Toast.afficher('❌ ' + err.message, 'erreur'); }
+    } catch(err) {
+      if (this.state.modalEdition) this.state.modalEdition.photoEnCours = false;
+      Toast.afficher('❌ ' + err.message, 'erreur');
+      this.render();
+    }
   },
 
   // ── R5 : Suppression (soft delete) ──
@@ -995,11 +1127,11 @@ window.VueVisites = {
               Fiche compte
             </button>` : ''}
           ${peutModif ? `
-            <button class="btn-secondaire" title="Modifier" style="padding:10px 14px;font-size:15px;width:auto"
-                    onclick="VueVisites.ouvrirEdition('${v.ID_Visite}')">✏</button>
+            <button class="btn-secondaire" title="Modifier le compte-rendu déjà enregistré" style="padding:10px 14px;font-size:15px;width:auto"
+                    onclick="VueVisites.ouvrirEdition('${v.ID_Visite}')">✏ Modifier</button>
             ${statut === 'réalisée' ? `
-            <button class="btn-secondaire" title="Planifier une visite de suivi" style="padding:10px 14px;font-size:13px;width:auto"
-                    onclick="VueVisites.planifierSuiviVisite('${v.ID_Visite}')">🗓️ Visite</button>
+            <button class="btn-secondaire" title="Planifier une NOUVELLE visite de suivi (ne modifie pas celle-ci)" style="padding:10px 14px;font-size:13px;width:auto"
+                    onclick="VueVisites.planifierSuiviVisite('${v.ID_Visite}')">🗓️ Planifier suivi</button>
             <button class="btn-secondaire" title="Planifier un appel de suivi" style="padding:10px 14px;font-size:13px;width:auto"
                     onclick="VueVisites.planifierSuiviAppel('${v.ID_Visite}')">📞 Appel</button>
             ` : `
@@ -1329,6 +1461,9 @@ window.VueVisites = {
       <div class="modal">
         <h3>Modifier la visite</h3>
         <form onsubmit="VueVisites.sauvegarderEdition(event)">
+          <label>Nom du compte / prospect
+            <input value="${m.nomCible}"
+                   oninput="VueVisites.state.modalEdition.nomCible=this.value"/></label>
           <div style="display:flex;gap:10px">
             <label style="flex:2">Date *
               <input type="date" required value="${m.date}"
@@ -1351,15 +1486,99 @@ window.VueVisites = {
               ).join('')}
             </select>
           </label>
+
+          <p class="q-intro" style="margin-top:14px">Fiche contact</p>
+          <label>Adresse
+            <input value="${m.adresse}"
+                   oninput="VueVisites.state.modalEdition.adresse=this.value"/></label>
+          <div style="display:flex;gap:10px">
+            <label style="flex:1">Département
+              <input maxlength="3" value="${m.departement}"
+                     oninput="VueVisites.state.modalEdition.departement=this.value"/></label>
+            <label style="flex:2">Ville
+              <input value="${m.ville}"
+                     oninput="VueVisites.state.modalEdition.ville=this.value"/></label>
+          </div>
+          <div style="display:flex;gap:10px">
+            <label style="flex:1">Téléphone
+              <input type="tel" value="${m.tel}"
+                     oninput="VueVisites.state.modalEdition.tel=this.value"/></label>
+            <label style="flex:1">Email
+              <input type="email" value="${m.email}"
+                     oninput="VueVisites.state.modalEdition.email=this.value"/></label>
+          </div>
+
+          <p class="q-intro" style="margin-top:14px">Interlocuteur</p>
+          <div style="display:flex;gap:10px">
+            <label style="flex:2">Nom
+              <input value="${m.interlocuteurNom}"
+                     oninput="VueVisites.state.modalEdition.interlocuteurNom=this.value"/></label>
+            <label style="flex:1">Fonction
+              <input value="${m.interlocuteurFonction}"
+                     oninput="VueVisites.state.modalEdition.interlocuteurFonction=this.value"/></label>
+          </div>
+
+          <p class="q-intro" style="margin-top:14px">Type de revendeur</p>
+          ${this._chipsEdition('typeRevendeur', VueQuestionnaire.TYPES_REVENDEUR)}
+
+          <p class="q-intro" style="margin-top:14px">Objectifs de la visite</p>
+          ${this._chipsEdition('objectifsVisite', VueQuestionnaire.OBJECTIFS_VISITE)}
+
+          <p class="q-intro" style="margin-top:14px">Concurrents identifiés</p>
+          ${this._chipsEdition('concurrents', VueQuestionnaire.CONCURRENTS)}
+
+          <p class="q-intro" style="margin-top:14px">Grossistes partenaires</p>
+          ${this._chipsEdition('grossistes', VueQuestionnaire.GROSSISTES)}
+
+          <label>Résultat de la visite
+            <select onchange="VueVisites.state.modalEdition.resultatVisite=this.value">
+              <option value="">—</option>
+              ${['✅ Positif', '🟡 Mitigé', '❌ Négatif'].map(o =>
+                `<option value="${o}" ${m.resultatVisite === o ? 'selected' : ''}>${o}</option>`
+              ).join('')}
+            </select>
+          </label>
+          <div class="q-slider-wrap">
+            <label class="q-label">Score d'engagement : <strong style="color:var(--c-cta);font-size:18px">${m.score}/5</strong></label>
+            <input type="range" min="1" max="5" step="1" class="q-slider" value="${m.score}"
+                   oninput="VueVisites.state.modalEdition.score=Number(this.value);VueVisites.render()"/>
+          </div>
           <label>Notes / préparation
             <textarea rows="3" oninput="VueVisites.state.modalEdition.commentairePrep=this.value">${m.commentairePrep}</textarea>
           </label>
           <label>Prochaine étape
             <input value="${m.prochaineEtape}"
                    oninput="VueVisites.state.modalEdition.prochaineEtape=this.value"/></label>
+
+          <div class="q-photo-zone">
+            <label class="q-label">📷 Photos terrain (${m.photos.length + m.photosEnAttente.length}/4)</label>
+            ${m.photos.map(url => `
+              <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+                <img src="${url}" style="width:64px;height:64px;object-fit:cover;border-radius:var(--radius-sm)"/>
+                <button type="button" class="btn-sup-photo" onclick="VueVisites.supprimerPhotoEdition('${url.replace(/'/g, "\\'")}')">✕</button>
+              </div>`).join('')}
+            ${m.photosEnAttente.map((p, i) => `
+              <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+                <img src="${p}" style="width:64px;height:64px;object-fit:cover;border-radius:var(--radius-sm)"/>
+                <span style="font-size:11px;color:var(--c-text-2)">nouvelle</span>
+                <button type="button" class="btn-sup-photo" onclick="VueVisites.supprimerPhotoEnAttenteEdition(${i})">✕</button>
+              </div>`).join('')}
+            ${(m.photos.length + m.photosEnAttente.length) < 4 ? `
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <label class="btn-q-photo" style="flex:1">📷 Caméra
+                <input type="file" accept="image/*" capture="environment" hidden
+                       onchange="VueVisites.ajouterPhotoEdition(this)"/>
+              </label>
+              <label class="btn-q-photo" style="flex:1">🖼️ Bibliothèque
+                <input type="file" accept="image/*" hidden
+                       onchange="VueVisites.ajouterPhotoEdition(this)"/>
+              </label>
+            </div>` : ''}
+          </div>
+
           <div class="modal-btns">
             <button type="button" onclick="VueVisites.fermerEdition()">Annuler</button>
-            <button type="submit" class="btn-primaire">Enregistrer</button>
+            <button type="submit" class="btn-primaire" ${m.photoEnCours ? 'disabled' : ''}>${m.photoEnCours ? 'Envoi des photos…' : 'Enregistrer'}</button>
           </div>
         </form>
       </div>
