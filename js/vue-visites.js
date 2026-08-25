@@ -585,6 +585,17 @@ window.VueVisites = {
     }
   },
 
+  // Reverse-parsing pour pré-remplir l'édition depuis une visite déjà
+  // enregistrée (mêmes conventions d'écriture que VueQuestionnaire.valider()).
+  _parseListeVirgule(str) {
+    return String(str || '').split(',').map(s => s.trim()).filter(Boolean);
+  },
+  _parseJSONListe(str) {
+    if (!str) return [];
+    try { const v = JSON.parse(str); return Array.isArray(v) ? v : []; }
+    catch { return []; }
+  },
+
   // ── R5 : Édition ──
   ouvrirEdition(idVisite) {
     const v = this.state.visites.find(x => x.ID_Visite === idVisite);
@@ -610,11 +621,50 @@ window.VueVisites = {
       photos:          String(v.Photo_URL || '').split(' | ').map(u => u.trim()).filter(Boolean),
       photosEnAttente: [],
       photoEnCours:    false,
+      // Bug audit (édition limitée) — "le bouton modifier ne permet pas de
+      // modifier toute la visite mais seulement quelques éléments" : le nom
+      // du compte (nomCible) était déjà chargé ci-dessus mais jamais renvoyé
+      // à l'enregistrement, et aucun champ de fiche contact / résultat de
+      // visite n'était éditable ici. Complète avec la fiche contact et les
+      // principaux champs du compte-rendu, en réutilisant les mêmes listes
+      // que le questionnaire (VueQuestionnaire.*) pour ne pas les dupliquer.
+      // Volontairement laissés hors de cette modale (formulaire conditionnel
+      // trop complexe pour une édition ponctuelle) : freins + argumentaires,
+      // checklist Norton/EMPOWER/marketing/décideur.
+      adresse:         v.Adresse || '',
+      departement:     v.Departement || '',
+      ville:           v.Ville || '',
+      tel:             v.Tel || '',
+      email:           v.Email || '',
+      interlocuteurNom:      v.Interlocuteur_Nom || v.Interlocuteur || '',
+      interlocuteurFonction: v.Interlocuteur_Fonction || '',
+      resultatVisite:  v.Resultat_Visite || '',
+      score:           Number(v.Slider_Receptivite) || 3,
+      typeRevendeur:   this._parseListeVirgule(v.Type_Revendeur),
+      objectifsVisite: this._parseJSONListe(v.Objectifs_Visite),
+      concurrents:     this._parseJSONListe(v.Concurrents_JSON),
+      grossistes:      this._parseJSONListe(v.Grossistes_JSON),
     };
     this.render();
   },
 
   fermerEdition() { this.state.modalEdition = null; this.render(); },
+
+  toggleListeEdition(champ, val) {
+    const m = this.state.modalEdition;
+    if (!m) return;
+    const l = m[champ];
+    const i = l.indexOf(val);
+    i >= 0 ? l.splice(i, 1) : l.push(val);
+    this.render();
+  },
+
+  _chipsEdition(champ, options) {
+    const m = this.state.modalEdition;
+    return `<div class="q-chips">${options.map(o => `
+      <button type="button" class="q-chip ${m[champ].includes(o)?'active':''}"
+              onclick="VueVisites.toggleListeEdition('${champ}','${o.replace(/'/g,"\\'")}')">${o}</button>`).join('')}</div>`;
+  },
 
   // Décodage mutualisé (utils.js#decoderPhoto) avec le compte-rendu de
   // visite (vue-questionnaire.js) — même correctif anti-blocage silencieux.
@@ -670,12 +720,33 @@ window.VueVisites = {
       const maj = {
         Date:                   m.date,
         Heure:                  m.heure,
+        Nom_Compte:             m.nomCible,
         Type_Visite:            m.typeVisite,
         Statut_Visite:          m.statut,
         Note_Privee:            m.commentairePrep,
         Prochaine_Action_Texte: m.prochaineEtape,
         Semaine_ISO:            FiscalWeeks.codeDe(new Date(m.date)),
         Photo_URL:              [...m.photos, ...nouvellesURLs].join(' | '),
+        // Bug audit (édition limitée) — champs ajoutés à la modale (cf.
+        // ouvrirEdition) : fiche contact + interlocuteur + résultat/score +
+        // objectifs/concurrents/grossistes. Update ciblé uniquement — pas de
+        // ré-écriture de la fiche compte/prospect ni de renvoi d'alerte
+        // EMPOWER (réservés à la première validation, cf. valider()).
+        Adresse:                m.adresse,
+        Departement:            m.departement,
+        Ville:                  m.ville,
+        Tel:                    m.tel,
+        Email:                  m.email,
+        Interlocuteur_Nom:      m.interlocuteurNom,
+        Interlocuteur_Fonction: m.interlocuteurFonction,
+        Contact_Direct:         m.interlocuteurNom ? 'Oui' : 'Non',
+        Resultat_Visite:        m.resultatVisite,
+        Slider_Receptivite:     m.score,
+        Type_Revendeur:         m.typeRevendeur.join(', '),
+        Objectifs_Visite:       JSON.stringify(m.objectifsVisite),
+        Concurrent_Actuel:      m.concurrents.join(', '),
+        Concurrents_JSON:       JSON.stringify(m.concurrents),
+        Grossistes_JSON:        JSON.stringify(m.grossistes),
       };
       await SheetsAPI.mettreAJour('EMPOWER_MDB', '🗺️_VISITES', m.id, maj);
       const local = this.state.visites.find(v => v.ID_Visite === m.id);
@@ -1056,11 +1127,11 @@ window.VueVisites = {
               Fiche compte
             </button>` : ''}
           ${peutModif ? `
-            <button class="btn-secondaire" title="Modifier" style="padding:10px 14px;font-size:15px;width:auto"
-                    onclick="VueVisites.ouvrirEdition('${v.ID_Visite}')">✏</button>
+            <button class="btn-secondaire" title="Modifier le compte-rendu déjà enregistré" style="padding:10px 14px;font-size:15px;width:auto"
+                    onclick="VueVisites.ouvrirEdition('${v.ID_Visite}')">✏ Modifier</button>
             ${statut === 'réalisée' ? `
-            <button class="btn-secondaire" title="Planifier une visite de suivi" style="padding:10px 14px;font-size:13px;width:auto"
-                    onclick="VueVisites.planifierSuiviVisite('${v.ID_Visite}')">🗓️ Visite</button>
+            <button class="btn-secondaire" title="Planifier une NOUVELLE visite de suivi (ne modifie pas celle-ci)" style="padding:10px 14px;font-size:13px;width:auto"
+                    onclick="VueVisites.planifierSuiviVisite('${v.ID_Visite}')">🗓️ Planifier suivi</button>
             <button class="btn-secondaire" title="Planifier un appel de suivi" style="padding:10px 14px;font-size:13px;width:auto"
                     onclick="VueVisites.planifierSuiviAppel('${v.ID_Visite}')">📞 Appel</button>
             ` : `
@@ -1390,6 +1461,9 @@ window.VueVisites = {
       <div class="modal">
         <h3>Modifier la visite</h3>
         <form onsubmit="VueVisites.sauvegarderEdition(event)">
+          <label>Nom du compte / prospect
+            <input value="${m.nomCible}"
+                   oninput="VueVisites.state.modalEdition.nomCible=this.value"/></label>
           <div style="display:flex;gap:10px">
             <label style="flex:2">Date *
               <input type="date" required value="${m.date}"
@@ -1412,6 +1486,63 @@ window.VueVisites = {
               ).join('')}
             </select>
           </label>
+
+          <p class="q-intro" style="margin-top:14px">Fiche contact</p>
+          <label>Adresse
+            <input value="${m.adresse}"
+                   oninput="VueVisites.state.modalEdition.adresse=this.value"/></label>
+          <div style="display:flex;gap:10px">
+            <label style="flex:1">Département
+              <input maxlength="3" value="${m.departement}"
+                     oninput="VueVisites.state.modalEdition.departement=this.value"/></label>
+            <label style="flex:2">Ville
+              <input value="${m.ville}"
+                     oninput="VueVisites.state.modalEdition.ville=this.value"/></label>
+          </div>
+          <div style="display:flex;gap:10px">
+            <label style="flex:1">Téléphone
+              <input type="tel" value="${m.tel}"
+                     oninput="VueVisites.state.modalEdition.tel=this.value"/></label>
+            <label style="flex:1">Email
+              <input type="email" value="${m.email}"
+                     oninput="VueVisites.state.modalEdition.email=this.value"/></label>
+          </div>
+
+          <p class="q-intro" style="margin-top:14px">Interlocuteur</p>
+          <div style="display:flex;gap:10px">
+            <label style="flex:2">Nom
+              <input value="${m.interlocuteurNom}"
+                     oninput="VueVisites.state.modalEdition.interlocuteurNom=this.value"/></label>
+            <label style="flex:1">Fonction
+              <input value="${m.interlocuteurFonction}"
+                     oninput="VueVisites.state.modalEdition.interlocuteurFonction=this.value"/></label>
+          </div>
+
+          <p class="q-intro" style="margin-top:14px">Type de revendeur</p>
+          ${this._chipsEdition('typeRevendeur', VueQuestionnaire.TYPES_REVENDEUR)}
+
+          <p class="q-intro" style="margin-top:14px">Objectifs de la visite</p>
+          ${this._chipsEdition('objectifsVisite', VueQuestionnaire.OBJECTIFS_VISITE)}
+
+          <p class="q-intro" style="margin-top:14px">Concurrents identifiés</p>
+          ${this._chipsEdition('concurrents', VueQuestionnaire.CONCURRENTS)}
+
+          <p class="q-intro" style="margin-top:14px">Grossistes partenaires</p>
+          ${this._chipsEdition('grossistes', VueQuestionnaire.GROSSISTES)}
+
+          <label>Résultat de la visite
+            <select onchange="VueVisites.state.modalEdition.resultatVisite=this.value">
+              <option value="">—</option>
+              ${['✅ Positif', '🟡 Mitigé', '❌ Négatif'].map(o =>
+                `<option value="${o}" ${m.resultatVisite === o ? 'selected' : ''}>${o}</option>`
+              ).join('')}
+            </select>
+          </label>
+          <div class="q-slider-wrap">
+            <label class="q-label">Score d'engagement : <strong style="color:var(--c-cta);font-size:18px">${m.score}/5</strong></label>
+            <input type="range" min="1" max="5" step="1" class="q-slider" value="${m.score}"
+                   oninput="VueVisites.state.modalEdition.score=Number(this.value);VueVisites.render()"/>
+          </div>
           <label>Notes / préparation
             <textarea rows="3" oninput="VueVisites.state.modalEdition.commentairePrep=this.value">${m.commentairePrep}</textarea>
           </label>
