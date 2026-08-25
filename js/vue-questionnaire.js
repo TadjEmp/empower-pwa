@@ -150,14 +150,18 @@ window.VueQuestionnaire = {
     // visite précédente (potentiellement à froid) contaminer un compte-rendu
     // sans rapport — "Visite à froid" verrouillée s'affichait pour un
     // revendeur pourtant bien existant, sans aucun moyen de revenir en
-    // arrière (cf. _froidVerrouille, utilisé par _etape0()).
+    // arrière (cf. _sourceVerrouillee, utilisé par _etape0()).
     const visitePertinente = this._visitePlanifiee && (
       (idCible === null && (this._visitePlanifiee.ID_Cible === 'HORS_BASE' || this._visitePlanifiee.Source_Visite === 'ESI_VISITE_FROID')) ||
       (idCible !== null && String(this._visitePlanifiee.ID_Cible) === String(idCible))
     );
     if (!visitePertinente) this._visitePlanifiee = null;
     this._modeFroid = false;
-    this._froidVerrouille = false;
+    // Bug audit (persistant) — remplace _froidVerrouille (booléen) par une
+    // valeur explicite du type verrouillé : null tant que la cible n'est pas
+    // connue (toggle libre, cf. _etape0), sinon 'EXISTANT'/'PROSPECT'/'FROID'
+    // figé pour toute la durée du compte-rendu.
+    this._sourceVerrouillee = null;
     this._modalAjoutTracker = null;
     this._trackerAjoute = false;
     this.state = this._etatInitial();
@@ -199,10 +203,14 @@ window.VueQuestionnaire = {
           Email:         vp.Email       || '',
           STATUT_COMPTE: 'Visite à froid',
         };
-        this.state.typeSource = 'EXISTANT';
+        // typeSource='FROID' (pas 'EXISTANT' comme avant ce fix) — sinon
+        // zoneRecherche affichait la recherche au lieu des champs à froid, et
+        // valider() n'envoyait pas Adresse/Département/Ville/Tel/Email sur la
+        // visite (condition typeSource==='FROID' jamais vraie pour ce cas).
+        this.state.typeSource = 'FROID';
         this.state.recherche  = vp.Nom_Compte || '';
         this._modeFroid = true;
-        this._froidVerrouille = true;
+        this._sourceVerrouillee = 'FROID';
       } else if (idCible && idCible !== 'HORS_BASE') {
         const c = comptes.find(x => String(x.ID_Compte) === String(idCible));
         const p = !c && prospects.find(x => String(x.ID_Prospect) === String(idCible));
@@ -210,6 +218,9 @@ window.VueQuestionnaire = {
         if (p) { this.state.cible = p; this.state.typeSource = 'PROSPECT'; }
         if (this.state.cible) {
           this.state.recherche = this.state.cible.Nom_Compte;
+          // Cible résolue à l'ouverture (bouton "Visite" depuis un compte/
+          // prospect précis) : source verrouillée, pas de toggle proposé.
+          this._sourceVerrouillee = this.state.typeSource;
           this._chargerDernieresVisites();
         }
       }
@@ -881,42 +892,31 @@ window.VueQuestionnaire = {
   // ── BLOC 1 — Identification ──
   _etape0() {
     const s = this.state, d = s.d;
-    // FIX-B/C : en mode froid issu d'une visite planifiée, afficher la cible pré-remplie sans champ de recherche.
-    // Bug audit — dépendait auparavant de this._modeFroid (mutable par le
-    // toggle Existant/Prospect/Froid ci-dessous) au lieu du drapeau figé posé
-    // une seule fois par init() : cliquer "🆕 Visite à froid" pour un
-    // compte-rendu ouvert depuis une visite planifiée (froide ou non, cf.
-    // ouvrirCR qui pose toujours _visitePlanifiee) faisait passer
-    // froidPlanifie à true, ce qui masquait le toggle lui-même — plus aucun
-    // moyen de revenir sur "Existant", seul "Annuler" (history.back) restait
-    // cliquable, forçant à quitter la saisie.
-    const froidPlanifie = this._froidVerrouille;
-    // Bug audit — affiche (lecture seule) les coordonnées déjà saisies à la
-    // planification, sinon elles restaient invisibles pendant tout le
-    // compte-rendu alors qu'elles sont bien conservées (cf. init()).
-    const coordFroid = [
-      s.cible?.Ville ? `📍 ${s.cible.Ville}` : '',
-      s.cible?.Tel ? `☎ ${s.cible.Tel}` : '',
-      s.cible?.Email ? `✉ ${s.cible.Email}` : '',
-    ].filter(Boolean).join(' · ');
-    const bannereFroid = froidPlanifie ? `
+    // Bug audit (persistant) — un compte-rendu ouvert pour une cible déjà
+    // connue (compte existant, prospect déjà en base, ou visite à froid déjà
+    // planifiée) ne doit plus permettre de changer de type de source en
+    // cours de route : c'est justement ce toggle, désynchronisé de la cible
+    // réellement chargée, qui faisait disparaître le formulaire (plus aucun
+    // moyen de revenir en arrière, seul "Annuler" restait cliquable).
+    // this._sourceVerrouillee est posé UNE SEULE FOIS par init(), jamais
+    // modifié par ce toggle : le toggle ne s'affiche plus DU TOUT dès que la
+    // cible est connue à l'ouverture — seule une visite démarrée sans cible
+    // (FAB "+ Nouvelle visite") propose encore les 3 choix.
+    const verrouille = this._sourceVerrouillee;
+    const bannereFroid = verrouille === 'FROID' ? `
       <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fff8e1;border-radius:var(--radius-sm);border-left:4px solid #ffc107;margin-bottom:14px">
         <span style="font-size:22px">❄️</span>
         <div>
           <div style="font-size:13px;font-weight:700;color:#795548">Visite à froid</div>
-          <div style="font-size:15px;font-weight:800">${s.cible?.Nom_Compte || ''}</div>
-          ${s.cible?.Adresse ? `<div style="font-size:11px;color:var(--c-text-2)">${s.cible.Adresse}</div>` : ''}
-          ${coordFroid ? `<div style="font-size:11px;color:var(--c-text-2)">${coordFroid}</div>` : ''}
           <div style="font-size:11px;color:var(--c-text-2)">Prospect hors base — non référencé dans vos comptes</div>
         </div>
       </div>` : '';
     // Bug audit (compte-rendu) — Adresse/Département/Email manquaient ici alors
     // que ce sont des colonnes VISITES déjà utilisées par le formulaire "Planifier
-    // visite" (vue-visites.js#planifier, branche horsBase) : un prospect à froid
-    // planifié à l'avance avec ces infos les perdait silencieusement à l'étape
-    // compte-rendu, et un prospect à froid saisi directement ici n'avait aucun
-    // moyen de les renseigner. Parité complète avec les 5 champs déjà écrits
-    // par planifier() (cf. aussi valider() ci-dessous qui les envoie désormais).
+    // visite" (vue-visites.js#planifier, branche horsBase). Affiché désormais
+    // TOUJOURS pour le mode Froid (verrouillé ou non) — avant ce fix, le
+    // formulaire entier (bannière comprise) disparaissait dès qu'une visite à
+    // froid était pré-planifiée, aucun champ n'était visible ni éditable.
     const zoneRecherche = s.typeSource === 'FROID' ? `
       <label class="q-label">Nom de l'enseigne *
         <input class="q-input" placeholder="ex : MICRO PLUS INFORMATIQUE" value="${s.cible?.Nom_Compte || ''}"
@@ -941,7 +941,7 @@ window.VueQuestionnaire = {
         <label class="q-label" style="flex:1">Email
           <input class="q-input" type="email" placeholder="ex : contact@enseigne.fr" value="${s.cible?.Email || ''}"
                  oninput="VueQuestionnaire.setContactChamp('Email',this.value)"/></label>
-      </div>` : `
+      </div>` : verrouille ? '' : `
       <label class="q-label">Compte ${s.typeSource==='EXISTANT'?'(base historique)':'(base prospects)'}
         <input class="q-input" placeholder="🔍 Rechercher…" value="${s.recherche}"
                oninput="VueQuestionnaire.setRecherche(this.value)" autocomplete="off"/>
@@ -949,7 +949,7 @@ window.VueQuestionnaire = {
       <div id="q-suggestions"></div>`;
     return `<div class="q-champs">
       ${bannereFroid}
-      ${!froidPlanifie ? `
+      ${!verrouille ? `
       <label class="q-label">Statut du compte
         <div style="display:flex;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:4px;background:var(--c-surface)">
           ${[['EXISTANT','✅ Existant'],['PROSPECT','❄️ Prospect'],['FROID','🆕 Visite à froid']].map(([v,l]) => `
@@ -957,8 +957,8 @@ window.VueQuestionnaire = {
               ${s.typeSource===v?'background:var(--c-title);color:#fff':'background:transparent;color:var(--c-text-2)'}"
               onclick="VueQuestionnaire.setSource('${v}')">${l}</button>`).join('')}
         </div>
-      </label>
-      ${zoneRecherche}` : '<div id="q-suggestions"></div>'}
+      </label>` : ''}
+      ${zoneRecherche}
       ${s.cible && s.typeSource!=='FROID' ? `<div class="q-recap">
         <div class="q-recap-ligne"><span>Statut</span><strong>${s.cible.STATUT_COMPTE||s.cible.Statut||'—'}</strong></div>
         ${s.cible.CA_FY25 ? `<div class="q-recap-ligne"><span>CA FY25</span><strong>${formatEuro(s.cible.CA_FY25)}</strong></div>` : ''}
