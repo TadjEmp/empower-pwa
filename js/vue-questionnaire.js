@@ -473,23 +473,58 @@ window.VueQuestionnaire = {
               onclick="VueQuestionnaire.setR('${champ}','${o.replace(/'/g,"\\'")}')">${o}</button>`).join('')}</div>`;
   },
 
+  // Bug audit (photo visite) — aucune gestion d'erreur ni de timeout : si le
+  // décodage échouait (formats que canvas ne sait pas lire, fichier très
+  // volumineux, blob corrompu…), img.onload ne se déclenchait jamais et la
+  // promesse restait en attente indéfiniment — le bouton Caméra/Bibliothèque
+  // semblait "ne rien faire", sans le moindre message, exactement le
+  // symptôme remonté ("la prise de photo ne fonctionne pas"). Ajout d'un
+  // timeout + img.onerror + repli FileReader (photo gardée non recompressée
+  // plutôt que perdue) + toast d'erreur explicite en dernier recours.
   async ajouterPhoto(input) {
     if (!input.files?.length) return;
     if (this.state.photos.length >= 4) { Toast.afficher('4 photos maximum', 'warning'); return; }
     const file = input.files[0];
-    const dataUrl = await new Promise(res => {
-      const img = new Image();
-      img.onload = () => {
-        const ratio = Math.min(1, 800 / Math.max(img.width, img.height));
-        const cv = document.createElement('canvas');
-        cv.width = img.width * ratio; cv.height = img.height * ratio;
-        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
-        res(cv.toDataURL('image/jpeg', 0.7));
-      };
-      img.src = URL.createObjectURL(file);
-    });
-    this.state.photos.push(dataUrl);
-    this.render();
+    let objectUrl;
+    try {
+      let dataUrl;
+      try {
+        dataUrl = await new Promise((res, rej) => {
+          objectUrl = URL.createObjectURL(file);
+          const img = new Image();
+          const timeout = setTimeout(() => rej(new Error('délai de décodage dépassé')), 15000);
+          img.onload = () => {
+            clearTimeout(timeout);
+            try {
+              const ratio = Math.min(1, 800 / Math.max(img.width, img.height, 1));
+              const cv = document.createElement('canvas');
+              cv.width  = Math.max(1, Math.round(img.width  * ratio));
+              cv.height = Math.max(1, Math.round(img.height * ratio));
+              cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+              res(cv.toDataURL('image/jpeg', 0.7));
+            } catch(e) { rej(e); }
+          };
+          img.onerror = () => { clearTimeout(timeout); rej(new Error('décodage impossible (format non supporté)')); };
+          img.src = objectUrl;
+        });
+      } catch {
+        // Repli — formats que <img>/canvas ne décodent pas nativement (ex.
+        // HEIC non converti par le navigateur) : on garde la photo d'origine
+        // non recompressée plutôt que de la perdre silencieusement.
+        dataUrl = await new Promise((res, rej) => {
+          const reader = new FileReader();
+          reader.onload = () => res(reader.result);
+          reader.onerror = () => rej(new Error('lecture du fichier impossible'));
+          reader.readAsDataURL(file);
+        });
+      }
+      this.state.photos.push(dataUrl);
+      this.render();
+    } catch(e) {
+      Toast.afficher('❌ Photo illisible : ' + e.message, 'erreur', 5000);
+    } finally {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    }
   },
 
   supprimerPhoto(i) { this.state.photos.splice(i, 1); this.render(); },
