@@ -87,6 +87,62 @@ window.VueQuestionnaire = {
   _modalAjoutTracker: null, // Ajout au Tracker Empower depuis une visite à froid intéressée
   _trackerAjoute: false,
 
+  // ── Brouillon localStorage (bug remonté 07/2026 — Johanne) ──────────────
+  // Prendre une photo (capture=environment) fait passer le navigateur en
+  // arrière-plan pour ouvrir l'appli caméra native ; sur un mobile chargé en
+  // mémoire, l'OS tue alors la page PWA et la recharge au retour — perdant
+  // tout l'état JS en mémoire (les 9 étapes du questionnaire, jamais
+  // persistées nulle part). Vu de l'utilisatrice : "la visite a sauté".
+  // Mêmes principe et clés que VuePhoning._sauvegarderBrouillon (déjà
+  // éprouvé), adapté au formulaire multi-étapes + photos.
+  _CLE_BROUILLON: 'esi_visite_brouillon',
+
+  // Clé de corrélation : n'importe quel identifiant stable de LA visite en
+  // cours (jamais restaurée sur un compte-rendu sans rapport — même défaut
+  // que celui déjà corrigé pour _visitePlanifiee).
+  _cleBrouillon(idCible) {
+    return String(idCible || this._visitePlanifiee?.ID_Visite || 'NOUVELLE');
+  },
+
+  _sauvegarderBrouillon(cle) {
+    if (!this.state || !this.state.cible) return; // rien d'utile avant qu'une cible soit choisie
+    try {
+      localStorage.setItem(this._CLE_BROUILLON, JSON.stringify({
+        cle, ts: Date.now(),
+        cible: this.state.cible, typeSource: this.state.typeSource, recherche: this.state.recherche,
+        etape: this.state.etape, d: this.state.d, photos: this.state.photos,
+        gps: this.state.gps, debut: this.state.debut,
+        _sourceVerrouillee: this._sourceVerrouillee, _modeFroid: this._modeFroid,
+      }));
+    } catch {} // quota dépassé (photos volumineuses) — tant pis, pas bloquant
+  },
+
+  // true si un brouillon correspondant à `cle` a été restauré dans this.state.
+  _restaurerBrouillon(cle) {
+    try {
+      const raw = localStorage.getItem(this._CLE_BROUILLON);
+      if (!raw) return false;
+      const b = JSON.parse(raw);
+      // Brouillon de plus de 12h : la visite a probablement été traitée
+      // autrement depuis (autre appareil, autre session) — ne pas resurgir
+      // une vieille saisie par surprise.
+      if (!b || Date.now() - (b.ts || 0) > 12 * 3600000) { this._effacerBrouillon(); return false; }
+      if (b.cle !== cle) return false; // brouillon d'une AUTRE visite
+      Object.assign(this.state, {
+        cible: b.cible, typeSource: b.typeSource, recherche: b.recherche || '',
+        etape: b.etape || 0, d: b.d, photos: b.photos || [],
+        gps: b.gps || this.state.gps, debut: b.debut || this.state.debut,
+      });
+      this._sourceVerrouillee = b._sourceVerrouillee ?? this._sourceVerrouillee;
+      this._modeFroid = !!b._modeFroid;
+      return true;
+    } catch { return false; }
+  },
+
+  _effacerBrouillon() {
+    try { localStorage.removeItem(this._CLE_BROUILLON); } catch {}
+  },
+
   _etatInitial() {
     const now = new Date();
     return {
@@ -156,6 +212,10 @@ window.VueQuestionnaire = {
       (idCible !== null && String(this._visitePlanifiee.ID_Cible) === String(idCible))
     );
     if (!visitePertinente) this._visitePlanifiee = null;
+    // Calculée avant tout reset — sert à la fois à restaurer le brouillon de
+    // CETTE visite ci-dessous et à l'auto-sauvegarder pendant la saisie
+    // (cf. render()).
+    this._cleBrouillonCourante = this._cleBrouillon(idCible);
     this._modeFroid = false;
     // Bug audit (persistant) — remplace _froidVerrouille (booléen) par une
     // valeur explicite du type verrouillé : null tant que la cible n'est pas
@@ -232,6 +292,12 @@ window.VueQuestionnaire = {
         this.state.d.heure = vp.Heure || this.state.d.heure;
         if (vp.Note_Privee) this.state.d.note = vp.Note_Privee;
       }
+      // Bug audit (brouillon) — restaure une saisie interrompue pour CETTE
+      // visite précise (jamais une autre, cf. _cleBrouillon) : reprend
+      // l'étape, les réponses ET les photos déjà prises avant l'interruption.
+      if (this._restaurerBrouillon(this._cleBrouillonCourante)) {
+        Toast.afficher('📥 Reprise après interruption — vos réponses ont été restaurées', 'info', 5000);
+      }
       this.state.chargement = false;
       this.render();
       this._capturerGPS();
@@ -275,6 +341,7 @@ window.VueQuestionnaire = {
   setContactChamp(champ, val) {
     if (!this.state.cible) return;
     this.state.cible[champ] = val;
+    this._sauvegarderBrouillon(this._cleBrouillonCourante);
   },
 
   // ── Ajout au Tracker Empower depuis une visite à froid intéressée ──
@@ -452,7 +519,13 @@ window.VueQuestionnaire = {
       </div>`).join('');
   },
 
-  set(champ, val)  { this.state.d[champ] = val; },
+  // set() ne redessine pas exprès (évite de perdre le focus/curseur en
+  // pleine frappe sur un champ texte) — mais doit quand même persister le
+  // brouillon à chaque frappe : sans ça, taper une note puis enchaîner
+  // directement sur "📷 Caméra" (aucun render entre les deux) laissait cette
+  // dernière frappe hors du brouillon si l'app était tuée pendant la prise
+  // de photo (cf. _sauvegarderBrouillon).
+  set(champ, val)  { this.state.d[champ] = val; this._sauvegarderBrouillon(this._cleBrouillonCourante); },
   setR(champ, val) { this.state.d[champ] = val; this.render(); },
   toggleListe(champ, val) {
     const l = this.state.d[champ];
@@ -473,57 +546,19 @@ window.VueQuestionnaire = {
               onclick="VueQuestionnaire.setR('${champ}','${o.replace(/'/g,"\\'")}')">${o}</button>`).join('')}</div>`;
   },
 
-  // Bug audit (photo visite) — aucune gestion d'erreur ni de timeout : si le
-  // décodage échouait (formats que canvas ne sait pas lire, fichier très
-  // volumineux, blob corrompu…), img.onload ne se déclenchait jamais et la
-  // promesse restait en attente indéfiniment — le bouton Caméra/Bibliothèque
-  // semblait "ne rien faire", sans le moindre message, exactement le
-  // symptôme remonté ("la prise de photo ne fonctionne pas"). Ajout d'un
-  // timeout + img.onerror + repli FileReader (photo gardée non recompressée
-  // plutôt que perdue) + toast d'erreur explicite en dernier recours.
+  // Décodage mutualisé (utils.js#decoderPhoto — timeout + repli FileReader,
+  // cf. commentaire là-bas) : "la prise de photo ne fonctionne pas" venait
+  // d'un décodage sans aucune gestion d'erreur qui restait bloqué en
+  // silence indéfiniment sur certains formats/fichiers.
   async ajouterPhoto(input) {
     if (!input.files?.length) return;
     if (this.state.photos.length >= 4) { Toast.afficher('4 photos maximum', 'warning'); return; }
-    const file = input.files[0];
-    let objectUrl;
     try {
-      let dataUrl;
-      try {
-        dataUrl = await new Promise((res, rej) => {
-          objectUrl = URL.createObjectURL(file);
-          const img = new Image();
-          const timeout = setTimeout(() => rej(new Error('délai de décodage dépassé')), 15000);
-          img.onload = () => {
-            clearTimeout(timeout);
-            try {
-              const ratio = Math.min(1, 800 / Math.max(img.width, img.height, 1));
-              const cv = document.createElement('canvas');
-              cv.width  = Math.max(1, Math.round(img.width  * ratio));
-              cv.height = Math.max(1, Math.round(img.height * ratio));
-              cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
-              res(cv.toDataURL('image/jpeg', 0.7));
-            } catch(e) { rej(e); }
-          };
-          img.onerror = () => { clearTimeout(timeout); rej(new Error('décodage impossible (format non supporté)')); };
-          img.src = objectUrl;
-        });
-      } catch {
-        // Repli — formats que <img>/canvas ne décodent pas nativement (ex.
-        // HEIC non converti par le navigateur) : on garde la photo d'origine
-        // non recompressée plutôt que de la perdre silencieusement.
-        dataUrl = await new Promise((res, rej) => {
-          const reader = new FileReader();
-          reader.onload = () => res(reader.result);
-          reader.onerror = () => rej(new Error('lecture du fichier impossible'));
-          reader.readAsDataURL(file);
-        });
-      }
+      const dataUrl = await decoderPhoto(input.files[0]);
       this.state.photos.push(dataUrl);
       this.render();
     } catch(e) {
       Toast.afficher('❌ Photo illisible : ' + e.message, 'erreur', 5000);
-    } finally {
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
     }
   },
 
@@ -806,6 +841,7 @@ window.VueQuestionnaire = {
       this._isHorsBase = _wasHorsBase;
       this._modeFroid  = false;
       this._visitePlanifiee = null;
+      this._effacerBrouillon();
       this._renderSucces(dureeMin, empowerAlerte);
     } catch(e) {
       this.state.envoiEnCours = false;
@@ -922,6 +958,7 @@ window.VueQuestionnaire = {
       ${this._renderModalAjoutTracker()}
     `;
     this._renderSuggestions();
+    this._sauvegarderBrouillon(this._cleBrouillonCourante);
   },
 
   // ── BLOC 1 — Identification ──

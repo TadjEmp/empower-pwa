@@ -601,16 +601,72 @@ window.VueVisites = {
       commentairePrep: v.Note_Privee || v.Commentaire_Prep || '',
       prochaineEtape:  v.Prochaine_Action_Texte || '',
       statut:          v.Statut_Visite || 'planifiée',
+      // Bug audit (photos) — "une fois la visite validée, impossible de la
+      // modifier et d'ajouter des photos" : cette modale d'édition (seul
+      // moyen de retoucher une visite déjà 'réalisée', le compte-rendu
+      // complet n'étant pas ré-ouvrable) ne touchait ni n'affichait jamais
+      // Photo_URL. photos = déjà uploadées (existantes, supprimables) ;
+      // photosEnAttente = nouvelles, en base64, uploadées à l'enregistrement.
+      photos:          String(v.Photo_URL || '').split(' | ').map(u => u.trim()).filter(Boolean),
+      photosEnAttente: [],
+      photoEnCours:    false,
     };
     this.render();
   },
 
   fermerEdition() { this.state.modalEdition = null; this.render(); },
 
+  // Décodage mutualisé (utils.js#decoderPhoto) avec le compte-rendu de
+  // visite (vue-questionnaire.js) — même correctif anti-blocage silencieux.
+  async ajouterPhotoEdition(input) {
+    const m = this.state.modalEdition;
+    if (!m || !input.files?.length) return;
+    if (m.photos.length + m.photosEnAttente.length >= 4) { Toast.afficher('4 photos maximum', 'warning'); return; }
+    try {
+      const dataUrl = await decoderPhoto(input.files[0]);
+      m.photosEnAttente.push(dataUrl);
+      this.render();
+    } catch(e) {
+      Toast.afficher('❌ Photo illisible : ' + e.message, 'erreur', 5000);
+    }
+  },
+
+  supprimerPhotoEdition(url) {
+    const m = this.state.modalEdition;
+    if (!m) return;
+    m.photos = m.photos.filter(p => p !== url);
+    this.render();
+  },
+
+  supprimerPhotoEnAttenteEdition(i) {
+    const m = this.state.modalEdition;
+    if (!m) return;
+    m.photosEnAttente.splice(i, 1);
+    this.render();
+  },
+
   async sauvegarderEdition(e) {
     e.preventDefault();
     const m = this.state.modalEdition;
+    if (m.photoEnCours) return;
     try {
+      // Bug audit (photos) — les photos ajoutées a posteriori étaient jusqu'ici
+      // impossibles à sauvegarder faute de champ dans cette modale : upload
+      // vers Supabase Storage (même SheetsAPI.uploadPhoto que le compte-rendu),
+      // puis fusion avec les photos existantes conservées dans Photo_URL.
+      let nouvellesURLs = [];
+      if (m.photosEnAttente.length) {
+        m.photoEnCours = true;
+        this.render();
+        let echouees = 0;
+        for (const [i, p] of m.photosEnAttente.entries()) {
+          try {
+            const r = await SheetsAPI.uploadPhoto(p, `${m.id}_edit_${Date.now()}_${i + 1}.jpg`);
+            if (r?.url) nouvellesURLs.push(r.url); else echouees++;
+          } catch { echouees++; }
+        }
+        if (echouees > 0) Toast.afficher(`⚠️ ${echouees} photo(s) non uploadée(s) — vérifiez la connexion`, 'warning', 5000);
+      }
       const maj = {
         Date:                   m.date,
         Heure:                  m.heure,
@@ -619,6 +675,7 @@ window.VueVisites = {
         Note_Privee:            m.commentairePrep,
         Prochaine_Action_Texte: m.prochaineEtape,
         Semaine_ISO:            FiscalWeeks.codeDe(new Date(m.date)),
+        Photo_URL:              [...m.photos, ...nouvellesURLs].join(' | '),
       };
       await SheetsAPI.mettreAJour('EMPOWER_MDB', '🗺️_VISITES', m.id, maj);
       const local = this.state.visites.find(v => v.ID_Visite === m.id);
@@ -627,7 +684,11 @@ window.VueVisites = {
       this.state.dateVue = m.date;
       Toast.afficher('✅ Visite modifiée', 'succes');
       this.render();
-    } catch(err) { Toast.afficher('❌ ' + err.message, 'erreur'); }
+    } catch(err) {
+      if (this.state.modalEdition) this.state.modalEdition.photoEnCours = false;
+      Toast.afficher('❌ ' + err.message, 'erreur');
+      this.render();
+    }
   },
 
   // ── R5 : Suppression (soft delete) ──
@@ -1357,9 +1418,36 @@ window.VueVisites = {
           <label>Prochaine étape
             <input value="${m.prochaineEtape}"
                    oninput="VueVisites.state.modalEdition.prochaineEtape=this.value"/></label>
+
+          <div class="q-photo-zone">
+            <label class="q-label">📷 Photos terrain (${m.photos.length + m.photosEnAttente.length}/4)</label>
+            ${m.photos.map(url => `
+              <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+                <img src="${url}" style="width:64px;height:64px;object-fit:cover;border-radius:var(--radius-sm)"/>
+                <button type="button" class="btn-sup-photo" onclick="VueVisites.supprimerPhotoEdition('${url.replace(/'/g, "\\'")}')">✕</button>
+              </div>`).join('')}
+            ${m.photosEnAttente.map((p, i) => `
+              <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+                <img src="${p}" style="width:64px;height:64px;object-fit:cover;border-radius:var(--radius-sm)"/>
+                <span style="font-size:11px;color:var(--c-text-2)">nouvelle</span>
+                <button type="button" class="btn-sup-photo" onclick="VueVisites.supprimerPhotoEnAttenteEdition(${i})">✕</button>
+              </div>`).join('')}
+            ${(m.photos.length + m.photosEnAttente.length) < 4 ? `
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <label class="btn-q-photo" style="flex:1">📷 Caméra
+                <input type="file" accept="image/*" capture="environment" hidden
+                       onchange="VueVisites.ajouterPhotoEdition(this)"/>
+              </label>
+              <label class="btn-q-photo" style="flex:1">🖼️ Bibliothèque
+                <input type="file" accept="image/*" hidden
+                       onchange="VueVisites.ajouterPhotoEdition(this)"/>
+              </label>
+            </div>` : ''}
+          </div>
+
           <div class="modal-btns">
             <button type="button" onclick="VueVisites.fermerEdition()">Annuler</button>
-            <button type="submit" class="btn-primaire">Enregistrer</button>
+            <button type="submit" class="btn-primaire" ${m.photoEnCours ? 'disabled' : ''}>${m.photoEnCours ? 'Envoi des photos…' : 'Enregistrer'}</button>
           </div>
         </form>
       </div>
