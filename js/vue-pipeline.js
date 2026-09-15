@@ -86,7 +86,7 @@ window.VuePipeline = {
     this._ecouterContacts(); // Bloc 6 — Kanban live (abonnement idempotent)
     this.render();
     try {
-      const [raw, params, objectifs, cdsApi] = await Promise.all([
+      const [raw, params, objectifs, cdsApi, sellin] = await Promise.all([
         // nocache : 📋_PROSPECTS est alimenté en continu par plusieurs profils
         // (CDS, Admin, Channel) sur des appareils différents — le cache IndexedDB
         // partagé (TTL 30 min, api.js) masquait jusqu'à 30 min les leads ajoutés
@@ -95,9 +95,21 @@ window.VuePipeline = {
         SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
         SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
         SheetsAPI.lireCDS(), // liste CDS dynamique — Alexandra filtrée dans _chargerCDS (Bloc D2)
+        // BLOC 09 — Suivi activation Tracker ↔ Sell-In (BLOC 04 §3, jamais
+        // branché jusqu'ici) : rapprochement par nom normalisé, même source
+        // que _creerCompteDepuisLead. Règle validée : CA > 0 sur n'importe
+        // quel trimestre FY27 (pas seulement le trimestre actif).
+        SheetsAPI.lire('EMPOWER_MDB', '📋 COMPTES HISTORIQUES').catch(() => []),
       ]);
       this._chargerCDS(params, objectifs, cdsApi);
       initCDSRegistry(objectifs); // BUG-02 : peuple le registre global
+
+      const activationsSellIn = new Set();
+      (sellin || []).forEach(s => {
+        const ca = ['Q1', 'Q2', 'Q3', 'Q4'].reduce((sum, q) => sum + (window.parseCA(s[`CA ${q}FY27 €`]) || 0), 0);
+        if (ca > 0) activationsSellIn.add(normaliserNom(s.RESELLER || ''));
+      });
+      this._activationsSellIn = activationsSellIn;
 
       // BLOC 7 — extraire la liste des channels disponibles
       const channelsVus = new Set();
@@ -120,7 +132,7 @@ window.VuePipeline = {
           if (Session.estManager()) return true; // ADMIN voit tout
           return String(p.Flag_converti || '').toUpperCase() !== 'TRUE';
         })
-        .map(p => ({ ...p, _statut: this._statutDe(p) }))
+        .map(p => ({ ...p, _statut: this._statutDe(p), _activationSellIn: activationsSellIn.has(normaliserNom(p.Nom_Compte)) }))
         // BLOC 5 : dédoublonnage par Nom_Compte normalisé — garde le premier (ordre source)
         .filter((p, _i, arr) => {
           const k = normaliserNom(p.Nom_Compte);
@@ -191,6 +203,8 @@ window.VuePipeline = {
     if (this.state.filtreAlerte === 'WP_ENVOYE') l = l.filter(p => !!p.Welcome_Pack_Date);
     if (this.state.filtreAlerte === 'ACTION_DUE') l = l.filter(p => p.Date_prochaine_action && estDepassee(p.Date_prochaine_action));
     if (this.state.filtreAlerte === 'CONTACT_45J') l = l.filter(p => this._alerte45jSansContact(p));
+    // BLOC 09 — suivi activation Tracker ↔ Sell-In (BLOC 04 §3)
+    if (this.state.filtreAlerte === 'SELLIN_ACTIF') l = l.filter(p => p._activationSellIn);
     // BLOC 7 — filtre channel
     if (this.state.filtreChannel !== 'TOUS') l = l.filter(p => String(p.CANAL || '').trim() === this.state.filtreChannel);
     return l;
@@ -655,6 +669,7 @@ window.VuePipeline = {
             <option value="WP_ENVOYE" ${this.state.filtreAlerte==='WP_ENVOYE'?'selected':''}>📦 Welcome Pack envoyé</option>
             <option value="ACTION_DUE" ${this.state.filtreAlerte==='ACTION_DUE'?'selected':''}>⏰ Action en retard</option>
             <option value="CONTACT_45J" ${this.state.filtreAlerte==='CONTACT_45J'?'selected':''}>🔴 Sans contact +45j</option>
+            <option value="SELLIN_ACTIF" ${this.state.filtreAlerte==='SELLIN_ACTIF'?'selected':''}>💰 Commande détectée (Sell-In)</option>
           </select>
           ${voitTous ? `
           <select onchange="VuePipeline.state.filtreOrigine=this.value;VuePipeline.render()">
@@ -743,6 +758,7 @@ window.VuePipeline = {
                   ${l.FLAG_ACTION && l.FLAG_ACTION !== 'SAISIE' ? `<span style="font-size:10px;color:var(--c-primary);font-weight:700">${this._labelFlag(l.FLAG_ACTION)}</span>` : ''}
                 </div>
                 ${l.Note_initiale ? `<div class="kanban-carte-note">${String(l.Note_initiale).slice(0, 60)}</div>` : ''}
+                ${l._activationSellIn ? '<div class="kanban-carte-note" style="color:var(--c-success);font-weight:700">💰 Commande détectée (Sell-In)</div>' : ''}
                 ${(l.STATUT_EMPOWER === 'A_VISITER' || l.FLAG_ACTION === 'A_VISITER') ? '<div class="kanban-carte-note" style="color:var(--c-primary);font-weight:700">📍 À visiter (demandé au phoning)</div>' : ''}
                 ${this._retardWelcomePack(l) ? '<div class="kanban-carte-note" style="color:var(--c-danger);font-weight:600">⚠️ Welcome Pack J+14 dépassé</div>' : ''}
                 ${this._alerte45jSansContact(l) ? '<div class="kanban-carte-note" style="color:var(--c-danger);font-weight:600">🔴 Sans contact +45j</div>' : this._alerteSansActivite(l) ? '<div class="kanban-carte-note" style="color:var(--c-warning);font-weight:600">⏳ Sans activité >7j</div>' : ''}
@@ -868,9 +884,10 @@ window.VuePipeline = {
               </td>` : ''}
               ${cc.alertes ? `<td style="font-size:12px;white-space:nowrap">
                 ${wpRetard   ? '<span style="color:var(--c-danger);font-weight:700">⚠️ WP J+14</span><br>' : ''}
-                ${contact45j ? '<span style="color:var(--c-danger);font-weight:700">🔴 +45j</span>' : ''}
-                ${activite7j ? '<span style="color:var(--c-warning);font-weight:700">⏳ +7j</span>' : ''}
-                ${!wpRetard && !contact45j && !activite7j ? '<span style="color:var(--c-text-2)">—</span>' : ''}
+                ${contact45j ? '<span style="color:var(--c-danger);font-weight:700">🔴 +45j</span><br>' : ''}
+                ${activite7j ? '<span style="color:var(--c-warning);font-weight:700">⏳ +7j</span><br>' : ''}
+                ${l._activationSellIn ? '<span style="color:var(--c-success);font-weight:700">💰 Sell-In</span>' : ''}
+                ${!wpRetard && !contact45j && !activite7j && !l._activationSellIn ? '<span style="color:var(--c-text-2)">—</span>' : ''}
               </td>` : ''}
               ${cc.source ? `<td style="font-size:11px;color:var(--c-text-2)">${(l.ORIGINE||'—').replace('Import_','').replace(/_/g,' ')}</td>` : ''}
               <td>
@@ -1020,6 +1037,7 @@ window.VuePipeline = {
         <!-- Infos lead complètes -->
         <div class="q-recap" style="margin-bottom:12px">
           <div class="q-recap-ligne"><span>CDS assigné</span><strong>${this._nomCDS(l.PIN_CDS_Assigne)}</strong></div>
+          ${l._activationSellIn ? `<div class="q-recap-ligne"><span>Sell-In</span><strong style="color:var(--c-success)">💰 Commande détectée (FY27)</strong></div>` : ''}
           ${l.Adresse ? `<div class="q-recap-ligne"><span>Adresse</span><strong>${l.Adresse}</strong></div>` : ''}
           ${l.Ville || l.Code_Postal ? `<div class="q-recap-ligne"><span>Localisation</span><strong>${l.Ville || '—'} ${l.Code_Postal||''}</strong></div>` : ''}
           ${l.Tel ? `<div class="q-recap-ligne"><span>Téléphone</span><strong><a class="lien-tel" href="tel:${String(l.Tel).replace(/\s/g, '')}">${l.Tel}</a></strong></div>` : ''}
