@@ -314,3 +314,15 @@
     color: var(--muted);
   }
 }
+
+/* ── 9. TRANSITION ENTRE ÉCRANS (View Transitions API, cf. router.js) ──
+   Le fondu par défaut du navigateur (~250ms ease) est correct mais un peu
+   sec ; aligné sur le rythme déjà utilisé ailleurs dans l'app (transitions
+   120-250ms, cf. §8 densité desktop). Sans effet sur les navigateurs qui
+   ne supportent pas l'API — router.js dégrade alors vers l'affichage
+   direct, sans transition, comportement inchangé. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 180ms;
+  animation-timing-function: ease-out;
+}
