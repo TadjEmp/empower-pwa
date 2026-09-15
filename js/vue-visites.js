@@ -1127,10 +1127,12 @@ window.VueVisites = {
     return Number(v.PIN_CDS) === Session.pin;
   },
 
-  _rapportVisite(v) {
-    if (!this._peutVoirRapport(v)) return '';
+  // Champs du rapport de visite (questionnaire), sans le rendu HTML — séparé
+  // de _rapportVisite pour pouvoir les fusionner avec note/origine dans un
+  // seul bloc "Détails" dépliable sur la carte (BLOC 08 — refonte densité).
+  _champsRapport(v) {
+    if (!this._peutVoirRapport(v)) return [];
 
-    // Champs questionnaire individuels
     const champs = [
       { lbl: 'Interlocuteur',    val: v.Interlocuteur || v.Interlocuteur_Nom },
       { lbl: 'Fonction',         val: v.Interlocuteur_Fonction },
@@ -1170,16 +1172,33 @@ window.VueVisites = {
       } catch { freins = String(v.Freins_JSON); }
     }
 
-    const allChamps = [...champs, ...(freins ? [{ lbl: 'Freins', val: freins }] : []), ...qjson];
-    if (!allChamps.length) return '';
+    return [...champs, ...(freins ? [{ lbl: 'Freins', val: freins }] : []), ...qjson];
+  },
 
-    const id = 'rapport_' + (v.ID_Visite || '').replace(/[^a-z0-9]/gi, '');
+  // BLOC 08 — bloc "Détails" unique dépliable (note + origine + rapport),
+  // remplace 3 blocs auparavant toujours visibles (.cv-note, lien "suite de
+  // visite", .cv-rapport) qui étiraient systématiquement la carte même sans
+  // contenu à consulter dans l'instant.
+  _detailsCarteVisite(v, statut) {
+    const lignes = [];
+    const note = v.Note_Privee || v.Commentaire_Prep;
+    if (note) lignes.push({ lbl: 'Note', val: note });
+    if (v.ID_Action_Origine) {
+      const origine = this.state.visites.find(x => x.ID_Visite === v.ID_Action_Origine);
+      const dateStr = origine?.Date ? new Date(origine.Date).toLocaleDateString('fr-FR') : null;
+      lignes.push({ lbl: 'Origine', val: `Suite de la visite${dateStr ? ' du ' + dateStr : ''}` });
+    }
+    const champsRapport = statut === 'réalisée' ? this._champsRapport(v) : [];
+    lignes.push(...champsRapport);
+    if (!lignes.length) return '';
 
+    const id = 'det_' + (v.ID_Visite || '').replace(/[^a-z0-9]/gi, '');
+    const titre = champsRapport.length ? 'Rapport de visite' : 'Détails';
     return `
       <details class="cv-rapport" id="${id}">
-        <summary class="cv-rapport-toggle">Rapport de visite</summary>
+        <summary class="cv-rapport-toggle">${titre}</summary>
         <div class="cv-rapport-body">
-          ${allChamps.map(c => `
+          ${lignes.map(c => `
             <div class="cv-rapport-ligne">
               <span class="cv-rapport-lbl">${c.lbl}</span>
               <span class="cv-rapport-val">${String(c.val).replace(/\n/g,'<br>')}</span>
@@ -1202,22 +1221,24 @@ window.VueVisites = {
     const peutModif   = Session.voitTout() || Number(v.PIN_CDS) === Session.pin;
     const cdsNom = Session.voitTout() ? resolveCDS(v.PIN_CDS || v.Nom_CDS) : '';
 
+    // BLOC 08 — carte compacte : heure+nom+statut sur une ligne, canal+CDS sur
+    // une seconde, note/origine/rapport regroupés derrière un seul toggle
+    // "Détails" (au lieu de 4-5 blocs toujours visibles qui étiraient la
+    // carte même sans rien à lire dans l'instant — cf. captures utilisateur).
+    const meta = [
+      v.Type_Visite ? String(v.Type_Visite).replace(/_/g, ' ') : null,
+      cdsNom && cdsNom !== '—' ? cdsNom : null,
+    ].filter(Boolean).join(' · ');
+
     return `
       <div class="carte-visite" style="border-left:4px solid ${coul}">
         <div class="cv-head">
           <span class="cv-heure">${v.Heure || '—'}</span>
+          <span class="cv-nom">${v.Nom_Compte || '—'}</span>
           <span class="cv-statut" style="color:${coul}">${this._labelStatut(statutEff)}</span>
         </div>
-        <div class="cv-nom">${v.Nom_Compte || '—'}</div>
-        ${v.Type_Visite ? `<div class="cv-type">${String(v.Type_Visite).replace(/_/g,' ')}</div>` : ''}
-        ${cdsNom && cdsNom !== '—' ? `<div class="cv-type" style="color:var(--c-text-2);font-size:11px">${cdsNom}</div>` : ''}
-        ${(v.Note_Privee || v.Commentaire_Prep) ? `<div class="cv-note">${(v.Note_Privee || v.Commentaire_Prep).slice(0, 80)}</div>` : ''}
-        ${v.ID_Action_Origine ? (() => {
-          const origine = this.state.visites.find(x => x.ID_Visite === v.ID_Action_Origine);
-          const dateStr = origine?.Date ? new Date(origine.Date).toLocaleDateString('fr-FR') : null;
-          return `<div style="font-size:11px;color:var(--c-primary)">↳ suite de la visite${dateStr ? ' du ' + dateStr : ''}</div>`;
-        })() : ''}
-        ${statut === 'réalisée' ? this._rapportVisite(v) : ''}
+        ${meta ? `<div class="cv-type">${meta}</div>` : ''}
+        ${this._detailsCarteVisite(v, statut)}
         <div class="cv-actions" style="gap:6px;flex-wrap:wrap">
           ${isPlanif ? `
             <button class="btn-primaire" style="padding:8px 14px;font-size:13px;width:auto${estManquee ? ';background:var(--c-danger)' : ''}"

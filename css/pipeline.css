@@ -123,20 +123,22 @@
 .kanban-voir-plus:hover { background: var(--bg-surface); }
 .kanban-voir-plus:active { transform: scale(.98); }
 
-/* ── Cartes visites (vue-visites.js) ── */
+/* ── Cartes visites (vue-visites.js) — BLOC 08 : densité (§ audit "cartes
+   étirées"). heure+nom+statut sur une ligne, meta sur une seconde, le reste
+   (note/origine/rapport) derrière .cv-rapport (dépliable, voir base.css). ── */
 .carte-visite {
   background: var(--c-surface); border-radius: var(--radius);
-  box-shadow: var(--shadow); padding: 14px 16px;
-  display: flex; flex-direction: column; gap: 6px;
+  box-shadow: var(--shadow); padding: 10px 14px;
+  display: flex; flex-direction: column; gap: 3px;
   margin-bottom: 6px; cursor: pointer;
 }
-.cv-head  { display: flex; align-items: center; justify-content: space-between; }
-.cv-heure { font-size: 13px; font-weight: 700; color: var(--c-text-2); }
-.cv-statut{ font-size: 12px; font-weight: 700; text-transform: capitalize; }
-.cv-nom   { font-size: 15px; font-weight: 700; color: var(--c-title); }
-.cv-type  { font-size: 12px; color: var(--c-text-2); }
-.cv-note  { font-size: 12px; color: var(--c-text-2); line-height: 1.4; background: var(--c-bg); border-radius: var(--radius-sm); padding: 6px 10px; }
-.cv-actions { display: flex; gap: 8px; margin-top: 4px; }
+.cv-head  { display: flex; align-items: baseline; gap: 8px; }
+.cv-heure { font-size: 12px; font-weight: 700; color: var(--c-text-2); flex-shrink: 0; }
+.cv-statut{ font-size: 11px; font-weight: 700; text-transform: capitalize; flex-shrink: 0; white-space: nowrap; }
+.cv-nom   { font-size: 14px; font-weight: 700; color: var(--c-title); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 0; }
+.cv-type  { font-size: 11px; color: var(--c-text-2); margin: 0; }
+.cv-note  { font-size: 12px; color: var(--c-text-2); line-height: 1.4; background: var(--c-bg); border-radius: var(--radius-sm); padding: 6px 10px; margin: 0; }
+.cv-actions { display: flex; gap: 6px; margin-top: 2px; }
 
 /* ── Planning semaine ── */
 /* 5 colonnes (Lun→Ven, week-end volontairement exclu — cf. vue-visites.js

@@ -236,7 +236,7 @@
   .btn-retour { border-radius: 6px; }
 
   /* Cartes conteneurs : radius 8 (fenêtre macOS) + arête 0.5px */
-  .bloc-fiche, .carte-compte-v2, .kanban-carte, .modal-docked-panel, .stat-tuile {
+  .bloc-fiche, .carte-compte-v2, .kanban-carte, .modal-docked-panel, .stat-tuile, .carte-visite {
     border-radius: 8px;
     border: none;
     box-shadow: 0 0 0 0.5px var(--hairline-strong);

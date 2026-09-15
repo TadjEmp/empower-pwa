@@ -1985,7 +1985,49 @@ window.VuePhoning = {
     return [...map.values()].sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
   },
 
-  _renderCartesCommerciauxPlanning(liste) {
+  // BLOC 08 — carte appel planifié compacte (§ audit "cartes étirées") :
+  // heure+nom+statut sur une ligne, méta (CDS/objectif/retard) sur une
+  // seconde, note derrière un toggle "Détails" au lieu d'un bloc italique
+  // toujours visible. Extraite pour être réutilisée par la vue manager
+  // groupée (_renderCartesCommerciauxPlanning), qui n'affichait avant que le
+  // nom du commercial + un total sans aucun détail des appels.
+  _carteAppelPlanifie(a, now, badges) {
+    const estPasse = (a.Date_Planifiee || '').slice(0, 10) < now;
+    const badge = badges[String(a.Statut_Appel || '').toLowerCase()] || badges['planifié'];
+    const meta = [
+      Session.voitTout() ? resolveCDS(a.PIN_CDS || a.Nom_CDS) : null,
+      a.Objectif_Appel || null,
+    ].filter(Boolean).join(' · ');
+    const idDet = 'appel_det_' + String(a.ID_Appel || '').replace(/[^a-z0-9]/gi, '');
+    return `
+      <div style="background:var(--c-surface);border:1.5px solid ${estPasse ? 'var(--c-danger)' : 'var(--c-border)'};border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:6px">
+        <div style="display:flex;align-items:baseline;gap:8px">
+          <span style="font-size:12px;color:var(--c-text-2);flex-shrink:0">${a.Date_Planifiee ? a.Date_Planifiee.slice(0, 16).replace('T', ' ') : '—'}</span>
+          <span style="font-weight:700;font-size:14px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.Reseller || a.Nom_Compte || '—'}</span>
+          <span class="v7-statut" style="font-size:11px;color:${badge.bg};flex-shrink:0">${badge.lbl}</span>
+        </div>
+        ${(meta || estPasse) ? `<div style="font-size:11px;color:var(--c-text-2);margin-top:2px">${meta}${estPasse ? `${meta ? ' · ' : ''}<span style="color:var(--c-danger);font-weight:700">En retard</span>` : ''}</div>` : ''}
+        ${a.Note_Preparation ? `
+        <details style="margin-top:4px" id="${idDet}">
+          <summary style="font-size:11px;color:var(--c-primary);cursor:pointer;list-style:none">Note de préparation</summary>
+          <div style="font-size:12px;color:var(--c-text-2);margin-top:4px">${String(a.Note_Preparation).slice(0, 200)}</div>
+        </details>` : ''}
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn-primaire" style="flex:2;font-size:13px;padding:9px"
+                  onclick="VuePhoning.lancerAppelPlanifie('${a.ID_Appel}')">
+            Lancer l'appel
+          </button>
+          <button class="btn-secondaire" style="flex:1;font-size:13px;padding:9px"
+                  onclick="VuePhoning.supprimerPlanif('${a.ID_Appel}')">🗑</button>
+        </div>
+      </div>`;
+  },
+
+  // BLOC 08 — remplace la liste plate nom+total par un en-tête commercial +
+  // ses cartes d'appels compactes (même esprit que VueVisites._renderGroupeJour) :
+  // le manager voyait avant "Johanne — 3 appels planifiés" sans le moindre
+  // détail, il faut ouvrir chaque commercial un par un pour tout consulter.
+  _renderCartesCommerciauxPlanning(liste, now, badges) {
     const groupes = this._grouperParCommercialPlanning(liste);
     const auj = dateISOLocale();
     if (!groupes.length) {
@@ -1994,13 +2036,13 @@ window.VuePhoning = {
     return groupes.map(g => {
       const enRetard = g.appels.filter(a => (a.Date_Planifiee || '').slice(0, 10) < auj).length;
       return `
-      <div style="background:var(--c-surface);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;cursor:pointer"
-           onclick="VuePhoning.selectionnerCommercialPlanning('${g.pin}')">
-        <div style="font-weight:700;font-size:15px;color:var(--c-title);display:flex;align-items:center;gap:8px">${avatarCDS(g.pin, 28)}${g.nom}</div>
-        <div style="font-size:12px;color:var(--c-text-2);margin-top:2px">
-          ${g.appels.length} appel${g.appels.length > 1 ? 's' : ''} planifié${g.appels.length > 1 ? 's' : ''}
-          ${enRetard ? ` · <span style="color:var(--c-danger);font-weight:700">${enRetard} en retard</span>` : ''}
+      <div class="planning-groupe-jour">
+        <div class="pg-groupe-head" style="cursor:pointer" onclick="VuePhoning.selectionnerCommercialPlanning('${g.pin}')">
+          ${avatarCDS(g.pin, 26)}<strong>${g.nom}</strong>
+          <span class="badge-compteur">${g.appels.length}</span>
+          ${enRetard ? `<span style="font-size:11px;color:var(--c-danger);font-weight:700;margin-left:auto">${enRetard} en retard</span>` : ''}
         </div>
+        ${g.appels.map(a => this._carteAppelPlanifie(a, now, badges)).join('')}
       </div>`;
     }).join('');
   },
@@ -2052,7 +2094,7 @@ window.VuePhoning = {
     if (s.commercialSelectionne) liste = liste.filter(a => String(a.PIN_CDS || '') === s.commercialSelectionne);
 
     const listeHtml = groupeActif
-      ? this._renderCartesCommerciauxPlanning(liste)
+      ? this._renderCartesCommerciauxPlanning(liste, now, badges)
       : `${s.commercialSelectionne ? this._boutonRetourCommerciauxPlanning() : ''}
         ${liste.length === 0
           ? `<div style="padding:32px;text-align:center;color:var(--c-text-2)">
@@ -2060,32 +2102,7 @@ window.VuePhoning = {
                <div style="font-size:14px">Aucun appel planifié pour cette période</div>
                <div style="font-size:12px;margin-top:4px">Cliquez "Planifier un appel" pour en créer un.</div>
              </div>`
-          : liste.map(a => {
-              const estPasse = (a.Date_Planifiee || '').slice(0, 10) < now;
-              const badge = badges[String(a.Statut_Appel || '').toLowerCase()] || badges['planifié'];
-              return `
-            <div style="background:var(--c-surface);border:1.5px solid ${estPasse ? 'var(--c-danger)' : 'var(--c-border)'};border-radius:var(--radius-sm);padding:12px;margin-bottom:8px">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-                <span style="font-weight:700;font-size:15px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.Reseller || a.Nom_Compte || '—'}</span>
-                ${Session.voitTout() ? `<span style="font-size:11px;color:var(--c-text-2);flex-shrink:0">${resolveCDS(a.PIN_CDS || a.Nom_CDS)}</span>` : ''}
-                <span class="v7-statut" style="font-size:11px;color:${badge.bg};flex-shrink:0">${badge.lbl}</span>
-              </div>
-              <div style="font-size:12px;color:var(--c-text-2);margin-bottom:8px">
-                ${a.Date_Planifiee ? a.Date_Planifiee.slice(0, 16).replace('T', ' ') : '—'}
-                ${estPasse ? ' <span style="color:var(--c-danger);font-weight:700">· En retard</span>' : ''}
-                ${a.Objectif_Appel ? ` · ${a.Objectif_Appel}` : ''}
-              </div>
-              ${a.Note_Preparation ? `<div style="font-size:12px;color:var(--c-text-2);font-style:italic;margin-bottom:8px">${String(a.Note_Preparation).slice(0, 80)}</div>` : ''}
-              <div style="display:flex;gap:8px">
-                <button class="btn-primaire" style="flex:2;font-size:13px;padding:9px"
-                        onclick="VuePhoning.lancerAppelPlanifie('${a.ID_Appel}')">
-                  Lancer l'appel
-                </button>
-                <button class="btn-secondaire" style="flex:1;font-size:13px;padding:9px"
-                        onclick="VuePhoning.supprimerPlanif('${a.ID_Appel}')">🗑</button>
-              </div>
-            </div>`;
-            }).join('')
+          : liste.map(a => this._carteAppelPlanifie(a, now, badges)).join('')
         }`;
 
     return `<div class="q-champs">
