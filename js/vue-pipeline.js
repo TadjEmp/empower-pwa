@@ -325,7 +325,34 @@ window.VuePipeline = {
         this.render();
       }
       if (doCreerCompte) this._creerCompteDepuisLead(lead).catch(() => {});
+      // BLOC 07 (audit blocs manquants, 09/2026) — routage STATUT_EN_COURS/
+      // STATUT_INTEGRE/STATUT_ARCHIVE prêt côté NotifCenter (icône + route)
+      // depuis BLOC 03 mais jamais émis. Branché "minimum ciblé" validé par
+      // l'utilisateur : uniquement quand un manager déplace la card d'un
+      // CDS (pas d'auto-notif quand le CDS avance lui-même sa propre card).
+      this._notifierChangementStatut(lead, statut);
     } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+  },
+
+  _notifierChangementStatut(lead, statut) {
+    const pin = Number(lead.PIN_CDS_Assigne);
+    if (!pin || !Session.voitTout() || pin === Number(Session.pin)) return;
+    const MSGS = {
+      EN_COURS: `🔵 ${lead.Nom_Compte} passé en cours de traitement`,
+      INTEGRE:  `✅ ${lead.Nom_Compte} intégré — bravo !`,
+      ARCHIVE:  `🗄 ${lead.Nom_Compte} archivé`,
+    };
+    const TYPES = { EN_COURS: 'STATUT_EN_COURS', INTEGRE: 'STATUT_INTEGRE', ARCHIVE: 'STATUT_ARCHIVE' };
+    if (!MSGS[statut]) return;
+    SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
+      ID_Notif:         genId('NOTIF'),
+      PIN_Destinataire: pin,
+      Type_Notif:       TYPES[statut],
+      Message:          MSGS[statut],
+      ID_Cible:         lead.ID_Prospect,
+      Statut_Lu:        false,
+      Date_Envoi:       new Date().toISOString(),
+    }).catch(() => {}); // non bloquant
   },
 
   async attribuer(id, pin, { silencieux = false } = {}) {
