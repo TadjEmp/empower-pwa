@@ -672,6 +672,62 @@ window.VueAdmin = {
     this.render();
   },
 
+  // BLOC 04 (09/2026) — Option C : lit le fichier Sell-In .xlsx directement
+  // dans le navigateur (SheetJS, déjà chargé pour l'export ailleurs dans
+  // l'app) et envoie les lignes à l'Edge Function sync-sellin, qui applique
+  // la même agrégation/écriture que la synchro Google Drive. Résout deux
+  // blocages rencontrés en 09/2026 : API Drive inaccessible (mur IAM sur le
+  // compte de service) et conversion Excel→Google Sheets qui perdait les
+  // lignes du quarter le plus récent.
+  async importSellInFichier(file) {
+    if (!file) return;
+    if (this.state.syncSellInEnCours) return;
+    this.state.syncSellInEnCours  = true;
+    this.state.syncSellInResultat = null;
+    this.state.syncSellInNonMatcher = [];
+    this.render();
+    try {
+      const buf = await file.arrayBuffer();
+      const wb  = XLSX.read(buf, { type: 'array' });
+      const sheetName = wb.SheetNames.find(n => n.includes('DATA FY') || n.includes('📥')) || wb.SheetNames[0];
+      const ws = wb.Sheets[sheetName];
+      if (!ws) throw new Error(`Onglet "${sheetName}" introuvable dans le fichier`);
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
+      if (!rows.length || rows.length < 2) throw new Error(`Onglet "${sheetName}" vide`);
+
+      const _r1 = await fetch(`${SUPABASE_URL}/functions/v1/sync-sellin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+        body: JSON.stringify({ rows }),
+      });
+      const data = await _r1.json();
+      if (!_r1.ok || !data?.ok) throw new Error(data?.error || `HTTP ${_r1.status}`);
+      const matched  = data.comptes_maj ?? '?';
+      const crees    = data.comptes_crees ?? 0;
+      const nonMatch = Array.isArray(data.nonMatcher) ? data.nonMatcher : [];
+      const ts       = new Date().toLocaleString('fr-FR');
+      this.state.syncSellInResultat   = { ok: true, matched, crees, nonMatch: nonMatch.length, ts };
+      this.state.syncSellInNonMatcher = nonMatch;
+      Toast.afficher(
+        `✅ "${file.name}" importé — ${data.revendeurs} revendeur(s) · ${matched} compte(s) mis à jour` +
+        (crees ? ` · ${crees} créé(s) (non attribués)` : '') +
+        (nonMatch.length ? ` · ${nonMatch.length} à valider` : ''),
+        'succes', 7000
+      );
+      await Promise.all([
+        SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES'),
+        SheetsAPI.viderCache('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
+        SheetsAPI.viderCache('EMPOWER_MDB', '📋 COMPTES HISTORIQUES'),
+        SheetsAPI.viderCache('EMPOWER_MDB', '⚙️_PARAMS'),
+      ]);
+    } catch(e) {
+      this.state.syncSellInResultat = { ok: false, message: e.message || String(e) };
+      Toast.afficher('❌ Import Sell-In : ' + (e.message || e), 'erreur');
+    }
+    this.state.syncSellInEnCours = false;
+    this.render();
+  },
+
   async syncSellIn() {
     if (this.state.syncSellInEnCours) return;
     const ok = confirm('📊 Synchroniser les données Sell-In depuis Google Drive ?\n\nCela met à jour les CA (FY25, FY26, Q1FY27) et les statuts dans Comptes.');
@@ -1358,14 +1414,31 @@ window.VueAdmin = {
               </div>` : ''}`;
           })() : ''}
 
+          <!-- BLOC 04 (09/2026) — import direct du fichier Sell-In original
+               (.xlsx), lu dans le navigateur : contourne l'API Drive (bloquée
+               par un mur IAM sur le compte de service) et la conversion
+               Google Sheets (qui a perdu les lignes Q2FY27 lors d'un essai).
+               C'est désormais la voie principale ; "Synchroniser maintenant"
+               reste en repli si une Google Sheet à jour existe un jour. -->
+          <input type="file" id="sellin-file-input" accept=".xlsx" style="display:none"
+                 onchange="VueAdmin.importSellInFichier(this.files[0]); this.value=''">
           <button class="btn-secondaire"
-                  style="background:var(--c-primary,#0050FF);color:#fff;border-color:var(--c-primary,#0050FF);padding:10px 16px;width:100%"
+                  style="background:var(--c-success,#1a9e5c);color:#fff;border-color:var(--c-success,#1a9e5c);padding:10px 16px;width:100%;margin-bottom:8px"
+                  ${this.state.syncSellInEnCours ? 'disabled' : ''}
+                  onclick="document.getElementById('sellin-file-input').click()">
+            ${this.state.syncSellInEnCours ? '⏳ Import en cours…' : '📂 Importer un fichier Sell-In (.xlsx)'}
+          </button>
+          <p style="font-size:11px;color:var(--c-text-2);margin-bottom:12px">
+            Choisis le fichier "SELL IN Qx FYxx DASHBOARD.xlsx" le plus récent — l'onglet <code>📥 DATA FY25-FY26-FY27</code> est lu automatiquement, tous les quarters présents sont pris en compte. Peut être refait chaque semaine avec le fichier mis à jour (aucun doublon : les lignes existantes sont remplacées).
+          </p>
+          <button class="btn-secondaire"
+                  style="padding:8px 16px;width:100%"
                   ${this.state.syncSellInEnCours ? 'disabled' : ''}
                   onclick="VueAdmin.syncSellIn()">
-            ${this.state.syncSellInEnCours ? '⏳ Synchronisation en cours…' : '🔄 Synchroniser maintenant'}
+            ${this.state.syncSellInEnCours ? '⏳ Synchronisation en cours…' : '🔄 Repli : synchroniser depuis Google Drive'}
           </button>
           <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">
-            Source : Google Drive · ID classeur configurable via secret <code>SELLIN_SHEET_ID</code> · Edge Function <code>sync-sellin</code>
+            Repli : Google Sheet fixe (ID en dur côté serveur, pas de secret <code>SELLIN_SHEET_ID</code> à jour) · Edge Function <code>sync-sellin</code>
           </p>
         </div>` : ''}
 
