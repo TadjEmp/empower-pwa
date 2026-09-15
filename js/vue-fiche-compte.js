@@ -530,7 +530,7 @@ window.VueFicheCompte = {
 
     app.innerHTML = `
       <header class="header-vue">
-        <button onclick="history.back()" class="btn-retour">←</button>
+        <button onclick="Router.retour()" class="btn-retour">←</button>
         <h1 class="header-titre-tronque">${c.Nom_Compte}</h1>
       </header>
 

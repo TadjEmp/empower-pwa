@@ -1197,7 +1197,7 @@ window.VueAdmin = {
       const tab = this.state.alexTab || 'exports';
       app.innerHTML = `
         <header class="header-vue">
-          <button onclick="Router.aller('#/empower-tracker')" class="btn-retour">←</button>
+          <button onclick="Router.retour()" class="btn-retour">←</button>
           <h1>📥 Espace Alexandra</h1>
         </header>
         <!-- Onglets -->
@@ -1245,7 +1245,7 @@ window.VueAdmin = {
 
     app.innerHTML = `
       <header class="header-vue">
-        <button onclick="Router.aller('#/manager')" class="btn-retour">←</button>
+        <button onclick="Router.retour()" class="btn-retour">←</button>
         <h1>⚙️ Administration</h1>
         <span class="js-tab-label" hidden>${adminTabLabel}</span>
       </header>

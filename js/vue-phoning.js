@@ -1428,7 +1428,7 @@ window.VuePhoning = {
     const TITRES = { PRE: 'Préparer l\'appel', CALL: 'Appel en cours', POST: 'Post-appel' };
     const peutExtraire = Session.voitTout();
     const backAction = (s.mode === 'PLANNING' || s.mode === 'HISTORIQUE')
-      ? 'history.back()'
+      ? 'Router.retour()'
       : 'VuePhoning.setMode(\'PLANNING\')';
     const titre = s.mode === 'PLANNING' ? 'Planning phoning'
       : s.mode === 'HISTORIQUE' ? 'Journal appels'
