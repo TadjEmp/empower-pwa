@@ -155,8 +155,10 @@
   border-bottom: 1px solid var(--hairline-strong);
 }
 
-/* ── 6. CARTES CONTENEURS — hairline discret (slide V7), sans ombre ── */
-.bloc-fiche, .carte-compte-v2, .kanban-carte, .carte-visite, .login-carte {
+/* ── 6. CARTES CONTENEURS — hairline discret (slide V7), sans ombre ──
+   BLOC 07 §2 — .stat-tuile (tuiles KPI Accueil/Équipe) ajoutée : gardait le
+   radius/ombre legacy de dashboard.css, seule carte non migrée du lot. */
+.bloc-fiche, .carte-compte-v2, .kanban-carte, .carte-visite, .login-carte, .stat-tuile {
   box-shadow: none;
   border-color: var(--hairline);
 }
@@ -234,7 +236,7 @@
   .btn-retour { border-radius: 6px; }
 
   /* Cartes conteneurs : radius 8 (fenêtre macOS) + arête 0.5px */
-  .bloc-fiche, .carte-compte-v2, .kanban-carte, .modal-docked-panel {
+  .bloc-fiche, .carte-compte-v2, .kanban-carte, .modal-docked-panel, .stat-tuile {
     border-radius: 8px;
     border: none;
     box-shadow: 0 0 0 0.5px var(--hairline-strong);

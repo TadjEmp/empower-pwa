@@ -970,15 +970,24 @@ window.VuePipeline = {
     return `
     <div class="modal-overlay modal-docked" onclick="if(event.target===this)VuePipeline.fermerModal()">
       <div class="modal modal-docked-panel">
-        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px">
-          <div style="flex:1">
+        <!-- BLOC 07 §5 — bouton fermer sticky en tête de volet : sur mobile le
+             panneau occupe la quasi-totalité de l'écran (max-height:90dvh) et
+             le seul autre moyen de fermer était le bouton "Fermer" tout en bas
+             du formulaire (après édition + IA), ou un tap hors-panneau non
+             évident. Corrigé : ✕ toujours visible, même pattern que les autres
+             modaux de l'app (ex. VueDashboardManager.fermerExportDir). -->
+        <div style="position:sticky;top:-24px;margin:-24px -24px 12px;padding:14px 24px 10px;
+                    background:var(--bg-warm-white);z-index:2;border-bottom:1px solid var(--c-border);
+                    display:flex;align-items:flex-start;gap:10px">
+          <div style="flex:1;min-width:0">
             <h3 style="margin:0 0 4px">${l.Nom_Compte}</h3>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
               <span class="status-badge status-${(l._statut||'').toLowerCase()}">${statut?.lbl||l._statut}</span>
               ${l.POTENTIEL ? `<span class="pot-pill pot-${(l.POTENTIEL||'').toLowerCase()}">${l.POTENTIEL}</span>` : ''}
-              ${l.CANAL ? `<span style="font-size:11px;padding:2px 8px;border-radius:99px;background:var(--c-bg);border:1px solid var(--c-border);color:var(--c-text-2)">${l.CANAL}</span>` : ''}
+              ${l.CANAL ? `<span style="font-size:11px;color:var(--c-text-2);white-space:nowrap">${l.CANAL}</span>` : ''}
             </div>
           </div>
+          <button class="btn-retour" title="Fermer" onclick="VuePipeline.fermerModal()" style="flex-shrink:0">✕</button>
         </div>
 
         <!-- Infos lead complètes -->

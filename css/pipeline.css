@@ -9,6 +9,20 @@
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
 }
+/* BLOC 07 §4 — scrollbar horizontale toujours visible en desktop web (les
+   scrollbars overlay macOS/iOS sont invisibles au repos, cf. même correctif
+   déjà appliqué à .desktop-table-wrap) : sans repère visuel, le Tracker
+   desktop paraissait tronqué sans indice qu'il reste des colonnes à droite. */
+@media (min-width: 900px) {
+  .kanban {
+    scrollbar-width: thin;
+    scrollbar-color: var(--c-border) transparent;
+  }
+  .kanban::-webkit-scrollbar { height: 8px; }
+  .kanban::-webkit-scrollbar-track { background: transparent; }
+  .kanban::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 4px; }
+  .kanban::-webkit-scrollbar-thumb:hover { background: var(--c-text-2); }
+}
 .kanban-col {
   flex: 0 0 280px; scroll-snap-align: start;
   display: flex; flex-direction: column; gap: 8px;
