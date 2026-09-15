@@ -487,18 +487,18 @@ window.VueDashboardCDS = {
         <div class="dash-hero-tuiles">
           <div class="hero-tuile">
             <div class="hero-tuile-lbl">Objectif ${d.quarter} FY27</div>
-            <div class="hero-tuile-val">${fmtEUR(d.caRealise)} <span style="font-size:12px;font-weight:400;color:#A8C8FF">/ ${fmtEUR(d.caObjectif)}</span></div>
+            <div class="hero-tuile-val">${fmtEUR(d.caRealise)} <span style="font-size:12px;font-weight:400;color:var(--c-text-2)">/ ${fmtEUR(d.caObjectif)}</span></div>
             <div class="hero-barre"><div class="hero-barre-fill" style="width:${Math.min(d.pct, 100)}%"></div></div>
-            <div class="hero-tuile-sous">${PACE.lbl} · ${d.pct}% atteinte · PACE annuel ${d.pctAnnuel}%</div>
+            <div class="hero-tuile-sous" style="color:${PACE.cls === 'pace-risk' ? 'var(--c-danger)' : PACE.cls === 'pace-watch' ? 'var(--c-warning)' : 'var(--sync-online)'}">${PACE.lbl} · ${d.pct}% atteinte · PACE annuel ${d.pctAnnuel}%</div>
             <!-- BLOC 5 — CA FY26 référence + objectif annuel FY27 -->
-            <div style="margin-top:6px;font-size:11px;color:#A8C8FF;display:flex;gap:12px">
-              <span>Réf. FY26 : <strong style="color:#fff">${fmtEUR(d.caFY26Q)}/trim.</strong></span>
-              <span>OBJ FY27 : <strong style="color:#fff">${fmtEUR(d.caFY27Obj)}</strong></span>
+            <div style="margin-top:6px;font-size:11px;color:var(--c-text-2);display:flex;gap:12px">
+              <span>Réf. FY26 : <strong style="color:var(--c-title)">${fmtEUR(d.caFY26Q)}/trim.</strong></span>
+              <span>OBJ FY27 : <strong style="color:var(--c-title)">${fmtEUR(d.caFY27Obj)}</strong></span>
             </div>
           </div>
           <div class="hero-tuile">
             <div class="hero-tuile-lbl">Visites aujourd'hui</div>
-            <div class="hero-tuile-val">${d.visitesAujourdhui.length} <span style="font-size:12px;font-weight:400;color:#A8C8FF">planifiée(s)</span></div>
+            <div class="hero-tuile-val">${d.visitesAujourdhui.length} <span style="font-size:12px;font-weight:400;color:var(--c-text-2)">planifiée(s)</span></div>
             <div class="hero-tuile-sous">${d.visitesSem}/${d.objVisites} cette semaine · ${d.nbComptes} comptes</div>
           </div>
         </div>

@@ -3,26 +3,32 @@
    PHONE OS v4.1
    ═══════════════════════════════════════ */
 
-/* Héro anchor — section structurante */
+/* Héro Accueil — BLOC 08 (audit "grosses cards gris anthracite non
+   harmonieuses") : la section utilisait encore le fond sombre --bg-anchor
+   (réservé aux éléments de chrome — sidebar/topbar/drawer) avec des tuiles
+   à 8% d'opacité dessus, quasi indissociables du fond → lu comme un seul
+   gros bloc anthracite. Repassé sur le système clair V7 (fond de page,
+   tuiles = vraies cartes à bordure fine), cohérent avec .stat-tuile
+   utilisée partout ailleurs dans l'app. */
 .dash-hero {
-  background: var(--bg-anchor);
-  color: var(--text-on-anchor);
+  background: transparent;
+  color: var(--c-title);
   padding: 18px 16px 20px;
-  border-radius: 0 0 20px 20px;
 }
-.dash-hero-cycle { font-size: 11px; color: var(--text-on-anchor-muted); margin-bottom: 2px; }
-.dash-hero-titre { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; display: flex; justify-content: space-between; align-items: center; color: var(--text-on-anchor); }
-.dash-hero-titre .btn-deco { background: rgba(229,225,211,.12); border: none; color: var(--text-on-anchor); width: 34px; height: 34px; border-radius: 50%; font-size: 15px; cursor: pointer; }
+.dash-hero-cycle { font-size: 11px; color: var(--c-text-2); margin-bottom: 2px; }
+.dash-hero-titre { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; display: flex; justify-content: space-between; align-items: center; color: var(--c-title); }
+.dash-hero-titre .btn-deco { background: var(--c-surface); border: 1px solid var(--c-border); color: var(--c-text-2); width: 34px; height: 34px; border-radius: 50%; font-size: 15px; cursor: pointer; }
 .dash-hero-tuiles { display: flex; gap: 10px; margin-top: 14px; }
 .hero-tuile {
-  flex: 1; background: rgba(229,225,211,.08);
-  border: 1px solid var(--border-anchor);
+  flex: 1; background: var(--c-surface);
+  border: 1px solid var(--c-border);
   border-radius: 12px; padding: 12px 14px;
+  box-shadow: var(--shadow);
 }
-.hero-tuile-lbl { font-size: 11px; color: var(--text-on-anchor-muted); margin-bottom: 4px; }
-.hero-tuile-val { font-size: 20px; font-weight: 800; color: var(--text-on-anchor); }
-.hero-tuile-sous { font-size: 10px; color: var(--sync-online); margin-top: 3px; }
-.hero-barre { height: 6px; background: rgba(229,225,211,.15); border-radius: 3px; margin-top: 8px; overflow: hidden; }
+.hero-tuile-lbl { font-size: 11px; color: var(--c-text-2); margin-bottom: 4px; }
+.hero-tuile-val { font-size: 20px; font-weight: 800; color: var(--c-title); }
+.hero-tuile-sous { font-size: 10px; color: var(--sync-online); margin-top: 3px; font-weight: 600; }
+.hero-barre { height: 6px; background: var(--c-border); border-radius: 3px; margin-top: 8px; overflow: hidden; }
 .hero-barre-fill { height: 100%; border-radius: 3px; background: var(--c-cta); transition: width .5s ease; }
 
 .dash-body {

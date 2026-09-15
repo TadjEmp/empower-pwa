@@ -509,7 +509,8 @@ window.VueVisites = {
         </div>
         ${commerciaux.map(c => `
           <div class="pg-row">
-            <div class="pg-col-nom" style="cursor:pointer" onclick="VueVisites.selectionnerCommercial('${c.pin}')">
+            <div class="pg-col-nom" style="cursor:pointer" title="Ouvrir la journée de ${c.nom}"
+                 onclick="VueVisites.ouvrirJourCommercial('${c.pin}','${this.state.dateVue}')">
               ${avatarCDS(c.pin, 24)}<span>${c.nom}</span>
             </div>
             ${jours.map(j => {
@@ -528,6 +529,9 @@ window.VueVisites = {
     if (!groupes.length) {
       return `<div style="padding:32px;text-align:center;color:var(--c-text-2)">Aucune visite ce jour.</div>`;
     }
+    // Semaine contenant dateVue — pour le dépliage "Voir la semaine" par
+    // commercial (garde l'accès à la semaine sans quitter la vue Jour groupée).
+    const jours = this.visitesSemaine;
     return groupes.map(g => `
       <div class="planning-groupe-jour">
         <div class="pg-groupe-head" style="cursor:pointer" onclick="VueVisites.selectionnerCommercial('${g.pin}')">
@@ -535,6 +539,18 @@ window.VueVisites = {
           <span class="badge-compteur">${g.visites.length}</span>
         </div>
         ${g.visites.map(v => this._carteVisite(v)).join('')}
+        <details class="pg-semaine-toggle">
+          <summary class="cv-rapport-toggle">Voir la semaine de ${g.nom}</summary>
+          <div class="pg-mini-semaine">
+            ${jours.map(j => {
+              const vj = j.visites.filter(v => String(v.PIN_CDS || '') === g.pin);
+              return `<div class="pg-mini-jour">
+                <div class="pg-col-jour">${j.label}</div>
+                ${this._celluleGrille(vj, `VueVisites.ouvrirJourCommercial('${g.pin}','${j.iso}')`)}
+              </div>`;
+            }).join('')}
+          </div>
+        </details>
       </div>`).join('');
   },
 
