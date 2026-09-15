@@ -169,6 +169,52 @@
   .pj-item  { font-size: 11px; padding: 4px 6px; }
 }
 
+/* ── BLOC 07 §1 — Grille planning manager (commercial × jours) ──
+   Remplace la liste plate nom+total de la vue groupée manager/channel.
+   Même orientation visuelle (colonnes = jours, résumé par cellule) que
+   .planning-semaine ci-dessus, appliquée aussi côté manager. */
+.planning-grille { overflow-x: auto; padding-bottom: 4px; }
+.pg-row {
+  display: grid; grid-template-columns: minmax(96px, 120px) repeat(5, minmax(52px, 1fr));
+  gap: 4px; min-width: 420px; align-items: stretch;
+}
+.pg-row + .pg-row { margin-top: 4px; }
+.pg-row-head { margin-bottom: 2px; }
+.pg-col-nom {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 700; color: var(--c-title);
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.pg-col-jour {
+  font-size: 10px; font-weight: 600; color: var(--c-text-2); text-align: center;
+}
+.pg-cell {
+  background: var(--c-surface); border-radius: var(--radius-sm);
+  padding: 6px 2px; min-height: 52px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border: 1.5px solid transparent; transition: border-color .15s;
+}
+.pg-cell:active { border-color: var(--c-primary); }
+.pg-cell-vide { background: transparent; cursor: default; min-height: 52px; }
+.pg-cell-n { font-size: 13px; font-weight: 800; color: var(--c-title); }
+.pg-cell-dots { display: flex; gap: 2px; }
+.pg-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.pg-cell-photo { font-size: 9px; color: var(--c-text-2); }
+
+/* Vue manager groupée, mode "Jour" : une section par commercial. */
+.planning-groupe-jour { margin-bottom: 18px; }
+.pg-groupe-head {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; margin-bottom: 8px; padding-bottom: 6px;
+  border-bottom: 1px solid var(--c-border);
+}
+
+@media (min-width: 900px) {
+  .pg-row { grid-template-columns: minmax(140px, 180px) repeat(5, minmax(70px, 1fr)); min-width: 0; }
+  .pg-cell, .pg-cell-vide { min-height: 64px; }
+  .pg-col-nom { font-size: 13px; }
+}
+
 /* ── Rail semaine (mode "jour" desktop, split via .layout-split) ──
    Colonne verticale compacte : un jour par ligne, pastilles de statut au
    lieu des aperçus texte du mode "semaine" — la semaine reste consultable

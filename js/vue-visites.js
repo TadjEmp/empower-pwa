@@ -440,7 +440,8 @@ window.VueVisites = {
     this.render();
   },
 
-  // liste de cartes "commercial" pour la période/mode courant
+  // liste de cartes "commercial" pour la période/mode courant — conservée pour
+  // l'Historique (mode de consultation différent, hors périmètre BLOC 07 §1).
   _renderCartesCommerciaux(liste) {
     const groupes = this._grouperParCommercial(liste);
     if (!groupes.length) {
@@ -450,6 +451,90 @@ window.VueVisites = {
       <div class="carte-visite" style="cursor:pointer" onclick="VueVisites.selectionnerCommercial('${g.pin}')">
         <div class="cv-nom" style="display:flex;align-items:center;gap:8px">${avatarCDS(g.pin, 28)}${g.nom}</div>
         <div class="cv-type">${g.visites.length} visite${g.visites.length > 1 ? 's' : ''}</div>
+      </div>`).join('');
+  },
+
+  // ── BLOC 07 §1 — grille planning (jour × commercial), même orientation
+  // visuelle appliquée à tous les profils : vue manager groupée (grille
+  // commercial × jours) ET vue individuelle (jours enrichis du même résumé
+  // statut/photo). Pas de champ durée sur les visites (non remonté par
+  // l'API) : le résumé se limite à nb visites + répartition statut + photo,
+  // à la différence de la référence terrain fournie (qui affiche aussi des
+  // heures) — cf. BLOC07_AUDIT.md pour la justification de ce périmètre.
+  _resumeJour(visites) {
+    const parStatut = {};
+    let photos = 0;
+    (visites || []).forEach(v => {
+      const s = this._statutEffectif(v);
+      parStatut[s] = (parStatut[s] || 0) + 1;
+      if (v.Photo_URL) photos++;
+    });
+    return { n: (visites || []).length, parStatut, photos };
+  },
+
+  _celluleGrille(visites, onClick) {
+    const r = this._resumeJour(visites);
+    if (!r.n) return `<div class="pg-cell pg-cell-vide"${onClick ? ` onclick="${onClick}"` : ''}></div>`;
+    const dots = Object.entries(r.parStatut)
+      .map(([s, n]) => `<span class="pg-dot" style="background:${this.STATUT_COULEURS[s] || 'var(--c-text-2)'}" title="${this._labelStatut(s)} · ${n}"></span>`)
+      .join('');
+    return `
+      <div class="pg-cell"${onClick ? ` onclick="${onClick}"` : ''}>
+        <span class="pg-cell-n">${r.n}</span>
+        <span class="pg-cell-dots">${dots}</span>
+        ${r.photos ? `<span class="pg-cell-photo" title="${r.photos} photo(s)">📷${r.photos}</span>` : ''}
+      </div>`;
+  },
+
+  ouvrirJourCommercial(pin, iso) {
+    this.state.commercialSelectionne = pin;
+    this.state.dateVue = iso;
+    this.state.modeVue = 'jour';
+    this.render();
+  },
+
+  // Vue manager groupée, mode "Semaine" : grille commercial × jour (remplace
+  // la liste plate nom+total, qui n'affichait aucune répartition par jour).
+  _renderGrilleManagerSemaine() {
+    const jours = this.visitesSemaine; // [{iso,label,visites}] — déjà calculé
+    const commerciaux = this._grouperParCommercial(jours.flatMap(j => j.visites));
+    if (!commerciaux.length) {
+      return `<div style="padding:32px;text-align:center;color:var(--c-text-2)">Aucune visite cette semaine.</div>`;
+    }
+    return `
+      <div class="planning-grille">
+        <div class="pg-row pg-row-head">
+          <div class="pg-col-nom"></div>
+          ${jours.map(j => `<div class="pg-col-jour">${j.label}</div>`).join('')}
+        </div>
+        ${commerciaux.map(c => `
+          <div class="pg-row">
+            <div class="pg-col-nom" style="cursor:pointer" onclick="VueVisites.selectionnerCommercial('${c.pin}')">
+              ${avatarCDS(c.pin, 24)}<span>${c.nom}</span>
+            </div>
+            ${jours.map(j => {
+              const vj = j.visites.filter(v => String(v.PIN_CDS || '') === c.pin);
+              return this._celluleGrille(vj, `VueVisites.ouvrirJourCommercial('${c.pin}','${j.iso}')`);
+            }).join('')}
+          </div>`).join('')}
+      </div>`;
+  },
+
+  // Vue manager groupée, mode "Jour" : une section par commercial avec ses
+  // visites du jour (réutilise _carteVisite, déjà riche), au lieu du seul
+  // total "N visites" par commercial.
+  _renderGroupeJour(visitesJour) {
+    const groupes = this._grouperParCommercial(visitesJour);
+    if (!groupes.length) {
+      return `<div style="padding:32px;text-align:center;color:var(--c-text-2)">Aucune visite ce jour.</div>`;
+    }
+    return groupes.map(g => `
+      <div class="planning-groupe-jour">
+        <div class="pg-groupe-head" style="cursor:pointer" onclick="VueVisites.selectionnerCommercial('${g.pin}')">
+          ${avatarCDS(g.pin, 26)}<strong>${g.nom}</strong>
+          <span class="badge-compteur">${g.visites.length}</span>
+        </div>
+        ${g.visites.map(v => this._carteVisite(v)).join('')}
       </div>`).join('');
   },
 
@@ -1242,7 +1327,7 @@ window.VueVisites = {
     } else if (this.state.modeVue === 'jour') {
       const vj = this.visitesJour;
       if (groupeActif) {
-        contenu = this._renderCartesCommerciaux(vj);
+        contenu = this._renderGroupeJour(vj);
       } else {
         const vjFiltre = this.state.commercialSelectionne
           ? vj.filter(v => String(v.PIN_CDS || '') === this.state.commercialSelectionne)
@@ -1265,7 +1350,7 @@ window.VueVisites = {
         }
       }
     } else if (groupeActif) {
-      contenu = this._renderCartesCommerciaux(this.visitesSemaine.flatMap(j => j.visites));
+      contenu = this._renderGrilleManagerSemaine();
     } else {
       const semaine = this.visitesSemaine.map(j => ({
         ...j,
@@ -1282,7 +1367,7 @@ window.VueVisites = {
             <div class="planning-jour ${j.iso === today ? 'planning-jour-today' : ''}"
                  onclick="VueVisites.state.dateVue='${j.iso}';VueVisites.state.modeVue='jour';VueVisites.render()">
               <div class="pj-label">${j.label}</div>
-              <div class="pj-count">${j.visites.length ? j.visites.length + 'v' : ''}</div>
+              <div class="pj-count">${j.visites.length ? j.visites.length + 'v' : ''}${this._resumeJour(j.visites).photos ? ` 📷${this._resumeJour(j.visites).photos}` : ''}</div>
               ${j.visites.slice(0, maxParJour).map(v => `
                 <div class="pj-item" style="border-left:3px solid ${this.STATUT_COULEURS[this._statutEffectif(v)] || 'var(--c-text-2)'}">
                   <span class="pj-heure">${v.Heure || '—'}</span>
