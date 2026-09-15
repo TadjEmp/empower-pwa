@@ -125,13 +125,24 @@ function similariteNoms(a, b) {
   const na = normaliserNom(a), nb = normaliserNom(b);
   if (!na || !nb) return 0;
   if (na === nb) return 100;
-  // Comparaison sur la partie distinctive (mots génériques retirés) quand
-  // elle reste substantielle des deux côtés ; repli sur le nom complet sinon
-  // (évite de comparer deux chaînes vides si le nom n'est QUE le mot générique).
   const da = stripGeneriques(a), db = stripGeneriques(b);
-  const [ca, cb] = (da.length >= 3 && db.length >= 3) ? [da, db] : [na, nb];
-  const maxLen = Math.max(ca.length, cb.length);
-  return Math.round((1 - distanceLevenshtein(ca, cb) / maxLen) * 100);
+  // Repli sur le nom complet — précédemment utilisé quand la partie
+  // distinctive était courte — était CONTRE-PRODUCTIF : "MC INFORMATIQUE"
+  // vs "MR INFORMATIQUE" (parties distinctives "MC"/"MR", 2 lettres, deux
+  // enseignes sans rapport) retombait sur les noms complets, où le long
+  // "INFORMATIQUE" partagé dilue la différence et donne 93% de similarité.
+  // Vérifié en test réel après un premier passage en production de ce
+  // correctif — 39 doublons "probables" annoncés, dont l'utilisateur a
+  // justement contesté la fiabilité en review manuelle.
+  // Sous un seuil de longueur, seule une partie distinctive IDENTIQUE compte
+  // comme correspondance ; sinon on considère les enseignes différentes,
+  // sans repli qui réintroduirait le biais.
+  const SEUIL_COURT = 4;
+  if (da.length < SEUIL_COURT || db.length < SEUIL_COURT) {
+    return (da === db && da.length > 0) ? 100 : 0;
+  }
+  const maxLen = Math.max(da.length, db.length);
+  return Math.round((1 - distanceLevenshtein(da, db) / maxLen) * 100);
 }
 
 // Condensé lecture-seule d'une visite déjà réalisée — utilisé pour pré-remplir
