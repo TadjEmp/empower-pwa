@@ -692,7 +692,7 @@ window.VuePipeline = {
                 </div>
                 <div class="kanban-carte-meta">
                   ${l.POTENTIEL ? `<span class="pot-pill pot-${(l.POTENTIEL||'').toLowerCase()}">${l.POTENTIEL}</span>` : ''}
-                  ${l.CANAL ? `<span style="font-size:10px;padding:1px 6px;border-radius:99px;background:var(--c-bg);border:1px solid var(--c-border);color:var(--c-text-2);white-space:nowrap">${l.CANAL}</span>` : ''}
+                  ${l.CANAL ? `<span style="font-size:11px;color:var(--c-text-2);white-space:nowrap">${l.CANAL}</span>` : ''}
                 </div>
                 <div class="kanban-carte-meta" style="margin-top:3px">
                   <span style="color:var(--c-text-2);font-size:11px">👤 ${this._nomCDS(l.PIN_CDS_Assigne)}</span>

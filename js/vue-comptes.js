@@ -390,12 +390,13 @@ window.VueComptes = {
               : null;
             const dernActSem  = dernActJours !== null ? Math.floor(dernActJours / 7) : null;
             const inactif45   = dernActJours !== null && dernActJours > 45;
+            // BLOC 06 (09/2026) — pill pleine hardcodée → point + mot (V7 §4)
             const badgeDernier = dernActSem !== null
               ? (dernActSem === 0
-                  ? `<span style="font-size:11px;font-weight:700;color:var(--c-success);background:color-mix(in srgb,var(--c-success) 12%,transparent);padding:2px 8px;border-radius:99px;border:1px solid color-mix(in srgb,var(--c-success) 30%,transparent)">Cette semaine</span>`
+                  ? `<span class="v7-statut" style="color:var(--c-success);font-size:11px">Cette semaine</span>`
                   : dernActSem <= 4
-                  ? `<span style="font-size:11px;font-weight:700;color:var(--c-warning);background:color-mix(in srgb,var(--c-warning) 12%,transparent);padding:2px 8px;border-radius:99px;border:1px solid color-mix(in srgb,var(--c-warning) 30%,transparent)">il y a ${dernActSem} sem.</span>`
-                  : `<span style="font-size:11px;font-weight:700;color:var(--c-danger);background:color-mix(in srgb,var(--c-danger) 12%,transparent);padding:2px 8px;border-radius:99px;border:1px solid color-mix(in srgb,var(--c-danger) 30%,transparent)">${dernActSem} sem. sans contact</span>`)
+                  ? `<span class="v7-statut" style="color:var(--c-warning);font-size:11px">il y a ${dernActSem} sem.</span>`
+                  : `<span class="v7-statut" style="color:var(--c-danger);font-size:11px">${dernActSem} sem. sans contact</span>`)
               : '';
             const alerteInactivite = inactif45
               ? `<div class="alerte-inactivite"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> INACTIF ${dernActJours}j — aucun contact</div>`
@@ -407,7 +408,7 @@ window.VueComptes = {
             <div class="cc-pills" onclick="VueComptes.ouvrirFiche('${c.ID_Compte}')">
               ${badgeStatutCompte(c)}
               ${this._badgeEmpower(c)}
-              ${estDoublon ? `<span style="font-size:11px;font-weight:700;color:var(--c-warning);background:color-mix(in srgb,var(--c-warning) 12%,transparent);padding:2px 8px;border-radius:99px;border:1px solid color-mix(in srgb,var(--c-warning) 30%,transparent)" title="Un autre compte porte le même nom — ouvrir la fiche pour supprimer le doublon">⚠️ Doublon</span>` : ''}
+              ${estDoublon ? `<span style="color:var(--c-warning);font-size:11px;font-weight:700" title="Un autre compte porte le même nom — ouvrir la fiche pour supprimer le doublon">⚠️ Doublon</span>` : ''}
               ${badgeDernier}
               ${this._badgePriorite(c.Priorite)}
               <span style="margin-left:auto;font-size:12px;color:var(--c-muted)">FY26 ${caFY26}</span>
