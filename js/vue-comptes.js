@@ -6,6 +6,9 @@ window.VueComptes = {
 
   state: {
     comptes: [], recherche: '', filtreStatut: 'TOUS',
+    // BLOC 07 §8 (09/2026) — quarter FY27 réellement actif (params.QuarterActif),
+    // au lieu du Q1 hardcodé historique. Défaut Q1 tant que le fetch n'a pas répondu.
+    quarter: 'Q1',
     filtreEmpower: 'TOUS', // TOUS | EMPOWER | GROSSISTE — dérivé de has_empower (cf. décisions Bloc 1 §6.4)
     filtreCDSPin: 'TOUS',  // BUG-06 : filtre Manager par CDS
     triPar: 'PRIORITE', chargement: true,
@@ -121,7 +124,7 @@ window.VueComptes = {
       case 'ville':  return normaliserNom(c.Ville || '');
       case 'canal':  return normaliserNom(c.CANAL || '');
       case 'fy26':   return window.parseCA(c.CA_FY26) || 0;
-      case 'q1fy27': return window.parseCA(c.CA_Q1FY27) || 0;
+      case 'q1fy27': return window.caQuarterActif(c, this.state.quarter) || 0;
       case 'action': { const d = this._prochaineVisite(c); return d ? new Date(d).getTime() : 0; }
       case 'cds':    return window.resolveCDS(c.PIN_CDS_Assigne) || '';
       default:       return '';
@@ -143,14 +146,18 @@ window.VueComptes = {
     this.state.chargement = true;
     this.render();
     try {
-      const [raw, objectifs, cdsApi, visites, appels] = await Promise.all([
+      const [raw, objectifs, cdsApi, visites, appels, params] = await Promise.all([
         SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
         SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
         SheetsAPI.lireCDS(), // V5 BUG1 — liste CDS dynamique (inclut Alexandra)
         SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES').catch(() => []),
         SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING').catch(() => []),
+        SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS').catch(() => []),
       ]);
       initCDSRegistry(objectifs); // BUG-02
+      // BLOC 07 §8 — quarter FY27 actif, même pattern que vue-dashboard-manager.js
+      const paramMap = Object.fromEntries((params || []).map(p => [p.Parametre, p.Valeur]));
+      this.state.quarter = paramMap.QuarterActif || 'Q1';
       // BUG-06 : CDS ne voit que ses comptes dès l'ouverture
       this.state.comptes = raw.filter(c =>
         Session.voitTout() || Number(c.PIN_CDS_Assigne) === Session.pin
@@ -178,8 +185,8 @@ window.VueComptes = {
 
   // Statut compte calculé avec parseCA (immunisé dates corrompues type "11/4/1903")
   _statutCompte(c) {
-    const q1 = window.parseCA(c.CA_Q1FY27);
-    if (q1 !== null && q1 > 0) return 'actif';
+    const qActif = window.caQuarterActif(c, this.state.quarter);
+    if (qActif !== null && qActif > 0) return 'actif';
     const fy26 = window.parseCA(c.CA_FY26);
     if (fy26 !== null && fy26 > 0) return 'a_reactiver';
     return 'silencieux';
@@ -237,8 +244,8 @@ window.VueComptes = {
     if (this.state.triPar === 'PRIORITE')
       l.sort((a, b) => (this.PRIORITE_ORDRE[a.Priorite] ?? 9) - (this.PRIORITE_ORDRE[b.Priorite] ?? 9));
     if (this.state.triPar === 'CA')
-      l.sort((a, b) => (window.parseCA(b.CA_Q1FY27) || window.parseCA(b.CA_FY26) || 0)
-                     - (window.parseCA(a.CA_Q1FY27) || window.parseCA(a.CA_FY26) || 0));
+      l.sort((a, b) => (window.caQuarterActif(b, this.state.quarter) || window.parseCA(b.CA_FY26) || 0)
+                     - (window.caQuarterActif(a, this.state.quarter) || window.parseCA(a.CA_FY26) || 0));
     if (this.state.triPar === 'NOM')
       l.sort((a, b) => String(a.Nom_Compte || '').localeCompare(String(b.Nom_Compte || '')));
     return l;
@@ -285,7 +292,7 @@ window.VueComptes = {
     const _cs       = this.state.comptes;
     const nbActif   = _cs.filter(c => this._statutCompte(c) === 'actif').length;
     const nbReact   = _cs.filter(c => this._statutCompte(c) === 'a_reactiver').length;
-    const caTotalP  = _cs.reduce((s, c) => s + (window.parseCA(c.CA_Q1FY27) || window.parseCA(c.CA_FY26) || 0), 0);
+    const caTotalP  = _cs.reduce((s, c) => s + (window.caQuarterActif(c, this.state.quarter) || window.parseCA(c.CA_FY26) || 0), 0);
     const nb45j     = _cs.filter(c => {
       const d = this._dernierContact(c);
       if (!d) return false;
@@ -374,7 +381,7 @@ window.VueComptes = {
             // fmtCA : retourne '—' si valeur invalide/nulle/corrompue (date "11/4/1903" → '—')
             const caFY25 = window.fmtCA(c.CA_FY25);
             const caFY26 = window.fmtCA(c.CA_FY26);
-            const caQ1   = window.fmtCA(c.CA_Q1FY27);
+            const caQ1   = window.fmtCA(window.caQuarterActif(c, this.state.quarter));
             // resolveCDS (utils.js) : retourne '—' si PIN inconnu — jamais de PIN brut dans l'UI
             const nomCDS = window.resolveCDS(c.PIN_CDS_Assigne) !== '—'
               ? window.resolveCDS(c.PIN_CDS_Assigne)
@@ -412,7 +419,7 @@ window.VueComptes = {
               ${badgeDernier}
               ${this._badgePriorite(c.Priorite)}
               <span style="margin-left:auto;font-size:12px;color:var(--c-muted)">FY26 ${caFY26}</span>
-              <span style="font-size:13px;font-weight:700;color:var(--c-title)">FY27 Q1 ${caQ1 !== '—' ? caQ1 : '—'}</span>
+              <span style="font-size:13px;font-weight:700;color:var(--c-title)">FY27 ${this.state.quarter} ${caQ1 !== '—' ? caQ1 : '—'}</span>
             </div>
             <div class="cc-nom" onclick="VueComptes.ouvrirFiche('${c.ID_Compte}')">${c.Nom_Compte || '—'}</div>
             <div class="cc-infos" onclick="VueComptes.ouvrirFiche('${c.ID_Compte}')">
@@ -451,7 +458,7 @@ window.VueComptes = {
               <th style="cursor:pointer" onclick="VueComptes.triParColonneCompte('canal')">Canal${this._indicateurTriCompte('canal')}</th>
               <th class="num">CA FY25</th>
               <th class="num" style="cursor:pointer" onclick="VueComptes.triParColonneCompte('fy26')">CA FY26${this._indicateurTriCompte('fy26')}</th>
-              <th class="num" style="cursor:pointer" onclick="VueComptes.triParColonneCompte('q1fy27')">CA Q1 FY27${this._indicateurTriCompte('q1fy27')}</th>
+              <th class="num" style="cursor:pointer" onclick="VueComptes.triParColonneCompte('q1fy27')">CA ${this.state.quarter} FY27${this._indicateurTriCompte('q1fy27')}</th>
               <th style="cursor:pointer" onclick="VueComptes.triParColonneCompte('action')">Prochaine action${this._indicateurTriCompte('action')}</th>
               <th style="cursor:pointer" onclick="VueComptes.triParColonneCompte('cds')">CDS${this._indicateurTriCompte('cds')}</th>
               <th>Actions</th>
@@ -460,7 +467,7 @@ window.VueComptes = {
               ${liste.map(c => {
                 const caFY25 = window.fmtCA(c.CA_FY25);
                 const caFY26 = window.fmtCA(c.CA_FY26);
-                const caQ1   = window.fmtCA(c.CA_Q1FY27);
+                const caQ1   = window.fmtCA(window.caQuarterActif(c, this.state.quarter));
                 const nomCDS = window.resolveCDS(c.PIN_CDS_Assigne) !== '—'
                   ? window.resolveCDS(c.PIN_CDS_Assigne)
                   : (c.Nom_CDS ? window.resolveCDS(c.Nom_CDS) : null);
@@ -473,9 +480,9 @@ window.VueComptes = {
                 const dteDA = this._dernierContact(c) || '';
                 const joursDA = dteDA ? Math.max(0, Math.floor((Date.now() - new Date(dteDA).getTime()) / 86400000)) : null;
                 const rowStyle = (joursDA !== null && joursDA > 45) ? 'border-left:3px solid var(--c-danger);background:rgba(217,48,37,.04)' : '';
-                // Delta % — Q1FY27 annualisé (×4) vs CA FY26, coloré vert/rouge (Bloc 4)
+                // Delta % — quarter actif annualisé (×4) vs CA FY26, coloré vert/rouge (Bloc 4)
                 const fy26Num = window.parseCA(c.CA_FY26);
-                const q1Num   = window.parseCA(c.CA_Q1FY27);
+                const q1Num   = window.caQuarterActif(c, this.state.quarter);
                 let deltaHtml = '';
                 if (fy26Num && q1Num !== null) {
                   const delta = Math.round(((q1Num * 4) - fy26Num) / fy26Num * 100);

@@ -22,6 +22,9 @@ window.VueFicheCompte = {
     modalRapportPhoning: false,
     empowerEnCours: false,
     suppressionEnCours: false,
+    // BLOC 07 §8 (09/2026) — quarter FY27 réellement actif (params.QuarterActif),
+    // pour rester cohérent avec la liste Comptes qui a mené à cette fiche.
+    quarter: 'Q1',
   },
 
   async init(idCompte) {
@@ -75,12 +78,16 @@ window.VueFicheCompte = {
     this.state.formCoord = { adresse: '', ville: '', code_postal: '', departement: '', tel: '', email: '' };
     this.state.modalRapportPhoning = false;
     this.state.suppressionEnCours = false;
-    const [comptes, rawV17, visites, appels] = await Promise.all([
+    const [comptes, rawV17, visites, appels, params] = await Promise.all([
       SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
       SheetsAPI.lire('V17', '📋 COMPTES HISTORIQUES'),
       SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES'),
       SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING'),
+      SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS').catch(() => []),
     ]);
+    // BLOC 07 §8 — quarter FY27 actif, même pattern que vue-dashboard-manager.js
+    const paramMap = Object.fromEntries((params || []).map(p => [p.Parametre, p.Valeur]));
+    this.state.quarter = paramMap.QuarterActif || 'Q1';
     // ID_Compte (id_compte_gas) est un identifiant legacy pas garanti non-null sur
     // tous les chemins d'écriture — on tente d'abord la vraie clé primaire Supabase
     // (_uuid) avant de retomber sur ID_Compte, pour ne pas échouer silencieusement
@@ -419,7 +426,10 @@ window.VueFicheCompte = {
           <div class="id-ligne"><span>Prochaine visite</span><strong>${this._dateLigne(this._prochaineVisitePlanifiee())}</strong></div>
           <div class="id-ligne"><span>CA FY25</span><strong>${window.fmtCA(this.state.v17?.['CA FY25 €'] ?? c.CA_FY25)} €</strong></div>
           <div class="id-ligne"><span>CA FY26</span><strong>${window.fmtCA(this.state.v17?.['CA FY26 €'] ?? c.CA_FY26)} €</strong></div>
-          <div class="id-ligne"><span>Dernier Q (Q1·27)</span><strong>${(window.parseCA(this.state.v17?.['CA Q1FY27 €'] ?? c.CA_Q1FY27) !== null ? window.fmtCA(window.parseCA(this.state.v17?.['CA Q1FY27 €'] ?? c.CA_Q1FY27)) : '—')} €</strong></div>
+          <div class="id-ligne"><span>Dernier Q (${this.state.quarter}·27)</span><strong>${(() => {
+            const v = window.caQuarterActif(this.state.v17, this.state.quarter, 'sellin') ?? window.caQuarterActif(c, this.state.quarter);
+            return v !== null ? window.fmtCA(v) : '—';
+          })()} €</strong></div>
           <div class="id-ligne"><span>Potentiel</span><strong>${c.POTENTIEL || this.state.v17?.POTENTIEL_UPSELL || '—'}</strong></div>
           ${this.state.v17?.GROSSISTE_PRINCIPAL ? `<div class="id-ligne"><span>Grossiste</span><strong>${this.state.v17.GROSSISTE_PRINCIPAL}</strong></div>` : ''}
         </div>
@@ -447,7 +457,7 @@ window.VueFicheCompte = {
     const v17 = this.state.v17;
     const fy25 = window.parseCA(v17?.['CA FY25 €'] ?? c.CA_FY25) ?? 0;
     const fy26 = window.parseCA(v17?.['CA FY26 €'] ?? c.CA_FY26) ?? 0;
-    const fy27 = window.parseCA(v17?.['CA Q1FY27 €'] ?? c.CA_Q1FY27) ?? 0;
+    const fy27 = (window.caQuarterActif(v17, this.state.quarter, 'sellin') ?? window.caQuarterActif(c, this.state.quarter)) ?? 0;
     const maxCA = Math.max(fy25, fy26, fy27, 1);
 
     return `
@@ -460,7 +470,7 @@ window.VueFicheCompte = {
         <div class="graphique-ca">
           ${this._barreCA('FY25', fy25, maxCA)}
           ${this._barreCA('FY26', fy26, maxCA)}
-          ${this._barreCA('Q1·27', fy27, maxCA)}
+          ${this._barreCA(this.state.quarter + '·27', fy27, maxCA)}
         </div>
         ${v17 ? `
         <div class="grille-identite" style="margin-top:12px">

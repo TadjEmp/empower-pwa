@@ -857,8 +857,22 @@ window.Topbar = Topbar;
     }).format(n);
   }
 
+  // BLOC 07 §8 (09/2026) — résout la clé CA du quarter FY27 réellement actif
+  // (params.QuarterActif) au lieu du Q1 hardcodé historique (vue-comptes.js,
+  // vue-comptes-historiques.js). `forme` distingue la forme "comptes"
+  // (CA_Q1FY27) de la forme "sellin_agregats" ('CA Q1FY27 €').
+  function caQuarterActifCle(quarter, forme) {
+    const q = /^Q[1-4]$/.test(quarter) ? quarter : 'Q1';
+    return forme === 'sellin' ? `CA ${q}FY27 €` : `CA_${q}FY27`;
+  }
+  function caQuarterActif(obj, quarter, forme) {
+    return parseCA(obj ? obj[caQuarterActifCle(quarter, forme)] : null);
+  }
+
   window.parseCA = parseCA;
   window.fmtCA   = fmtCA;
+  window.caQuarterActifCle = caQuarterActifCle;
+  window.caQuarterActif    = caQuarterActif;
 })();
 
 // ── v5.0 M5 — Skeleton Loaders ──────────────────────────

@@ -12,6 +12,10 @@ window.VueComptesHistoriques = {
     recherche: '',
     triPar: 'PRIORITE',
     triCol: null, triSens: 'asc', // Bloc 4 — tri de colonnes datagrid desktop
+    // BLOC 07 §8 (09/2026) — quarter FY27 réellement actif (params.QuarterActif).
+    // Le champ interne reste nommé caQ1Fy27 (évite un rename large) mais porte
+    // désormais la valeur du quarter actif, pas systématiquement Q1.
+    quarter: 'Q1',
   },
 
   // ── Bloc 4 refonte desktop : tri de colonnes cliquables (datagrid) ──
@@ -41,11 +45,16 @@ window.VueComptesHistoriques = {
     this.state.erreur = null;
     this.render();
     try {
-      const [rawV17, rawMDB] = await Promise.all([
+      const [rawV17, rawMDB, params] = await Promise.all([
         SheetsAPI.lire('V17', '📋 COMPTES HISTORIQUES'),
         SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
+        SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS').catch(() => []),
       ]);
       const mapMDB = new Map(rawMDB.map(c => [normaliserNom(c.Nom_Compte), c]));
+      // BLOC 07 §8 — quarter FY27 actif, même pattern que vue-dashboard-manager.js
+      const paramMap = Object.fromEntries((params || []).map(p => [p.Parametre, p.Valeur]));
+      this.state.quarter = paramMap.QuarterActif || 'Q1';
+      const quarter = this.state.quarter;
 
       this.state.comptes = rawV17.map(r => {
         const mdb = mapMDB.get(normaliserNom(r.RESELLER || '')) || null;
@@ -53,7 +62,7 @@ window.VueComptesHistoriques = {
         // parseCA robuste : valeurs corrompues (dates "11/4/1903") → null (Bloc 9 #2)
         const caFy25   = window.parseCA(r['CA FY25 €']  || r.CA_FY25  || null);
         const caFy26   = window.parseCA(r['CA FY26 €']  || r.CA_FY26  || null);
-        const caQ1Fy27 = window.parseCA(r['CA Q1FY27 €'] || mdb?.CA_Q1FY27 || null);
+        const caQ1Fy27 = window.caQuarterActif(r, quarter, 'sellin') ?? window.caQuarterActif(mdb, quarter);
 
         // PIN CDS → prénom via resolveCDS (Bloc 9 #1) ; jamais de PIN brut dans l'UI
         const pinBrut = mdb?.PIN_CDS_Assigne || null;
@@ -199,7 +208,7 @@ window.VueComptesHistoriques = {
             <div class="cc-infos">
               <span>📍 ${c.canal !== '—' ? c.canal : '—'}</span>
               ${caFy25Fmt !== '—' ? `<span>FY25 : ${caFy25Fmt} €</span>` : ''}
-              ${caQ1Fy27Fmt !== '—' ? `<span style="color:var(--c-success)">Q1FY27 : ${caQ1Fy27Fmt} €</span>` : ''}
+              ${caQ1Fy27Fmt !== '—' ? `<span style="color:var(--c-success)">${this.state.quarter}FY27 : ${caQ1Fy27Fmt} €</span>` : ''}
               ${Session.voitTout() && c.cdsPrenom !== '—' ? `<span>👤 ${c.cdsPrenom}</span>` : ''}
             </div>
             ${c.statut && c.statut !== '—' ? `
@@ -224,7 +233,7 @@ window.VueComptesHistoriques = {
               <th style="cursor:pointer" onclick="VueComptesHistoriques.triParColonneHist('canal')">Canal${this._indicateurTriHist('canal')}</th>
               <th class="num" style="cursor:pointer" onclick="VueComptesHistoriques.triParColonneHist('fy25')">CA FY25${this._indicateurTriHist('fy25')}</th>
               <th class="num" style="cursor:pointer" onclick="VueComptesHistoriques.triParColonneHist('fy26')">CA FY26${this._indicateurTriHist('fy26')}</th>
-              <th class="num" style="cursor:pointer" onclick="VueComptesHistoriques.triParColonneHist('q1fy27')">CA Q1 FY27${this._indicateurTriHist('q1fy27')}</th>
+              <th class="num" style="cursor:pointer" onclick="VueComptesHistoriques.triParColonneHist('q1fy27')">CA ${this.state.quarter} FY27${this._indicateurTriHist('q1fy27')}</th>
               <th>Statut</th>${Session.voitTout() ? `<th style="cursor:pointer" onclick="VueComptesHistoriques.triParColonneHist('cds')">CDS${this._indicateurTriHist('cds')}</th>` : ''}<th>Actions</th>
             </tr></thead>
             <tbody>
