@@ -386,9 +386,29 @@ window.VuePipeline = {
       if (!lead.Date_Creation_Compte) champs.Date_Creation_Compte = dateISOLocale();
     }
     const doCreerCompte = statut === 'COMPTE_CREE' || statut === 'INTEGRE';
+    const statutAvant = lead._statut;
     try {
       await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', id, champs);
       Object.assign(lead, champs, { _statut: statut });
+      // BLOC 09 — historise chaque transition (📊_ACTIONS) : fondation pour
+      // un futur rapport de vélocité pipeline (temps moyen par étape).
+      // Non bloquant, sans incidence sur le flux existant si l'écriture échoue.
+      // Aucune donnée historique avant ce jour : Date_Statut_Change n'écrase
+      // que le dernier changement, donc pas de rétro-remplissage possible —
+      // le rapport ne sera exploitable qu'une fois assez de transitions
+      // accumulées (à ne pas construire prématurément sur trop peu de données).
+      if (statutAvant && statutAvant !== statut) {
+        SheetsAPI.ecrire('EMPOWER_MDB', '📊_ACTIONS', {
+          ID_Action: genId('ACT'),
+          Date_Action: new Date().toISOString(),
+          Type_Action: 'CHANGEMENT_STATUT',
+          Source: 'ESI_TRACKER',
+          PIN_CDS: Number(lead.PIN_CDS_Assigne) || null,
+          Nom_Compte: lead.Nom_Compte,
+          Statut_Avant: statutAvant,
+          Statut_Apres: statut,
+        }).catch(() => {});
+      }
       if (!silencieux) {
         this.state.modal = null;
         Toast.afficher(`✅ ${lead.Nom_Compte} → ${this.STATUTS.find(s => s.id === statut).lbl}`, 'succes');
