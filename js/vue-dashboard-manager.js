@@ -372,15 +372,38 @@ window.VueDashboardManager = {
     // cf. filtre "Sans CDS" déjà existant dans Comptes (VueComptes).
     const comptesNonAttribues = comptes.filter(c => !c.PIN_CDS_Assigne);
 
+    // BLOC 04 §6 — cadre spécial pipeline froid, par visites.Type_Visite,
+    // cross-filtrable par commercial (visibilité manager dédiée, hors CA/objectifs).
+    const TYPES_VISITE = ['PROSPECTION_FROIDE', 'SUIVI_ACTIF', 'ONBOARDING_EMPOWER'];
+    const pipelineFroidParCDS = equipe.map(e => {
+      const visitesCDS = visites.filter(v => Number(v.PIN_CDS) === e.pin);
+      const parType = {};
+      TYPES_VISITE.forEach(t => {
+        parType[t] = visitesCDS.filter(v => String(v.Type_Visite || '').toUpperCase() === t).length;
+      });
+      return { pin: e.pin, nom: e.nom, ...parType };
+    });
+    const pipelineFroidTotal = TYPES_VISITE.reduce((acc, t) => {
+      acc[t] = pipelineFroidParCDS.reduce((s, c) => s + c[t], 0);
+      return acc;
+    }, {});
+
     return {
       quarter, semaine, equipe, leadsBloques, comptesRouges, comptesNonAttribues,
       tauxIntegration, integres, assignes, caTotal, objTotal, caFY26Total,
       pctTotal: objTotal > 0 ? Math.round(caTotal / objTotal * 100) : 0,
-      pipelineStages, activiteEquipe,
+      pipelineStages, activiteEquipe, pipelineFroidParCDS, pipelineFroidTotal,
     };
   },
 
   exporterCOPIL() { window.print(); },
+
+  // BLOC 04 §6 — filtre le cadre "Pipeline froid" par commercial (null = équipe entière).
+  filtrerPipelineFroid(pin) {
+    if (!this.state) return;
+    this.state.filtrePipelineFroidCDS = pin;
+    this.render();
+  },
 
   ouvrirExportDir()  { this.state.exportDirOuvert = true;  this.render(); },
   fermerExportDir()  { this.state.exportDirOuvert = false; this.render(); },
@@ -863,6 +886,45 @@ window.VueDashboardManager = {
           </div>
         `)}
         </div><!-- /dash-grid-2col CA+Pipeline -->
+
+        ${(() => {
+          const filtrePF = this.state.filtrePipelineFroidCDS || null;
+          const ligneCDS = filtrePF ? d.pipelineFroidParCDS.find(c => c.pin === filtrePF) : null;
+          const totalAffiche = ligneCDS || d.pipelineFroidTotal;
+          const LBL = { PROSPECTION_FROIDE: 'Prospection froide', SUIVI_ACTIF: 'Suivi actif', ONBOARDING_EMPOWER: 'Onboarding Empower' };
+          const COUL = { PROSPECTION_FROIDE: '#0EA5E9', SUIVI_ACTIF: '#f59e0b', ONBOARDING_EMPOWER: '#00b27e' };
+          const pfCorps = `
+            <p style="font-size:12px;color:var(--c-text-2);margin:0 0 10px">
+              Répartition des visites par type — cadre dédié au suivi terrain, distinct du CA/objectifs.
+            </p>
+            <select onchange="VueDashboardManager.filtrerPipelineFroid(this.value?Number(this.value):null)"
+                    style="padding:6px 8px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);font-size:12px;margin-bottom:12px">
+              <option value="">Toute l'équipe</option>
+              ${d.equipe.map(e => `<option value="${e.pin}" ${filtrePF === e.pin ? 'selected' : ''}>${e.nom}</option>`).join('')}
+            </select>
+            <div class="stat-tuiles">
+              ${Object.keys(LBL).map(t => `
+                <div class="stat-tuile" style="border-top:3px solid ${COUL[t]}">
+                  <div class="stat-tuile-lbl">${LBL[t]}</div>
+                  <div class="stat-tuile-val" style="color:${COUL[t]}">${totalAffiche[t] || 0}</div>
+                </div>`).join('')}
+            </div>
+            ${!filtrePF ? `
+            <div class="tableau-equipe" style="margin-top:12px">
+              <div class="te-ligne te-head" style="grid-template-columns:1.2fr 0.9fr 0.7fr 0.9fr">
+                <span>CDS</span><span>Froide</span><span>Actif</span><span>Onboarding</span>
+              </div>
+              ${d.pipelineFroidParCDS.map(c => `
+              <div class="te-ligne" style="cursor:pointer;grid-template-columns:1.2fr 0.9fr 0.7fr 0.9fr" onclick="VueDashboardManager.filtrerPipelineFroid(${c.pin})">
+                <span><strong>${c.nom}</strong></span>
+                <span>${c.PROSPECTION_FROIDE}</span>
+                <span>${c.SUIVI_ACTIF}</span>
+                <span>${c.ONBOARDING_EMPOWER}</span>
+              </div>`).join('')}
+            </div>` : ''}
+          `;
+          return this._sectionThematique('🧊 Pipeline froid', '#0EA5E9', pfCorps);
+        })()}
 
         <div class="dash-grid-2col">
         ${this._sectionThematique('🟦 Activité terrain', '#0EA5E9', `
