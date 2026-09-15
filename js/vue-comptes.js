@@ -244,8 +244,7 @@ window.VueComptes = {
     if (this.state.triPar === 'PRIORITE')
       l.sort((a, b) => (this.PRIORITE_ORDRE[a.Priorite] ?? 9) - (this.PRIORITE_ORDRE[b.Priorite] ?? 9));
     if (this.state.triPar === 'CA')
-      l.sort((a, b) => (window.caQuarterActif(b, this.state.quarter) || window.parseCA(b.CA_FY26) || 0)
-                     - (window.caQuarterActif(a, this.state.quarter) || window.parseCA(a.CA_FY26) || 0));
+      l.sort((a, b) => window.caFY27Complet(b) - window.caFY27Complet(a));
     if (this.state.triPar === 'NOM')
       l.sort((a, b) => String(a.Nom_Compte || '').localeCompare(String(b.Nom_Compte || '')));
     return l;
@@ -292,7 +291,7 @@ window.VueComptes = {
     const _cs       = this.state.comptes;
     const nbActif   = _cs.filter(c => this._statutCompte(c) === 'actif').length;
     const nbReact   = _cs.filter(c => this._statutCompte(c) === 'a_reactiver').length;
-    const caTotalP  = _cs.reduce((s, c) => s + (window.caQuarterActif(c, this.state.quarter) || window.parseCA(c.CA_FY26) || 0), 0);
+    const caTotalP  = _cs.reduce((s, c) => s + window.caFY27Complet(c), 0);
     const nb45j     = _cs.filter(c => {
       const d = this._dernierContact(c);
       if (!d) return false;

@@ -869,10 +869,22 @@ window.Topbar = Topbar;
     return parseCA(obj ? obj[caQuarterActifCle(quarter, forme)] : null);
   }
 
+  // BLOC 09 (09/2026) — audit "CA FY27 affiche 50K, absolument faux" : le KPI
+  // "CA FY27" sommait caQuarterActif(quarter) avec un repli sur CA_FY26 ENTIER
+  // pour les comptes sans CA ce trimestre — mélangeait deux exercices fiscaux
+  // différents sous une même étiquette "FY27" (vérifié : 50 706€ obtenus avec
+  // cette logique vs 21 390€ de vrai cumul FY27, écart confirmé par requête
+  // SQL directe). Somme UNIQUEMENT les 4 colonnes FY27 réelles, sans repli.
+  function caFY27Complet(c) {
+    if (!c) return 0;
+    return ['Q1', 'Q2', 'Q3', 'Q4'].reduce((s, q) => s + (parseCA(c[`CA_${q}FY27`]) || 0), 0);
+  }
+
   window.parseCA = parseCA;
   window.fmtCA   = fmtCA;
   window.caQuarterActifCle = caQuarterActifCle;
   window.caQuarterActif    = caQuarterActif;
+  window.caFY27Complet     = caFY27Complet;
 })();
 
 // ── v5.0 M5 — Skeleton Loaders ──────────────────────────
