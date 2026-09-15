@@ -683,6 +683,7 @@ window.VueDashboardManager = {
           </div><!-- /dash-col-side -->
         </div>
         ${NavBar('home')}
+      ${FusionTabs.accueil()}
         ${this._renderExportDir()}
       `;
       return;
@@ -768,6 +769,7 @@ window.VueDashboardManager = {
         </div><!-- /dash-col-side -->
       </div>
       ${NavBar('reporting')}
+      ${FusionTabs.accueil()}
       ${this._renderExportDir()}
     `;
   },
@@ -790,7 +792,7 @@ window.VueDashboardManager = {
 
     app.innerHTML = `
       <header class="header-vue no-print">
-        <button onclick="Router.aller('#/dashboard')" class="btn-retour">←</button>
+        <button onclick="Router.retour()" class="btn-retour">←</button>
         <h1>Vue équipe</h1>
         <button class="btn-retour" onclick="VueDashboardManager.exporterCOPIL()" title="Export COPIL PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg></button>
       </header>
@@ -879,7 +881,7 @@ window.VueDashboardManager = {
             </div>
             ${d.equipe.map(e => `
             <div class="te-ligne" style="cursor:pointer;grid-template-columns:1.2fr 1.4fr 0.6fr 0.8fr 0.4fr 0.4fr 0.4fr" onclick="Router.aller('#/comptes?cds=${e.pin}')">
-              <span><strong>${PACE[e.pace].lbl} ${e.nom}</strong></span>
+              <span style="display:flex;align-items:center;gap:8px">${avatarCDS(e.pin, 26)}<strong>${e.nom}</strong></span>
               <span style="font-size:12px">${formatEuro(e.ca)} / ${formatEuro(e.obj)}</span>
               <span class="pace-badge ${PACE[e.pace].cls}">${e.pct}%</span>
               <span style="font-size:11px;color:#9333ea">${e.caFY26 > 0 ? formatEuro(e.caFY26) : '—'}</span>
@@ -988,6 +990,7 @@ window.VueDashboardManager = {
         </div><!-- /dash-col-side -->
       </div>
       ${NavBar('reporting')}
+      ${FusionTabs.accueil()}
     `;
   },
 };

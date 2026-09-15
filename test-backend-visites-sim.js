@@ -4,6 +4,12 @@
 //  V2 : _synchroniserVisite → réalisée + notifs    (CDC T6.3)
 //  V3 : _lireDashboard renvoie visitesAujourdhui    (CDC T6.6)
 // ═══════════════════════════════════════
+// ⚠️ OBSOLÈTE (Bloc 3, 09/2026) — ce harnais teste les fonctions internes du
+// backend Google Apps Script (_ecrire, _synchroniserVisite, _lireDashboard)
+// qui n'existent plus : le backend a été migré vers Supabase (js/api.js).
+// Conservé pour référence historique ; sortie propre plutôt qu'un crash.
+console.log('⏭️  test-backend-visites-sim.js — SKIP : backend GAS remplacé par Supabase (js/api.js). Harnais conservé pour référence.');
+process.exit(0);
 // NB : pas de 'use strict' — eval direct non-strict pour que les
 // déclarations `function _x()` de Code.gs fuitent dans ce scope module
 // et que la réassignation `_x = mock` soit vue par les appels internes.

@@ -763,7 +763,13 @@ window.VueQuestionnaire = {
           // jamais avancer son statut pipeline (STATUT_EMPOWER), contrairement à un
           // appel phoning (cf. VuePhoning.valider()) : le lead restait bloqué sur son
           // statut d'attribution (ASSIGNE) même après une visite concluante ou négative.
-          const majProspect = { ...majContact, Date_prochaine_action: d.prochaineActionDate, Flag_traite: 'TRUE' };
+          // Bloc 6 (09/2026) — Date_Derniere_Action inconditionnelle : une
+          // visite loggée vaut contact réel, même convention que la branche
+          // compte ci-dessous et que le phoning (vue-phoning.js).
+          const majProspect = {
+            ...majContact, Date_prochaine_action: d.prochaineActionDate, Flag_traite: 'TRUE',
+            Date_Derniere_Action: d.date, Type_Derniere_Action: 'Visite',
+          };
           if (resultatNorm.includes('Négatif')) {
             majProspect.STATUT_EMPOWER = 'ARCHIVE';
             majProspect.FLAG_ACTION = 'ARCHIVE';
@@ -772,6 +778,8 @@ window.VueQuestionnaire = {
             majProspect.FLAG_ACTION = 'EN_COURS';
           }
           await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', idCible, majProspect);
+          // Bloc 6 — Kanban live (même mécanisme que le phoning)
+          EmpowerBus.emit('contact-prospect', { idProspect: idCible, ...majProspect });
         } else {
           await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', idCible, {
             ...majContact,

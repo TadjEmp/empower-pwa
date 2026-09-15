@@ -83,6 +83,7 @@ window.VuePipeline = {
       // les colonnes du tableau, pour éviter de la re-choisir à chaque visite.
       kanbanDense: localStorage.getItem('esi_kanban_dense') === '1',
     };
+    this._ecouterContacts(); // Bloc 6 — Kanban live (abonnement idempotent)
     this.render();
     try {
       const [raw, params, objectifs, cdsApi] = await Promise.all([
@@ -140,6 +141,23 @@ window.VuePipeline = {
     }
   },
 
+  // Bloc 6 — Kanban live (Option A validée Ask User) : patche la carte en
+  // mémoire dès qu'un appel/visite est loggé ailleurs (phoning, questionnaire),
+  // re-rend immédiatement si le Tracker est la vue affichée. Abonnement posé
+  // une seule fois par session (garde _busAbonne) — init() est rappelée à
+  // chaque retour sur #/empower-tracker, l'abonnement lui doit survivre à la
+  // navigation (le bus est global, pas recréé par le routeur).
+  _ecouterContacts() {
+    if (VuePipeline._busAbonne) return;
+    VuePipeline._busAbonne = true;
+    EmpowerBus.on('contact-prospect', ({ idProspect, ...maj }) => {
+      const lead = (VuePipeline.state.leads || []).find(l => String(l.ID_Prospect) === String(idProspect));
+      if (!lead) return; // pas (encore) chargé dans ce Tracker — rien à patcher
+      Object.assign(lead, maj);
+      if (window.location.hash.startsWith('#/empower-tracker')) VuePipeline.render();
+    });
+  },
+
   // Statut pipeline — STATUT_EMPOWER prioritaire, sinon déduit des flags historiques
   // v5.0 M3 — A_TRAITER (backend) = SAISIE (colonne kanban "À traiter")
   _statutDe(p) {
@@ -191,6 +209,7 @@ window.VuePipeline = {
       'COMPTE_CREE':          '🏢 Compte créé',
       'NON_INTERESSE':        '❌ Non intéressé',
       'PERDU':                '🗄 Perdu',
+      'A_VISITER':            '📍 À visiter',
     };
     return MAP[String(flag || '').toUpperCase()] || flag || '—';
   },
@@ -205,17 +224,26 @@ window.VuePipeline = {
     return [...vues.values()].sort((a, b) => a.localeCompare(b, 'fr'));
   },
 
-  // Ancienneté dans l'étage courant — Date_Statut_Change posé à chaque déplacement/attribution.
-  // Fallback Timestamp/Date_Import pour les leads antérieurs au champ (rattrapage 07/2026).
+  // Bloc 6 (09/2026, redéfinition validée Ask User) — jours depuis le DERNIER
+  // CONTACT RÉEL (appel ou visite loggé), pas depuis le dernier changement de
+  // colonne Kanban. Date_Derniere_Action est écrit par vue-phoning.js et
+  // vue-questionnaire.js à chaque appel/visite ; fallback sur l'ancienne
+  // référence (Date_Statut_Change/Timestamp/Date_Import) pour les leads qui
+  // n'ont encore aucun contact enregistré (fraîchement créés/assignés).
   _joursDansEtape(p) {
-    const ref = p.Date_Statut_Change || p.Timestamp || p.Date_Import;
+    const ref = p.Date_Derniere_Action || p.Date_Statut_Change || p.Timestamp || p.Date_Import;
     if (!ref) return 0;
     return Math.floor((Date.now() - new Date(ref).getTime()) / 86400000);
   },
   _badgeAge(p) {
     const j = this._joursDansEtape(p);
     const coul = j > 30 ? 'var(--c-danger)' : j > 7 ? 'var(--c-warning)' : 'var(--c-success)';
-    return `<span class="badge-age" style="font-size:10px;font-weight:700;color:${coul};border:1px solid ${coul};border-radius:99px;padding:1px 7px;white-space:nowrap">⏱ ${j}j</span>`;
+    const titre = p.Date_Derniere_Action
+      ? `Dernier contact (${p.Type_Derniere_Action || 'action'}) il y a ${j}j`
+      : `Aucun contact enregistré — ${j}j depuis l'attribution`;
+    // V7 §4 (BLOC 02) — ancienneté = donnée : typo + couleur sémantique,
+    // pas de pill cerclée.
+    return `<span class="badge-age" title="${titre}" style="font-size:11px;font-weight:700;color:${coul};white-space:nowrap;font-variant-numeric:tabular-nums">${j}j</span>`;
   },
 
   _retardWelcomePack(p) {
@@ -295,6 +323,17 @@ window.VuePipeline = {
       });
       await SheetsAPI.viderCache('EMPOWER_MDB', '📋_PROSPECTS');
       Object.assign(lead, { PIN_CDS_Assigne: Number(pin), STATUT_EMPOWER: 'ASSIGNE', _statut: 'ASSIGNE', Date_Statut_Change: dateISOLocale() });
+      // Bloc 3 §4 — l'assignation a posteriori notifie le CDS comme la création
+      // (même payload que saisirLead) ; avant : écriture silencieuse.
+      SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
+        ID_Notif:         genId('NOTIF'),
+        PIN_Destinataire: Number(pin),
+        Type_Notif:       'LEAD_ASSIGNE',
+        Message:          `🎯 Lead assigné : ${lead.Nom_Compte}${lead.Ville ? ' — ' + lead.Ville : ''} — Potentiel : ${lead.POTENTIEL || '?'}`,
+        ID_Cible:         lead.ID_Prospect,
+        Statut_Lu:        false,
+        Date_Envoi:       new Date().toISOString(),
+      }).catch(() => {}); // non bloquant
       if (!silencieux) {
         this.state.modal = null;
         Toast.afficher(`🎯 ${lead.Nom_Compte} → ${this._nomCDS(pin)}`, 'succes');
@@ -529,7 +568,7 @@ window.VuePipeline = {
 
     app.innerHTML = `
       <header class="header-vue">
-        <button onclick="Router.aller('#/dashboard')" class="btn-retour">←</button>
+        <button onclick="Router.retour()" class="btn-retour">←</button>
         <h1>EMPOWER TRACKER</h1>
         <span class="badge-compteur">${leads.length} leads</span>
       </header>
@@ -660,6 +699,7 @@ window.VuePipeline = {
                   ${l.FLAG_ACTION && l.FLAG_ACTION !== 'SAISIE' ? `<span style="font-size:10px;color:var(--c-primary);font-weight:700">${this._labelFlag(l.FLAG_ACTION)}</span>` : ''}
                 </div>
                 ${l.Note_initiale ? `<div class="kanban-carte-note">${String(l.Note_initiale).slice(0, 60)}</div>` : ''}
+                ${(l.STATUT_EMPOWER === 'A_VISITER' || l.FLAG_ACTION === 'A_VISITER') ? '<div class="kanban-carte-note" style="color:var(--c-primary);font-weight:700">📍 À visiter (demandé au phoning)</div>' : ''}
                 ${this._retardWelcomePack(l) ? '<div class="kanban-carte-note" style="color:var(--c-danger);font-weight:600">⚠️ Welcome Pack J+14 dépassé</div>' : ''}
                 ${this._alerte45jSansContact(l) ? '<div class="kanban-carte-note" style="color:var(--c-danger);font-weight:600">🔴 Sans contact +45j</div>' : this._alerteSansActivite(l) ? '<div class="kanban-carte-note" style="color:var(--c-warning);font-weight:600">⏳ Sans activité >7j</div>' : ''}
                 <div class="kanban-carte-pied" style="display:flex;align-items:center;gap:4px">
@@ -1162,6 +1202,8 @@ window.VuePipeline = {
       PIN_CDS_Assigne: lead.PIN_CDS_Assigne || '',
       Nom_CDS:         this._nomCDS(lead.PIN_CDS_Assigne),
       Note_Initiale:   lead.Note_initiale || '',
+      Contact_Nom:      lead.CONTACT_NOM || '',
+      Contact_Fonction: lead.CONTACT_FONCTION || '',
       Statut:          'ACTIF',
       Source_Import:   'PIPELINE',
       Flag_Traite:     'NON',

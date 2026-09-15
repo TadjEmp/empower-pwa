@@ -195,8 +195,9 @@ window.VuePhotos = {
     if (this.state.chargement) {
       app.innerHTML = `
         ${NavBar('photos')}
+      ${FusionTabs.planning()}
         <header class="header-vue">
-          <button onclick="Router.aller('#/dashboard')" class="btn-retour">←</button>
+          <button onclick="Router.retour()" class="btn-retour">←</button>
           <h1>Mes Photos</h1>
         </header>
         <div class="spinner-centre">Chargement des photos…</div>`;
@@ -205,8 +206,9 @@ window.VuePhotos = {
     if (this.state.erreur) {
       app.innerHTML = `
         ${NavBar('photos')}
+      ${FusionTabs.planning()}
         <header class="header-vue">
-          <button onclick="Router.aller('#/dashboard')" class="btn-retour">←</button>
+          <button onclick="Router.retour()" class="btn-retour">←</button>
           <h1>Mes Photos</h1>
         </header>
         <div class="erreur">Erreur : ${this.state.erreur}<br><br>
@@ -219,8 +221,9 @@ window.VuePhotos = {
 
     app.innerHTML = `
       ${NavBar('photos')}
+      ${FusionTabs.planning()}
       <header class="header-vue">
-        <button onclick="Router.aller('#/dashboard')" class="btn-retour">←</button>
+        <button onclick="Router.retour()" class="btn-retour">←</button>
         <h1>Mes Photos</h1>
         <span class="badge-compteur">${flat.length}</span>
       </header>

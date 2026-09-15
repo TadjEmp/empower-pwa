@@ -41,6 +41,7 @@ global.Toast        = { afficher: () => {} };
 global.Router       = { aller: () => {} };
 global.NavBar       = () => '';
 global.genId        = (p) => `${p}_TEST`;
+global.FiscalWeeks  = { codeDe: () => 'W25' };
 global.getISOWeek   = () => 'W25';
 global.normaliserNom= (s) => (s || '').toLowerCase().trim();
 global.resolveCDS   = () => 'CDS Test';

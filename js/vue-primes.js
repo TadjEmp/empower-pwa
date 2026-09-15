@@ -296,7 +296,7 @@ window.VuePrimes = {
 
     app.innerHTML = `
       <header class="header-vue">
-        <button onclick="Router.aller('#/dashboard')" class="btn-retour">←</button>
+        <button onclick="Router.retour()" class="btn-retour">←</button>
         <h1>${estManagerOuChannel ? 'Primes Équipe' : 'Mes primes'}</h1>
         <span class="badge-compteur">${q} FY27</span>
       </header>
@@ -312,6 +312,7 @@ window.VuePrimes = {
         </div>
       </div>
       ${NavBar('primes')}
+      ${FusionTabs.performance()}
       ${this._renderModalNSB()}
       ${this._renderModalOnboarding()}
     `;
@@ -349,11 +350,12 @@ window.VuePrimes = {
     );
 
     // Badge statut validation
+    // Bloc 6 (09/2026) — pill pleine hardcodée → point + mot (V7 §4).
     const badgeStatut = (n) => {
       const valide = String(n.Valid_Manager).toUpperCase() === 'OUI';
       return valide
-        ? `<span class="badge-statut" style="background:var(--c-ok,#22c55e);color:#fff;font-size:10px;padding:2px 7px;border-radius:20px">Validé</span>`
-        : `<span class="badge-statut" style="background:var(--c-warning,#f59e0b);color:#fff;font-size:10px;padding:2px 7px;border-radius:20px">En attente</span>`;
+        ? `<span class="v7-statut" style="color:var(--c-ok,#22c55e);font-size:12px">Validé</span>`
+        : `<span class="v7-statut" style="color:var(--c-warning,#f59e0b);font-size:12px">En attente</span>`;
     };
 
     return `

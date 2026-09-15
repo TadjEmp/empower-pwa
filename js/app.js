@@ -41,12 +41,30 @@
   if (!sessionOk) {
     Router.aller('#/login');
   } else {
-    if (window.NotifCenter) NotifCenter._render();   // cloche visible dès le boot
-    _initPollingNotifs();
-    if (window.DrawerMenu) DrawerMenu.renderToRoot(); // drawer disponible dès le boot
-    if (window.Topbar) Topbar.init();                 // topbar desktop dès le boot
+    demarrerServicesSession();
   }
 })();
+
+// ═══════════════════════════════════════
+//  demarrerServicesSession — services qui dépendent d'une session active
+//  (cloche + polling notifs, drawer, topbar desktop).
+//
+//  Bloc 2 §7 (09/2026) — ces quatre inits vivaient uniquement dans la branche
+//  `else` du boot, donc n'étaient exécutées QUE si une session valide existait
+//  déjà dans localStorage au chargement. Sur le parcours normal (arrivée sur
+//  #/login puis connexion), aucune ne tournait de toute la session : pas de
+//  cloche, AUCUN polling de notifications (les notifs écrites en base
+//  n'atteignaient jamais leur destinataire avant un rechargement manuel), et
+//  topbar desktop vide — donc aucun titre de page sur desktop, le h1 des vues
+//  étant masqué ≥900px précisément pour éviter un doublon avec cette topbar.
+//  Idempotent : chaque service a sa propre garde anti double-init.
+// ═══════════════════════════════════════
+function demarrerServicesSession() {
+  if (window.NotifCenter) NotifCenter._render();    // cloche visible immédiatement
+  _initPollingNotifs();                             // garde interne _demarre
+  if (window.DrawerMenu) DrawerMenu.renderToRoot();
+  if (window.Topbar) Topbar.init();                 // garde interne _observer
+}
 
 // v5.0 N3 — Polling notifications 60 s (non bloquant)
 // Déclaration de fonction (hoistée) → appelable depuis boot() ci-dessus.

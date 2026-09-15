@@ -41,6 +41,7 @@ global.GroqAPI = {};
 
 // ── Utilitaires app simulés ──────────────────────────────────────────────────
 global.genId         = (p) => `${p}_TEST`;
+global.FiscalWeeks   = { codeDe: () => 'W25' };
 global.getISOWeek    = ()  => 'W25';
 global.dateISOLocale = ()  => '2026-06-17';
 global.normaliserNom = (s) => (s||'').toLowerCase();
@@ -61,6 +62,8 @@ global.document = {
 // ── Charger le code source ───────────────────────────────────────────────────
 const fs   = require('fs');
 const path = require('path');
+// Dépendance réelle : QuestionnaireBranching (utilisé par VueQuestionnaire.valider)
+eval(fs.readFileSync(path.join(__dirname, 'js/questionnaire-branching.js'), 'utf8'));
 const src  = fs.readFileSync(
   path.join(__dirname, 'js/vue-questionnaire.js'), 'utf8'
 );

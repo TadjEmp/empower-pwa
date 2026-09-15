@@ -433,7 +433,7 @@ window.VueObjectifs = {
 
     app.innerHTML = `
       <header class="header-vue">
-        <button onclick="Router.aller('#/dashboard')" class="btn-retour">←</button>
+        <button onclick="Router.retour()" class="btn-retour">←</button>
         <h1>${estManager ? 'Objectifs FDV' : 'Mes objectifs'}</h1>
         <span class="badge-compteur">${q} · ${this.state.semaine}</span>
       </header>
@@ -449,6 +449,7 @@ window.VueObjectifs = {
         </div>
       </div>
       ${NavBar('objectifs')}
+      ${FusionTabs.performance()}
       ${this._renderModal()}
       ${this._renderModalCA()}
     `;

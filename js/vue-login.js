@@ -178,7 +178,11 @@ window.VueLogin = {
 
     const r = await Session.connecter(email, mdp);
     if (r.ok) {
-      if (window.DrawerMenu) DrawerMenu.renderToRoot();
+      // Bloc 2 §7 — démarre TOUS les services de session (cloche + polling
+      // notifs, drawer, topbar desktop). Avant : seul le drawer était lancé
+      // ici, donc après une connexion l'utilisateur ne recevait aucune
+      // notification et le desktop restait sans titre de page (cf. app.js).
+      demarrerServicesSession();
       Router.aller('#/dashboard');
     } else {
       this.state.erreur = `❌ ${r.erreur}`;

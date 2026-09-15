@@ -64,7 +64,7 @@ window.VueComptes = {
 
   _prochaineVisite(c) {
     const live = this.state.datesLive.get(String(c.ID_Compte || ''));
-    return live?.prochaineVisite || c.Date_prochaine_action || null;
+    return live?.prochaineVisite || c.Date_Prochaine_Action || null;
   },
 
   // ── Bloc 9 — fiche compte : docké sur desktop, plein écran sur mobile ──
@@ -299,7 +299,7 @@ window.VueComptes = {
 
     app.innerHTML = `
       <header class="header-vue">
-        <button onclick="Router.aller('#/dashboard')" class="btn-retour">←</button>
+        <button onclick="Router.retour()" class="btn-retour">←</button>
         <h1>Mes comptes</h1>
         <span class="badge-compteur">${liste.length}/${total}</span>
       </header>
@@ -428,6 +428,7 @@ window.VueComptes = {
             </div>`}
             ${Session.estManager() ? `
             <div class="cc-infos" style="align-items:center;gap:6px">
+              ${nomCDS ? avatarCDS(c.PIN_CDS_Assigne, 22) : ''}
               <span style="font-weight:600">${nomCDS ? nomCDS : '<span style="color:var(--c-warning)">Non attribué</span>'}</span>
               <select style="flex:1;border:1px solid var(--c-border);border-radius:4px;padding:4px 6px;font-size:12px"
                       onchange="VueComptes.attribuer('${c.ID_Compte}', this.value)">

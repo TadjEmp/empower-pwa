@@ -83,6 +83,7 @@ window.VueVisitesFDV = {
         ${contenu}
       </div>
       ${NavBar('visites_fdv')}
+      ${FusionTabs.planning()}
     `;
   },
 

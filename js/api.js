@@ -111,6 +111,8 @@ const SheetsAPI = {
       // être distingué côté client.
       source_import: 'Source_Import',
       badge_visite_froid: 'Badge_Visite_Froid', id: '_uuid',
+      // Bloc 3 §1 (09/2026) — contact interlocuteur au niveau compte
+      contact_nom: 'Contact_Nom', contact_fonction: 'Contact_Fonction',
     },
     sellin_agregats: {
       reseller: 'RESELLER', canal: 'CANAL',
@@ -206,6 +208,11 @@ const SheetsAPI = {
       note: 'Note_initiale', flag_alerte: 'FLAG_ALERTE', id_compte_gas: 'ID_Compte_Gas',
       date_prochaine_action: 'Date_prochaine_action',
       contact_nom: 'CONTACT_NOM', contact_fonction: 'CONTACT_FONCTION',
+      // Bloc 6 (09/2026) — colonnes déjà présentes en base (comme sur comptes)
+      // mais jamais mappées côté leads : réutilisées pour "dernier contact réel"
+      // (appel ou visite), au lieu de Date_Statut_Change qui ne mesure que
+      // l'ancienneté dans la colonne Kanban — cf. _joursDansEtape, vue-pipeline.js.
+      date_derniere_action: 'Date_Derniere_Action', type_derniere_action: 'Type_Derniere_Action',
       id: '_uuid',
     },
     nsb_commandes: {
@@ -272,6 +279,7 @@ const SheetsAPI = {
       'Source_Import': 'source_import', 'Badge_Visite_Froid': 'badge_visite_froid',
       'STATUT_COMPTE': 'statut_compte', 'Interet_EMPOWER': 'interet_empower',
       'FLAG_ALERTE_ALEXANDRA': 'flag_alerte_alexandra',
+      'Contact_Nom': 'contact_nom', 'Contact_Fonction': 'contact_fonction',
     },
     visites: {
       'ID_Visite': 'id_visite_gas', 'ID_Cible': 'id_cible_gas',
@@ -361,6 +369,7 @@ const SheetsAPI = {
       'CONTACT_NOM': 'contact_nom', 'CONTACT_FONCTION': 'contact_fonction',
       'Flag_traite': 'flag_traite', 'Flag_converti': 'flag_converti',
       'Source_Import': 'source_import',
+      'Date_Derniere_Action': 'date_derniere_action', 'Type_Derniere_Action': 'type_derniere_action',
     },
     objectifs_primes: {
       'PIN_CDS': 'pin_cds', 'Nom_CDS': 'nom_cds',

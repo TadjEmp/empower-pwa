@@ -61,6 +61,13 @@ const Router = {
     window.location.hash = hash;
   },
 
+  // Bloc 3 §2 — retour à l'écran précédent (historique navigateur) ; repli
+  // vers l'accueil quand la vue est le point d'entrée (lien direct, rechargement).
+  retour() {
+    if (window.history.length > 1) window.history.back();
+    else this.aller('#/dashboard');
+  },
+
   _resoudre() {
     const hash = window.location.hash || '#/login';
 

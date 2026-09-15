@@ -212,7 +212,7 @@ window.VueAdmin = {
               ${us.liste.map(u => `
                 <tr>
                   <td>${u.pin}</td>
-                  <td>${u.nom}</td>
+                  <td><span style="display:flex;align-items:center;gap:8px">${avatarCDS(u.pin, 24)}${u.nom}</span></td>
                   <td style="font-size:12px">${u.email}</td>
                   <td>
                     <select style="font-size:12px;padding:4px 6px" onchange="VueAdmin.changerRole(${u.pin}, this.value)" ${u.pin === Session.pin ? 'disabled' : ''}>
@@ -220,9 +220,7 @@ window.VueAdmin = {
                     </select>
                   </td>
                   <td>
-                    <span style="font-size:11px;padding:2px 8px;border-radius:99px;font-weight:700;
-                      background:${u.actif ? 'rgba(26,158,92,.12)' : 'rgba(217,48,37,.08)'};
-                      color:${u.actif ? 'var(--c-success,#1a9e5c)' : 'var(--c-danger)'}">${u.actif ? 'Actif' : 'Désactivé'}</span>
+                    <span class="v7-statut" style="font-size:12px;color:${u.actif ? 'var(--c-success,#1a9e5c)' : 'var(--c-danger)'}">${u.actif ? 'Actif' : 'Désactivé'}</span>
                   </td>
                   <td style="white-space:nowrap">
                     <button class="btn-lien" style="font-size:12px" onclick="VueAdmin.ouvrirModalReset(${u.pin}, '${(u.nom || '').replace(/'/g, "\\'")}')">🔑 Reset mdp</button>
@@ -426,8 +424,8 @@ window.VueAdmin = {
                 <div style="flex:1;min-width:0">
                   <div style="font-size:13px;font-weight:700;margin-bottom:4px">${l.Nom_Compte}</div>
                   <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-bottom:4px">
-                    <span style="font-size:10px;padding:2px 8px;border-radius:99px;background:${st.coul};color:#fff;font-weight:700">${st.lbl}</span>
-                    ${l.POTENTIEL ? `<span style="font-size:10px;padding:2px 7px;border-radius:99px;background:var(--c-bg);border:1px solid var(--c-border);color:var(--c-text-2)">${l.POTENTIEL}</span>` : ''}
+                    <span class="v7-statut" style="color:${st.coul};font-size:11px">${st.lbl}</span>
+                    ${l.POTENTIEL ? `<span style="font-size:11px;color:var(--c-text-2)">${l.POTENTIEL}</span>` : ''}
                     <span style="font-size:11px;color:var(--c-text-2)">👤 ${cdsNom}</span>
                   </div>
                   ${noteRecente ? `<div style="font-size:11px;color:var(--c-text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${noteRecente}</div>` : ''}

@@ -544,7 +544,7 @@ window.VuePhoning = {
       <div class="q-arbre-btn" style="margin-top:4px" onclick="VuePhoning.choisirCible(${i})">
         <div style="display:flex;align-items:center;gap:8px">
           <strong>${c.Nom_Compte}</strong>
-          ${estProspect && c.POTENTIEL ? `<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;background:${potCoul[c.POTENTIEL]||'#888'};color:#fff">${c.POTENTIEL}</span>` : ''}
+          ${estProspect && c.POTENTIEL ? `<span class="v7-statut" style="font-size:11px;color:${potCoul[c.POTENTIEL]||'#888'}">${c.POTENTIEL}</span>` : ''}
         </div>
         <span style="color:var(--c-text-2);font-size:12px">
           ${c.Ville || '—'}
@@ -746,7 +746,14 @@ window.VuePhoning = {
 
       // 2. Mise à jour fiche
       if (estProspect) {
-        const maj = { Date_prochaine_action: d.dateRappel, Flag_traite: 'TRUE' };
+        // Bloc 6 (09/2026) — tout appel loggé (quel que soit le résultat) vaut
+        // contact réel : remise à J0 du badge d'ancienneté Kanban. Même
+        // convention que la branche compte ci-dessous (Date_Derniere_Action
+        // inconditionnel, cf. majCompte plus bas).
+        const maj = {
+          Date_prochaine_action: d.dateRappel, Flag_traite: 'TRUE',
+          Date_Derniere_Action: dateISOLocale(), Type_Derniere_Action: 'Appel',
+        };
         const res = d.resultatProspect;
 
         if (res === 'NON_INTERESSE') {
@@ -773,6 +780,9 @@ window.VuePhoning = {
         // Sync état local
         const local = s.prospects.find(p => p.ID_Prospect === idCible);
         if (local) Object.assign(local, maj);
+        // Bloc 6 — Kanban live : le Tracker (s'il est déjà chargé en mémoire)
+        // patche sa carte immédiatement, sans refetch réseau ni rechargement.
+        EmpowerBus.emit('contact-prospect', { idProspect: idCible, ...maj });
       } else if (!c._isFroid) {
         // Appel sur compte existant — mise à jour de la fiche compte
         const majCompte = {
@@ -951,7 +961,7 @@ window.VuePhoning = {
     <div style="background:var(--c-surface);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:11px;margin-bottom:8px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
         <span style="font-weight:700;font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.Nom_Compte}</span>
-        ${c.CANAL ? `<span style="font-size:10px;padding:1px 6px;border-radius:99px;background:var(--c-bg);border:1px solid var(--c-border);color:var(--c-text-2)">${c.CANAL}</span>` : ''}
+        ${c.CANAL ? `<span style="font-size:11px;color:var(--c-text-2)">${c.CANAL}</span>` : ''}
       </div>
       <div style="font-size:12px;color:var(--c-text-2);margin-bottom:8px">
         ${c.Ville ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:2px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${c.Ville}` : ''}
@@ -1175,7 +1185,7 @@ window.VuePhoning = {
     return groupes.map(g => `
       <div style="background:var(--c-surface);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;cursor:pointer"
            onclick="VuePhoning.selectionnerCommercialPlanning('${g.pin}')">
-        <div style="font-weight:700;font-size:15px;color:var(--c-title)">${g.nom}</div>
+        <div style="font-weight:700;font-size:15px;color:var(--c-title);display:flex;align-items:center;gap:8px">${avatarCDS(g.pin, 28)}${g.nom}</div>
         <div style="font-size:12px;color:var(--c-text-2);margin-top:2px">
           ${g.total} appel${g.total > 1 ? 's' : ''} · dernier ${g.dernier ? dateRelative(g.dernier) : '—'}
         </div>
@@ -1592,8 +1602,8 @@ window.VuePhoning = {
           <div style="background:var(--c-surface);border:1.5px solid ${rappelDu ? 'var(--c-danger)' : 'var(--c-border)'};border-radius:var(--radius-sm);padding:12px;margin-bottom:8px">
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">
               <span style="font-weight:700;font-size:15px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.Nom_Compte}</span>
-              ${p.POTENTIEL ? `<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;background:${potCoul[p.POTENTIEL]||'#888'};color:#fff;flex-shrink:0">${p.POTENTIEL}</span>` : ''}
-              ${nonTraite ? `<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;background:var(--c-primary);color:#fff;flex-shrink:0">À appeler</span>` : ''}
+              ${p.POTENTIEL ? `<span class="v7-statut" style="font-size:11px;color:${potCoul[p.POTENTIEL]||'#888'};flex-shrink:0">${p.POTENTIEL}</span>` : ''}
+              ${nonTraite ? `<span class="v7-statut" style="font-size:11px;color:var(--c-primary);font-weight:700;flex-shrink:0">À appeler</span>` : ''}
             </div>
             <div style="font-size:12px;color:var(--c-text-2);margin-bottom:6px">
               ${p.Ville ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:2px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${p.Ville}` : ''}${origineLabel ? ` · ${origineLabel}` : ''}
@@ -1703,9 +1713,9 @@ window.VuePhoning = {
         <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:7px">Résultat de l'appel</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           ${PILLS.map(p => `
-            <button type="button"
+            <button type="button" class="pill-resultat-appel"
               onclick="VuePhoning.state.d.statutCallPills='${p.lbl}';VuePhoning.state.d.statutAppel='${p.lbl}';VuePhoning.render()"
-              style="font-size:12px;font-weight:700;padding:6px 12px;border-radius:99px;cursor:pointer;transition:all .15s;
+              style="font-size:12px;font-weight:700;padding:6px 12px;border-radius:99px;cursor:pointer;transition:transform .1s,filter .12s;
                      border:1.5px solid ${p.col};
                      background:${d.statutCallPills === p.lbl ? p.col : 'transparent'};
                      color:${d.statutCallPills === p.lbl ? '#fff' : p.col}">
@@ -1720,7 +1730,7 @@ window.VuePhoning = {
           <span style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;text-transform:uppercase">${dejaOnboarde ? 'Suivi Empower' : 'Qualification Empower'}</span>
           <div style="display:flex;align-items:center;gap:8px">
             <span style="font-size:14px;font-weight:800;color:var(--c-title)">${eqScore} / 9</span>
-            <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:${maturite.bg};color:${maturite.col};border:1px solid ${maturite.col}20">● ${maturite.lbl}</span>
+            <span class="v7-statut" style="font-size:12px;color:${maturite.col}">${maturite.lbl}</span>
           </div>
         </div>
         <div style="height:4px;background:var(--c-border);border-radius:2px;margin-bottom:12px;overflow:hidden">
@@ -1756,7 +1766,7 @@ window.VuePhoning = {
         </summary>
         <div style="padding:8px 12px 12px">
           ${OBJECTIONS.map(cat => `
-            <div style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;display:inline-block;margin:10px 0 7px;letter-spacing:.04em;background:${cat.col}15;color:${cat.col}">${cat.cat}</div>
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;display:inline-block;margin:10px 0 7px;letter-spacing:.08em;color:${cat.col}">${cat.cat}</div>
             ${cat.items.map(obj => `
               <details style="border:1px solid var(--c-border);border-radius:6px;margin-bottom:5px;overflow:hidden">
                 <summary style="padding:8px 11px;font-size:12px;font-weight:600;cursor:pointer;background:var(--c-bg);
@@ -1986,7 +1996,7 @@ window.VuePhoning = {
       return `
       <div style="background:var(--c-surface);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:12px;margin-bottom:8px;cursor:pointer"
            onclick="VuePhoning.selectionnerCommercialPlanning('${g.pin}')">
-        <div style="font-weight:700;font-size:15px;color:var(--c-title)">${g.nom}</div>
+        <div style="font-weight:700;font-size:15px;color:var(--c-title);display:flex;align-items:center;gap:8px">${avatarCDS(g.pin, 28)}${g.nom}</div>
         <div style="font-size:12px;color:var(--c-text-2);margin-top:2px">
           ${g.appels.length} appel${g.appels.length > 1 ? 's' : ''} planifié${g.appels.length > 1 ? 's' : ''}
           ${enRetard ? ` · <span style="color:var(--c-danger);font-weight:700">${enRetard} en retard</span>` : ''}
@@ -2058,7 +2068,7 @@ window.VuePhoning = {
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
                 <span style="font-weight:700;font-size:15px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.Reseller || a.Nom_Compte || '—'}</span>
                 ${Session.voitTout() ? `<span style="font-size:11px;color:var(--c-text-2);flex-shrink:0">${resolveCDS(a.PIN_CDS || a.Nom_CDS)}</span>` : ''}
-                <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;background:${badge.bg};color:#fff;flex-shrink:0">${badge.lbl}</span>
+                <span class="v7-statut" style="font-size:11px;color:${badge.bg};flex-shrink:0">${badge.lbl}</span>
               </div>
               <div style="font-size:12px;color:var(--c-text-2);margin-bottom:8px">
                 ${a.Date_Planifiee ? a.Date_Planifiee.slice(0, 16).replace('T', ' ') : '—'}

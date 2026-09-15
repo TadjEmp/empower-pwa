@@ -274,6 +274,12 @@ window.VueVisites = {
       email: v.Email || '',
       canal: v.Canal || 'REVENDEUR',
       note: '',
+      // Bloc 3 §1/§5 — le contact rencontré en visite suit le compte, et le
+      // compte est attribué au CDS qui a fait la visite (pas au convertisseur)
+      contactNom: v.Interlocuteur_Nom || v.Interlocuteur || v.Decideur_Nom || '',
+      contactFonction: v.Interlocuteur_Fonction || v.Decideur_Fonction || '',
+      pinCDS: v.PIN_CDS || null,
+      nomCDS: v.Nom_CDS || '',
     };
     this.render();
   },
@@ -311,8 +317,10 @@ window.VueVisites = {
         Tel:            m.tel,
         Email:          m.email,
         CANAL:          m.canal,
-        PIN_CDS_Assigne: Session.pin,
-        Nom_CDS:        Session.nom,
+        Contact_Nom:      m.contactNom || '',
+        Contact_Fonction: m.contactFonction || '',
+        PIN_CDS_Assigne: m.pinCDS || Session.pin,
+        Nom_CDS:        m.nomCDS || Session.nom,
         STATUT_COMPTE:  'ACTIF',
         Source_Import:  'VISITE_FROID_CONVERTI',
         ID_Visite_Origine: m.idVisite,
@@ -417,7 +425,7 @@ window.VueVisites = {
     }
     return groupes.map(g => `
       <div class="carte-visite" style="cursor:pointer" onclick="VueVisites.selectionnerCommercial('${g.pin}')">
-        <div class="cv-nom">${g.nom}</div>
+        <div class="cv-nom" style="display:flex;align-items:center;gap:8px">${avatarCDS(g.pin, 28)}${g.nom}</div>
         <div class="cv-type">${g.visites.length} visite${g.visites.length > 1 ? 's' : ''}</div>
       </div>`).join('');
   },
@@ -1269,7 +1277,7 @@ window.VueVisites = {
 
     app.innerHTML = `
       <header class="header-vue">
-        <button onclick="Router.aller('#/dashboard')" class="btn-retour">←</button>
+        <button onclick="Router.retour()" class="btn-retour">←</button>
         <h1>Visites</h1>
         <div style="display:flex;gap:6px">
           ${peutExtraire ? `<button class="btn-retour" onclick="VueVisites.ouvrirExtraction()" title="Extraction CSV"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>` : ''}
@@ -1296,6 +1304,7 @@ window.VueVisites = {
       </div>
 
       ${NavBar('visites')}
+      ${FusionTabs.planning()}
       ${this._renderModal()}
       ${this._renderModalEdition()}
       ${this._renderConfirmDelete()}

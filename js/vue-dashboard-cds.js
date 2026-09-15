@@ -74,6 +74,11 @@ window.VueDashboardCDS = {
 
     const f = window.calculerCamembertsActivite ? window.calculerCamembertsActivite(raw) : null;
 
+    // BLOC 02 §4 — les blocs analytiques déplacés depuis l'Accueil (top 5,
+    // base prospects, comptes à réactiver, primes) vivent ici, dans Analyse.
+    const d = this.state.donnees || {};
+    const potCoul = { Fort: '#00b27e', Moyen: '#f59e0b', Faible: '#626264' };
+
     app.innerHTML = `
       <header class="dash-page-header">
         <div class="dash-ph-left">
@@ -106,6 +111,83 @@ window.VueDashboardCDS = {
           ${f ? window.renderBlocCamemberts(f, raw, 'VueDashboardCDS') : ''}
           ${f ? window.renderBlocCAHebdo(f, 'VueDashboardCDS', fmtEUR) : ''}
 
+          <!-- TOP 5 COMPTES ACTIFS + TOP 5 RELANCES (ex-Accueil, BLOC 02 §4) -->
+          <div class="dash-grid-2col">
+          ${(d.top5Actifs || []).length > 0 ? `
+          <div class="bloc-fiche">
+            <div class="bloc-titre">Top 5 comptes actifs ${d.quarter || ''}FY27
+              <button class="btn-lien" onclick="Router.aller('#/comptes-historiques')" style="margin-left:auto;font-size:12px">Base comptes →</button>
+            </div>
+            ${d.top5Actifs.map(c => `
+              <div class="relance-ligne" onclick="Router.aller('#/comptes-historiques')">
+                <div class="relance-nom">${c.nom}</div>
+                <div class="relance-meta">
+                  ${c.ville ? `<span style="font-size:11px;color:var(--c-text-2)">${c.ville}</span>` : ''}
+                  <strong style="margin-left:auto;color:var(--c-success)">${fmtEUR(c.caQ1)}</strong>
+                </div>
+              </div>`).join('')}
+          </div>` : ''}
+          ${(d.top5 || []).length > 0 ? `
+          <div class="bloc-fiche">
+            <div class="bloc-titre">Top 5 relances urgentes <span class="badge-rouge badge-priorite">${d.top5.length}</span>
+              <button class="btn-lien" onclick="Router.aller('#/comptes-historiques')" style="margin-left:auto;font-size:12px">Réactiver →</button>
+            </div>
+            ${d.top5.map(c => `
+              <div class="relance-ligne" onclick="Router.aller('#/comptes-historiques')">
+                <div class="relance-nom">${c.Nom_Compte || c.ID_Compte || '—'}</div>
+                <div class="relance-meta">
+                  <span class="statut-pill statut-reactiver">${String(c.STATUT_COMPTE || '—').toUpperCase()}</span>
+                  <strong style="margin-left:auto">${fmtEUR(c.CA_FY26 ?? c['CA FY26 €'] ?? c.CA_FY25)}</strong>
+                </div>
+              </div>`).join('')}
+          </div>` : ''}
+          </div><!-- /dash-grid-2col -->
+
+          <!-- MA BASE PROSPECTS + COMPTES À RÉACTIVER (ex-Accueil) -->
+          <div class="dash-grid-2col">
+          ${(d.mesProspects || []).length > 0 ? `
+          <div class="bloc-fiche">
+            <div class="bloc-titre">Ma base prospects <span class="badge-compteur">${d.mesProspects.length}</span>
+              <button class="btn-lien" onclick="Router.aller('#/empower-tracker')" style="margin-left:auto;font-size:12px">Tracker →</button>
+            </div>
+            ${d.mesProspects.slice(0, 5).map(p => `
+              <div class="relance-ligne" onclick="Router.aller('#/phoning/${p.ID_Prospect}')">
+                <div class="relance-nom">${p.Nom_Compte || p.Nom_Prospect || p.ID_Prospect || '—'}</div>
+                <div class="relance-meta">
+                  ${p.POTENTIEL ? `<span style="font-size:11px;font-weight:700;color:${potCoul[p.POTENTIEL] || '#888'}">${p.POTENTIEL}</span>` : ''}
+                  ${p.Ville ? `<span style="font-size:11px;color:var(--c-text-2)">${p.Ville}</span>` : ''}
+                  <span class="btn-lien" style="margin-left:auto;font-size:11px">Appeler →</span>
+                </div>
+              </div>`).join('')}
+          </div>` : ''}
+          ${(d.comptesAReactiver || []).length > 0 ? `
+          <div class="bloc-fiche">
+            <div class="bloc-titre">Comptes à réactiver <span class="badge-compteur">${d.comptesAReactiver.length}</span>
+              <button class="btn-lien" onclick="Router.aller('#/comptes-historiques')" style="margin-left:auto;font-size:12px">Historiques →</button>
+            </div>
+            ${d.comptesAReactiver.slice(0, 5).map(c => `
+              <div class="relance-ligne" onclick="Router.aller('#/comptes-historiques')">
+                <div class="relance-nom">${c.Nom_Compte || c.ID_Compte || '—'}</div>
+                <div class="relance-meta">
+                  <span class="statut-pill statut-reactiver">${String(c.STATUT_COMPTE || '—').toUpperCase()}</span>
+                  <strong style="margin-left:auto">${fmtEUR(c.CA_FY26 ?? c['CA FY26 €'] ?? c.CA_FY25)}</strong>
+                </div>
+              </div>`).join('')}
+          </div>` : ''}
+          </div><!-- /dash-grid-2col -->
+
+          <!-- PRIMES ESTIMÉES (ex-Accueil, CDS uniquement) -->
+          ${!Session.voitTout() && d.primesEstimees ? `
+          <div class="bloc-fiche" style="cursor:pointer" onclick="Router.aller('#/primes')">
+            <div class="bloc-titre">Primes estimées ${d.quarter || ''}
+              <button class="btn-lien" style="margin-left:auto;font-size:12px">Détail →</button>
+            </div>
+            <div class="pace-chiffres">
+              <strong style="color:var(--c-cta)">${d.primesEstimees.montant} €</strong>
+              <span style="font-size:12px">Axe 1 · ${d.primesEstimees.label}</span>
+            </div>
+          </div>` : ''}
+
           <div class="bloc-fiche">
             <div class="bloc-titre">Aller plus loin</div>
             <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -117,6 +199,7 @@ window.VueDashboardCDS = {
         </div>
       </div>
       ${NavBar('reporting_cds')}
+      ${FusionTabs.accueil()}
     `;
   },
 
@@ -173,7 +256,8 @@ window.VueDashboardCDS = {
       const d = c.Date_Derniere_Action ? new Date(c.Date_Derniere_Action).getTime() : 0;
       return d && (now - d) / 86400000 > seuilJours && String(c.Flag_converti) !== 'TRUE';
     });
-    const nextStepsDepasses = mesComptes.filter(c => estDepassee(c.Date_prochaine_action));
+    // Bloc 3 §1 bis — casse table comptes : Date_Prochaine_Action (pas la casse leads)
+    const nextStepsDepasses = mesComptes.filter(c => estDepassee(c.Date_Prochaine_Action));
     // Uniquement les leads créés via ESI_PIPELINE (pas les 1674 imports bruts)
     const leadsATraiter     = prospects.filter(p =>
       String(p.Source_Import || '').trim() === 'ESI_PIPELINE' &&
@@ -343,6 +427,37 @@ window.VueDashboardCDS = {
     const deltaAppels  = deltaPill(d.appelsSem  - semPrec.appels);
 
     const initiales = (Session.nom || 'U').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+
+    // ── BLOC 02 §4 — Priorités du jour : liste unifiée (max 6), dérivée des
+    //    données existantes. Ordre : visites du jour → rappels dépassés → leads.
+    const prios = [
+      ...d.visitesAujourdhui.slice(0, 3).map(v => ({
+        titre: v.Nom_Compte || v.ID_Compte || '—', type: 'Visite',
+        coul: 'var(--accent)', meta: v.Heure || '',
+        action: `Router.aller('#/visites/cr/${v.ID_Visite || ''}')`, cta: 'CR',
+      })),
+      ...d.nextStepsDepasses.slice(0, 2).map(c => ({
+        titre: c.Nom_Compte || c.ID_Compte || '—', type: 'Rappel dépassé',
+        coul: 'var(--signal)', meta: dateRelative(c.Date_Prochaine_Action),
+        action: `Router.aller('#/compte/${c.ID_Compte}')`, cta: 'Fiche',
+      })),
+      ...d.leadsATraiter.slice(0, 2).map(p => ({
+        titre: p.Nom_Compte || p.Nom_Prospect || '—', type: 'Lead à traiter',
+        coul: 'var(--cobalt)', meta: p.POTENTIEL || '',
+        action: `Router.aller('#/empower-tracker')`, cta: 'Tracker',
+      })),
+    ].slice(0, 6);
+
+    // ── Signaux (carte signal V7) — compteurs + 3 dernières notifs ──
+    const signaux = [
+      d.comptesRouges.length ? { txt: `<strong>${d.comptesRouges.length}</strong> compte(s) sans action récente`, action: "Router.aller('#/comptes')" } : null,
+      d.nextStepsDepasses.length ? { txt: `<strong>${d.nextStepsDepasses.length}</strong> rappel(s) dépassé(s)`, action: "Router.aller('#/comptes')" } : null,
+      ...d.mesNotifs.slice(0, 3).map(n => ({
+        txt: `<span style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase">${n.type}</span> ${n.message}`,
+        action: `Router.aller('${this._routeNotif(n.type, n.cible)}')`,
+      })),
+    ].filter(Boolean);
+
     app.innerHTML = `
       <!-- Header desktop Oltega — masqué mobile (CSS) -->
       <header class="dash-page-header">
@@ -400,166 +515,39 @@ window.VueDashboardCDS = {
       <div class="dash-body avec-nav">
         <div class="dash-col-main">
 
-        <!-- CAMEMBERTS DYNAMIQUES VISITES/APPELS + CA CUMULÉ — Bloc 1 §2/§3
-             (mutualisés avec VueDashboardManager, cf. js/dashboard-activite.js) -->
-        ${window.renderBlocCamemberts(f, this._raw, 'VueDashboardCDS')}
-        ${window.renderBlocCAHebdo(f, 'VueDashboardCDS', fmtEUR)}
-
-        <!-- TOP 5 COMPTES ACTIFS + TOP 5 RELANCES — sous-grille 2 colonnes desktop large -->
-        <div class="dash-grid-2col">
-        ${d.top5Actifs.length > 0 ? `
+        <!-- BLOC 02 §4 — PRIORITÉS DU JOUR (résumé opérationnel, max 6 lignes).
+             Les analyses (camemberts, CA hebdo, top 5, base prospects) vivent
+             dans l'onglet Analyse (_renderReporting). -->
         <div class="bloc-fiche">
-          <div class="bloc-titre">
-            Top 5 comptes actifs ${d.quarter}FY27
-            <span class="badge-compteur">${d.top5Actifs.length}</span>
-            <button class="btn-lien" onclick="Router.aller('#/comptes-historiques')" style="margin-left:auto;font-size:12px">Base comptes →</button>
+          <div class="bloc-titre">Priorités du jour
+            ${prios.length ? `<span class="badge-compteur">${prios.length}</span>` : ''}
+            <button class="btn-lien" onclick="Router.aller('#/visites')" style="margin-left:auto;font-size:12px">Planning →</button>
           </div>
-          ${d.top5Actifs.map(c => `
-            <div class="relance-ligne" onclick="Router.aller('#/comptes-historiques')">
-              <div class="relance-nom">${c.nom}</div>
-              <div class="relance-meta">
-                ${c.ville ? `<span style="font-size:11px;color:var(--c-text-2)">${c.ville}</span>` : ''}
-                <span style="font-size:10px;color:var(--c-text-2)">${c.statut}</span>
-                <strong style="margin-left:auto;color:var(--c-success)">${fmtEUR(c.caQ1)}</strong>
-              </div>
-            </div>`).join('')}
-        </div>` : ''}
-
-        <!-- TOP 5 RELANCES URGENTES (score / priorité) -->
-        ${d.top5.length > 0 ? `
-        <div class="bloc-fiche">
-          <div class="bloc-titre">
-            Top 5 relances urgentes
-            <span class="badge-rouge badge-priorite">${d.top5.length}</span>
-            <button class="btn-lien" onclick="Router.aller('#/comptes-historiques')" style="margin-left:auto;font-size:12px">Réactiver →</button>
-          </div>
-          ${d.top5.map(c => `
-            <div class="relance-ligne" onclick="Router.aller('#/comptes-historiques')">
-              <div class="relance-nom">${c.Nom_Compte || c.ID_Compte || '—'}</div>
-              <div class="relance-meta">
-                <span class="statut-pill statut-reactiver">${String(c.STATUT_COMPTE || '—').toUpperCase()}</span>
-                ${c.Priorite ? `<span style="font-size:11px;font-weight:700;color:var(--c-cta)">${String(c.Priorite).toUpperCase()}</span>` : ''}
-                <strong style="margin-left:auto">${fmtEUR(c.CA_FY26 ?? c['CA FY26 €'] ?? c.CA_FY25)}</strong>
-              </div>
-            </div>`).join('')}
-        </div>` : ''}
-        </div><!-- /dash-grid-2col -->
-
-        <!-- ALERTES ACTIVES (🔔_NOTIFS) -->
-        ${d.mesNotifs.length > 0 ? `
-        <div class="bloc-fiche">
-          <div class="bloc-titre">Alertes actives <span class="badge-rouge badge-priorite">${d.mesNotifs.length}</span></div>
-          <div class="dash-alertes">
-            ${d.mesNotifs.map(n => `
-              <div class="alerte-ligne" onclick="Router.aller('${this._routeNotif(n.type, n.cible)}')">
-                <span style="font-size:10px;font-weight:700;color:var(--c-primary);text-transform:uppercase">${n.type}</span>
-                <span style="margin-left:6px">${n.message}</span>
-              </div>`).join('')}
-          </div>
-        </div>` : ''}
-
-        <!-- VISITES PLANIFIÉES AUJOURD'HUI -->
-        <div class="bloc-fiche">
-          <div class="bloc-titre">
-            Planning visites aujourd'hui
-            ${d.visitesAujourdhui.length ? `<span class="badge-compteur">${d.visitesAujourdhui.length}</span>` : ''}
-            <button class="btn-lien" onclick="Router.aller('#/visites')" style="margin-left:auto;font-size:12px">Planning complet →</button>
-          </div>
-          ${d.visitesAujourdhui.length === 0
-            ? `<div class="pas-de-donnees">Aucune visite planifiée aujourd'hui
-               <br><button class="btn-primaire" style="margin-top:8px" onclick="Router.aller('#/visites')">+ Planifier une visite</button>
-               </div>`
-            : d.visitesAujourdhui.slice(0, 4).map(v => `
-              <div class="relance-ligne" onclick="Router.aller('#/visites/cr/${v.ID_Visite || ''}')">
-                <div class="relance-nom">${v.Nom_Compte || v.ID_Compte || '—'}</div>
+          ${prios.length === 0
+            ? `<div class="pas-de-donnees">Rien d'urgent aujourd'hui
+                 <br><button class="btn-primaire" style="margin-top:8px" onclick="Router.aller('#/visites')">+ Planifier une visite</button></div>`
+            : prios.map(p => `
+              <div class="relance-ligne" onclick="${p.action}">
+                <div class="relance-nom">${p.titre}</div>
                 <div class="relance-meta">
-                  <span class="statut-pill" style="background:var(--c-primary-10,#e6eeff);color:var(--c-primary)">planifiée</span>
-                  ${v.Heure ? `<span style="font-size:12px;color:var(--c-text-2)">${v.Heure}</span>` : ''}
-                  <button class="btn-lien" onclick="event.stopPropagation();VueVisites.ouvrirCR('${v.ID_Visite}')" style="font-size:11px;margin-left:auto">CR →</button>
+                  <span class="v7-statut" style="color:${p.coul};font-size:12px">${p.type}</span>
+                  ${p.meta ? `<span style="font-size:12px;color:var(--c-text-2)">${p.meta}</span>` : ''}
+                  <span class="btn-lien" style="margin-left:auto;font-size:11px">${p.cta} →</span>
                 </div>
-              </div>`).join('')
-          }
+              </div>`).join('')}
         </div>
 
-        <!-- LEADS EMPOWER À TRAITER + MA BASE PROSPECTS — sous-grille 2 colonnes desktop large -->
-        <div class="dash-grid-2col">
-        ${d.leadsATraiter.length > 0 ? `
-        <div class="bloc-fiche">
-          <div class="bloc-titre">
-            Leads EMPOWER à traiter
-            <span class="badge-rouge badge-priorite">${d.leadsATraiter.length}</span>
-            <button class="btn-lien" onclick="Router.aller('#/empower-tracker')" style="margin-left:auto;font-size:12px">Tracker →</button>
-          </div>
-          ${d.leadsATraiter.slice(0, 3).map(p => `
-            <div class="relance-ligne" onclick="Router.aller('#/empower-tracker')">
-              <div class="relance-nom">${p.Nom_Prospect || p.Nom_Compte || '—'}</div>
-              <div class="relance-meta">
-                <span class="statut-pill statut-reactiver">${p.STATUT_EMPOWER || 'Assigné'}</span>
-                ${p.POTENTIEL ? `<span style="font-size:11px;font-weight:700;color:${potCoul[p.POTENTIEL]||'#888'}">${p.POTENTIEL}</span>` : ''}
-              </div>
-            </div>`).join('')}
-          ${d.leadsATraiter.length > 3 ? `<div style="font-size:12px;color:var(--c-primary);text-align:center;padding:6px 0;cursor:pointer" onclick="Router.aller('#/empower-tracker')">+${d.leadsATraiter.length - 3} autres leads →</div>` : ''}
-        </div>` : ''}
-
-        <!-- MA BASE PROSPECTS -->
-        ${d.mesProspects.length > 0 ? `
-        <div class="bloc-fiche">
-          <div class="bloc-titre">
-            Ma base prospects
-            <span class="badge-compteur">${d.mesProspects.length}</span>
-            <button class="btn-lien" onclick="Router.aller('#/phoning');setTimeout(()=>VuePhoning.setMode&&VuePhoning.setMode('LISTE'),600)" style="margin-left:auto;font-size:12px">Phoning liste →</button>
-          </div>
-          ${d.mesProspects.slice(0, 5).map(p => `
-            <div class="relance-ligne">
-              <div class="relance-nom">${p.Nom_Compte || p.Nom_Prospect || p.ID_Prospect || '—'}</div>
-              <div class="relance-meta">
-                ${p.POTENTIEL ? `<span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;background:${potCoul[p.POTENTIEL]||'#888'};color:#fff">${p.POTENTIEL}</span>` : ''}
-                ${p.Ville ? `<span style="font-size:11px;color:var(--c-text-2)">${p.Ville}</span>` : ''}
-                <span style="margin-left:auto;display:flex;gap:6px">
-                  <button class="btn-lien" style="font-size:11px;display:flex;align-items:center;gap:3px" onclick="Router.aller('#/phoning/${p.ID_Prospect}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></button>
-                  <button class="btn-lien" style="font-size:11px;display:flex;align-items:center;gap:3px" onclick="Router.aller('#/empower-tracker')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></button>
-                </span>
-              </div>
-            </div>`).join('')}
-          ${d.mesProspects.length > 5 ? `
-            <div style="font-size:12px;color:var(--c-primary);text-align:center;padding:6px 0;cursor:pointer"
-                 onclick="Router.aller('#/empower-tracker')">
-              +${d.mesProspects.length - 5} autres prospects → voir le Tracker
-            </div>` : ''}
-        </div>` : ''}
-        </div><!-- /dash-grid-2col -->
+        <!-- SIGNAUX — carte signal V7 (bordure corail si signal réel, hairline sinon) -->
+        ${signaux.length ? `
+        <div class="v7-signal" style="margin:0 16px 12px">
+          <div class="bloc-titre" style="margin-bottom:8px">Signaux <span class="badge-rouge badge-priorite">${signaux.length}</span></div>
+          ${signaux.map(s => `<div class="alerte-ligne" onclick="${s.action}">${s.txt}</div>`).join('')}
+        </div>` : `
+        <div class="v7-signal vide" style="margin:0 16px 12px">Aucun signal identifié</div>`}
 
         </div><!-- /dash-col-main -->
 
         <div class="dash-col-side">
-        <!-- COMPTES HISTORIQUES À RÉACTIVER -->
-        ${d.comptesAReactiver.length > 0 ? `
-        <div class="bloc-fiche">
-          <div class="bloc-titre">
-            Comptes à réactiver
-            <span class="badge-compteur">${d.comptesAReactiver.length}</span>
-            <button class="btn-lien" onclick="Router.aller('#/comptes-historiques')" style="margin-left:auto;font-size:12px">Voir historiques →</button>
-          </div>
-          ${d.comptesAReactiver.slice(0, 3).map(c => `
-            <div class="relance-ligne" onclick="Router.aller('#/comptes-historiques')">
-              <div class="relance-nom">${c.Nom_Compte || c.ID_Compte || '—'}</div>
-              <div class="relance-meta">
-                <span class="statut-pill statut-reactiver">${String(c.STATUT_COMPTE || '—').toUpperCase()}</span>
-                <strong>${fmtEUR(c.CA_FY26 ?? c['CA FY26 €'] ?? c.CA_FY25)}</strong>
-              </div>
-            </div>`).join('')}
-        </div>` : ''}
-
-        <!-- ALERTES -->
-        ${nbAlertes > 0 ? `
-        <div class="bloc-fiche">
-          <div class="bloc-titre">Alertes <span class="badge-rouge badge-priorite">${nbAlertes}</span></div>
-          <div class="dash-alertes">
-            ${d.comptesRouges.length ? `<div class="alerte-ligne" onclick="Router.aller('#/comptes')"><strong>${d.comptesRouges.length}</strong> compte(s) sans action récente</div>` : ''}
-            ${d.nextStepsDepasses.length ? `<div class="alerte-ligne" onclick="Router.aller('#/comptes')"><strong>${d.nextStepsDepasses.length}</strong> next step(s) dépassé(s)</div>` : ''}
-          </div>
-        </div>` : ''}
-
         <!-- ACTIVITÉ SEMAINE ──  compteurs + objectifs -->
         <div class="bloc-fiche">
           <div class="bloc-titre">Activité ${d.semaine}</div>
@@ -585,19 +573,6 @@ window.VueDashboardCDS = {
           </div>
         </div>
 
-        <!-- PRIMES ESTIMÉES (Axe 1) -->
-        ${!Session.voitTout() ? `
-        <div class="bloc-fiche" style="cursor:pointer" onclick="Router.aller('#/primes')">
-          <div class="bloc-titre">Primes estimées ${d.quarter}
-            <button class="btn-lien" style="margin-left:auto;font-size:12px">Détail →</button>
-          </div>
-          <div class="pace-chiffres">
-            <strong style="color:var(--c-cta)">${d.primesEstimees.montant} €</strong>
-            <span style="font-size:12px">Axe 1 · ${d.primesEstimees.label}</span>
-          </div>
-          <p style="font-size:11px;color:var(--c-text-2);margin-top:6px">Estimation Axe 1 uniquement — cliquez pour le détail complet (Axes 2 & 3 inclus).</p>
-        </div>` : ''}
-
         <!-- RACCOURCIS -->
         <div class="dash-raccourcis">
           <button class="raccourci" onclick="Router.aller('#/visites')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Planning visites</span></button>
@@ -616,6 +591,7 @@ window.VueDashboardCDS = {
               onclick="VueVisites.ouvrirModal();Router.aller('#/visites')"
               style="position:fixed;bottom:calc(var(--safe-bottom, 0px) + 80px);right:16px;width:56px;height:56px;border-radius:50%;background:var(--c-primary);color:#fff;font-size:28px;border:none;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.4);z-index:1000;display:flex;align-items:center;justify-content:center;line-height:1">+</button>
       ${NavBar('home')}
+      ${FusionTabs.accueil()}
     `;
   },
 };

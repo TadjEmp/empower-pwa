@@ -280,14 +280,14 @@ function NavBar(actif) {
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/></svg>' },
     { id: 'comptes',     hash: '#/comptes',             mobileNav: true,  lbl: 'Comptes',
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v8h4"/><path d="M18 9h2a2 2 0 0 1 2 2v11h-4"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>' },
-    { id: 'reporting',   hash: '#/manager',             mobileNav: true,  lbl: 'Reporting',
+    { id: 'reporting',   hash: '#/manager',             mobileNav: false, lbl: 'Reporting',
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="4" height="12" x="2" y="6" rx="1"/><rect width="4" height="16" x="9" y="2" rx="1"/><rect width="4" height="8" x="16" y="10" rx="1"/></svg>' },
     // Bloc 2 §1 — Reporting personnel CDS (tabId distinct de 'reporting' car
     // route différente : #/reporting-cds → VueDashboardCDS, pas #/manager).
-    { id: 'reporting_cds', hash: '#/reporting-cds',     mobileNav: true,  lbl: 'Reporting',
+    { id: 'reporting_cds', hash: '#/reporting-cds',     mobileNav: false, lbl: 'Reporting',
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="4" height="12" x="2" y="6" rx="1"/><rect width="4" height="16" x="9" y="2" rx="1"/><rect width="4" height="8" x="16" y="10" rx="1"/></svg>' },
     // Activité (sidebar desktop uniquement)
-    { id: 'visites',     hash: '#/visites',             mobileNav: false, lbl: 'Mon Planning',
+    { id: 'visites',     hash: '#/visites',             mobileNav: true,  lbl: 'Mon Planning',
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="8" y1="18" x2="8" y2="18"/><line x1="12" y1="18" x2="12" y2="18"/></svg>' },
     { id: 'phoning',     hash: '#/phoning',             mobileNav: false, lbl: 'Phoning',
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>' },
@@ -300,7 +300,7 @@ function NavBar(actif) {
     // Données (sidebar desktop uniquement)
     { id: 'historiques', hash: '#/comptes-historiques', mobileNav: false, lbl: 'Historique CA',
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>' },
-    { id: 'objectifs',   hash: '#/objectifs',           mobileNav: false, lbl: 'Mes Objectifs',
+    { id: 'objectifs',   hash: '#/objectifs',           mobileNav: false, lbl: 'Performance',
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>' },
     { id: 'primes',      hash: '#/primes',              mobileNav: false, lbl: 'Mes Primes',
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>' },
@@ -314,12 +314,26 @@ function NavBar(actif) {
   // désormais via l'onglet "Historique CA" dans Comptes (vue-comptes.js /
   // vue-comptes-historiques.js) plutôt qu'une entrée de nav de premier niveau —
   // la route #/comptes-historiques reste valide et protégée par Permissions.
+  // BLOC 02 (fusions F1-F5 validées) — 7 entrées max :
+  //   F1 objectifs+primes → entrée unique "Performance" (onglets internes)
+  //   F2/F4 reporting_cds + reporting (#/manager) → onglets de l'Accueil
+  //   F3 photos → onglet de Mon Planning · F5 visites_fdv → idem (CHANNEL)
+  // Les routes fusionnées restent valides (rétro-compat) mais sortent de la nav.
   const SECTIONS = [
-    { lbl: null,        ids: ['home', 'tracker', 'comptes', 'reporting', 'reporting_cds'] },
-    { lbl: 'Activité',  ids: ['visites', 'phoning', 'visites_fdv', 'photos'] },
-    { lbl: 'Données',   ids: ['objectifs', 'primes'] },
+    { lbl: null,        ids: ['home', 'tracker', 'comptes'] },
+    { lbl: 'Activité',  ids: ['visites', 'phoning'] },
+    { lbl: 'Données',   ids: ['objectifs'] },
     { lbl: 'Admin',     ids: ['admin'] },
   ];
+
+  // Route fusionnée → entrée de nav à montrer active
+  const ALIAS_ACTIF = {
+    reporting: 'home', reporting_cds: 'home',
+    historiques: 'comptes',
+    photos: 'visites', visites_fdv: 'visites',
+    primes: 'objectifs',
+  };
+  actif = ALIAS_ACTIF[actif] || actif;
 
   const role = (typeof Session !== 'undefined') ? Session.role : null;
   const autorises = (role && typeof window.Permissions !== 'undefined')
@@ -422,6 +436,80 @@ function NavBar(actif) {
 }
 
 // ═══════════════════════════════════════
+//  FusionTabs — BLOC 02 (F1-F5) : barre d'onglets des vues fusionnées.
+//  Chaque groupe (Accueil, Planning, Performance) rend la même barre ;
+//  l'onglet actif = la route courante. Style tab-btn-premium (contrôle
+//  d'interaction → forme pill licite, V7 §6).
+//  defs : [{ hash, lbl, si }] — `si` optionnel (false = onglet masqué).
+// ═══════════════════════════════════════
+function FusionTabs(defs) {
+  const hashActuel = (window.location.hash || '').split('?')[0];
+  const visibles = defs.filter(d => d.si !== false);
+  if (visibles.length < 2) return '';
+  return `
+    <div class="fusion-tabs" style="display:flex;gap:8px;flex-wrap:wrap;padding:0 16px 12px">
+      ${visibles.map(d => `
+        <button class="tab-btn-premium ${hashActuel === d.hash ? 'actif' : ''}"
+                onclick="Router.aller('${d.hash}')">${d.lbl}</button>`).join('')}
+    </div>`;
+}
+
+// Groupes de fusion (source unique — utilisée par les vues concernées)
+FusionTabs.accueil = () => FusionTabs([
+  { hash: '#/dashboard',     lbl: 'Accueil' },
+  { hash: '#/reporting-cds', lbl: 'Analyse',
+    si: typeof Session !== 'undefined' && Session.estCDS() },
+  { hash: '#/manager',       lbl: 'Équipe',
+    si: typeof Session !== 'undefined' && Session.voitTout() },
+]);
+FusionTabs.planning = () => FusionTabs([
+  { hash: '#/visites',     lbl: 'Planning' },
+  { hash: '#/photos',      lbl: 'Photos' },
+  { hash: '#/visites-fdv', lbl: 'Visites FDV',
+    si: typeof Session !== 'undefined' && Session.estChannel() },
+]);
+FusionTabs.performance = () => FusionTabs([
+  { hash: '#/objectifs', lbl: 'Objectifs' },
+  { hash: '#/primes',    lbl: 'Primes',
+    si: typeof Session !== 'undefined' && !Session.estChannel() },
+]);
+
+// ═══════════════════════════════════════
+//  avatarCDS — BLOC 02 §7 : avatar d'identité commercial (V7 §1/§4).
+//  Couleur STABLE par commercial (jamais re-calculée par position) ;
+//  contraste V7 : blanc sur navy/cobalt, ink sur accent/magenta (cf. v7.css).
+// ═══════════════════════════════════════
+function avatarCDS(pinOuNom, taille) {
+  const nom = (typeof resolveCDS === 'function' ? resolveCDS(pinOuNom) : String(pinOuNom || '')) || '—';
+  if (nom === '—') return '';
+  const CLASSES = {
+    TADJIDINE: 'navy', LYES: 'cobalt', MEHDI: 'magenta',
+    JOHANNE: 'accent', ALEXANDRA: 'cobalt', SABINE: 'magenta', SOPHIE: 'navy',
+  };
+  const PALETTE = ['navy', 'cobalt', 'magenta', 'accent'];
+  const cls = CLASSES[nom.toUpperCase()]
+    || PALETTE[[...nom].reduce((s, ch) => s + ch.charCodeAt(0), 0) % PALETTE.length];
+  const initiales = nom.split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  const style = taille ? ` style="width:${taille}px;height:${taille}px;font-size:${Math.round(taille * 0.38)}px"` : '';
+  return `<span class="v7-avatar ${cls}"${style}>${initiales}</span>`;
+}
+
+// ═══════════════════════════════════════
+//  EmpowerBus — BLOC 06 : bus d'événements minimal entre vues.
+//  Option A validée (Ask User, 09/2026) pour la réactivité live du Kanban :
+//  une vue qui enregistre une action réelle (appel/visite) émet, une autre
+//  vue déjà chargée en mémoire (ex. VuePipeline) s'abonne et patche son état
+//  local sans refetch réseau. Volontairement minimal (pas de librairie) —
+//  wrapper autour de window pour rester compatible avec le style du reste
+//  du code (objets globaux, pas de modules ES).
+// ═══════════════════════════════════════
+const EmpowerBus = {
+  emit(type, detail) { window.dispatchEvent(new CustomEvent('empower:' + type, { detail })); },
+  on(type, fn) { window.addEventListener('empower:' + type, e => fn(e.detail)); },
+};
+window.EmpowerBus = EmpowerBus;
+
+// ═══════════════════════════════════════
 //  DrawerMenu — Volet latéral gauche (non fixe, slide-in)
 //  Rendu dans #drawer-root (hors #app) pour survivre aux navigations.
 // ═══════════════════════════════════════
@@ -436,7 +524,7 @@ const DrawerMenu = (function () {
     { id: 'historiques', hash: '#/comptes-historiques',  ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>', lbl: 'Historique CA',   roles: ['ADMIN','CDS','CHANNEL_MANAGER'] },
     { id: 'objectifs',   hash: '#/objectifs',            ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', lbl: 'Mes Objectifs',    roles: ['ADMIN','CDS'] },
     { id: 'primes',      hash: '#/primes',               ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>', lbl: 'Mes Primes',        roles: ['ADMIN','CDS'] },
-    { id: 'admin',       hash: '#/admin',                ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>', lbl: 'Administration', roles: ['ADMIN'] },
+    { id: 'admin',       hash: '#/admin',                ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>', lbl: 'Administration', roles: ['ADMIN'] },
   ];
 
   function _roleLabel(role) {
@@ -808,7 +896,8 @@ function skeletonKPI(cols = 4) {
 // Chaque secteur cliquable si `onclick` est fourni (attribut JS string, ex. "Foo.bar('x')").
 function svgDonut(segments, opts = {}) {
   const size = opts.size || 120;
-  const ep   = opts.epaisseur || 18;
+  // V7 §4 (BLOC 02) — anneau fin, jamais de disque plein/épais
+  const ep   = opts.epaisseur || 9;
   const r    = (size - ep) / 2;
   const cx = size / 2, cy = size / 2;
   const total = (segments || []).reduce((s, x) => s + (Number(x.value) || 0), 0);

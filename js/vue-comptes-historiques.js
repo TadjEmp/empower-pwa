@@ -141,7 +141,7 @@ window.VueComptesHistoriques = {
 
     app.innerHTML = `
       <header class="header-vue">
-        <button onclick="Router.aller('#/dashboard')" class="btn-retour">←</button>
+        <button onclick="Router.retour()" class="btn-retour">←</button>
         <h1>Comptes Historiques</h1>
         <span class="badge-compteur">${liste.length}/${total}</span>
       </header>

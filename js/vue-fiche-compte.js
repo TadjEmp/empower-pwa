@@ -17,7 +17,7 @@ window.VueFicheCompte = {
   state: {
     compte: null, v17: null, visites: [], appels: [], chargement: true,
     editCoord: false,
-    formCoord: { adresse: '', ville: '', code_postal: '', departement: '', tel: '', email: '' },
+    formCoord: { adresse: '', ville: '', code_postal: '', departement: '', tel: '', email: '', contact_nom: '', contact_fonction: '' },
     sauvegardeEnCours: false,
     modalRapportPhoning: false,
     empowerEnCours: false,
@@ -123,6 +123,8 @@ window.VueFicheCompte = {
       departement: c.Departement || (c.Code_Postal ? String(c.Code_Postal).slice(0, 2) : ''),
       tel:         c.Tel         || '',
       email:       c.Email       || '',
+      contact_nom:      c.Contact_Nom      || '',
+      contact_fonction: c.Contact_Fonction || '',
     };
     this.state.editCoord = true;
     this._rerender();
@@ -153,6 +155,8 @@ window.VueFicheCompte = {
       Departement: f.departement.trim() || null,
       Tel:         f.tel.trim()         || null,
       Email:       f.email.trim()       || null,
+      Contact_Nom:      f.contact_nom.trim()      || null,
+      Contact_Fonction: f.contact_fonction.trim() || null,
     };
 
     this.state.sauvegardeEnCours = true;
@@ -339,6 +343,18 @@ window.VueFicheCompte = {
                      oninput="VueFicheCompte.state.formCoord.email=this.value"
                      style="width:100%;margin-top:4px"/>
             </label>
+            <div style="display:flex;gap:8px">
+              <label style="flex:1;font-size:13px;font-weight:600">Contact (interlocuteur)
+                <input value="${f.contact_nom}" placeholder="ex : Jean Dupont"
+                       oninput="VueFicheCompte.state.formCoord.contact_nom=this.value"
+                       style="width:100%;margin-top:4px"/>
+              </label>
+              <label style="flex:1;font-size:13px;font-weight:600">Fonction
+                <input value="${f.contact_fonction}" placeholder="ex : Gérant"
+                       oninput="VueFicheCompte.state.formCoord.contact_fonction=this.value"
+                       style="width:100%;margin-top:4px"/>
+              </label>
+            </div>
             <button class="btn-primaire" style="margin-top:4px"
                     onclick="VueFicheCompte.sauvegarderCoordonnees()"
                     ${this.state.sauvegardeEnCours ? 'disabled' : ''}>
@@ -370,6 +386,7 @@ window.VueFicheCompte = {
           <div class="id-ligne"><span>Ville</span><strong>${c.Ville || '—'}${c.Code_Postal ? ' (' + c.Code_Postal + ')' : ''}</strong></div>
           <div class="id-ligne"><span>Département</span><strong>${dept || '—'}</strong></div>
           <div class="id-ligne"><span>Canal / Secteur</span><strong>${c.CANAL || '—'} · ${c.SECTEUR || '—'}</strong></div>
+          <div class="id-ligne"><span>Contact</span><strong>${c.Contact_Nom ? `${c.Contact_Nom}${c.Contact_Fonction ? ' · ' + c.Contact_Fonction : ''}` : '—'}</strong></div>
           <div class="id-ligne"><span>Téléphone</span><strong>${c.Tel ? `<a class="lien-tel" href="tel:${c.Tel.replace(/\s/g,'')}">${c.Tel}</a>` : '—'}</strong></div>
           <div class="id-ligne"><span>Email</span><strong>${c.Email ? `<a class="lien-email" href="mailto:${c.Email}">${c.Email}</a>` : '—'}</strong></div>
           <div class="id-ligne"><span>CDS</span>${
@@ -450,11 +467,11 @@ window.VueFicheCompte = {
       <!-- PROCHAINE ACTION -->
       <div class="bloc-fiche">
         <div class="bloc-titre">Prochaine action</div>
-        ${c.Prochaine_action ? `
+        ${c.Prochaine_Action ? `
           <div class="prochaine-action-detail">
-            <div class="pa-type">${c.Prochaine_action}</div>
-            <div class="pa-date ${estDepassee(c.Date_prochaine_action) ? 'date-depassee' : ''}">
-              📅 ${dateRelative(c.Date_prochaine_action)}
+            <div class="pa-type">${c.Prochaine_Action}</div>
+            <div class="pa-date ${estDepassee(c.Date_Prochaine_Action) ? 'date-depassee' : ''}">
+              📅 ${dateRelative(c.Date_Prochaine_Action)}
             </div>
             ${c.Note_initiale ? `<div class="pa-note">📝 ${c.Note_initiale}</div>` : ''}
           </div>` : '<div class="pas-de-donnees">Aucune action planifiée</div>'}

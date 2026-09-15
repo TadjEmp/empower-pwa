@@ -1,0 +1,314 @@
+/* ═══════════════════════════════════════════════════════════
+   v7.css — Couche Design System "Norton × ISM Apple Premium V7"
+   BLOC 02 (09/2026) — chargée EN DERNIER : surcharge les tokens
+   et composants existants sans toucher aux vues JS.
+   Référence : EMPOWER UI/design-system-norton-ism.md
+   Principe : hiérarchie par typo + filets hairline.
+   Pill = contrôle d'interaction uniquement (q-chip), jamais donnée.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── 1. TOKENS V7 + remap des aliases PHONE OS ─────────────── */
+:root {
+  /* Tokens V7 canoniques */
+  --ink:             #343F48;
+  --accent:          #FF6D68;
+  --signal:          #FF1209;
+  --navy:            #0E0D30;
+  --cobalt:          #2B2D92;
+  --magenta:         #ED2567;
+  --hairline:        #E1E4E8;
+  --hairline-strong: #D8DBE0;
+  --muted:           #7C8091;
+  --label-caption:   #9BA0AC;
+  --track:           #F4F5F7;
+  --canvas:          #EDEAE3;
+  --slide-bg:        #FFFFFF;
+  --sellin:          #343F48;
+  --sellout:         #FF6D68;
+
+  /* Rythme vertical V7 (§3) */
+  --gap-xs: 6px;  --gap-s: 10px;  --gap-m: 15px;  --gap-l: 20px;  --gap-xl: 27px;
+
+  /* Remap des aliases existants → les 18 vues héritent sans modification */
+  --c-bg:          var(--canvas);
+  --c-surface:     var(--slide-bg);
+  --c-surface-alt: var(--track);
+  --c-title:       var(--ink);
+  --c-text:        var(--ink);
+  --c-text-2:      var(--muted);
+  --c-border:      var(--hairline);
+  --c-danger:      var(--signal);
+  --bg-base:       var(--canvas);
+  --bg-surface:    var(--track);
+  --text-primary:  var(--ink);
+  --text-secondary:var(--muted);
+  --text-muted:    var(--label-caption);
+  --border-subtle: var(--hairline);
+  --border-medium: var(--hairline-strong);
+
+  /* Typo — Montserrat unique (arbitrage validé) */
+  --font:         'Montserrat', -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-ui:      'Montserrat', -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: 'Montserrat', -apple-system, 'Helvetica Neue', Arial, sans-serif;
+
+  /* Ombres allégées : la séparation vient des filets, pas des ombres */
+  --shadow-card: none;
+  --shadow:      none;
+}
+
+/* ── 2. TYPO — chiffres tabulaires partout où ils s'alignent ── */
+.kpi-value, .kpi-card, .tableau-equipe, .desktop-table-data-view,
+.stat .num, .activite-val, .pace-chiffres, .nc-badge, .badge-compteur {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 3. STATUT = POINT + MOT (V7 §4) — plus de pastille pleine ──
+   S'applique aux pills de DONNÉES ; .q-chip (contrôle) est conservé. */
+.statut-pill, .status-badge, .pot-pill, .pace-badge,
+.badge-statut-compte, .badge-statut, .kpi-pill,
+.badge-empower, .badge-priorite {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 0 0 14px !important;
+  position: relative;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.statut-pill::before, .status-badge::before, .pot-pill::before,
+.pace-badge::before, .badge-statut::before,
+.kpi-pill::before {
+  content: '';
+  position: absolute; left: 0; top: 50%;
+  transform: translateY(-50%);
+  width: 8px; height: 8px; border-radius: 50%;
+  background: currentColor;
+}
+/* badge-empower / badge-priorite / badge-statut-compte portent déjà leur
+   glyphe (⭐/⚡ ou emoji couleur 🟢🟡🔴 baké dans le label, cf. helpers.js
+   getStatutCompte) : pas de second point CSS, pas de padding gauche —
+   sinon redondance visuelle (repéré vue Comptes, BLOC 02 polish). */
+.badge-empower, .badge-priorite, .badge-statut-compte { padding-left: 0 !important; }
+/* Potentiel — sémantique V7 : Fort = ink, Moyen = accent, Faible = muted */
+.pot-fort   { color: var(--ink) !important;    font-weight: 800; }
+.pot-moyen  { color: var(--accent) !important; }
+.pot-faible { color: var(--muted) !important;  }
+/* Pace — seuils V7 §1 : ok = ink, watch = accent, risk = signal */
+.pace-ok    { color: var(--ink) !important;    }
+.pace-watch { color: var(--accent) !important; }
+.pace-risk  { color: var(--signal) !important; }
+
+/* ── 4. KPI — stat row V7 (§4) : colonnes + filets verticaux ── */
+.kpi-grid-layout { gap: 0; }
+.kpi-card {
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--hairline);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 4px 18px;
+}
+.kpi-card:first-child { border-left: none; padding-left: 0; }
+.kpi-card:hover { transform: none; box-shadow: none; }
+.kpi-accent { display: none; }           /* barre colorée décorative supprimée */
+.kpi-label {
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--label-caption);
+}
+.kpi-value {
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -.01em;
+}
+/* Mobile : la grille 2×2 garde un filet horizontal entre les 2 rangées */
+@media (max-width: 899px) {
+  .kpi-card:nth-child(odd)  { border-left: none; padding-left: 0; }
+  .kpi-card:nth-child(n+3)  { border-top: 1px solid var(--hairline); padding-top: 12px; }
+}
+
+/* ── 5. TABLEAUX V7 (§4) — hairline, jamais de bordure de cadre ── */
+.desktop-table-wrap {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+.desktop-table-data-view th {
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--label-caption);
+  border-bottom: 1px solid var(--hairline-strong);
+}
+.desktop-table-data-view td { border-bottom: 1px solid var(--hairline); }
+.desktop-table-data-view tbody tr:hover { background: var(--track); }
+.tableau-equipe .te-ligne { border-bottom: 1px solid var(--hairline); }
+.tableau-equipe .te-ligne.te-head {
+  text-transform: uppercase; letter-spacing: .08em;
+  font-size: 10.5px; font-weight: 700; color: var(--label-caption);
+  border-bottom: 1px solid var(--hairline-strong);
+}
+
+/* ── 6. CARTES CONTENEURS — hairline discret (slide V7), sans ombre ── */
+.bloc-fiche, .carte-compte-v2, .kanban-carte, .carte-visite, .login-carte {
+  box-shadow: none;
+  border-color: var(--hairline);
+}
+.bloc-titre {
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+/* Barre d'onglets des vues fusionnées (BLOC 02 F1-F5) — rendue en fin de
+   template (après NavBar) mais remontée en tête de contenu : #app est un
+   flex-column et la barre est un enfant direct. */
+#app > .fusion-tabs { order: -1; padding-top: 14px; }
+
+/* ── 7. COMPOSANTS V7 RÉUTILISABLES (pour les refontes par vue) ── */
+/* Header de section : badge cerclé + eyebrow + titre + filet */
+.v7-header { padding-bottom: var(--gap-l); border-bottom: 1px solid var(--hairline-strong); margin-bottom: var(--gap-xl); }
+.v7-header .v7-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 1.5px solid var(--signal); color: var(--signal);
+  font-size: 12px; font-weight: 800;
+}
+.v7-header .v7-eyebrow {
+  display: block; margin-top: var(--gap-s);
+  text-transform: uppercase; letter-spacing: .12em;
+  font-size: 12px; font-weight: 700; color: var(--label-caption);
+}
+.v7-header .v7-titre {
+  margin-top: var(--gap-xs);
+  font-size: 30px; font-weight: 800; letter-spacing: -.01em; color: var(--ink);
+}
+/* Statut point+mot explicite (nouveaux rendus) */
+.v7-statut { display: inline-flex; align-items: center; gap: var(--gap-xs); font-size: 13.5px; font-weight: 600; }
+.v7-statut::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+/* Barre horizontale : piste track + remplissage, caption dessous */
+.v7-barre { height: 13px; background: var(--track); border-radius: 2px; overflow: hidden; }
+.v7-barre > span { display: block; height: 100%; }
+/* Avatar identité commercial — règle contraste V7 §1 */
+.v7-avatar {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 50%;
+  font-size: 13px; font-weight: 700; color: #fff;
+}
+.v7-avatar.navy    { background: var(--navy); }
+.v7-avatar.cobalt  { background: var(--cobalt); }
+.v7-avatar.accent  { background: var(--accent);  color: var(--ink); }
+.v7-avatar.magenta { background: var(--magenta); color: var(--ink); }
+/* Carte signal (alertes) : fond blanc, bordure fine — corail si signal réel */
+.v7-signal { background: var(--slide-bg); border: 1px solid var(--accent); border-radius: 6px; padding: 12px 14px; }
+.v7-signal.vide { border-color: var(--hairline); color: var(--muted); }
+
+/* Bloc 6 — micro-feedback sur les pills-CONTRÔLE (résultat d'appel) : ce
+   sont de vrais boutons, ils doivent "sentir" cliquables (hover/active),
+   contrairement aux pills de donnée neutralisées plus haut. */
+.pill-resultat-appel:hover  { filter: brightness(.96); }
+.pill-resultat-appel:active { transform: scale(.96); }
+
+/* ═══════════════════════════════════════════════════════════
+   8. DENSITÉ DESKTOP (≥900px) — BLOC 02, retour utilisateur
+   "version web = impression d'app mobile" → alignement sur les
+   références BLOC 05 : macos-design-skill (corps 13px, grille 8px,
+   radius 8/6, boutons 6×12, anim 120-250ms) + Minimal Kit
+   (contenu px 40px, transitions 120ms linear).
+   ═══════════════════════════════════════════════════════════ */
+@media (min-width: 900px) {
+  body { font-size: 13.5px; }
+
+  /* Boutons compacts macOS (6×12, radius 6) */
+  .btn-primaire, .btn-secondaire, .btn-login, .btn-action {
+    padding: 6px 14px; font-size: 13px; border-radius: 6px;
+  }
+  .btn-retour { border-radius: 6px; }
+
+  /* Cartes conteneurs : radius 8 (fenêtre macOS) + arête 0.5px */
+  .bloc-fiche, .carte-compte-v2, .kanban-carte, .modal-docked-panel {
+    border-radius: 8px;
+    border: none;
+    box-shadow: 0 0 0 0.5px var(--hairline-strong);
+  }
+
+  /* Champs de formulaire : radius 6, hauteur compacte */
+  .modal select, .modal input, .modal textarea,
+  input[type="text"], input[type="search"], input[type="date"], select {
+    border-radius: 6px;
+    font-size: 13px;
+  }
+
+  /* Tables : densité desktop (rangée ~36px) */
+  .desktop-table-data-view th { padding: 8px 14px; }
+  .desktop-table-data-view td { padding: 9px 14px; font-size: 13px; }
+
+  /* Modal = dialogue centré (plus de bottom-sheet desktop) */
+  .modal-overlay:not(.modal-docked) { align-items: center; justify-content: center; }
+  .modal-overlay:not(.modal-docked) .modal {
+    border-radius: 10px;
+    width: min(560px, 92vw);
+    max-height: 84vh;
+    box-shadow: 0 0 0 0.5px var(--hairline-strong), 0 16px 48px rgba(14,13,48,.18);
+    padding-bottom: 24px;
+  }
+
+  /* Transitions rapides (Minimal Kit 120ms / macOS 150ms) */
+  .kanban-carte, .carte-compte-v2, .bloc-fiche, .btn-primaire, .btn-secondaire,
+  .desktop-table-data-view tbody tr { transition-duration: 120ms; }
+
+  /* ── Header de vue desktop : V7 (typo + filet) au lieu de la barre
+     sombre d'app mobile. La barre sombre reste sur <900px.
+     Le titre vit dans la topbar (.header-vue h1 masqué ≥900px, cf. base.css) :
+     ce header n'est plus qu'une barre d'outils (retour + compteur), donc
+     compacte et sans filet — la topbar porte déjà la séparation. Sinon on
+     empile topbar 56 + header 56 + tabs avant le premier contenu utile. ── */
+  /* Spécificité alignée sur base.css (#app:has(.app-brand-bar) .header-vue),
+     sinon la hauteur 56px de la barre mobile l'emporte. */
+  .header-vue,
+  #app .header-vue,
+  #app:has(.app-brand-bar) .header-vue {
+    background: transparent;
+    border-bottom: none;
+    box-shadow: none;
+    color: var(--ink);
+    height: 40px;
+    min-height: 40px;
+    padding-top: 0;
+    position: static;
+  }
+  .header-vue h1 {
+    color: var(--ink);
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -.01em;
+  }
+  /* Topbar : typo V7 (le titre de page desktop) */
+  .topbar-desktop {
+    background: var(--slide-bg);
+    border-bottom: 1px solid var(--hairline-strong);
+  }
+  .topbar-titre {
+    font-size: 15px; font-weight: 800; color: var(--ink);
+    letter-spacing: .02em;
+  }
+  .topbar-crumb-section { color: var(--label-caption); font-weight: 700; }
+  .header-vue .btn-retour {
+    background: transparent;
+    border: 1px solid var(--hairline);
+    color: var(--ink);
+  }
+  .header-vue .badge-compteur {
+    background: transparent;
+    border: 1px solid var(--hairline);
+    color: var(--muted);
+  }
+}

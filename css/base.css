@@ -976,7 +976,18 @@ details[open] > .cv-rapport-toggle::before { transform: rotate(90deg); }
     border-radius: 16px;
     overflow-x: auto;
     box-shadow: var(--shadow-card);
+    /* Bloc 3 §3 — scrollbar horizontale toujours visible quand le contenu
+       déborde (les scrollbars overlay macOS/iOS sont invisibles au repos) */
+    scrollbar-width: thin;
+    scrollbar-color: var(--c-border) transparent;
   }
+  .desktop-table-wrap::-webkit-scrollbar { height: 8px; }
+  .desktop-table-wrap::-webkit-scrollbar-track { background: transparent; }
+  .desktop-table-wrap::-webkit-scrollbar-thumb {
+    background: var(--c-border);
+    border-radius: 4px;
+  }
+  .desktop-table-wrap::-webkit-scrollbar-thumb:hover { background: var(--c-text-2); }
   .desktop-table-data-view {
     display: table; width: 100%;
     border-collapse: collapse;

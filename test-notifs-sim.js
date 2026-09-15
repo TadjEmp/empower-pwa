@@ -36,10 +36,10 @@ console.log('  SIMULATION NOTIFS — notif-center.js');
 console.log('══════════════════════════════════════════════════════\n');
 
 const ROWS = [
-  { ID_Notif: 'N1', PIN_Destinataire: 9999, Type_Notif: 'NOUVEAU_LEAD',   Message: 'Lead A', Statut_Lu: 'NON', Timestamp: '2026-06-17T09:00:00Z' },
-  { ID_Notif: 'N2', PIN_Destinataire: 9999, Type_Notif: 'VISITE_REALISEE',Message: 'Visite B', Statut_Lu: 'NON', Timestamp: '2026-06-17T10:00:00Z' },
-  { ID_Notif: 'N3', PIN_Destinataire: 9999, Type_Notif: 'INFO',           Message: 'Déjà lue', Statut_Lu: 'OUI', Timestamp: '2026-06-17T08:00:00Z' },
-  { ID_Notif: 'N4', PIN_Destinataire: 8888, Type_Notif: 'INFO',           Message: 'Autre CDS', Statut_Lu: 'NON', Timestamp: '2026-06-17T11:00:00Z' },
+  { ID_Notif: 'N1', PIN_Destinataire: 9999, Type_Notif: 'NOUVEAU_LEAD',   Message: 'Lead A', Statut_Lu: false, Timestamp: '2026-06-17T09:00:00Z' },
+  { ID_Notif: 'N2', PIN_Destinataire: 9999, Type_Notif: 'VISITE_REALISEE',Message: 'Visite B', Statut_Lu: false, Timestamp: '2026-06-17T10:00:00Z' },
+  { ID_Notif: 'N3', PIN_Destinataire: 9999, Type_Notif: 'INFO',           Message: 'Déjà lue', Statut_Lu: true, Timestamp: '2026-06-17T08:00:00Z' },
+  { ID_Notif: 'N4', PIN_Destinataire: 8888, Type_Notif: 'INFO',           Message: 'Autre CDS', Statut_Lu: false, Timestamp: '2026-06-17T11:00:00Z' },
 ];
 
 // ── N3-2 : badge compteur ────────────────────────────────────────────────────
@@ -68,9 +68,9 @@ console.log('\n─── N3-4 : marquage lu ───');
 (async () => {
   _majCalls = [];
   await NotifCenter.marquerLue('N1');
-  ok('marquerLue(N1) → SheetsAPI.mettreAJour(🔔_NOTIFS, N1, {Statut_Lu:OUI})',
+  ok('marquerLue(N1) → SheetsAPI.mettreAJour(🔔_NOTIFS, N1, {Statut_Lu:true})',
      _majCalls.length === 1 && _majCalls[0].o === '🔔_NOTIFS' &&
-     _majCalls[0].id === 'N1' && _majCalls[0].c.Statut_Lu === 'OUI',
+     _majCalls[0].id === 'N1' && _majCalls[0].c.Statut_Lu === true,
      JSON.stringify(_majCalls));
   ok('Compteur décrémenté à 1 après marquage', NotifCenter.compteur === 1,
      `compteur: ${NotifCenter.compteur}`);
@@ -81,7 +81,7 @@ console.log('\n─── N3-4 : marquage lu ───');
   NotifCenter.majDepuisRows(ROWS);   // reset à 2 non lues
   await NotifCenter.marquerToutesLues();
   ok('marquerToutesLues → 2 appels mettreAJour (N1+N2)',
-     _majCalls.length === 2 && _majCalls.every(c => c.c.Statut_Lu === 'OUI'),
+     _majCalls.length === 2 && _majCalls.every(c => c.c.Statut_Lu === true),
      JSON.stringify(_majCalls.map(c => c.id)));
   ok('Compteur = 0 après tout marquer lu', NotifCenter.compteur === 0);
   ok('Badge disparait quand compteur = 0', !html().includes('nc-badge'));
