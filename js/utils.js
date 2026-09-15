@@ -92,6 +92,48 @@ function normaliserNom(str = '') {
   return (str || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim().replace(/\s+/g, ' ');
 }
 
+// BLOC 09 (09/2026) — distance de Levenshtein + similarité en %, pour
+// rapprocher deux noms d'enseigne proches mais pas identiques (ex. import
+// Sell-In vs saisie Tracker : "MULTIMEDIA 77" vs "MULTIMÉDIA À DOMICILE").
+// SeuilDoublonSoft/Hard (⚙️_PARAMS, déjà en base, jamais consommés côté
+// frontend jusqu'ici) sont pensés pour ce type de comparaison.
+function distanceLevenshtein(a, b) {
+  a = a || ''; b = b || '';
+  const m = a.length, n = b.length;
+  if (!m) return n;
+  if (!n) return m;
+  let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) {
+    const cur = [i];
+    for (let j = 1; j <= n; j++) {
+      cur[j] = a[i - 1] === b[j - 1]
+        ? prev[j - 1]
+        : 1 + Math.min(prev[j - 1], prev[j], cur[j - 1]);
+    }
+    prev = cur;
+  }
+  return prev[n];
+}
+// Mots génériques quasi-universels dans ce secteur (revendeurs IT) — sans ce
+// retrait, deux enseignes totalement différentes partageant "INFORMATIQUE"
+// (ex. "Cortex informatique" / "CONCEPT INFORMATIQUE") ressortent à 80%+ de
+// similarité alors qu'elles n'ont rien en commun. Vérifié en test réel avant
+// correctif — faux positif confirmé, pas une supposition.
+const MOTS_GENERIQUES_ENSEIGNE = /\b(INFORMATIQUE|INFO|SARL|SAS|EURL|SA|SASU|ET FILS|GROUPE)\b/g;
+function similariteNoms(a, b) {
+  const stripGeneriques = s => normaliserNom(s).replace(MOTS_GENERIQUES_ENSEIGNE, '').replace(/\s+/g, ' ').trim();
+  const na = normaliserNom(a), nb = normaliserNom(b);
+  if (!na || !nb) return 0;
+  if (na === nb) return 100;
+  // Comparaison sur la partie distinctive (mots génériques retirés) quand
+  // elle reste substantielle des deux côtés ; repli sur le nom complet sinon
+  // (évite de comparer deux chaînes vides si le nom n'est QUE le mot générique).
+  const da = stripGeneriques(a), db = stripGeneriques(b);
+  const [ca, cb] = (da.length >= 3 && db.length >= 3) ? [da, db] : [na, nb];
+  const maxLen = Math.max(ca.length, cb.length);
+  return Math.round((1 - distanceLevenshtein(ca, cb) / maxLen) * 100);
+}
+
 // Condensé lecture-seule d'une visite déjà réalisée — utilisé pour pré-remplir
 // la note d'une action de suivi (nouvelle visite OU appel planifié depuis
 // VueVisites.planifierSuiviVisite/planifierSuiviAppel) sans jamais modifier

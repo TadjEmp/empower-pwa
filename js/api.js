@@ -227,6 +227,10 @@ const SheetsAPI = {
       // du flag automatique Sell-In _activationSellIn (délai de synchro
       // hebdo côté Sell-In, le commercial peut signaler l'info le jour même).
       commande_manuelle: 'Commande_Manuelle', date_commande_manuelle: 'Date_Commande_Manuelle',
+      // BLOC 09 (09/2026) — motif de perte obligatoire à l'archivage (levier
+      // sales ops : sans motif structuré, impossible d'identifier un pattern
+      // de perte récurrent — concurrent, prix, timing — sur l'ensemble du pipeline).
+      motif_archive: 'Motif_Archive', motif_archive_detail: 'Motif_Archive_Detail',
       id: '_uuid',
     },
     nsb_commandes: {
@@ -387,6 +391,7 @@ const SheetsAPI = {
       'Source_Import': 'source_import',
       'Date_Derniere_Action': 'date_derniere_action', 'Type_Derniere_Action': 'type_derniere_action',
       'Commande_Manuelle': 'commande_manuelle', 'Date_Commande_Manuelle': 'date_commande_manuelle',
+      'Motif_Archive': 'motif_archive', 'Motif_Archive_Detail': 'motif_archive_detail',
     },
     objectifs_primes: {
       'PIN_CDS': 'pin_cds', 'Nom_CDS': 'nom_cds',

@@ -104,12 +104,38 @@ window.VuePipeline = {
       this._chargerCDS(params, objectifs, cdsApi);
       initCDSRegistry(objectifs); // BUG-02 : peuple le registre global
 
-      const activationsSellIn = new Set();
-      (sellin || []).forEach(s => {
-        const ca = ['Q1', 'Q2', 'Q3', 'Q4'].reduce((sum, q) => sum + (window.parseCA(s[`CA ${q}FY27 €`]) || 0), 0);
-        if (ca > 0) activationsSellIn.add(normaliserNom(s.RESELLER || ''));
-      });
+      // BLOC 09 — date du dernier import Sell-In (⚙️_PARAMS.DATE_SYNC_SELLIN,
+      // déjà en base depuis l'Option C, jamais affichée côté frontend) :
+      // sans elle, le badge "Sell-In" peut laisser croire à une donnée
+      // fraîche alors que le fichier n'a pas été réimporté depuis des semaines.
+      const paramMap = Object.fromEntries((params || []).map(p => [p.Parametre, p.Valeur]));
+      this.state.dateSyncSellIn = paramMap.DATE_SYNC_SELLIN || null;
+      const seuilFlou = Number(paramMap.SeuilDoublonSoft) || 80;
+
+      const revendeursSellIn = (sellin || [])
+        .map(s => ({
+          nom: s.RESELLER || '',
+          nomNorm: normaliserNom(s.RESELLER || ''),
+          actif: ['Q1', 'Q2', 'Q3', 'Q4'].reduce((sum, q) => sum + (window.parseCA(s[`CA ${q}FY27 €`]) || 0), 0) > 0,
+        }))
+        .filter(s => s.actif);
+      const activationsSellIn = new Set(revendeursSellIn.map(s => s.nomNorm));
       this._activationsSellIn = activationsSellIn;
+      // Rapprochement flou (Levenshtein, seuil SeuilDoublonSoft) : ne s'applique
+      // qu'aux leads sans correspondance exacte, pour rattraper les variantes
+      // de saisie (ex. "MULTIMEDIA 77" vs import Sell-In "MULTIMEDIA-77 SARL")
+      // sans jamais dégrader une correspondance déjà fiable. Résultat marqué
+      // "approximatif" côté affichage — jamais confondu avec une correspondance
+      // exacte, pour ne pas fausser la confiance dans l'indicateur.
+      this._matchFlouSellIn = (nomLead) => {
+        const nomNorm = normaliserNom(nomLead);
+        let meilleur = null;
+        for (const s of revendeursSellIn) {
+          const score = similariteNoms(nomNorm, s.nomNorm);
+          if (score >= seuilFlou && (!meilleur || score > meilleur.score)) meilleur = { nom: s.nom, score };
+        }
+        return meilleur;
+      };
 
       // BLOC 7 — extraire la liste des channels disponibles
       const channelsVus = new Set();
@@ -140,7 +166,14 @@ window.VuePipeline = {
         // forcément celui cliqué. _uuid (clé primaire réelle, toujours
         // unique) sert de repli — mettreAJour() (api.js) sait déjà router
         // vers la colonne 'id' quand la valeur ressemble à un UUID.
-        .map(p => ({ ...p, ID_Prospect: p.ID_Prospect || p._uuid, _statut: this._statutDe(p), _activationSellIn: activationsSellIn.has(normaliserNom(p.Nom_Compte)) }))
+        .map(p => {
+          const exact = activationsSellIn.has(normaliserNom(p.Nom_Compte));
+          const flou = !exact ? this._matchFlouSellIn(p.Nom_Compte) : null;
+          return {
+            ...p, ID_Prospect: p.ID_Prospect || p._uuid, _statut: this._statutDe(p),
+            _activationSellIn: exact, _activationSellInFlou: flou,
+          };
+        })
         // BLOC 5 : dédoublonnage par Nom_Compte normalisé — garde le premier (ordre source)
         .filter((p, _i, arr) => {
           const k = normaliserNom(p.Nom_Compte);
@@ -213,13 +246,21 @@ window.VuePipeline = {
     if (this.state.filtreAlerte === 'CONTACT_45J') l = l.filter(p => this._alerte45jSansContact(p));
     // BLOC 09 — suivi activation Tracker ↔ Sell-In (BLOC 04 §3) + déclaration
     // manuelle commerciale (l'une ou l'autre suffit à considérer le compte actif).
-    if (this.state.filtreAlerte === 'SELLIN_ACTIF') l = l.filter(p => p._activationSellIn || p.Commande_Manuelle);
+    if (this.state.filtreAlerte === 'SELLIN_ACTIF') l = l.filter(p => p._activationSellIn || p._activationSellInFlou || p.Commande_Manuelle);
     // BLOC 7 — filtre channel
     if (this.state.filtreChannel !== 'TOUS') l = l.filter(p => String(p.CANAL || '').trim() === this.state.filtreChannel);
     return l;
   },
 
   _nomCDS(pin) { return resolveCDS(pin); }, // BUG-02 : délègue au helper global
+
+  // BLOC 09 — fraîcheur de l'import Sell-In, pour ne jamais laisser croire
+  // qu'un badge "Sell-In" reflète l'instant présent (import manuel hebdo).
+  _sellInFraicheur() {
+    if (!this.state.dateSyncSellIn) return '';
+    try { return ` (import du ${new Date(this.state.dateSyncSellIn).toLocaleDateString('fr-FR')})`; }
+    catch { return ''; }
+  },
 
   _labelFlag(flag) {
     const MAP = {
@@ -326,10 +367,16 @@ window.VuePipeline = {
     }
   },
 
-  async deplacer(id, statut, { silencieux = false } = {}) {
+  async deplacer(id, statut, { silencieux = false, motifArchive = null, motifArchiveDetail = null } = {}) {
     const lead = this.state.leads.find(l => String(l.ID_Prospect) === String(id));
     if (!lead) return;
     const champs = { STATUT_EMPOWER: statut, Date_Statut_Change: dateISOLocale() };
+    // BLOC 09 — motif de perte, capturé uniquement au passage en ARCHIVE
+    // (cf. demanderMotifArchive) ; jamais écrasé silencieusement sinon.
+    if (statut === 'ARCHIVE' && motifArchive) {
+      champs.Motif_Archive = motifArchive;
+      champs.Motif_Archive_Detail = motifArchiveDetail || null;
+    }
     if (statut === 'COMPTE_CREE') {
       if (!lead.Date_Creation_Compte) champs.Date_Creation_Compte = dateISOLocale();
     }
@@ -601,15 +648,7 @@ window.VuePipeline = {
     Toast.afficher(`🎯 ${ids.length} lead(s) attribué(s) à ${this._nomCDS(pin)}`, 'succes');
     this.render();
   },
-  async archiverSelection() {
-    if (!this.state.selection.size) return;
-    const ids = [...this.state.selection];
-    if (!confirm(`Archiver ${ids.length} lead(s) sélectionné(s) ?`)) return;
-    this.state.selection.clear();
-    for (const id of ids) await this.deplacer(id, 'ARCHIVE', { silencieux: true });
-    Toast.afficher(`🗄 ${ids.length} lead(s) archivé(s)`, 'succes');
-    this.render();
-  },
+  archiverSelection() { this.demanderMotifArchiveBulk(); },
 
   setRecherche: debounce(function(v) {
     VuePipeline.state.recherche = v;
@@ -767,7 +806,12 @@ window.VuePipeline = {
                   ${l.FLAG_ACTION && l.FLAG_ACTION !== 'SAISIE' ? `<span style="font-size:10px;color:var(--c-primary);font-weight:700">${this._labelFlag(l.FLAG_ACTION)}</span>` : ''}
                 </div>
                 ${l.Note_initiale ? `<div class="kanban-carte-note">${String(l.Note_initiale).slice(0, 60)}</div>` : ''}
-                ${l._activationSellIn || l.Commande_Manuelle ? `<div class="kanban-carte-note" style="color:var(--c-success);font-weight:700">💰 ${l._activationSellIn && l.Commande_Manuelle ? 'Commande (Sell-In + déclarée)' : l._activationSellIn ? 'Commande détectée (Sell-In)' : 'Commande déclarée'}</div>` : ''}
+                ${l._activationSellIn || l._activationSellInFlou || l.Commande_Manuelle ? `<div class="kanban-carte-note" style="color:var(--c-success);font-weight:700">💰 ${
+                  l._activationSellIn && l.Commande_Manuelle ? `Commande (Sell-In + déclarée)${this._sellInFraicheur()}`
+                  : l._activationSellIn ? `Commande détectée (Sell-In)${this._sellInFraicheur()}`
+                  : l.Commande_Manuelle ? 'Commande déclarée'
+                  : `Commande probable (${l._activationSellInFlou.score}% · "${l._activationSellInFlou.nom}")${this._sellInFraicheur()}`
+                }</div>` : ''}
                 ${(l.STATUT_EMPOWER === 'A_VISITER' || l.FLAG_ACTION === 'A_VISITER') ? '<div class="kanban-carte-note" style="color:var(--c-primary);font-weight:700">📍 À visiter (demandé au phoning)</div>' : ''}
                 ${this._retardWelcomePack(l) ? '<div class="kanban-carte-note" style="color:var(--c-danger);font-weight:600">⚠️ Welcome Pack J+14 dépassé</div>' : ''}
                 ${this._alerte45jSansContact(l) ? '<div class="kanban-carte-note" style="color:var(--c-danger);font-weight:600">🔴 Sans contact +45j</div>' : this._alerteSansActivite(l) ? '<div class="kanban-carte-note" style="color:var(--c-warning);font-weight:600">⏳ Sans activité >7j</div>' : ''}
@@ -895,9 +939,9 @@ window.VuePipeline = {
                 ${wpRetard   ? '<span style="color:var(--c-danger);font-weight:700">⚠️ WP J+14</span><br>' : ''}
                 ${contact45j ? '<span style="color:var(--c-danger);font-weight:700">🔴 +45j</span><br>' : ''}
                 ${activite7j ? '<span style="color:var(--c-warning);font-weight:700">⏳ +7j</span><br>' : ''}
-                ${l._activationSellIn ? '<span style="color:var(--c-success);font-weight:700">💰 Sell-In</span>' : ''}
+                ${l._activationSellIn ? '<span style="color:var(--c-success);font-weight:700">💰 Sell-In</span>' : l._activationSellInFlou ? `<span style="color:var(--c-warning);font-weight:700" title="Rapprochement approximatif : ${l._activationSellInFlou.nom} (${l._activationSellInFlou.score}%)">💰 Sell-In ?</span>` : ''}
                 ${l.Commande_Manuelle ? '<span style="color:var(--c-success);font-weight:700">✍️ Déclarée</span>' : ''}
-                ${!wpRetard && !contact45j && !activite7j && !l._activationSellIn && !l.Commande_Manuelle ? '<span style="color:var(--c-text-2)">—</span>' : ''}
+                ${!wpRetard && !contact45j && !activite7j && !l._activationSellIn && !l._activationSellInFlou && !l.Commande_Manuelle ? '<span style="color:var(--c-text-2)">—</span>' : ''}
               </td>` : ''}
               ${cc.source ? `<td style="font-size:11px;color:var(--c-text-2)">${(l.ORIGINE||'—').replace('Import_','').replace(/_/g,' ')}</td>` : ''}
               <td>
@@ -916,9 +960,74 @@ window.VuePipeline = {
       </div>` : ''}`;
   },
 
+  // BLOC 09 — motif de perte structuré, obligatoire au passage en ARCHIVE
+  // (levier sales ops : sans motif, impossible d'identifier un pattern de
+  // perte récurrent — concurrent, prix, timing — sur l'ensemble du pipeline).
+  MOTIFS_ARCHIVE: [
+    { id: 'PRIX',        lbl: '💰 Prix trop élevé' },
+    { id: 'CONCURRENT',  lbl: '⚔️ Parti chez un concurrent' },
+    { id: 'BUDGET',      lbl: '🚫 Pas de budget' },
+    { id: 'PAS_BESOIN',  lbl: '🤷 Pas de besoin / pas intéressé' },
+    { id: 'TIMING',      lbl: '⏳ Mauvais moment' },
+    { id: 'INJOIGNABLE', lbl: '📵 Injoignable / sans retour' },
+    { id: 'DOUBLON',     lbl: '🔁 Doublon / erreur de saisie' },
+    { id: 'AUTRE',       lbl: '❔ Autre' },
+  ],
+  demanderMotifArchive(id) {
+    const lead = this.state.leads.find(l => String(l.ID_Prospect) === String(id));
+    if (!lead) return;
+    this.state.modal = { type: 'archive', ids: [id], nom: lead.Nom_Compte, bulk: false };
+    this.render();
+  },
+  demanderMotifArchiveBulk() {
+    if (!this.state.selection.size) return;
+    this.state.modal = { type: 'archive', ids: [...this.state.selection], bulk: true };
+    this.render();
+  },
+  async confirmerArchive(e) {
+    e.preventDefault();
+    const m = this.state.modal;
+    if (!m || !m.ids) return;
+    const motif  = document.getElementById('archive-motif')?.value;
+    const detail = document.getElementById('archive-detail')?.value.trim() || null;
+    if (!motif) { Toast.afficher('Motif requis', 'warning'); return; }
+    const ids = m.ids;
+    this.state.selection.clear();
+    this.state.modal = null;
+    for (const id of ids) await this.deplacer(id, 'ARCHIVE', { silencieux: true, motifArchive: motif, motifArchiveDetail: detail });
+    Toast.afficher(`🗄 ${ids.length > 1 ? ids.length + ' lead(s) archivé(s)' : 'Lead archivé'}`, 'succes');
+    this.render();
+  },
+
   _renderModal() {
     const m = this.state.modal;
     if (!m) return '';
+    if (m.type === 'archive') {
+      return `
+      <div class="modal-overlay" onclick="if(event.target===this)VuePipeline.fermerModal()">
+        <div class="modal" style="max-width:420px">
+          <h3>🗄 Motif d'archivage</h3>
+          <p style="font-size:12px;color:var(--c-text-2);margin:-4px 0 12px">
+            ${m.bulk ? `${m.ids.length} lead(s) sélectionné(s)` : m.nom}
+          </p>
+          <form onsubmit="VuePipeline.confirmerArchive(event)">
+            <label>Motif *
+              <select id="archive-motif" required>
+                <option value="">— choisir —</option>
+                ${this.MOTIFS_ARCHIVE.map(mo => `<option value="${mo.id}">${mo.lbl}</option>`).join('')}
+              </select>
+            </label>
+            <label>Détail (facultatif)
+              <textarea id="archive-detail" rows="2" placeholder="ex : nom du concurrent, contexte…"></textarea>
+            </label>
+            <div class="modal-btns">
+              <button type="button" onclick="VuePipeline.fermerModal()">Annuler</button>
+              <button type="submit" class="btn-danger">Archiver</button>
+            </div>
+          </form>
+        </div>
+      </div>`;
+    }
     if (m.type === 'saisie') {
       return `
       <div class="modal-overlay" onclick="if(event.target===this)VuePipeline.fermerModal()">
@@ -1047,7 +1156,8 @@ window.VuePipeline = {
         <!-- Infos lead complètes -->
         <div class="q-recap" style="margin-bottom:12px">
           <div class="q-recap-ligne"><span>CDS assigné</span><strong>${this._nomCDS(l.PIN_CDS_Assigne)}</strong></div>
-          ${l._activationSellIn ? `<div class="q-recap-ligne"><span>Sell-In</span><strong style="color:var(--c-success)">💰 Commande détectée (FY27)</strong></div>` : ''}
+          ${l._activationSellIn ? `<div class="q-recap-ligne"><span>Sell-In</span><strong style="color:var(--c-success)">💰 Commande détectée (FY27)${this._sellInFraicheur()}</strong></div>`
+            : l._activationSellInFlou ? `<div class="q-recap-ligne"><span>Sell-In</span><strong style="color:var(--c-warning)" title="Rapprochement approximatif, à confirmer">💰 Probable — "${l._activationSellInFlou.nom}" (${l._activationSellInFlou.score}%)${this._sellInFraicheur()}</strong></div>` : ''}
           ${l.Commande_Manuelle ? `<div class="q-recap-ligne"><span>Déclaration</span><strong style="color:var(--c-success)">✍️ Commande déclarée${l.Date_Commande_Manuelle ? ' le ' + new Date(l.Date_Commande_Manuelle).toLocaleDateString('fr-FR') : ''}</strong></div>` : ''}
           ${l.Adresse ? `<div class="q-recap-ligne"><span>Adresse</span><strong>${l.Adresse}</strong></div>` : ''}
           ${l.Ville || l.Code_Postal ? `<div class="q-recap-ligne"><span>Localisation</span><strong>${l.Ville || '—'} ${l.Code_Postal||''}</strong></div>` : ''}
@@ -1059,6 +1169,7 @@ window.VuePipeline = {
           ${l.ORIGINE ? `<div class="q-recap-ligne"><span>Source</span><strong style="font-size:11px">${l.ORIGINE.replace('Import_','').replace(/_/g,' ')}</strong></div>` : ''}
           ${l.Welcome_Pack_Date ? `<div class="q-recap-ligne"><span>Welcome Pack</span><strong>${l.Welcome_Pack_Date}</strong></div>` : ''}
           ${l.Date_Integration ? `<div class="q-recap-ligne"><span>Intégré le</span><strong>${l.Date_Integration}</strong></div>` : ''}
+          ${l.Motif_Archive ? `<div class="q-recap-ligne"><span>Motif de perte</span><strong style="color:var(--c-danger)">${(this.MOTIFS_ARCHIVE.find(m => m.id === l.Motif_Archive)?.lbl || l.Motif_Archive)}${l.Motif_Archive_Detail ? ' — ' + l.Motif_Archive_Detail : ''}</strong></div>` : ''}
           <div class="q-recap-ligne"><span>Créé le</span><strong>${l.Date_Import ? dateRelative(l.Date_Import) : '—'}</strong></div>
         </div>
 
@@ -1148,7 +1259,7 @@ window.VuePipeline = {
         <div class="q-chips" style="flex-wrap:wrap">
           ${this.STATUTS.filter(s => s.id !== l._statut && s.id !== 'ARCHIVE').map(s => `
             <button type="button" class="q-chip" onclick="VuePipeline.deplacer('${l.ID_Prospect}','${s.id}')">${s.lbl}</button>`).join('')}
-          <button type="button" class="q-chip" style="background:var(--c-text-2)" onclick="VuePipeline.deplacer('${l.ID_Prospect}','ARCHIVE')">🗄 Archiver</button>
+          <button type="button" class="q-chip" style="background:var(--c-text-2)" onclick="VuePipeline.demanderMotifArchive('${l.ID_Prospect}')">🗄 Archiver</button>
         </div>` : ''}
 
         <!-- IA Gemini — slots T01/T02/T04/T05 -->
