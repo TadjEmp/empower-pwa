@@ -222,6 +222,11 @@ const SheetsAPI = {
       // (appel ou visite), au lieu de Date_Statut_Change qui ne mesure que
       // l'ancienneté dans la colonne Kanban — cf. _joursDansEtape, vue-pipeline.js.
       date_derniere_action: 'Date_Derniere_Action', type_derniere_action: 'Type_Derniere_Action',
+      // BLOC 09 (09/2026) — déclaration manuelle par le commercial : "ce
+      // compte du Tracker a commandé", en complément (pas en remplacement)
+      // du flag automatique Sell-In _activationSellIn (délai de synchro
+      // hebdo côté Sell-In, le commercial peut signaler l'info le jour même).
+      commande_manuelle: 'Commande_Manuelle', date_commande_manuelle: 'Date_Commande_Manuelle',
       id: '_uuid',
     },
     nsb_commandes: {
@@ -381,6 +386,7 @@ const SheetsAPI = {
       'Flag_traite': 'flag_traite', 'Flag_converti': 'flag_converti',
       'Source_Import': 'source_import',
       'Date_Derniere_Action': 'date_derniere_action', 'Type_Derniere_Action': 'type_derniere_action',
+      'Commande_Manuelle': 'commande_manuelle', 'Date_Commande_Manuelle': 'date_commande_manuelle',
     },
     objectifs_primes: {
       'PIN_CDS': 'pin_cds', 'Nom_CDS': 'nom_cds',

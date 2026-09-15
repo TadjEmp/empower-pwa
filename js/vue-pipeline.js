@@ -132,7 +132,15 @@ window.VuePipeline = {
           if (Session.estManager()) return true; // ADMIN voit tout
           return String(p.Flag_converti || '').toUpperCase() !== 'TRUE';
         })
-        .map(p => ({ ...p, _statut: this._statutDe(p), _activationSellIn: activationsSellIn.has(normaliserNom(p.Nom_Compte)) }))
+        // Bug audit (clic carte X ouvre le lead Y) — 8 leads en base ont
+        // id_prospect_gas NULL (import groupé antérieur, confirmé par requête
+        // SQL directe). Tout le fichier identifie un lead par
+        // String(l.ID_Prospect)===String(id) : avec plusieurs ID_Prospect à
+        // null, .find() retombe sur le premier lead null rencontré, pas
+        // forcément celui cliqué. _uuid (clé primaire réelle, toujours
+        // unique) sert de repli — mettreAJour() (api.js) sait déjà router
+        // vers la colonne 'id' quand la valeur ressemble à un UUID.
+        .map(p => ({ ...p, ID_Prospect: p.ID_Prospect || p._uuid, _statut: this._statutDe(p), _activationSellIn: activationsSellIn.has(normaliserNom(p.Nom_Compte)) }))
         // BLOC 5 : dédoublonnage par Nom_Compte normalisé — garde le premier (ordre source)
         .filter((p, _i, arr) => {
           const k = normaliserNom(p.Nom_Compte);
@@ -203,8 +211,9 @@ window.VuePipeline = {
     if (this.state.filtreAlerte === 'WP_ENVOYE') l = l.filter(p => !!p.Welcome_Pack_Date);
     if (this.state.filtreAlerte === 'ACTION_DUE') l = l.filter(p => p.Date_prochaine_action && estDepassee(p.Date_prochaine_action));
     if (this.state.filtreAlerte === 'CONTACT_45J') l = l.filter(p => this._alerte45jSansContact(p));
-    // BLOC 09 — suivi activation Tracker ↔ Sell-In (BLOC 04 §3)
-    if (this.state.filtreAlerte === 'SELLIN_ACTIF') l = l.filter(p => p._activationSellIn);
+    // BLOC 09 — suivi activation Tracker ↔ Sell-In (BLOC 04 §3) + déclaration
+    // manuelle commerciale (l'une ou l'autre suffit à considérer le compte actif).
+    if (this.state.filtreAlerte === 'SELLIN_ACTIF') l = l.filter(p => p._activationSellIn || p.Commande_Manuelle);
     // BLOC 7 — filtre channel
     if (this.state.filtreChannel !== 'TOUS') l = l.filter(p => String(p.CANAL || '').trim() === this.state.filtreChannel);
     return l;
@@ -669,7 +678,7 @@ window.VuePipeline = {
             <option value="WP_ENVOYE" ${this.state.filtreAlerte==='WP_ENVOYE'?'selected':''}>📦 Welcome Pack envoyé</option>
             <option value="ACTION_DUE" ${this.state.filtreAlerte==='ACTION_DUE'?'selected':''}>⏰ Action en retard</option>
             <option value="CONTACT_45J" ${this.state.filtreAlerte==='CONTACT_45J'?'selected':''}>🔴 Sans contact +45j</option>
-            <option value="SELLIN_ACTIF" ${this.state.filtreAlerte==='SELLIN_ACTIF'?'selected':''}>💰 Commande détectée (Sell-In)</option>
+            <option value="SELLIN_ACTIF" ${this.state.filtreAlerte==='SELLIN_ACTIF'?'selected':''}>💰 A commandé (Sell-In ou déclaré)</option>
           </select>
           ${voitTous ? `
           <select onchange="VuePipeline.state.filtreOrigine=this.value;VuePipeline.render()">
@@ -758,7 +767,7 @@ window.VuePipeline = {
                   ${l.FLAG_ACTION && l.FLAG_ACTION !== 'SAISIE' ? `<span style="font-size:10px;color:var(--c-primary);font-weight:700">${this._labelFlag(l.FLAG_ACTION)}</span>` : ''}
                 </div>
                 ${l.Note_initiale ? `<div class="kanban-carte-note">${String(l.Note_initiale).slice(0, 60)}</div>` : ''}
-                ${l._activationSellIn ? '<div class="kanban-carte-note" style="color:var(--c-success);font-weight:700">💰 Commande détectée (Sell-In)</div>' : ''}
+                ${l._activationSellIn || l.Commande_Manuelle ? `<div class="kanban-carte-note" style="color:var(--c-success);font-weight:700">💰 ${l._activationSellIn && l.Commande_Manuelle ? 'Commande (Sell-In + déclarée)' : l._activationSellIn ? 'Commande détectée (Sell-In)' : 'Commande déclarée'}</div>` : ''}
                 ${(l.STATUT_EMPOWER === 'A_VISITER' || l.FLAG_ACTION === 'A_VISITER') ? '<div class="kanban-carte-note" style="color:var(--c-primary);font-weight:700">📍 À visiter (demandé au phoning)</div>' : ''}
                 ${this._retardWelcomePack(l) ? '<div class="kanban-carte-note" style="color:var(--c-danger);font-weight:600">⚠️ Welcome Pack J+14 dépassé</div>' : ''}
                 ${this._alerte45jSansContact(l) ? '<div class="kanban-carte-note" style="color:var(--c-danger);font-weight:600">🔴 Sans contact +45j</div>' : this._alerteSansActivite(l) ? '<div class="kanban-carte-note" style="color:var(--c-warning);font-weight:600">⏳ Sans activité >7j</div>' : ''}
@@ -887,7 +896,8 @@ window.VuePipeline = {
                 ${contact45j ? '<span style="color:var(--c-danger);font-weight:700">🔴 +45j</span><br>' : ''}
                 ${activite7j ? '<span style="color:var(--c-warning);font-weight:700">⏳ +7j</span><br>' : ''}
                 ${l._activationSellIn ? '<span style="color:var(--c-success);font-weight:700">💰 Sell-In</span>' : ''}
-                ${!wpRetard && !contact45j && !activite7j && !l._activationSellIn ? '<span style="color:var(--c-text-2)">—</span>' : ''}
+                ${l.Commande_Manuelle ? '<span style="color:var(--c-success);font-weight:700">✍️ Déclarée</span>' : ''}
+                ${!wpRetard && !contact45j && !activite7j && !l._activationSellIn && !l.Commande_Manuelle ? '<span style="color:var(--c-text-2)">—</span>' : ''}
               </td>` : ''}
               ${cc.source ? `<td style="font-size:11px;color:var(--c-text-2)">${(l.ORIGINE||'—').replace('Import_','').replace(/_/g,' ')}</td>` : ''}
               <td>
@@ -1038,6 +1048,7 @@ window.VuePipeline = {
         <div class="q-recap" style="margin-bottom:12px">
           <div class="q-recap-ligne"><span>CDS assigné</span><strong>${this._nomCDS(l.PIN_CDS_Assigne)}</strong></div>
           ${l._activationSellIn ? `<div class="q-recap-ligne"><span>Sell-In</span><strong style="color:var(--c-success)">💰 Commande détectée (FY27)</strong></div>` : ''}
+          ${l.Commande_Manuelle ? `<div class="q-recap-ligne"><span>Déclaration</span><strong style="color:var(--c-success)">✍️ Commande déclarée${l.Date_Commande_Manuelle ? ' le ' + new Date(l.Date_Commande_Manuelle).toLocaleDateString('fr-FR') : ''}</strong></div>` : ''}
           ${l.Adresse ? `<div class="q-recap-ligne"><span>Adresse</span><strong>${l.Adresse}</strong></div>` : ''}
           ${l.Ville || l.Code_Postal ? `<div class="q-recap-ligne"><span>Localisation</span><strong>${l.Ville || '—'} ${l.Code_Postal||''}</strong></div>` : ''}
           ${l.Tel ? `<div class="q-recap-ligne"><span>Téléphone</span><strong><a class="lien-tel" href="tel:${String(l.Tel).replace(/\s/g, '')}">${l.Tel}</a></strong></div>` : ''}
@@ -1064,6 +1075,18 @@ window.VuePipeline = {
           <div style="font-size:12px;color:var(--c-success);margin-bottom:8px;padding:6px 10px;background:var(--c-success-10,#e6f9f0);border-radius:var(--radius-sm)">
             ✅ Welcome Pack envoyé le ${String(l.Welcome_Pack_Date).slice(0,10)}
           </div>` : ''}
+
+          <!-- BLOC 09 — déclaration manuelle "a commandé", complémentaire au
+               flag automatique Sell-In (délai de synchro hebdo). -->
+          ${l.Commande_Manuelle ? `
+          <button class="btn-secondaire" style="width:100%;margin-bottom:10px;font-size:12px;color:var(--c-success);border-color:var(--c-success)"
+                  onclick="VuePipeline.declarerCommande('${l.ID_Prospect}', false)">
+            ✍️ Commande déclarée${l.Date_Commande_Manuelle ? ' le ' + new Date(l.Date_Commande_Manuelle).toLocaleDateString('fr-FR') : ''} — annuler
+          </button>` : `
+          <button class="btn-secondaire" style="width:100%;margin-bottom:10px;font-size:12px"
+                  onclick="VuePipeline.declarerCommande('${l.ID_Prospect}', true)">
+            🛒 Indiquer que ce compte a commandé
+          </button>`}
 
           <label style="font-size:12px;color:var(--c-text-2);margin-bottom:8px;display:block">Adresse postale
             <input class="q-input" id="lead-adresse" style="margin-top:3px"
@@ -1361,6 +1384,21 @@ window.VuePipeline = {
       await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', id, champs);
       Object.assign(lead, champs);
       Toast.afficher('✅ Welcome Pack marqué envoyé', 'succes');
+      this.render();
+    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+  },
+
+  // BLOC 09 — déclaration manuelle "ce compte a commandé" par le commercial
+  // assigné (ou manager/channel), complémentaire au flag automatique
+  // Sell-In (_activationSellIn) qui dépend d'une synchro hebdomadaire.
+  async declarerCommande(id, valeur) {
+    const lead = this.state.leads.find(l => String(l.ID_Prospect) === String(id));
+    if (!lead) return;
+    try {
+      const champs = { Commande_Manuelle: valeur, Date_Commande_Manuelle: valeur ? dateISOLocale() : null };
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', id, champs);
+      Object.assign(lead, champs);
+      Toast.afficher(valeur ? '🛒 Commande déclarée' : 'Déclaration annulée', 'succes');
       this.render();
     } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
   },
