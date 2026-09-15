@@ -195,10 +195,18 @@
   background: var(--c-primary); color: #fff; border-color: var(--c-primary);
   box-shadow: 0 4px 12px -2px rgba(255,109,104,.25);
 }
-.filtres-statut { display: flex; align-items: center; gap: 10px; }
+/* BLOC 09 — audit "débordement Tracker mobile web" : avec 5-6 <select>
+   flex:1 et aucun flex-wrap/min-width, chaque select refusait de rétrécir
+   sous la largeur de son option la plus longue (piège flexbox classique :
+   min-width:auto par défaut sur un flex-item) — la ligne débordait de
+   ~490px sur un viewport de 393px (body.scrollWidth mesuré à 881px),
+   provoquant l'affichage cassé constaté (filtres/FAB mal positionnés).
+   Passage en wrap + min-width:0 pour que les selects rétrécissent et que
+   la ligne se replie sur plusieurs lignes au lieu de déborder. */
+.filtres-statut { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .filtres-statut select {
   border: 1px solid var(--c-border); border-radius: var(--radius-sm);
-  padding: 6px 10px; font-size: 13px; flex: 1;
+  padding: 6px 10px; font-size: 13px; flex: 1 1 130px; min-width: 0;
   background: var(--bg-warm-white); color: var(--c-title);
 }
 .toggle-label { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
