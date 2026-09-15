@@ -143,6 +143,29 @@ window.VueVisites = {
       ).length;
       if (window.updateNavBadge) updateNavBadge('visites', nbVisitesPlanif);
       this.state.chargement = false;
+
+      // BLOC 04 §4 — raccourci "Planifier visite" depuis une card du Tracker
+      // (vue-pipeline.js) : le lead n'a généralement pas encore de compte en
+      // base, donc pré-remplissage en mode "hors base" (comme une visite à
+      // froid) plutôt que de chercher un ID_Compte qui n'existe pas encore.
+      // Même mécanisme de variable de transit que planifierSuiviAppel()
+      // ci-dessus (consommée une seule fois).
+      const suiviLead = window._suiviLeadOrigine;
+      window._suiviLeadOrigine = null;
+      if (suiviLead) {
+        this._resetFormPlanif();
+        Object.assign(this.state.formPlanif, {
+          horsBase: true,
+          nomLibre: suiviLead.nomCompte || '',
+          telLibre: suiviLead.tel || '',
+          emailLibre: suiviLead.email || '',
+          villeLibre: suiviLead.ville || '',
+          deptLibre: suiviLead.departement || '',
+          commentairePrep: suiviLead.note || '',
+        });
+        this.state.modalPlanif = true;
+      }
+
       this.render();
     } catch(e) {
       this.state.chargement = false;

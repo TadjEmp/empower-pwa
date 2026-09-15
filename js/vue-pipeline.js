@@ -263,6 +263,23 @@ window.VuePipeline = {
   ouvrirSaisie() { this.state.modal = { type: 'saisie' }; this.render(); },
   fermerModal()  { this.state.modal = null; this.render(); },
 
+  // BLOC 04 §4 — raccourci "Planifier visite" depuis une card du Tracker,
+  // même mécanisme de variable de transit que VueVisites.planifierSuiviAppel()
+  // (consommée une seule fois par VueVisites.init() au chargement de la route).
+  // Un lead du Tracker n'a généralement pas encore de compte en base, d'où le
+  // pré-remplissage en mode "hors base" côté Visites plutôt qu'un ID_Compte.
+  planifierVisiteDepuisLead(id) {
+    const l = this.state.leads.find(x => String(x.ID_Prospect) === String(id));
+    if (!l) return;
+    const note = (l.CONTACT_NOM ? `Contact : ${l.CONTACT_NOM}${l.CONTACT_FONCTION ? ' · ' + l.CONTACT_FONCTION : ''}\n` : '')
+      + (l.Note_initiale || '');
+    window._suiviLeadOrigine = {
+      nomCompte: l.Nom_Compte || '', tel: l.Tel || '', email: l.Email || '',
+      ville: l.Ville || '', departement: l.Departement || '', note,
+    };
+    Router.aller('#/visites');
+  },
+
   async iaAppeler(slot, leadId) {
     const lead = this.state.leads.find(l => String(l.ID_Prospect) === String(leadId));
     if (!lead) return;
@@ -1085,6 +1102,7 @@ window.VuePipeline = {
                 onclick="VuePipeline.supprimerLead('${l.ID_Prospect}')">🗑 Supprimer</button>`
             : ''}
           <button type="button" class="btn-primaire" onclick="Router.aller('#/phoning/${l.ID_Prospect}')">📞 Planifier appel</button>
+          <button type="button" class="btn-secondaire" onclick="VuePipeline.planifierVisiteDepuisLead('${l.ID_Prospect}')">🗺️ Planifier visite</button>
         </div>
       </div>
     </div>`;
