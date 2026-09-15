@@ -204,6 +204,12 @@ window.VueFicheCompte = {
     this._rerender();
     try {
       const champs = { Has_EMPOWER: devenirEmpower ? 'Oui' : 'Non' };
+      // BLOC 04 §1 (09/2026) — date d'onboarding posée une seule fois, au
+      // premier passage à Oui (jamais écrasée si déjà renseignée, jamais
+      // effacée si on repasse à Non par erreur puis qu'on re-clique).
+      if (devenirEmpower && !this.state.compte.Date_Onboarding_Empower) {
+        champs.Date_Onboarding_Empower = dateISOLocale();
+      }
       await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', idCompte, champs);
       Object.assign(this.state.compte, champs);
       Toast.afficher(devenirEmpower ? '⭐ Compte marqué EMPOWER' : '⚡ Compte repassé Grossiste', 'succes');
@@ -398,7 +404,7 @@ window.VueFicheCompte = {
                 </select>`
               : `<strong>${window.resolveCDS(c.PIN_CDS_Assigne || c.Nom_CDS)}</strong>`
           }</div>
-          <div class="id-ligne"><span>EMPOWER</span>
+          <div class="id-ligne"><span>EMPOWER${c.Date_Onboarding_Empower ? ` <span style="font-weight:400;color:var(--c-text-2)">· depuis le ${new Date(c.Date_Onboarding_Empower).toLocaleDateString('fr-FR')}</span>` : ''}</span>
             <span style="display:flex;align-items:center;gap:8px">
               <strong>${window.estEmpower(c) ? 'Oui' : 'Non'}</strong>
               <button class="btn-lien" style="font-size:12px"

@@ -99,6 +99,9 @@ const SheetsAPI = {
       canal: 'CANAL', secteur: 'SECTEUR', has_empower: 'Has_EMPOWER',
       flag_action: 'Flag_Action', priorite: 'Priorite', statut_compte: 'Statut',
       ca_fy25: 'CA_FY25', ca_fy26: 'CA_FY26', ca_q1fy27: 'CA_Q1FY27',
+      // BLOC 04 §3/§5 (09/2026) — colonnes migrées côté sync-sellin v11,
+      // jamais exposées côté frontend jusqu'ici.
+      ca_q2fy27: 'CA_Q2FY27', ca_q3fy27: 'CA_Q3FY27', ca_q4fy27: 'CA_Q4FY27',
       date_derniere_action: 'Date_Derniere_Action', type_derniere_action: 'Type_Derniere_Action',
       prochaine_action: 'Prochaine_Action', date_prochaine_action: 'Date_Prochaine_Action',
       slider_receptivite: 'Slider_Receptivite', note_initiale: 'Note_Initiale',
@@ -113,10 +116,16 @@ const SheetsAPI = {
       badge_visite_froid: 'Badge_Visite_Froid', id: '_uuid',
       // Bloc 3 §1 (09/2026) — contact interlocuteur au niveau compte
       contact_nom: 'Contact_Nom', contact_fonction: 'Contact_Fonction',
+      // BLOC 04 §1 (09/2026) — date d'onboarding EMPOWER, posée manuellement
+      // au moment où Has_EMPOWER passe à Oui (cf. VueFicheCompte.basculerEmpower).
+      date_onboarding_empower: 'Date_Onboarding_Empower',
     },
     sellin_agregats: {
       reseller: 'RESELLER', canal: 'CANAL',
       ca_fy25: 'CA FY25 €', ca_fy26: 'CA FY26 €', ca_q1fy27: 'CA Q1FY27 €',
+      // BLOC 04 §3 (09/2026) — Q2/Q3/Q4 ajoutés (colonnes déjà migrées côté
+      // sync-sellin v11, jamais exposées côté frontend jusqu'ici).
+      ca_q2fy27: 'CA Q2FY27 €', ca_q3fy27: 'CA Q3FY27 €', ca_q4fy27: 'CA Q4FY27 €',
       flag_brut: 'Flag_Brut', compte_id: 'Compte_ID',
       semaine_sync: 'Semaine_Sync', id: '_uuid',
     },
@@ -271,6 +280,7 @@ const SheetsAPI = {
       'CANAL': 'canal', 'SECTEUR': 'secteur', 'Has_EMPOWER': 'has_empower',
       'Flag_Action': 'flag_action', 'Priorite': 'priorite', 'Statut': 'statut_compte',
       'CA_FY25': 'ca_fy25', 'CA_FY26': 'ca_fy26', 'CA_Q1FY27': 'ca_q1fy27',
+      'CA_Q2FY27': 'ca_q2fy27', 'CA_Q3FY27': 'ca_q3fy27', 'CA_Q4FY27': 'ca_q4fy27',
       'Date_Derniere_Action': 'date_derniere_action', 'Type_Derniere_Action': 'type_derniere_action',
       'Prochaine_Action': 'prochaine_action', 'Date_Prochaine_Action': 'date_prochaine_action',
       'Slider_Receptivite': 'slider_receptivite', 'Note_Initiale': 'note_initiale',
@@ -280,6 +290,7 @@ const SheetsAPI = {
       'STATUT_COMPTE': 'statut_compte', 'Interet_EMPOWER': 'interet_empower',
       'FLAG_ALERTE_ALEXANDRA': 'flag_alerte_alexandra',
       'Contact_Nom': 'contact_nom', 'Contact_Fonction': 'contact_fonction',
+      'Date_Onboarding_Empower': 'date_onboarding_empower',
     },
     visites: {
       'ID_Visite': 'id_visite_gas', 'ID_Cible': 'id_cible_gas',

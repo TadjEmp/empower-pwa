@@ -1207,6 +1207,19 @@ window.VuePipeline = {
     const idCompte = genId('COMP');
     const priorite = lead.POTENTIEL === 'Fort' ? 'HAUTE' : lead.POTENTIEL === 'Moyen' ? 'MOYENNE' : 'BASSE';
 
+    // BLOC 04 §3 (09/2026) — jointure Tracker ↔ Sell-In (option A validée) :
+    // au moment où un lead devient compte, chercher un revendeur Sell-In déjà
+    // synchronisé sous le même nom normalisé et reprendre son CA connu plutôt
+    // que de créer un compte à 0€ alors que le revendeur commande déjà. Même
+    // matching par nom que sync-sellin (aucune clé plus fiable disponible
+    // aujourd'hui, cf. cadrage BLOC 04 — option A acceptée avec cette marge).
+    let caSellIn = null;
+    try {
+      const agregats = await SheetsAPI.lire('EMPOWER_MDB', '📋 COMPTES HISTORIQUES');
+      const nomNormLead = normaliserNom(lead.Nom_Compte || '');
+      caSellIn = (agregats || []).find(a => normaliserNom(a.RESELLER || '') === nomNormLead) || null;
+    } catch { /* si la lecture échoue, on crée quand même le compte sans CA */ }
+
     await SheetsAPI.ecrire('EMPOWER_MDB', '🏢_COMPTES', {
       ID_Compte:       idCompte,
       Nom_Compte:      lead.Nom_Compte || '',
@@ -1226,7 +1239,15 @@ window.VuePipeline = {
       Source_Import:   'PIPELINE',
       Flag_Traite:     'NON',
       Has_EMPOWER:     'Oui',
+      // BLOC 04 §1 — date d'onboarding = date de création du compte EMPOWER
+      // via le Tracker (même règle que le bouton manuel sur la fiche compte).
+      Date_Onboarding_Empower: dateISOLocale(),
       Priorite:        priorite,
+      ...(caSellIn ? {
+        CA_FY25: caSellIn['CA FY25 €'] || 0, CA_FY26: caSellIn['CA FY26 €'] || 0,
+        CA_Q1FY27: caSellIn['CA Q1FY27 €'] || 0, CA_Q2FY27: caSellIn['CA Q2FY27 €'] || 0,
+        CA_Q3FY27: caSellIn['CA Q3FY27 €'] || 0, CA_Q4FY27: caSellIn['CA Q4FY27 €'] || 0,
+      } : {}),
     });
 
     await SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES');
