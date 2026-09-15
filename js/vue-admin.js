@@ -28,6 +28,8 @@ window.VueAdmin = {
       // Bloc 8 refonte desktop — sous-navigation + journal d'audit
       adminTab: 'objectifs',
       journal: [], journalChargement: false,
+      // BLOC 09 — audit "Qualité des données" (onglet Maintenance)
+      qualite: null, qualiteChargement: false,
       // Sécurité + CRUD utilisateurs — matrice de permissions en lecture
       usersState: {
         chargement: false, liste: [],
@@ -80,6 +82,8 @@ window.VueAdmin = {
       this._chargerJournal();
     } else if (tab === 'utilisateurs' && !this.state.usersState.liste.length && !this.state.usersState.chargement) {
       this._chargerUtilisateurs();
+    } else if (tab === 'maintenance' && !this.state.qualite && !this.state.qualiteChargement) {
+      this._chargerQualiteDonnees();
     } else {
       this.render();
     }
@@ -314,6 +318,48 @@ window.VueAdmin = {
     }
     this.state.journalChargement = false;
     this.render();
+  },
+
+  // BLOC 09 — audit "Qualité des données" (onglet Maintenance) : leads sans
+  // identifiant (même classe de bug que le clic carte X → ouvre Y, corrigé
+  // dans vue-pipeline.js) + doublons probables (leads/comptes), pour ne plus
+  // dépendre d'une investigation SQL manuelle à chaque nouveau signalement.
+  async _chargerQualiteDonnees() {
+    this.state.qualiteChargement = true;
+    this.render();
+    try {
+      const [leads, comptes] = await Promise.all([
+        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS'),
+        SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
+      ]);
+      this.state.qualite = {
+        leadsSansId: (leads || []).filter(l => !l.ID_Prospect),
+        doublonsLeads: this._detecterDoublons(leads || [], 'ID_Prospect', 'Nom_Compte'),
+        doublonsComptes: this._detecterDoublons(comptes || [], 'ID_Compte', 'Nom_Compte'),
+      };
+    } catch(e) {
+      Toast.afficher('❌ Erreur analyse qualité : ' + e.message, 'erreur');
+      this.state.qualite = { erreur: e.message };
+    }
+    this.state.qualiteChargement = false;
+    this.render();
+  },
+
+  // Comparaison O(n²) — volumes actuels (leads ~100, comptes ~350) largement
+  // sous le seuil où ça poserait un problème de performance pour un contrôle
+  // à la demande (pas exécuté automatiquement au chargement de l'app).
+  _detecterDoublons(items, champId, champNom, seuil = 85) {
+    const paires = [];
+    const valides = items.filter(x => x[champNom] && String(x[champNom]).trim());
+    for (let i = 0; i < valides.length; i++) {
+      for (let j = i + 1; j < valides.length; j++) {
+        const score = similariteNoms(valides[i][champNom], valides[j][champNom]);
+        if (score >= seuil) {
+          paires.push({ a: valides[i][champNom], b: valides[j][champNom], idA: valides[i][champId], idB: valides[j][champId], score });
+        }
+      }
+    }
+    return paires.sort((a, b) => b.score - a.score);
   },
 
   async _chargerSuivi() {
@@ -1474,12 +1520,62 @@ window.VueAdmin = {
         <div class="bloc-fiche">
           <div class="bloc-titre">Maintenance</div>
           <button class="btn-secondaire" onclick="VueAdmin.viderCache()">🗑️ Vider le cache local (IndexedDB)</button>
-        </div>` : ''}
+        </div>
+        ${this._renderQualiteDonnees()}` : ''}
 
         </div><!-- /dash-col-main -->
       </div>
       ${NavBar('admin')}
     `;
+  },
+
+  // BLOC 09 — rendu "Qualité des données" (onglet Maintenance)
+  _renderQualiteDonnees() {
+    if (this.state.qualiteChargement) {
+      return `<div class="bloc-fiche"><div class="spinner-centre" style="min-height:120px">Analyse en cours…</div></div>`;
+    }
+    const q = this.state.qualite;
+    if (!q) return '';
+    if (q.erreur) return `<div class="bloc-fiche"><div class="pas-de-donnees">Erreur : ${q.erreur}</div></div>`;
+
+    const ligneDoublon = (p, route) => `
+      <div class="te-ligne" style="grid-template-columns:1fr auto 1fr;align-items:center;gap:8px">
+        <span style="cursor:pointer" onclick="Router.aller('${route}${p.idA}')" title="Ouvrir">${p.a}</span>
+        <span class="pace-badge ${p.score >= 95 ? 'pace-risk' : 'pace-watch'}">${p.score}%</span>
+        <span style="cursor:pointer" onclick="Router.aller('${route}${p.idB}')" title="Ouvrir">${p.b}</span>
+      </div>`;
+
+    return `
+      <div class="bloc-fiche">
+        <div class="bloc-titre">Qualité des données
+          <button class="btn-lien" style="margin-left:auto;font-size:12px" onclick="VueAdmin.state.qualite=null;VueAdmin._chargerQualiteDonnees()">↻ Réanalyser</button>
+        </div>
+        <p style="font-size:11px;color:var(--c-text-2);margin:-4px 0 12px">
+          Détection à la demande — comparaison par similarité de nom (Levenshtein, seuil 85%). Un score élevé signale une paire à vérifier manuellement, pas une certitude.
+        </p>
+
+        <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;margin-bottom:6px">
+          LEADS SANS IDENTIFIANT (${q.leadsSansId.length})
+        </div>
+        ${q.leadsSansId.length ? `
+        <div class="tableau-equipe" style="margin-bottom:16px">
+          ${q.leadsSansId.map(l => `<div class="te-ligne">${l.Nom_Compte || '—'} <span style="color:var(--c-text-2);font-size:11px">— statut ${l.STATUT_EMPOWER || '—'}</span></div>`).join('')}
+        </div>` : '<div class="pas-de-donnees" style="margin-bottom:16px">Aucun — tous les leads ont un identifiant.</div>'}
+
+        <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;margin-bottom:6px">
+          DOUBLONS PROBABLES — LEADS TRACKER (${q.doublonsLeads.length})
+        </div>
+        ${q.doublonsLeads.length ? `
+        <div class="tableau-equipe" style="margin-bottom:16px">${q.doublonsLeads.map(p => ligneDoublon(p, '#/empower-tracker')).join('')}</div>`
+          : '<div class="pas-de-donnees" style="margin-bottom:16px">Aucun doublon probable détecté.</div>'}
+
+        <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;margin-bottom:6px">
+          DOUBLONS PROBABLES — COMPTES (${q.doublonsComptes.length})
+        </div>
+        ${q.doublonsComptes.length ? `
+        <div class="tableau-equipe">${q.doublonsComptes.map(p => ligneDoublon(p, '#/compte/')).join('')}</div>`
+          : '<div class="pas-de-donnees">Aucun doublon probable détecté.</div>'}
+      </div>`;
   },
 
   // ── Bloc 8 refonte desktop : onglet Journal — exploite 📊_ACTIONS déjà collecté ──
