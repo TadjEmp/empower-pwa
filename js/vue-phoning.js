@@ -620,15 +620,23 @@ window.VuePhoning = {
   },
 
   // ── Enregistrement + qualification ──
-  async toggleEnregistrement() {
+  toggleEnregistrement() {
     if (this.state.enregistre) { GroqAPI.arreterEnregistrement(); return; }
     // Information RGPD avant 1er enregistrement (Section 10 V2.1)
     const key = 'esi_rgpd_phoning_ok';
     if (!localStorage.getItem(key)) {
-      const ok = confirm('ℹ️ Information RGPD\n\nConformément au RGPD :\n• Aucun fichier audio ne sera stocké côté serveur\n• Seule la transcription textuelle sera conservée dans les notes d\'appel\n• L\'audio est traité en mémoire et immédiatement effacé\n\nEn continuant, vous acceptez cette condition.');
-      if (!ok) return;
-      localStorage.setItem(key, '1');
+      ConfirmModal.demander({
+        titre: 'Information RGPD',
+        detail: "Conformément au RGPD :\n• Aucun fichier audio ne sera stocké côté serveur\n• Seule la transcription textuelle sera conservée dans les notes d'appel\n• L'audio est traité en mémoire et immédiatement effacé\n\nEn continuant, vous acceptez cette condition.",
+        labelConfirmer: "J'accepte",
+        onConfirm: () => { localStorage.setItem(key, '1'); this._demarrerEnregistrement(); },
+      });
+      return;
     }
+    this._demarrerEnregistrement();
+  },
+
+  async _demarrerEnregistrement() {
     try {
       this.state.enregistre = true;
       this.render();
@@ -993,8 +1001,9 @@ window.VuePhoning = {
         // un compte-rendu d'appel, ne doit jamais polluer le Journal.
         .filter(a => estAppelRealise(a))
         .filter(a => Session.voitTout() || Number(a.PIN_CDS) === Session.pin)
-        .sort((a, b) => (b.Date || '').localeCompare(a.Date || ''))
-        .slice(0, 100);
+        // Feuille de route Phase 0 — plafond de 100 lignes levé (tronquait
+        // silencieusement l'historique sans pagination ni "charger plus").
+        .sort((a, b) => (b.Date || '').localeCompare(a.Date || ''));
     } catch(e) { Toast.afficher('❌ Chargement journal : ' + e.message, 'erreur'); }
     this.state.journalChargement = false;
     this.render();
@@ -1090,7 +1099,6 @@ window.VuePhoning = {
     if (!data.length) { Toast.afficher('Aucun appel pour ces filtres', 'warning'); return; }
 
     const ts = dateISOLocale().replace(/-/g, '');
-    const fn = `PHONING_${f.debut || 'debut'}_${f.fin || 'fin'}_${ts}.csv`;
 
     const rows = data.map(a => {
       // BLOC 10 — Extraire score Groq et concurrent depuis Questionnaire_JSON
@@ -1128,7 +1136,17 @@ window.VuePhoning = {
       };
     });
 
-    generateCSV(rows, fn);
+    // Feuille de route Phase 0 — XLSX pour tous, aligné sur l'export Visites
+    // (auparavant CSV, incohérence de format entre les deux modules terrain).
+    if (typeof XLSX === 'undefined') {
+      Toast.afficher('Bibliothèque XLSX non chargée', 'erreur'); return;
+    }
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = Object.keys(rows[0] || {}).map(() => ({ wch: 22 }));
+    XLSX.utils.book_append_sheet(wb, ws, 'Phoning');
+    XLSX.writeFile(wb, `PHONING_${f.debut || 'debut'}_${f.fin || 'fin'}_${ts}.xlsx`);
+    Toast.afficher(`Export XLSX : ${rows.length} appel(s)`, 'succes');
     this.state.extractOuvert = false;
     this.render();
   },
@@ -1411,7 +1429,7 @@ window.VuePhoning = {
         <div style="display:flex;gap:8px">
           <button class="btn-secondaire" style="flex:1" onclick="VuePhoning.fermerExtraction()">Fermer</button>
           <button class="btn-primaire" style="flex:2" onclick="VuePhoning.exporterPhoning()"
-                  ${cnt === 0 ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exporter CSV</button>
+                  ${cnt === 0 ? 'disabled' : ''}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exporter XLSX</button>
         </div>
       </div>
     </div>`;
@@ -1421,12 +1439,15 @@ window.VuePhoning = {
   render() {
     const app = document.getElementById('app');
     if (!this.state || this.state.chargement) {
-      app.innerHTML = '<div class="spinner-centre">Chargement du module phoning…</div>';
+      app.innerHTML = skeletonListe(6);
       return;
     }
     const s = this.state;
     const TITRES = { PRE: 'Préparer l\'appel', CALL: 'Appel en cours', POST: 'Post-appel' };
-    const peutExtraire = Session.voitTout();
+    // Feuille de route Phase 0 — ouvert à tous les commerciaux (chacun n'exporte
+    // de toute façon que son propre journal, déjà filtré par PIN à la source),
+    // aligné sur Visites qui l'a toujours permis.
+    const peutExtraire = true;
     const backAction = (s.mode === 'PLANNING' || s.mode === 'HISTORIQUE')
       ? 'Router.retour()'
       : 'VuePhoning.setMode(\'PLANNING\')';
@@ -1439,7 +1460,7 @@ window.VuePhoning = {
         <button onclick="${backAction}" class="btn-retour">←</button>
         <h1>${titre}</h1>
         <div style="display:flex;gap:6px">
-          ${peutExtraire ? `<button class="btn-retour" title="Extraction CSV" onclick="VuePhoning.ouvrirExtraction()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>` : ''}
+          ${peutExtraire ? `<button class="btn-retour" title="Extraction" onclick="VuePhoning.ouvrirExtraction()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>` : ''}
           ${s.cible && s.mode === 'APPEL' ? `<span class="badge-compteur">${s.cible.Nom_Compte.slice(0, 14)}</span>` : ''}
         </div>
       </header>
@@ -2056,7 +2077,7 @@ window.VuePhoning = {
 
   _renderPlanning() {
     const s = this.state;
-    if (s.planningChargement) return '<div class="spinner-centre">Chargement planning…</div>';
+    if (s.planningChargement) return skeletonListe(4);
 
     const auj  = dateISOLocale();
     const now  = auj;
@@ -2367,8 +2388,15 @@ window.VuePhoning = {
     this.render();
   },
 
-  async supprimerPlanif(id) {
-    if (!confirm('Supprimer cet appel planifié ?')) return;
+  supprimerPlanif(id) {
+    ConfirmModal.demander({
+      titre: 'Supprimer cet appel planifié ?',
+      labelConfirmer: 'Supprimer', danger: true,
+      onConfirm: () => this._supprimerPlanifConfirme(id),
+    });
+  },
+
+  async _supprimerPlanifConfirme(id) {
     try {
       await SheetsAPI.mettreAJour('EMPOWER_MDB', '📞_PHONING', id, {
         deleted: 'TRUE', deleted_at: dateISOLocale(), deleted_by: Session.nom,

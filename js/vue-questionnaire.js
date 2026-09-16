@@ -565,15 +565,23 @@ window.VueQuestionnaire = {
   supprimerPhoto(i) { this.state.photos.splice(i, 1); this.render(); },
 
   _enregistre: false,
-  async dicter() {
+  dicter() {
     if (this._enregistre) { GroqAPI.arreterEnregistrement(); return; }
     // Info RGPD avant 1er enregistrement
     const key = 'esi_rgpd_vocal_ok';
     if (!localStorage.getItem(key)) {
-      const ok = confirm('ℹ️ Conformément au RGPD, aucun fichier audio ne sera stocké côté serveur.\nSeule la transcription textuelle sera conservée.\n\nEn continuant, vous acceptez cette condition.');
-      if (!ok) return;
-      localStorage.setItem(key, '1');
+      ConfirmModal.demander({
+        titre: 'Information RGPD',
+        detail: "Conformément au RGPD, aucun fichier audio ne sera stocké côté serveur.\nSeule la transcription textuelle sera conservée.\n\nEn continuant, vous acceptez cette condition.",
+        labelConfirmer: "J'accepte",
+        onConfirm: () => { localStorage.setItem(key, '1'); this._demarrerDictee(); },
+      });
+      return;
     }
+    this._demarrerDictee();
+  },
+
+  async _demarrerDictee() {
     try {
       this._enregistre = true;
       const btn = document.getElementById('btn-dictee');
@@ -929,7 +937,7 @@ window.VueQuestionnaire = {
   render() {
     const app = document.getElementById('app');
     if (!this.state || this.state.chargement) {
-      app.innerHTML = '<div class="spinner-centre">Préparation du formulaire…</div>';
+      app.innerHTML = skeletonListe(6);
       return;
     }
     const s = this.state;

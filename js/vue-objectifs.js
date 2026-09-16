@@ -293,7 +293,7 @@ window.VueObjectifs = {
   render() {
     const app = document.getElementById('app');
     if (this.state.chargement) {
-      app.innerHTML = '<div class="spinner-centre">Chargement des objectifs…</div>';
+      app.innerHTML = skeletonKPI(4) + skeletonListe(5);
       return;
     }
     if (this.state.erreur) {

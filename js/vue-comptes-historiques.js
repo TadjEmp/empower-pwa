@@ -134,7 +134,7 @@ window.VueComptesHistoriques = {
   render() {
     const app = document.getElementById('app');
     if (this.state.chargement) {
-      app.innerHTML = '<div class="spinner-centre">Chargement des comptes historiques…</div>';
+      app.innerHTML = skeletonListe(8);
       return;
     }
     if (this.state.erreur) {

@@ -156,10 +156,17 @@ window.VueAdmin = {
     } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); await this._chargerUtilisateurs(); }
   },
 
-  async toggleActifUtilisateur(pin, actifActuel) {
+  toggleActifUtilisateur(pin, actifActuel) {
     const nouvelEtat = !actifActuel;
-    const ok = confirm(nouvelEtat ? 'Réactiver ce compte ?' : "Désactiver ce compte ? L'utilisateur ne pourra plus se connecter.");
-    if (!ok) return;
+    ConfirmModal.demander({
+      titre: nouvelEtat ? 'Réactiver ce compte ?' : 'Désactiver ce compte ?',
+      detail: nouvelEtat ? '' : "L'utilisateur ne pourra plus se connecter.",
+      labelConfirmer: nouvelEtat ? 'Réactiver' : 'Désactiver', danger: !nouvelEtat,
+      onConfirm: () => this._toggleActifUtilisateurConfirme(pin, nouvelEtat),
+    });
+  },
+
+  async _toggleActifUtilisateurConfirme(pin, nouvelEtat) {
     try {
       const r = await fetch(`${SUPABASE_URL}/functions/v1/admin-users`, {
         method: 'POST',
@@ -202,7 +209,7 @@ window.VueAdmin = {
 
   _renderUtilisateurs() {
     const us = this.state.usersState;
-    if (us.chargement) return `<div class="spinner-centre" style="min-height:200px">Chargement des utilisateurs…</div>`;
+    if (us.chargement) return skeletonListe(5);
     const ROLES = Object.keys(Permissions.MATRICE);
     return `
       <div class="bloc-fiche">
@@ -378,7 +385,7 @@ window.VueAdmin = {
 
   _renderSuivi() {
     const sv = this.state.suivi;
-    if (sv.chargement) return '<div class="spinner-centre">Chargement du suivi…</div>';
+    if (sv.chargement) return skeletonListe(5);
 
     const STATUTS = [
       { id: 'SAISIE',      lbl: 'À traiter',   coul: 'var(--c-primary)' },
@@ -521,10 +528,29 @@ window.VueAdmin = {
         (!f.ville || normaliserNom(p.Ville || '').includes(normaliserNom(f.ville).slice(0, 4)))
       );
       if (doublons.length > 0) {
-        const ok = confirm(`⚠️ Ce compte ressemble à "${doublons[0].Nom_Compte}" déjà dans la base.\n\nContinuer quand même ?`);
-        if (!ok) { this.state.leadEnvoi = false; this.render(); return; }
+        this.state.leadEnvoi = false;
+        this.render();
+        ConfirmModal.demander({
+          titre: 'Doublon probable détecté',
+          message: `Ce compte ressemble à "${doublons[0].Nom_Compte}" déjà dans la base.`,
+          labelConfirmer: 'Continuer quand même',
+          onConfirm: () => this._creerLeadDepuisForm(f),
+        });
+        return;
       }
 
+      await this._creerLeadDepuisForm(f);
+    } catch(err) {
+      Toast.afficher('❌ ' + err.message, 'erreur');
+      this.state.leadEnvoi = false;
+      this.render();
+    }
+  },
+
+  async _creerLeadDepuisForm(f) {
+    this.state.leadEnvoi = true;
+    this.render();
+    try {
       const lead = {
         ID_Prospect:       genId('LEAD'),
         Nom_Compte:        f.nom.trim(),
@@ -688,10 +714,17 @@ window.VueAdmin = {
       </div>`;
   },
 
-  async importerDepuisTracker() {
+  importerDepuisTracker() {
     if (this.state.importEnCours) return;
-    const ok = confirm('🔄 Synchroniser EMPOWER TRACKER → base de données ?\n\nLes leads déjà présents seront mis à jour (non destructif).\nLes nouveaux seront créés avec Source_Import=ESI_TRACKER.');
-    if (!ok) return;
+    ConfirmModal.demander({
+      titre: 'Synchroniser EMPOWER TRACKER → base de données ?',
+      detail: 'Les leads déjà présents seront mis à jour (non destructif).\nLes nouveaux seront créés avec Source_Import=ESI_TRACKER.',
+      labelConfirmer: 'Synchroniser',
+      onConfirm: () => this._importerDepuisTrackerConfirme(),
+    });
+  },
+
+  async _importerDepuisTrackerConfirme() {
     this.state.importEnCours  = true;
     this.state.importResultat = null;
     this.render();
@@ -774,10 +807,17 @@ window.VueAdmin = {
     this.render();
   },
 
-  async syncSellIn() {
+  syncSellIn() {
     if (this.state.syncSellInEnCours) return;
-    const ok = confirm('📊 Synchroniser les données Sell-In depuis Google Drive ?\n\nCela met à jour les CA (FY25, FY26, Q1FY27) et les statuts dans Comptes.');
-    if (!ok) return;
+    ConfirmModal.demander({
+      titre: 'Synchroniser les données Sell-In depuis Google Drive ?',
+      detail: 'Cela met à jour les CA (FY25, FY26, Q1FY27) et les statuts dans Comptes.',
+      labelConfirmer: 'Synchroniser',
+      onConfirm: () => this._syncSellInConfirme(),
+    });
+  },
+
+  async _syncSellInConfirme() {
     this.state.syncSellInEnCours  = true;
     this.state.syncSellInResultat = null;
     this.state.syncSellInNonMatcher = [];
@@ -936,6 +976,15 @@ window.VueAdmin = {
   async viderCache() {
     await SheetsAPI.viderCache();
     Toast.afficher('🗑️ Cache local vidé — données rechargées au prochain écran', 'succes');
+  },
+
+  confirmerPurgeCDS(pinCDS, nomCDS) {
+    ConfirmModal.demander({
+      titre: `Purger TOUTES les données de ${nomCDS} ?`,
+      detail: 'Appels et visites de ce commercial — action irréversible.',
+      labelConfirmer: 'Purger', danger: true,
+      onConfirm: () => this.purgerDonneesCDS(pinCDS),
+    });
   },
 
   async purgerDonneesCDS(pinCDS) {
@@ -1234,7 +1283,7 @@ window.VueAdmin = {
   render() {
     const app = document.getElementById('app');
     if (!this.state || this.state.chargement) {
-      app.innerHTML = '<div class="spinner-centre">Chargement administration…</div>';
+      app.innerHTML = skeletonListe(6);
       return;
     }
 
@@ -1505,7 +1554,7 @@ window.VueAdmin = {
               </div>
               <button id="btn-purge-${o.PIN_CDS}" class="btn-secondaire"
                       style="padding:8px 14px;width:auto;color:var(--c-danger);border-color:var(--c-danger)"
-                      onclick="if(confirm('Purger TOUTES les données de ${o.Nom_CDS} ?')) VueAdmin.purgerDonneesCDS('${o.PIN_CDS}')">
+                      onclick="VueAdmin.confirmerPurgeCDS('${o.PIN_CDS}', '${(o.Nom_CDS || '').replace(/'/g, "\\'")}')">
                 🗑️ Purger
               </button>
             </div>`).join('')}
@@ -1532,7 +1581,7 @@ window.VueAdmin = {
   // BLOC 09 — rendu "Qualité des données" (onglet Maintenance)
   _renderQualiteDonnees() {
     if (this.state.qualiteChargement) {
-      return `<div class="bloc-fiche"><div class="spinner-centre" style="min-height:120px">Analyse en cours…</div></div>`;
+      return `<div class="bloc-fiche">${skeletonListe(2)}</div>`;
     }
     const q = this.state.qualite;
     if (!q) return '';
@@ -1581,7 +1630,7 @@ window.VueAdmin = {
   // ── Bloc 8 refonte desktop : onglet Journal — exploite 📊_ACTIONS déjà collecté ──
   _renderJournal() {
     if (this.state.journalChargement) {
-      return `<div class="spinner-centre" style="min-height:200px">Chargement du journal…</div>`;
+      return skeletonListe(5);
     }
     const rows = this.state.journal || [];
     return `

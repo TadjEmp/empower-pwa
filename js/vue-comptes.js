@@ -94,7 +94,7 @@ window.VueComptes = {
       return `
         <div class="modal-overlay modal-docked" onclick="if(event.target===this)VueComptes.fermerFicheDockee()">
           <div class="modal modal-docked-panel">
-            <div class="spinner-centre">Chargement de la fiche…</div>
+            ${skeletonListe(4)}
           </div>
         </div>`;
     }
@@ -281,7 +281,7 @@ window.VueComptes = {
   render() {
     const app = document.getElementById('app');
     if (this.state.chargement) {
-      app.innerHTML = '<div class="spinner-centre">Chargement des comptes…</div>';
+      app.innerHTML = skeletonListe(8);
       return;
     }
     const liste = this.listeFiltree;

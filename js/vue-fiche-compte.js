@@ -237,9 +237,18 @@ window.VueFicheCompte = {
   // casserait cet historique. Le compte est simplement exclu de toutes les
   // lectures (filtré à la source dans api.js#_lireAvecFallback, comme les
   // visites), sans toucher aux données déjà rattachées.
-  async supprimerCompte(idCompte, nomCompte) {
+  supprimerCompte(idCompte, nomCompte) {
     if (this.state.suppressionEnCours) return;
-    if (!confirm(`Supprimer le compte "${nomCompte}" ?\n\nÀ utiliser uniquement si ce compte est un doublon d'un autre compte déjà existant — l'historique (visites, appels, CA) reste conservé mais ce compte n'apparaîtra plus dans les listes.`)) return;
+    ConfirmModal.demander({
+      titre: 'Supprimer ce compte ?',
+      message: `"${nomCompte}"`,
+      detail: "À utiliser uniquement si ce compte est un doublon d'un autre compte déjà existant — l'historique (visites, appels, CA) reste conservé mais ce compte n'apparaîtra plus dans les listes.",
+      labelConfirmer: 'Supprimer', danger: true,
+      onConfirm: () => this._supprimerCompteConfirme(idCompte),
+    });
+  },
+
+  async _supprimerCompteConfirme(idCompte) {
     this.state.suppressionEnCours = true;
     this._rerender();
     try {
@@ -523,7 +532,7 @@ window.VueFicheCompte = {
   render() {
     const app = document.getElementById('app');
     if (this.state.chargement) {
-      app.innerHTML = '<div class="spinner-centre">Chargement de la fiche…</div>';
+      app.innerHTML = skeletonListe(6);
       return;
     }
     const c = this.state.compte;

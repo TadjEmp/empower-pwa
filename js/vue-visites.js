@@ -91,7 +91,7 @@ window.VueVisites = {
       return `
         <div class="modal-overlay modal-docked" onclick="if(event.target===this)VueVisites.fermerFicheDockee()">
           <div class="modal modal-docked-panel">
-            <div class="spinner-centre">Chargement de la fiche…</div>
+            ${skeletonListe(4)}
           </div>
         </div>`;
     }
@@ -131,6 +131,7 @@ window.VueVisites = {
       this.state.visites = visites
         .filter(v => String(v.deleted || '').toUpperCase() !== 'TRUE')
         .filter(v => Session.voitTout() || Number(v.PIN_CDS) === Session.pin);
+      this._persisterVisitesManquees();
       this.state.comptes = comptes
         .filter(c => Session.voitTout() || Number(c.PIN_CDS_Assigne) === Session.pin)
         .map(c => this._enrichirCompte(c));
@@ -172,6 +173,26 @@ window.VueVisites = {
       this.state.erreur = e.message;
       this.render();
     }
+  },
+
+  // ── Feuille de route Phase 0 — le statut "manquée" était jusqu'ici recalculé
+  // à l'affichage seulement (_statutEffectif), jamais écrit en base : aucun
+  // export ni alerte manager ne pouvait le voir. Persisté ici, opportunistement,
+  // pour tout le lot de visites déjà chargé par init() — non bloquant, pas de
+  // cron nécessaire : chaque ouverture de l'écran (commercial ou manager)
+  // rattrape ce qui est resté "planifiée" alors que la date est passée.
+  _persisterVisitesManquees() {
+    const aujourdhui = dateISOLocale();
+    const enRetard = this.state.visites.filter(v => {
+      const s = (v.Statut_Visite || 'planifiée').toLowerCase();
+      if (s !== 'planifiée' && s !== 'planifiee') return false;
+      const d = (v.Date || v.Date_Planif || '').slice(0, 10);
+      return d && d < aujourdhui;
+    });
+    enRetard.forEach(v => {
+      v.Statut_Visite = 'manquée'; // reflet local immédiat, avant confirmation serveur
+      SheetsAPI.mettreAJour('EMPOWER_MDB', '🗺️_VISITES', v.ID_Visite, { Statut_Visite: 'manquée' }).catch(() => {});
+    });
   },
 
   _trouverVisite(id) {
@@ -1323,7 +1344,7 @@ window.VueVisites = {
   render() {
     const app = document.getElementById('app');
     if (this.state.chargement) {
-      app.innerHTML = '<div class="spinner-centre">Chargement du planning…</div>';
+      app.innerHTML = skeletonListe(6);
       return;
     }
     if (this.state.erreur) {

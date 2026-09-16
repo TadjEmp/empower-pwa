@@ -287,7 +287,7 @@ window.VuePrimes = {
     const app = document.getElementById('app');
     if (!app) return;
     if (!this.state || this.state.chargement) {
-      app.innerHTML = '<div class="spinner-centre">Calcul des primes…</div>';
+      app.innerHTML = skeletonKPI(4) + skeletonListe(4);
       return;
     }
     const q = this.state.quarter;

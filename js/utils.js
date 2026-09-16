@@ -686,6 +686,69 @@ const DrawerMenu = (function () {
 })();
 
 // ═══════════════════════════════════════
+//  ConfirmModal — Modale de confirmation partagée (remplace les confirm()
+//  natifs du navigateur, incohérents avec le reste de l'UI). Rendue dans sa
+//  propre racine (hors #app), comme DrawerMenu/Toast, pour rester utilisable
+//  depuis n'importe quelle vue sans dépendre de son render().
+//  Feuille de route Phase 0 — cf. audit Interface & Navigation.
+// ═══════════════════════════════════════
+const ConfirmModal = (function () {
+  let _config = null;
+
+  function _getRoot() {
+    let root = document.getElementById('confirm-modal-root');
+    if (!root) {
+      root = document.createElement('div');
+      root.id = 'confirm-modal-root';
+      document.body.appendChild(root);
+    }
+    return root;
+  }
+
+  // opts: { titre, message, detail, labelConfirmer, labelAnnuler, danger, onConfirm, onAnnuler }
+  function demander(opts) {
+    _config = opts;
+    _render();
+  }
+
+  function _render() {
+    const root = _getRoot();
+    const c = _config;
+    if (!c) { root.innerHTML = ''; return; }
+    root.innerHTML = `
+      <div class="modal-overlay" onclick="if(event.target===this)ConfirmModal.annuler()">
+        <div class="modal" style="max-width:380px">
+          <h3${c.danger ? ' style="color:var(--c-danger)"' : ''}>${c.titre}</h3>
+          ${c.message ? `<p style="font-size:14px;margin:12px 0;white-space:pre-line">${c.message}</p>` : ''}
+          ${c.detail ? `<p style="font-size:12px;color:var(--c-text-2);white-space:pre-line">${c.detail}</p>` : ''}
+          <div class="modal-btns">
+            <button onclick="ConfirmModal.annuler()">${c.labelAnnuler || 'Annuler'}</button>
+            <button class="btn-primaire"${c.danger ? ' style="background:var(--c-danger)"' : ''}
+                    onclick="ConfirmModal._confirmer()">${c.labelConfirmer || 'Confirmer'}</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function annuler() {
+    const fn = _config && _config.onAnnuler;
+    _config = null;
+    _render();
+    if (fn) fn();
+  }
+
+  function _confirmer() {
+    const fn = _config && _config.onConfirm;
+    _config = null;
+    _render();
+    if (fn) fn();
+  }
+
+  return { demander, annuler, _confirmer };
+})();
+window.ConfirmModal = ConfirmModal;
+
+// ═══════════════════════════════════════
 //  Topbar — Barre de titre desktop persistante (refonte UX desktop, Bloc 1 — Shell)
 //  Miroir passif du titre de la vue courante (#app .header-vue h1), masquée
 //  automatiquement si la vue gère déjà son propre header desktop

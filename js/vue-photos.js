@@ -200,7 +200,7 @@ window.VuePhotos = {
           <button onclick="Router.retour()" class="btn-retour">←</button>
           <h1>Mes Photos</h1>
         </header>
-        <div class="spinner-centre">Chargement des photos…</div>`;
+        ${skeletonKanban()}`;
       return;
     }
     if (this.state.erreur) {

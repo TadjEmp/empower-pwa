@@ -498,13 +498,21 @@ window.VuePipeline = {
       const rawRes = await GeminiAPI.gemT02_detectionDoublon(nomSaisi, existants);
       const res = safeJSON(rawRes);
       if (res?.doublon_probable && res.score > 70) {
-        const confirmer = confirm(
-          `⚠️ Doublon probable détecté !\n\nCompte similaire existant : "${res.nom_similaire}"\nSimilarité : ${res.score}%\n${res.explication||''}\n\nContinuer quand même la création ?`
-        );
-        if (!confirmer) { return; }
+        ConfirmModal.demander({
+          titre: 'Doublon probable détecté',
+          message: `Compte similaire existant : "${res.nom_similaire}" — similarité ${res.score}%`,
+          detail: res.explication || '',
+          labelConfirmer: 'Continuer quand même',
+          onConfirm: () => this._creerLeadPipeline(nomSaisi, vals),
+        });
+        return;
       }
     } catch { /* GEM-T02 optionnel — on continue si erreur */ }
 
+    await this._creerLeadPipeline(nomSaisi, vals);
+  },
+
+  async _creerLeadPipeline(nomSaisi, vals) {
     // BLOC 4.1 — attribution directe à la création
     // Admin/Channel : choisit dans le select. CDS : auto-assigné à lui-même.
     const cdsAssignePin = this._peutAssigner() ? (vals.cdsSelect || '')
@@ -1369,7 +1377,7 @@ window.VuePipeline = {
 
   // ── BLOC 4.2 — Suppression douce d'un lead ──────────────────
   // Droits : CDS = ses propres leads / ADMIN + CHANNEL_MANAGER = tous
-  async supprimerLead(id) {
+  supprimerLead(id) {
     const lead = this.state.leads.find(l => String(l.ID_Prospect) === String(id));
     if (!lead) return;
 
@@ -1378,9 +1386,16 @@ window.VuePipeline = {
                    || Number(lead.PIN_CDS_Assigne) === Session.pin;
     if (!peutSuppr) { Toast.afficher('❌ Droits insuffisants', 'erreur'); return; }
 
-    const ok = confirm(`Confirmer la suppression de "${lead.Nom_Compte}" ?\n\nCette action est irréversible.`);
-    if (!ok) return;
+    ConfirmModal.demander({
+      titre: 'Supprimer ce lead ?',
+      message: `"${lead.Nom_Compte}"`,
+      detail: 'Cette action est irréversible.',
+      labelConfirmer: 'Supprimer', danger: true,
+      onConfirm: () => this._supprimerLeadConfirme(id, lead),
+    });
+  },
 
+  async _supprimerLeadConfirme(id, lead) {
     try {
       const r = await fetch(SheetsAPI.BASE_URL, {
         method: 'POST', redirect: 'follow',

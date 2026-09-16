@@ -70,12 +70,28 @@ function calculerCamembertsActivite(raw) {
 // séparé de calculerCamembertsActivite() car les onclick doivent connaître
 // le nom de la vue qui les rend (VueDashboardCDS vs VueDashboardManager).
 function segmentsCamembertsActivite(f, ns) {
+  // Feuille de route Phase 0 — mêmes clés que STATUT_COULEURS de vue-visites.js
+  // (accentuées, style GAS) : Statut_Visite n'est JAMAIS 'planifiee'/'realisee'
+  // sans accent (ça, c'est la colonne DB brute — SheetsAPI la retraduit avant
+  // que la vue la voie), donc l'ancien mapping sans accents ne matchait rien.
   const camembertVisites = f.consolide
     ? f._parCommercial(f._visitesFiltrees, ns)
-    : f._parStatut(f._visitesFiltrees, 'Statut_Visite', { realisee: 'Réalisées', planifiee: 'Planifiées', en_cours: 'En cours', manquee: 'Manquées', annulee: 'Annulées' });
+    : f._parStatut(f._visitesFiltrees, 'Statut_Visite', {
+        'réalisée': 'Réalisées', 'planifiée': 'Planifiées', 'en cours': 'En cours',
+        'manquée': 'Manquées', 'annulée': 'Annulées',
+      });
+  // Feuille de route Phase 0 — libellés alignés sur le vocabulaire RÉEL écrit
+  // par vue-phoning.js (this._r('statutAppel', ...), deux jeux de valeurs
+  // selon Appel_Froid ou non). L'ancien mapping (interesse/a_rappeler/nrp/
+  // pas_interesse/vente_conclue) ne correspondait à AUCUNE valeur réellement
+  // écrite : chaque segment retombait sur le libellé brut en minuscules.
   const camembertAppels = f.consolide
     ? f._parCommercial(f._appelsFiltres, ns)
-    : f._parStatut(f._appelsFiltres, 'Statut_Appel', { interesse: 'Intéressé', a_rappeler: 'À rappeler', nrp: 'NRP', pas_interesse: 'Pas intéressé', vente_conclue: 'Vente conclue' });
+    : f._parStatut(f._appelsFiltres, 'Statut_Appel', {
+        'répondu': 'Répondu', 'répondeur': 'Répondeur', 'occupé': 'Occupé',
+        'refus': 'Refus', 'faux numéro': 'Faux numéro',
+        'intéressé': 'Intéressé', 'non intéressé': 'Non intéressé', 'rappel': 'Rappel',
+      });
   return { camembertVisites, camembertAppels };
 }
 
