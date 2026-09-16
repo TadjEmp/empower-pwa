@@ -25,10 +25,15 @@ window.VuePhotos = {
     this.state.zoomIdx    = null;
     this.render();
     try {
-      const [visites, cdsListe] = await Promise.all([
+      const [visites, cdsListe, marketing] = await Promise.all([
         SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES'),
         SheetsAPI.lireCDS(),
+        // Feuille de route Phase 3 — tags par photo (vitrine/rayon/PLV/concurrent),
+        // écrits par vue-questionnaire.js depuis cette version ; les photos
+        // enregistrées avant restent simplement sans tag (repli '' déjà géré ci-dessous).
+        SheetsAPI.lire('EMPOWER_MDB', 'MARKETING').catch(() => []),
       ]);
+      this._tagsParVisite = new Map((marketing || []).map(m => [m.id_visite, m.tags_json || []]));
       this.state.visites = visites
         .filter(v => !String(v.deleted || '').toUpperCase().includes('TRUE'))
         .filter(v => Session.voitTout() || Number(v.PIN_CDS) === Session.pin)
@@ -73,9 +78,10 @@ window.VuePhotos = {
       if (q && !normaliserNom(v.Nom_Compte || '').includes(q)) continue;
       if (filtrePinCds && filtrePinCds !== 'TOUS' && String(v.PIN_CDS) !== filtrePinCds) continue;
       const urls = String(v.Photo_URL || '').split(' | ').map(u => u.trim()).filter(Boolean);
-      for (const url of urls) {
-        flat.push({ url, visite: v });
-      }
+      const tags = (this._tagsParVisite && this._tagsParVisite.get(v.ID_Visite)) || [];
+      urls.forEach((url, i) => {
+        flat.push({ url, visite: v, tag: tags[i] || '' });
+      });
     }
     this._flat = flat;
     return flat;
@@ -270,6 +276,7 @@ window.VuePhotos = {
                   <div class="photo-tile" onclick="VuePhotos.ouvrirZoom(${globalIdx})">
                     <img src="${item.url}" alt="${safeName}" loading="lazy"
                          onerror="this.style.display='none';this.parentElement.style.background='var(--c-surface-alt)'"/>
+                    ${item.tag ? `<span style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,.65);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px">${item.tag}</span>` : ''}
                     <div class="photo-tile-caption">
                       <div class="photo-tile-nom">${item.visite.Nom_Compte || '—'}</div>
                       <div style="color:rgba(255,255,255,.75);font-size:10px">${window.resolveCDS(item.visite.PIN_CDS || item.visite.Nom_CDS)}</div>

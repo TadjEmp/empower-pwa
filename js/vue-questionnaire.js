@@ -77,6 +77,10 @@ window.VueQuestionnaire = {
   ],
 
   MARKETING_SUPPORTS: ['PLV', 'Fiches produits', 'Affichage vitrine', 'Démo en rayon'],
+  // Feuille de route Phase 3 — catégorisation des photos terrain, alimente
+  // la table marketing (tags_json) jusqu'ici jamais branchée malgré son
+  // schéma déjà en place (photo1_url..photo4_url, tags_json).
+  TAGS_PHOTO: ['Vitrine', 'Rayon', 'PLV', 'Concurrent'],
   NORTON_FORMATS:     ['ESD', 'Boîte', 'Les deux'],
   PROCHAINES_ACTIONS: ['Rappel', 'RDV', 'Envoi devis', 'Onboarding EMPOWER', 'Aucune'],
 
@@ -155,6 +159,8 @@ window.VueQuestionnaire = {
       gps: { lat: '', lng: '' },
       debut: Date.now(),
       photos: [],
+      photoTags: [], // Feuille de route Phase 3 — même index que photos
+      signatureDataUrl: null, // Feuille de route Phase 3 — signature client
       d: {
         // Étape 0
         date:  dateISOLocale(now),
@@ -166,6 +172,7 @@ window.VueQuestionnaire = {
         canalVente: [],
         activitesPrincipales: [],
         situationGeo: '',
+        nbEmployes: '', // Feuille de route Phase 4 — seule colonne "morte" rebranchée (décision utilisateur)
         // Étape 2
         objectifsVisite: [],
         // Étape 3
@@ -556,13 +563,14 @@ window.VueQuestionnaire = {
     try {
       const dataUrl = await decoderPhoto(input.files[0]);
       this.state.photos.push(dataUrl);
+      this.state.photoTags.push('');
       this.render();
     } catch(e) {
       Toast.afficher('❌ Photo illisible : ' + e.message, 'erreur', 5000);
     }
   },
 
-  supprimerPhoto(i) { this.state.photos.splice(i, 1); this.render(); },
+  supprimerPhoto(i) { this.state.photos.splice(i, 1); this.state.photoTags.splice(i, 1); this.render(); },
 
   _enregistre: false,
   dicter() {
@@ -677,6 +685,16 @@ window.VueQuestionnaire = {
       }
       if (photosEchouees > 0) Toast.afficher(`⚠️ ${photosEchouees} photo(s) non uploadée(s) — vérifiez la connexion`, 'warning', 5000);
 
+      // Feuille de route Phase 3 — signature, facultative : un échec d'upload
+      // ne doit jamais bloquer l'enregistrement de la visite.
+      let signatureURL = '';
+      if (s.signatureDataUrl) {
+        try {
+          const r = await SheetsAPI.uploadPhoto(s.signatureDataUrl, `${idVisite}_signature.png`);
+          if (r?.url) signatureURL = r.url;
+        } catch {}
+      }
+
       const visite = {
         ID_Visite:               idVisite,
         Date:                    d.date,
@@ -705,6 +723,7 @@ window.VueQuestionnaire = {
         Canal_Vente:             JSON.stringify(d.canalVente),
         Activites_Principales:   JSON.stringify(d.activitesPrincipales),
         Situation_Geo:           d.situationGeo,
+        Nb_Employes:             d.nbEmployes ? Number(d.nbEmployes) : null,
         Objectifs_Visite:        JSON.stringify(d.objectifsVisite),
         Interlocuteur_Nom:       d.interlocuteurNom,
         Interlocuteur_Fonction:  d.interlocuteurFonction,
@@ -730,6 +749,7 @@ window.VueQuestionnaire = {
         Prochaine_Action_Texte:  d.prochaineAction + (d.prochaineActionTexte ? ' — ' + d.prochaineActionTexte : ''),
         Prochaine_Action_Date:   d.prochaineActionDate,
         Photo_URL:               photoURLs.join(' | '),
+        Signature_URL:           signatureURL || '',
         GPS_Lat:                 s.gps.lat,
         GPS_Lng:                 s.gps.lng,
         Duree_Minutes:           dureeMin,
@@ -749,6 +769,25 @@ window.VueQuestionnaire = {
       // Vider le cache dashboard pour que les vues amont reflètent la visite immédiatement
       SheetsAPI.viderCache('EMPOWER_MDB', '🗺️_VISITES').catch(() => {});
       SheetsAPI.viderCache('EMPOWER_MDB', '📊_ACTIONS').catch(() => {});
+
+      // Feuille de route Phase 3 — brancher la table `marketing`, construite
+      // depuis la migration d'origine mais jamais utilisée (0 ligne) : photos
+      // taguées (vitrine/rayon/PLV/concurrent) + statut PLV déjà saisi à
+      // l'étape 4. Non bloquant — un échec ici ne doit jamais faire perdre la
+      // visite déjà enregistrée ci-dessus.
+      if (photoURLs.length > 0 || d.marketingPresent) {
+        SheetsAPI.ecrire('EMPOWER_MDB', 'MARKETING', {
+          date_action:      d.date,
+          pin_cds:           Session.pin,
+          id_visite:         idVisite,
+          id_compte:         idCible !== 'HORS_BASE' ? idCible : null,
+          marketing_present: d.marketingPresent === 'OUI',
+          marketing_supports_json: d.marketingSupports || [],
+          photo1_url: photoURLs[0] || null, photo2_url: photoURLs[1] || null,
+          photo3_url: photoURLs[2] || null, photo4_url: photoURLs[3] || null,
+          tags_json:  s.photoTags || [],
+        }).catch(() => {});
+      }
 
       // Mise à jour fiche compte / prospect
       // FIX-B/C : pas de mise à jour pour les visites à froid (idCible = 'HORS_BASE')
@@ -975,6 +1014,7 @@ window.VueQuestionnaire = {
     `;
     this._renderSuggestions();
     this._sauvegarderBrouillon(this._cleBrouillonCourante);
+    if (s.etape === this.ETAPES.length - 1) this._initSignaturePad();
   },
 
   // ── BLOC 1 — Identification ──
@@ -1114,6 +1154,9 @@ window.VueQuestionnaire = {
       ${this._chips('activitesPrincipales', this.ACTIVITES)}
       <p class="q-intro" style="margin-top:14px">Situation géographique</p>
       ${this._radios('situationGeo', this.SITUATIONS_GEO)}
+      <label class="q-label" style="margin-top:14px">Nombre de salariés <span style="color:var(--c-text-2);font-size:11px">(optionnel — qualification revendeur)</span>
+        <input class="q-input" type="number" min="0" placeholder="ex : 5" value="${d.nbEmployes}"
+               oninput="VueQuestionnaire.set('nbEmployes',this.value)"/></label>
     </div>`;
   },
 
@@ -1279,7 +1322,12 @@ window.VueQuestionnaire = {
         <label class="q-label">📷 Photos terrain (${s.photos.length}/4)</label>
         ${s.photos.map((p, i) => `
           <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
-            <img src="${p}" style="width:64px;height:64px;object-fit:cover;border-radius:var(--radius-sm)"/>
+            <img src="${p}" style="width:64px;height:64px;object-fit:cover;border-radius:var(--radius-sm);flex-shrink:0"/>
+            <div style="flex:1;display:flex;flex-wrap:wrap;gap:4px">
+              ${this.TAGS_PHOTO.map(t => `
+                <button type="button" class="q-chip" style="font-size:11px;padding:4px 8px${s.photoTags[i] === t ? ';background:var(--c-cta);color:#fff;border-color:var(--c-cta)' : ''}"
+                        onclick="VueQuestionnaire.state.photoTags[${i}]='${t}';VueQuestionnaire.render()">${t}</button>`).join('')}
+            </div>
             <button class="btn-sup-photo" onclick="VueQuestionnaire.supprimerPhoto(${i})">✕</button>
           </div>`).join('')}
         ${s.photos.length < 4 ? `
@@ -1294,6 +1342,49 @@ window.VueQuestionnaire = {
           </label>
         </div>` : ''}
       </div>
+
+      <!-- Feuille de route Phase 3 — signature client. Même logique de preuve
+           de passage que photo/GPS, inspirée du module fieldservice_sign
+           (OCA/field-service, cf. Repères CRM) : facultative, jamais bloquante. -->
+      <div class="q-photo-zone" style="margin-top:10px">
+        <label class="q-label">✍️ Signature du contact <span style="color:var(--c-text-2);font-size:11px">(optionnel)</span></label>
+        <canvas id="q-signature-pad" width="300" height="120"
+                style="width:100%;max-width:400px;height:120px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);background:#fff;touch-action:none;display:block"></canvas>
+        <button type="button" class="btn-secondaire" style="margin-top:6px;width:auto;padding:6px 14px;font-size:12px" onclick="VueQuestionnaire.effacerSignature()">Effacer</button>
+      </div>
     </div>`;
+  },
+
+  effacerSignature() {
+    this.state.signatureDataUrl = null;
+    const canvas = document.getElementById('q-signature-pad');
+    if (canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+  },
+
+  _initSignaturePad() {
+    const canvas = document.getElementById('q-signature-pad');
+    if (!canvas || canvas._padInit) return;
+    canvas._padInit = true;
+    const ctx = canvas.getContext('2d');
+    ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    let dessine = false;
+    const pos = e => {
+      const r = canvas.getBoundingClientRect();
+      const p = e.touches ? e.touches[0] : e;
+      return { x: (p.clientX - r.left) * (canvas.width / r.width), y: (p.clientY - r.top) * (canvas.height / r.height) };
+    };
+    const debut = e => { dessine = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); };
+    const trace = e => { if (!dessine) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); };
+    const fin = () => {
+      if (!dessine) return;
+      dessine = false;
+      this.state.signatureDataUrl = canvas.toDataURL('image/png');
+    };
+    canvas.addEventListener('mousedown', debut);
+    canvas.addEventListener('mousemove', trace);
+    window.addEventListener('mouseup', fin);
+    canvas.addEventListener('touchstart', debut, { passive: false });
+    canvas.addEventListener('touchmove', trace, { passive: false });
+    canvas.addEventListener('touchend', fin);
   },
 };

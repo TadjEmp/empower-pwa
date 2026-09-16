@@ -326,3 +326,55 @@
   animation-duration: 180ms;
   animation-timing-function: ease-out;
 }
+
+/* ── 10. MODE SOMBRE (Feuille de route Phase 4) ─────────────────────
+   Suit uniquement la préférence système (prefers-color-scheme) — pas de
+   bascule manuelle dans l'app pour cette première version : la discipline
+   déjà en place (variables CSS --c-xxx / --ink / --canvas / etc. partout plutôt que
+   des couleurs en dur dans les vues JS) couvre l'essentiel du travail, il
+   ne restait qu'à écrire ce second jeu de valeurs. Les couleurs sémantiques
+   (succès/alerte/danger/accent) restent inchangées : déjà assez saturées
+   pour rester lisibles sur fond sombre, pas besoin d'un second réglage. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink:             #E8E6E1;
+    --hairline:        #33363c;
+    --hairline-strong: #40444b;
+    --muted:           #9aa0a8;
+    --label-caption:   #7d838c;
+    --track:           #202226;
+    --canvas:          #16171a;
+    --slide-bg:        #1c1e22;
+
+    --c-bg:          var(--canvas);
+    --c-surface:     var(--slide-bg);
+    --c-surface-alt: var(--track);
+    --c-title:       var(--ink);
+    --c-text:        var(--ink);
+    --c-text-2:      var(--muted);
+    --c-border:      var(--hairline);
+    --bg-base:       var(--canvas);
+    --bg-surface:    var(--track);
+    --bg-elevated:   var(--track);
+    --bg-warm-white: var(--slide-bg);
+    --text-primary:  var(--ink);
+    --text-secondary:var(--muted);
+    --text-muted:    var(--label-caption);
+    --border-subtle: var(--hairline);
+    --border-medium: var(--hairline-strong);
+
+    color-scheme: dark;
+  }
+
+  body { background: var(--c-bg); color: var(--c-text); }
+
+  /* Champs de saisie : le blanc en dur de base.css casserait le fond sombre */
+  input, select, textarea {
+    background: var(--c-surface); color: var(--c-text);
+    border-color: var(--c-border);
+  }
+  .modal, .drawer-panneau, .toast, #confirm-modal-root .modal {
+    background: var(--c-surface); color: var(--c-text);
+  }
+  img { opacity: .92; } /* léger amorti — évite l'éblouissement des photos en fond sombre */
+}

@@ -868,6 +868,46 @@ const VuesFiltres = (function () {
 window.VuesFiltres = VuesFiltres;
 
 // ═══════════════════════════════════════
+//  PaletteCommandes — Feuille de route Phase 4 : "Aller à…" (⌘K / Ctrl+K),
+//  web component ninja-keys déjà présent dans index.html. Reprend le même
+//  catalogue de modules que NavBar (utils.js#NavBar), filtré par les mêmes
+//  permissions — pas de nouvelle liste à maintenir en double.
+// ═══════════════════════════════════════
+const PaletteCommandes = (function () {
+  const MODULES = [
+    { id: 'home',        hash: '#/dashboard',           titre: 'Accueil' },
+    { id: 'tracker',     hash: '#/empower-tracker',      titre: 'Tracker' },
+    { id: 'comptes',     hash: '#/comptes',              titre: 'Comptes' },
+    { id: 'visites',     hash: '#/visites',              titre: 'Mon Planning' },
+    { id: 'phoning',     hash: '#/phoning',               titre: 'Phoning' },
+    { id: 'photos',      hash: '#/photos',                titre: 'Mes Photos' },
+    { id: 'visites_fdv', hash: '#/visites-fdv',           titre: 'Visites FDV' },
+    { id: 'historiques', hash: '#/comptes-historiques',   titre: 'Historique CA' },
+    { id: 'objectifs',   hash: '#/objectifs',             titre: 'Mes Objectifs' },
+    { id: 'primes',      hash: '#/primes',                titre: 'Mes Primes' },
+    { id: 'admin',       hash: '#/admin',                 titre: 'Administration' },
+    { id: 'reporting',   hash: '#/manager',                titre: 'Équipe (Reporting)' },
+  ];
+
+  function init() {
+    const el = document.querySelector('ninja-keys');
+    if (!el) return;
+    const role = (typeof Session !== 'undefined') ? Session.role : null;
+    const autorises = (role && typeof window.Permissions !== 'undefined')
+      ? window.Permissions.onglets(role) : [];
+    el.data = MODULES
+      .filter(m => autorises.includes(m.id))
+      .map(m => ({
+        id: m.id, title: m.titre, section: 'Aller à',
+        handler: () => Router.aller(m.hash),
+      }));
+  }
+
+  return { init };
+})();
+window.PaletteCommandes = PaletteCommandes;
+
+// ═══════════════════════════════════════
 //  Topbar — Barre de titre desktop persistante (refonte UX desktop, Bloc 1 — Shell)
 //  Miroir passif du titre de la vue courante (#app .header-vue h1), masquée
 //  automatiquement si la vue gère déjà son propre header desktop

@@ -172,6 +172,9 @@ const SheetsAPI = {
       // colonne (_toDBRow ignore silencieusement toute clé absente du map),
       // qui restait vide — sert désormais la détection de chevauchement.
       duree_estimee: 'Duree_Prevue', nb_employes: 'Nb_Employes',
+      // Feuille de route Phase 3 — signature client, même logique de preuve
+      // de passage que Photo_URL/GPS_Lat/GPS_Lng, capturée à la validation.
+      signature_url: 'Signature_URL',
       deleted: 'deleted', deleted_at: 'deleted_at', deleted_by: 'deleted_by',
       id: '_uuid',
     },
@@ -334,6 +337,7 @@ const SheetsAPI = {
       'Norton_Reference': 'produits_norton',
       'ID_Action_Origine': 'id_action_origine',
       'Duree_Prevue': 'duree_estimee', 'Nb_Employes': 'nb_employes',
+      'Signature_URL': 'signature_url',
     },
     phoning: {
       'ID_Appel': 'id_appel_gas', 'Date': 'date_appel', 'Semaine_ISO': 'semaine_iso',

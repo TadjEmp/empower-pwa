@@ -69,6 +69,7 @@ function demarrerServicesSession() {
   _initPollingNotifs();                             // garde interne _demarre
   if (window.DrawerMenu) DrawerMenu.renderToRoot();
   if (window.Topbar) Topbar.init();                 // garde interne _observer
+  if (window.PaletteCommandes) PaletteCommandes.init(); // Feuille de route Phase 4 — ⌘K
 }
 
 // v5.0 N3 — Polling notifications 60 s (non bloquant)

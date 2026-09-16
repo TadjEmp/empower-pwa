@@ -48,6 +48,7 @@ window.VueVisites = {
     erreur: null,
     dateVue: null,
     modeVue: 'jour',
+    triProximiteActif: false, // Feuille de route Phase 3
     // Section 2 cahier des charges — planning groupé par commercial (Manager/Channel)
     commercialSelectionne: null,
     visitePlanifiee: null,
@@ -399,10 +400,53 @@ window.VueVisites = {
     }
   },
 
+  // ── Feuille de route Phase 3 — tri "plus proche voisin" sans API externe.
+  // Utilise les coordonnées déjà géocodées sur les comptes (comptes.latitude/
+  // longitude, cf. feuille de route Phase 0) ; les comptes non géocodés
+  // restent triés par heure et poussés en fin de liste plutôt que de casser
+  // le tri global sur une absence de donnée.
+  _haversineKm(lat1, lng1, lat2, lng2) {
+    const R = 6371, toRad = d => d * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1), dLng = toRad(lng2 - lng1);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  },
+
+  _coordsVisite(v) {
+    const c = this.state.comptes.find(x => x.ID_Compte === v.ID_Cible);
+    const lat = Number(c?._raw?.GPS_Lat), lng = Number(c?._raw?.GPS_Lng);
+    return (lat && lng) ? { lat, lng } : null;
+  },
+
+  _ordonnerParProximite(liste) {
+    const avecCoords = [], sansCoords = [];
+    liste.forEach(v => { (this._coordsVisite(v) ? avecCoords : sansCoords).push(v); });
+    if (avecCoords.length < 2) return liste; // rien à optimiser
+    const restants = [...avecCoords];
+    const ordre = [restants.shift()]; // point de départ : le premier de l'ordre horaire actuel
+    while (restants.length) {
+      const dernier = this._coordsVisite(ordre[ordre.length - 1]);
+      let plusProcheIdx = 0, plusProcheDist = Infinity;
+      restants.forEach((v, i) => {
+        const c = this._coordsVisite(v);
+        const d = this._haversineKm(dernier.lat, dernier.lng, c.lat, c.lng);
+        if (d < plusProcheDist) { plusProcheDist = d; plusProcheIdx = i; }
+      });
+      ordre.push(restants.splice(plusProcheIdx, 1)[0]);
+    }
+    return [...ordre, ...sansCoords];
+  },
+
+  toggleTriProximite() {
+    this.state.triProximiteActif = !this.state.triProximiteActif;
+    this.render();
+  },
+
   get visitesJour() {
-    return this.state.visites
+    const base = this.state.visites
       .filter(v => (v.Date || v.Date_Planif || '').slice(0, 10) === this.state.dateVue)
       .sort((a, b) => (a.Heure || '').localeCompare(b.Heure || ''));
+    return this.state.triProximiteActif ? this._ordonnerParProximite(base) : base;
   },
 
   get visitesSemaine() {
@@ -1424,13 +1468,23 @@ window.VueVisites = {
         const vjFiltre = this.state.commercialSelectionne
           ? vj.filter(v => String(v.PIN_CDS || '') === this.state.commercialSelectionne)
           : vj;
+        // Feuille de route Phase 3 — tri "plus proche voisin" : le bouton
+        // n'apparaît que si au moins 2 comptes du jour sont géocodés (sinon
+        // rien à optimiser — cf. Phase 0, seule une minorité de comptes l'est
+        // à ce jour, le géocodage se complète au fil des saisies).
+        const nbGeocodees = vjFiltre.filter(v => this._coordsVisite(v)).length;
+        const boutonProximite = nbGeocodees >= 2 ? `
+          <button class="btn-filtre ${this.state.triProximiteActif ? 'actif' : ''}" style="margin-bottom:10px"
+                  onclick="VueVisites.toggleTriProximite()">
+            🧭 ${this.state.triProximiteActif ? 'Tri proximité activé' : 'Trier par proximité'}
+          </button>` : '';
         contenu = vjFiltre.length === 0
           ? `<div style="padding:32px;text-align:center;color:var(--c-text-2)">
                Aucune visite ce jour.
                <br><button class="btn-secondaire" style="margin-top:16px;width:auto;padding:10px 20px"
                            onclick="VueVisites.ouvrirModal()">+ Planifier une visite</button>
              </div>`
-          : vjFiltre.map(v => this._carteVisite(v)).join('');
+          : boutonProximite + vjFiltre.map(v => this._carteVisite(v)).join('');
         if (this.state.commercialSelectionne) contenu = this._boutonRetourCommerciaux() + contenu;
 
         // Split desktop (Bloc 4 refonte — Planning) : la semaine reste visible en rail
