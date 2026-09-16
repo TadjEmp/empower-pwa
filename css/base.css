@@ -177,13 +177,19 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { font-size: 16px; -webkit-text-size-adjust: 100%; overflow-x: hidden; }
+html { font-size: 16px; -webkit-text-size-adjust: 100%; }
 
-/* Bug remonté (retour mobile) — overflow-x:hidden sur body seul ne suffit pas
-   toujours à empêcher le viewport de Safari mobile de "panner" horizontalement
-   quand un descendant déborde (cf. barre Jour/Semaine/Historique corrigée dans
-   vue-visites.js) : posé aussi sur html en filet de sécurité, pour cette classe
-   de bug en général, pas seulement l'endroit trouvé cette fois. */
+/* Bug régression (corrigé) — overflow-x:hidden avait été ajouté ici aussi sur
+   html en "filet de sécurité" contre le débordement horizontal (cf. barre
+   Jour/Semaine/Historique, corrigée séparément par flex-wrap dans
+   vue-visites.js — c'est ELLE la vraie correction). Retiré : poser
+   overflow-x sur html ET body à la fois fait de chacun un conteneur de
+   scroll indépendant (overflow-y devient implicitement "auto" sur les deux —
+   règle CSS Overflow), et sur mobile le geste de scroll reste capturé par
+   l'un sans jamais atteindre l'autre : plus AUCUN scroll vertical nulle part
+   dans l'app tant que le contenu dépassait la hauteur d'écran (saisie visite,
+   planning...). Reproduit et confirmé en conditions réelles avant ce retrait.
+   overflow-x:hidden sur body seul (juste en dessous) suffit. */
 body {
   font-family: var(--font);
   background: var(--c-bg);
