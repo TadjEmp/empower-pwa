@@ -49,6 +49,7 @@ window.VueVisites = {
     dateVue: null,
     modeVue: 'jour',
     triProximiteActif: false, // Feuille de route Phase 3
+    commerciauxEtendusJour: {}, // Bug remonté (retour mobile) — replié par défaut
     // Section 2 cahier des charges — planning groupé par commercial (Manager/Channel)
     commercialSelectionne: null,
     visitePlanifiee: null,
@@ -589,6 +590,20 @@ window.VueVisites = {
   // Vue manager groupée, mode "Jour" : une section par commercial avec ses
   // visites du jour (réutilise _carteVisite, déjà riche), au lieu du seul
   // total "N visites" par commercial.
+  // Bug remonté (retour mobile) — "pas de possibilité de déplier/plier les
+  // visites du commercial afin de voir tous les commerciaux sans le détail" :
+  // avant ce correctif, .pg-groupe-head ne faisait QUE naviguer vers la vue
+  // filtrée d'un commercial (selectionnerCommercial) — les cartes complètes de
+  // CHAQUE commercial étaient toujours affichées en entier, sans aucun moyen
+  // de les replier pour juste scanner "qui a combien de visites aujourd'hui".
+  // Replié par défaut ; un chevron dédié bascule l'affichage des cartes SANS
+  // quitter la vue groupée (le nom/avatar garde son rôle de raccourci "aller
+  // au détail de ce commercial", inchangé).
+  toggleCommercialJour(pin) {
+    this.state.commerciauxEtendusJour[pin] = !this.state.commerciauxEtendusJour[pin];
+    this.render();
+  },
+
   _renderGroupeJour(visitesJour) {
     const groupes = this._grouperParCommercial(visitesJour);
     if (!groupes.length) {
@@ -597,12 +612,19 @@ window.VueVisites = {
     // Semaine contenant dateVue — pour le dépliage "Voir la semaine" par
     // commercial (garde l'accès à la semaine sans quitter la vue Jour groupée).
     const jours = this.visitesSemaine;
-    return groupes.map(g => `
+    return groupes.map(g => {
+      const etendu = !!this.state.commerciauxEtendusJour[g.pin];
+      return `
       <div class="planning-groupe-jour">
-        <div class="pg-groupe-head" style="cursor:pointer" onclick="VueVisites.selectionnerCommercial('${g.pin}')">
-          ${avatarCDS(g.pin, 26)}<strong>${g.nom}</strong>
-          <span class="badge-compteur">${g.visites.length}</span>
+        <div class="pg-groupe-head">
+          <span style="cursor:pointer;display:flex;align-items:center;gap:8px;flex:1" onclick="VueVisites.selectionnerCommercial('${g.pin}')">
+            ${avatarCDS(g.pin, 26)}<strong>${g.nom}</strong>
+            <span class="badge-compteur">${g.visites.length}</span>
+          </span>
+          <button type="button" class="btn-retour" style="flex-shrink:0" title="${etendu ? 'Replier' : 'Déplier'}"
+                  onclick="event.stopPropagation();VueVisites.toggleCommercialJour('${g.pin}')">${etendu ? '▲' : '▼'}</button>
         </div>
+        ${etendu ? `
         ${g.visites.map(v => this._carteVisite(v)).join('')}
         <details class="pg-semaine-toggle">
           <summary class="cv-rapport-toggle">Voir la semaine de ${g.nom}</summary>
@@ -615,8 +637,9 @@ window.VueVisites = {
               </div>`;
             }).join('')}
           </div>
-        </details>
-      </div>`).join('');
+        </details>` : ''}
+      </div>`;
+    }).join('');
   },
 
   _boutonRetourCommerciaux() {
@@ -1540,12 +1563,19 @@ window.VueVisites = {
         </div>
       </header>
 
-      <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--c-surface);border-bottom:1px solid var(--c-border)">
+      <!-- Bug remonté (retour mobile) — cette barre (3 boutons + nav date) n'avait
+           ni flex-wrap ni contrainte de largeur : sur un écran étroit, "Jour /
+           Semaine / Historique" + "‹ mercredi 16 septembre ›" ne tenaient pas sur
+           une ligne et débordaient du body ENTIER (pas juste de cette barre), le
+           rendant scrollable horizontalement de bout en bout — cartes coupées des
+           deux côtés en swipant. flex-wrap:wrap : la nav date passe à la ligne
+           plutôt que de pousser la page hors de son viewport. -->
+      <div style="display:flex;align-items:center;gap:8px;row-gap:6px;flex-wrap:wrap;padding:10px 14px;background:var(--c-surface);border-bottom:1px solid var(--c-border)">
         <button class="btn-filtre ${this.state.modeVue === 'jour' ? 'actif' : ''}" onclick="VueVisites.setModeVue('jour')">Jour</button>
         <button class="btn-filtre ${this.state.modeVue === 'semaine' ? 'actif' : ''}" onclick="VueVisites.setModeVue('semaine')">Semaine</button>
         <button class="btn-filtre ${this.state.modeVue === 'historique' ? 'actif' : ''}" onclick="VueVisites.setModeVue('historique')">Historique</button>
         ${this.state.modeVue !== 'historique' ? `
-        <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
+        <div style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <button class="btn-retour" onclick="VueVisites.jourPrecedent()">‹</button>
           <span style="font-size:13px;font-weight:600;white-space:nowrap">${this.state.modeVue === 'jour' ? dateLbl : 'Semaine en cours'}</span>
           <button class="btn-retour" onclick="VueVisites.jourSuivant()">›</button>

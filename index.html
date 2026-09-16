@@ -2,7 +2,10 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+  <!-- Bug remonté (retour mobile) — maximum-scale=1/user-scalable=no bloquait tout pinch-to-zoom,
+       y compris pour lire un texte trop petit. Zoom réactivé, plafonné pour ne pas casser la mise
+       en page (barre de nav fixe, header) au-delà d'un facteur raisonnable. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover"/>
   <meta name="theme-color" content="#ED2567"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -12,7 +15,7 @@
   <title>ESI — Empower Sales Intelligence</title>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="icons/icon-192.png"/>
-  <link rel="stylesheet" href="css/base.css?v=17"/>
+  <link rel="stylesheet" href="css/base.css?v=18"/>
   <link rel="stylesheet" href="css/components.css?v=8"/>
   <link rel="stylesheet" href="css/comptes.css?v=3"/>
   <link rel="stylesheet" href="css/questionnaire.css?v=5"/>
@@ -56,7 +59,7 @@
   </div>
 
   <!-- Couche API & utilitaires -->
-  <script src="js/utils.js?v=31"></script>
+  <script src="js/utils.js?v=32"></script>
   <script src="js/fiscal-weeks.js?v=1"></script>
   <script src="js/filter-state.js?v=1"></script>
   <script src="js/questionnaire-branching.js?v=1"></script>
@@ -81,7 +84,7 @@
   <!-- PHONING -->
   <script src="js/vue-phoning.js?v=31"></script>
   <!-- VISITES -->
-  <script src="js/vue-visites.js?v=35"></script>
+  <script src="js/vue-visites.js?v=36"></script>
   <!-- Section 9 cahier des charges : vue consolidée Channel (lecture seule FDV) -->
   <script src="js/vue-visites-fdv.js?v=3"></script>
   <!-- SUIVI DES OBJECTIFS -->

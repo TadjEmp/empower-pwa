@@ -500,7 +500,13 @@ function FusionTabs(defs) {
   const visibles = defs.filter(d => d.si !== false);
   if (visibles.length < 2) return '';
   return `
-    <div class="fusion-tabs" style="display:flex;gap:8px;flex-wrap:wrap;padding:0 16px 12px">
+    <!-- Bug remonté (retour mobile) — ce padding inline gagnait TOUJOURS sur la
+         règle #app > .fusion-tabs { padding-top:14px } de v7.css (un style inline
+         prime sur une feuille externe quelle que soit sa spécificité) : l'écart
+         réel entre la barre de marque et ces onglets était 0px, pas 14px — d'où
+         "collé". Top mis directement ici plutôt que de compter sur une règle
+         externe qui ne s'applique que si .fusion-tabs est un enfant direct de #app. -->
+    <div class="fusion-tabs" style="display:flex;gap:8px;flex-wrap:wrap;padding:14px 16px 12px">
       ${visibles.map(d => `
         <button class="tab-btn-premium ${hashActuel === d.hash ? 'actif' : ''}"
                 onclick="Router.aller('${d.hash}')">${d.lbl}</button>`).join('')}

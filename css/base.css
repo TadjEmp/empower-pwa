@@ -177,8 +177,13 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+html { font-size: 16px; -webkit-text-size-adjust: 100%; overflow-x: hidden; }
 
+/* Bug remonté (retour mobile) — overflow-x:hidden sur body seul ne suffit pas
+   toujours à empêcher le viewport de Safari mobile de "panner" horizontalement
+   quand un descendant déborde (cf. barre Jour/Semaine/Historique corrigée dans
+   vue-visites.js) : posé aussi sur html en filet de sécurité, pour cette classe
+   de bug en général, pas seulement l'endroit trouvé cette fois. */
 body {
   font-family: var(--font);
   background: var(--c-bg);
