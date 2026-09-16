@@ -502,31 +502,46 @@ window.VueFicheCompte = {
           </div>` : '<div class="pas-de-donnees">Aucune action planifiée</div>'}
       </div>
 
-      <!-- VISITES -->
+      <!-- ACTIVITÉ — Feuille de route Phase 2 : chronologie unifiée visites +
+           appels (inspirée de la "All-in-One Lead/Deal Page" de frappe/crm,
+           cf. Repères CRM) — remplace les deux blocs Visites/Appels séparés,
+           qu'il fallait recroiser mentalement pour reconstituer l'historique
+           réel du compte. Mêmes données déjà chargées (state.visites/appels),
+           aucun nouveau fetch. -->
       <div class="bloc-fiche">
-        <div class="bloc-titre">Visites (${this.state.visites.length})</div>
-        ${this.state.visites.length === 0 ? '<div class="vide-liste">Aucune visite enregistrée</div>'
-          : this.state.visites.slice(0, 5).map(v => `
+        <div class="bloc-titre">Activité (${this.state.visites.length + this.state.appels.length})</div>
+        ${this._renderActiviteUnifiee()}
+      </div>`;
+  },
+
+  _renderActiviteUnifiee() {
+    const evenements = [
+      ...this.state.visites.map(v => ({ type: 'visite', date: v.Date, heure: v.Heure, item: v })),
+      ...this.state.appels.map(a => ({ type: 'appel', date: a.Date, heure: '', item: a })),
+    ].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+    if (evenements.length === 0) return '<div class="vide-liste">Aucune visite ni appel enregistré</div>';
+
+    return evenements.slice(0, 8).map(ev => {
+      if (ev.type === 'visite') {
+        const v = ev.item;
+        return `
           <div class="carte-visite">
-            <div class="visite-date">${v.Date || '—'} · ${v.Heure || ''} · ${window.resolveCDS(v.PIN_CDS || v.Nom_CDS)}</div>
+            <div class="visite-date">🗺️ ${v.Date || '—'} · ${v.Heure || ''} · ${window.resolveCDS(v.PIN_CDS || v.Nom_CDS)}</div>
             <div class="visite-resultat">${v.Resultat_Visite || v.Type_Visite || '—'}</div>
             <div class="visite-score">Réceptivité ${v.Slider_Receptivite != null && v.Slider_Receptivite !== '' ? v.Slider_Receptivite : '—'}/5${v.Prochaine_Action_Texte ? ` · → ${v.Prochaine_Action_Texte}` : ''}</div>
             ${this._libelleSuite(v.ID_Action_Origine)}
-          </div>`).join('')}
-      </div>
-
-      <!-- APPELS -->
-      <div class="bloc-fiche">
-        <div class="bloc-titre">Appels (${this.state.appels.length})</div>
-        ${this.state.appels.length === 0 ? '<div class="vide-liste">Aucun appel enregistré</div>'
-          : this.state.appels.slice(0, 5).map(a => `
+          </div>`;
+      }
+      const a = ev.item;
+      return `
           <div class="carte-appel">
-            <div class="appel-date">${a.Date || '—'} · ${window.resolveCDS(a.PIN_CDS || a.Nom_CDS)}</div>
+            <div class="appel-date">📞 ${a.Date || '—'} · ${window.resolveCDS(a.PIN_CDS || a.Nom_CDS)}</div>
             <div class="appel-resultat">${a.Statut_Appel || '—'} · Intérêt EMPOWER : ${a.Interet_EMPOWER || '—'}</div>
             <div class="appel-frein">${a.Frein_Principal ? `Frein : ${a.Frein_Principal}` : ''}${a.Prochaine_Action ? ` · → ${a.Prochaine_Action}` : ''}</div>
             ${this._libelleSuite(a.ID_Action_Origine)}
-          </div>`).join('')}
-      </div>`;
+          </div>`;
+    }).join('');
   },
 
   render() {

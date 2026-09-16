@@ -705,7 +705,8 @@ const ConfirmModal = (function () {
     return root;
   }
 
-  // opts: { titre, message, detail, labelConfirmer, labelAnnuler, danger, onConfirm, onAnnuler }
+  // opts: { titre, message, detail, labelConfirmer, labelAnnuler, danger, onConfirm, onAnnuler,
+  //         champ: { placeholder, valeur } }  — champ optionnel : onConfirm(valeurSaisie) plutôt que onConfirm()
   function demander(opts) {
     _config = opts;
     _render();
@@ -721,6 +722,9 @@ const ConfirmModal = (function () {
           <h3${c.danger ? ' style="color:var(--c-danger)"' : ''}>${c.titre}</h3>
           ${c.message ? `<p style="font-size:14px;margin:12px 0;white-space:pre-line">${c.message}</p>` : ''}
           ${c.detail ? `<p style="font-size:12px;color:var(--c-text-2);white-space:pre-line">${c.detail}</p>` : ''}
+          ${c.champ ? `<input id="confirm-modal-champ" class="q-input" style="margin-top:8px"
+                              placeholder="${c.champ.placeholder || ''}" value="${c.champ.valeur || ''}"
+                              onkeydown="if(event.key==='Enter')ConfirmModal._confirmer()"/>` : ''}
           <div class="modal-btns">
             <button onclick="ConfirmModal.annuler()">${c.labelAnnuler || 'Annuler'}</button>
             <button class="btn-primaire"${c.danger ? ' style="background:var(--c-danger)"' : ''}
@@ -738,15 +742,130 @@ const ConfirmModal = (function () {
   }
 
   function _confirmer() {
-    const fn = _config && _config.onConfirm;
+    const c = _config;
+    const fn = c && c.onConfirm;
+    const valeurChamp = c && c.champ ? document.getElementById('confirm-modal-champ')?.value ?? '' : undefined;
     _config = null;
     _render();
-    if (fn) fn();
+    if (fn) fn(valeurChamp);
   }
 
   return { demander, annuler, _confirmer };
 })();
 window.ConfirmModal = ConfirmModal;
+
+// ═══════════════════════════════════════
+//  ModalAccessibilite — Feuille de route Phase 1 — pose un piège de focus
+//  (focus-trap) + une fermeture au clavier (Échap) sur TOUTE modale ouverte,
+//  sans toucher aux ~25 implémentations existantes (.modal-overlay dans
+//  vue-visites.js, vue-phoning.js, vue-admin.js, vue-pipeline.js…) ni au
+//  DrawerMenu.
+//
+//  Fonctionne par convention plutôt que par intégration : chaque modale de
+//  l'app ferme déjà au clic sur son overlay via
+//  `onclick="if(event.target===this)X.fermer()"`, et le DrawerMenu ferme au
+//  clic sur #drawer-overlay via `onclick="DrawerMenu.fermer()"`. Fermer
+//  "au clavier" revient donc simplement à déclencher un clic synthétique SUR
+//  L'OVERLAY LUI-MÊME (jamais sur un enfant) — event.target vaut alors
+//  l'overlay, exactement comme un vrai clic dessus, et chaque modale se
+//  ferme par son propre mécanisme existant sans qu'on ait besoin de le
+//  connaître ici. Un seul MutationObserver détecte l'apparition (ou le
+//  basculement `.ouvert` pour le drawer, toujours présent dans le DOM) de
+//  n'importe quel overlay et y active/désactive le piège de focus en
+//  conséquence.
+// ═══════════════════════════════════════
+const ModalAccessibilite = (function () {
+  let _trap = null, _overlayActif = null;
+
+  function _selectionnerOverlay() {
+    // Le drawer mobile est prioritaire s'il est ouvert (il se superpose à tout) ;
+    // sinon la première modale `.modal-overlay` trouvée (l'app n'en affiche
+    // jamais deux en même temps dans son usage actuel).
+    const drawer = document.getElementById('drawer-overlay');
+    if (drawer && drawer.classList.contains('ouvert')) return drawer;
+    return document.querySelector('.modal-overlay');
+  }
+
+  function _fermer(overlay) {
+    // Clic synthétique sur l'overlay lui-même : event.target === overlay,
+    // donc `if(event.target===this)` (ou l'appel direct côté drawer) se
+    // déclenche exactement comme un vrai clic en dehors du panneau.
+    overlay.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+  }
+
+  function _activer(overlay) {
+    if (_overlayActif === overlay) return;
+    _desactiver();
+    _overlayActif = overlay;
+    if (typeof window.focusTrap === 'undefined') return; // dégrade proprement si le CDN a échoué
+    const panneau = overlay.querySelector('.modal, .drawer-panneau');
+    try {
+      _trap = window.focusTrap.createFocusTrap(overlay, {
+        initialFocus: panneau || overlay,
+        fallbackFocus: overlay,
+        escapeDeactivates: false,       // Échap géré nous-mêmes ci-dessous (ferme la modale, pas juste le piège)
+        clickOutsideDeactivates: false, // déjà géré par le onclick natif de l'overlay
+        allowOutsideClick: true,
+      });
+      _trap.activate();
+    } catch { _trap = null; }
+  }
+
+  function _desactiver() {
+    if (_trap) { try { _trap.deactivate(); } catch {} _trap = null; }
+    _overlayActif = null;
+  }
+
+  function _surTouche(e) {
+    if (e.key !== 'Escape' || !_overlayActif) return;
+    _fermer(_overlayActif);
+  }
+
+  function _verifier() {
+    const overlay = _selectionnerOverlay();
+    if (overlay) _activer(overlay); else _desactiver();
+  }
+
+  function init() {
+    document.addEventListener('keydown', _surTouche);
+    const observer = new MutationObserver(debounce(_verifier, 20));
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+  }
+
+  return { init };
+})();
+window.ModalAccessibilite = ModalAccessibilite;
+
+// ═══════════════════════════════════════
+//  VuesFiltres — Feuille de route Phase 2 : vues de filtre sauvegardées
+//  (Comptes + Tracker). Table dédiée `vues_filtres`, sans équivalent GAS —
+//  pas de traduction de colonnes nécessaire, snake_case de bout en bout.
+// ═══════════════════════════════════════
+const VuesFiltres = (function () {
+  async function lister(module) {
+    try {
+      const rows = await SheetsAPI.lire('EMPOWER_MDB', 'VUES_FILTRES', { nocache: true });
+      return (rows || [])
+        .filter(v => v.module === module && Number(v.pin_cds) === Number(Session.pin))
+        .sort((a, b) => (a.nom || '').localeCompare(b.nom || '', 'fr'));
+    } catch { return []; }
+  }
+
+  async function sauvegarder(module, nom, filtres) {
+    return SheetsAPI.ecrire('EMPOWER_MDB', 'VUES_FILTRES', {
+      pin_cds: Session.pin, module, nom: nom.trim(),
+      filtres_json: filtres,
+    });
+  }
+
+  async function supprimer(id) {
+    if (!SheetsAPI._sb) return;
+    await SheetsAPI._sb.from('vues_filtres').delete().eq('id', id);
+  }
+
+  return { lister, sauvegarder, supprimer };
+})();
+window.VuesFiltres = VuesFiltres;
 
 // ═══════════════════════════════════════
 //  Topbar — Barre de titre desktop persistante (refonte UX desktop, Bloc 1 — Shell)

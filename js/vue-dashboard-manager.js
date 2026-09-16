@@ -300,6 +300,18 @@ window.VueDashboardManager = {
         !src.includes('FLAVIE') && src !== 'BASE_PROSPECTS_RELANCER' && src !== 'ESI_VISITE_FROID';
     });
 
+    // Feuille de route Phase 2 — taux de transformation par commercial : le
+    // manager ne voyait jusqu'ici qu'un VOLUME d'activité (visitesSem/
+    // appelsSem), jamais si ce volume convertit. Calculé sur tout le quarter
+    // actif (pas juste la semaine — trop peu de visites pour un taux stable
+    // sur 7 jours). "Transformée" = résultat positif OU statut EMPOWER
+    // avancé (intérêt détecté / commande) — les deux champs sont déjà saisis
+    // à chaque compte-rendu de visite, aucune nouvelle collecte nécessaire.
+    const visiteTransformee = v => {
+      if (String(v.Resultat_Visite || '').includes('Positif')) return true;
+      return ['INTERESSE', 'COMMANDE'].includes(String(v.Arbre_EMPOWER_Statut || '').toUpperCase());
+    };
+
     // Le manager est aussi commercial terrain : il figure dans la perf équipe.
     const equipe = objectifs.map(o => {
       const pin    = Number(o.PIN_CDS);
@@ -309,6 +321,12 @@ window.VueDashboardManager = {
       // BLOC 5 — référence FY26 : annuel ÷ 4 pour comparer au quarter actif
       const caFY26Annual = Number(o.FY26_CA_Realise || o.CA_FY26 || 0);
       const caFY26 = caFY26Annual > 0 ? Math.round(caFY26Annual / 4) : 0;
+      const visitesRealiseesQ = visites.filter(v =>
+        Number(v.PIN_CDS) === pin && !v.deleted &&
+        String(v.Semaine_ISO || '').startsWith(quarter + '-') &&
+        String(v.Statut_Visite || '').toLowerCase() === 'réalisée'
+      );
+      const visitesTransformeesQ = visitesRealiseesQ.filter(visiteTransformee);
       return {
         pin, nom: o.Nom_CDS, ca, obj, pct, caFY26,
         pace:       pct >= 100 ? 'ON_TRACK' : pct >= 80 ? 'WATCH' : 'AT_RISK',
@@ -319,6 +337,10 @@ window.VueDashboardManager = {
           Number(p.PIN_CDS_Assigne) === pin &&
           !['ARCHIVE','INTEGRE'].includes(String(p.STATUT_EMPOWER||'').toUpperCase())
         ).length,
+        visitesRealiseesQ: visitesRealiseesQ.length,
+        tauxTransfo: visitesRealiseesQ.length > 0
+          ? Math.round(visitesTransformeesQ.length / visitesRealiseesQ.length * 100)
+          : null, // null (pas 0%) : distingue "aucune visite" de "0% de conversion"
       };
     });
 
@@ -943,11 +965,11 @@ window.VueDashboardManager = {
 
         ${this._sectionThematique('🟠 Objectifs', '#f59e0b', `
           <div class="tableau-equipe">
-            <div class="te-ligne te-head" style="grid-template-columns:1.2fr 1.4fr 0.6fr 0.8fr 0.4fr 0.4fr 0.4fr">
-              <span>CDS</span><span>CA / OBJ</span><span>%</span><span style="color:#9333ea">FY26/trim</span><span>Vis.</span><span>App.</span><span>Leads</span>
+            <div class="te-ligne te-head" style="grid-template-columns:1.2fr 1.4fr 0.6fr 0.8fr 0.4fr 0.4fr 0.4fr 0.6fr">
+              <span>CDS</span><span>CA / OBJ</span><span>%</span><span style="color:#9333ea">FY26/trim</span><span>Vis.</span><span>App.</span><span>Leads</span><span title="Visites réalisées transformées en intérêt/commande, ce trimestre">Transfo.</span>
             </div>
             ${d.equipe.map(e => `
-            <div class="te-ligne" style="cursor:pointer;grid-template-columns:1.2fr 1.4fr 0.6fr 0.8fr 0.4fr 0.4fr 0.4fr" onclick="Router.aller('#/comptes?cds=${e.pin}')">
+            <div class="te-ligne" style="cursor:pointer;grid-template-columns:1.2fr 1.4fr 0.6fr 0.8fr 0.4fr 0.4fr 0.4fr 0.6fr" onclick="Router.aller('#/comptes?cds=${e.pin}')">
               <span style="display:flex;align-items:center;gap:8px">${avatarCDS(e.pin, 26)}<strong>${e.nom}</strong></span>
               <span style="font-size:12px">${formatEuro(e.ca)} / ${formatEuro(e.obj)}</span>
               <span class="pace-badge ${PACE[e.pace].cls}">${e.pct}%</span>
@@ -955,9 +977,10 @@ window.VueDashboardManager = {
               <span>${e.visitesSem}</span>
               <span>${e.appelsSem}</span>
               <span>${e.leadsEnCours}</span>
+              <span style="font-size:12px;font-weight:700;color:${e.tauxTransfo === null ? 'var(--c-text-2)' : e.tauxTransfo >= 25 ? 'var(--c-success)' : e.tauxTransfo >= 10 ? 'var(--c-warning)' : 'var(--c-danger)'}" title="${e.visitesRealiseesQ} visite(s) réalisée(s) ${d.quarter}">${e.tauxTransfo === null ? '—' : e.tauxTransfo + '%'}</span>
             </div>`).join('')}
           </div>
-          <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">Vis. = visites ${d.semaine} · App. = appels ${d.semaine} · Leads = leads actifs · <span style="color:#9333ea">FY26/trim = CA FY26 annuel ÷ 4</span></p>
+          <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">Vis. = visites ${d.semaine} · App. = appels ${d.semaine} · Leads = leads actifs · <span style="color:#9333ea">FY26/trim = CA FY26 annuel ÷ 4</span> · Transfo. = part des visites réalisées ${d.quarter} au résultat positif ou à statut EMPOWER avancé</p>
           <div style="height:1px;background:var(--c-border);margin:14px 0"></div>
           <div class="bloc-titre" style="padding:0">Saisie CA réalisé à date</div>
           <p style="font-size:12px;color:var(--c-text-2);margin:6px 0 12px">Renseignez le CA terrain pour un CDS — la valeur remplace le sell-in du quarter sélectionné.</p>

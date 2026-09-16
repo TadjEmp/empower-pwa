@@ -645,6 +645,28 @@ window.VueVisites = {
     this.render();
   },
 
+  // ── Feuille de route Phase 1 — détection de chevauchement horaire ──
+  // Compare [heure, heure+duree) au même intervalle de chaque visite déjà
+  // planifiée/en cours du commercial CE jour-là (tous comptes confondus).
+  _trouverChevauchement(date, heure, dureeMin, exclureId = null) {
+    const versMinutes = h => {
+      const [hh, mm] = String(h || '00:00').split(':').map(Number);
+      return (hh || 0) * 60 + (mm || 0);
+    };
+    const debut = versMinutes(heure), fin = debut + dureeMin;
+    return this.state.visites.find(v => {
+      if (exclureId && v.ID_Visite === exclureId) return false;
+      if (String(v.deleted || '').toUpperCase() === 'TRUE') return false;
+      if (String(v.PIN_CDS) !== String(Session.pin)) return false;
+      if ((v.Date || v.Date_Planif || '').slice(0, 10) !== date) return false;
+      const s = (v.Statut_Visite || '').toLowerCase();
+      if (s !== 'planifiée' && s !== 'planifiee' && s !== 'en cours') return false;
+      const vDebut = versMinutes(v.Heure);
+      const vFin = vDebut + (Number(v.Duree_Prevue) || 60);
+      return debut < vFin && vDebut < fin; // chevauchement d'intervalles
+    });
+  },
+
   async planifier(e) {
     e.preventDefault();
     // BUG2 — anti multi-soumission : verrou de ré-entrée immédiat
@@ -666,6 +688,18 @@ window.VueVisites = {
     );
     if (doublon) {
       Toast.afficher(`⚠️ Visite déjà planifiée pour "${nomFinal}" le ${f.date} (${this._labelStatut(doublon.Statut_Visite)}) — doublon bloqué`, 'warning');
+      return;
+    }
+
+    // Feuille de route Phase 1 — détection de chevauchement horaire : l'ancien
+    // contrôle ci-dessus ne bloquait qu'un doublon sur LE MÊME compte ; deux
+    // comptes différents pouvaient être planifiés au même créneau sans
+    // avertissement. S'appuie sur Duree_Prevue (cf. api.js — nouvellement
+    // mappée ; 60 min par défaut pour les visites plus anciennes qui ne
+    // l'avaient jamais eue).
+    const chevauchement = this._trouverChevauchement(f.date, f.heure, Number(f.dureeVisite) || 60);
+    if (chevauchement) {
+      Toast.afficher(`⚠️ Chevauche "${chevauchement.Nom_Compte}" à ${chevauchement.Heure} le ${f.date} — créneau en conflit`, 'warning');
       return;
     }
 

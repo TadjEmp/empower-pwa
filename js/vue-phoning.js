@@ -57,7 +57,6 @@ window.VuePhoning = {
       },
       // Wizard pas-à-pas de la phase CALL (1 = Résultat & Qualification, 2 = Notes & Ressources)
       callStep: 1,
-      geminiAnalyse: null, geminiEnCours: false,
       // BUG-09 — planning phoning
       planning: [],
       planningChargement: false,
@@ -273,7 +272,6 @@ window.VuePhoning = {
     this.state.mode       = 'APPEL';
     this.state.phase      = 'PRE';
     this.state.recherche  = '';
-    this.state.geminiAnalyse = null;
     Object.assign(this.state.d, { objectif:'', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'', typeAppel:'', interetScore:0, concurrentActuel:'', potentielEstime:'', statutCallPills:'', empowerQ:[false,false,false,false,false], norton360:[], opCommerciale:[] });
     this._trackerAjoute = false; this._modalAjoutTracker = null;
     this.render();
@@ -298,7 +296,6 @@ window.VuePhoning = {
     this.state.phase      = 'CALL';   // accès direct depuis Base — pas de friction PRE
     this.state.callStep   = 1;
     this.state.recherche  = c.Nom_Compte;
-    this.state.geminiAnalyse = null;
     Object.assign(this.state.d, { objectif:'Prospection Empower', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'', typeAppel:'', interetScore:0, concurrentActuel:'', potentielEstime:'', statutCallPills:'', empowerQ:[false,false,false,false,false], norton360:[], opCommerciale:[] });
     this._trackerAjoute = false; this._modalAjoutTracker = null;
     this._demarrerTimerAppel();
@@ -315,7 +312,6 @@ window.VuePhoning = {
     this.state.mode       = 'APPEL';
     this.state.phase      = 'POST';
     this.state.recherche  = c.Nom_Compte;
-    this.state.geminiAnalyse = null;
     Object.assign(this.state.d, { objectif:'Prospection Empower', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'', typeAppel:'', interetScore:0, concurrentActuel:'', potentielEstime:'', statutCallPills:'', empowerQ:[false,false,false,false,false], norton360:[], opCommerciale:[] });
     this._trackerAjoute = false; this._modalAjoutTracker = null;
     this.render();
@@ -716,7 +712,9 @@ window.VuePhoning = {
           interet_score:     d.interetScore || 0,
           concurrent_actuel: d.concurrentActuel || '',
           potentiel_estime:  d.potentielEstime || '',
-          gemini_analyse:    s.geminiAnalyse || '',
+          // Feuille de route Phase 2 — Gemini retiré (fournisseur IA unique :
+          // Groq, déjà utilisé pour la transcription + qualification).
+          groq_resume:       s.qualif?.resume || '',
           empower_score:     (d.empowerQ || []).reduce((acc, v, i) => acc + (v ? [1,2,1,2,3][i] : 0), 0),
           empower_q:         d.empowerQ || [],
           statut_call:       d.statutCallPills || '',
@@ -1110,7 +1108,7 @@ window.VuePhoning = {
           const qj = JSON.parse(a.Questionnaire_JSON);
           scoreGroq      = qj.interet_score ?? scoreGroq;
           concurrentGroq = qj.concurrent_actuel || qj.concurrent || concurrentGroq;
-          resumeIA       = qj.gemini_analyse || '';
+          resumeIA       = qj.groq_resume || qj.gemini_analyse || ''; // gemini_analyse : compat appels historiques
         }
       } catch(_) {}
       return {
@@ -1922,20 +1920,6 @@ window.VuePhoning = {
           </div>
         </label>
 
-        <!-- Analyse Gemini -->
-        ${s.geminiAnalyse ? `
-        <div style="background:linear-gradient(135deg,var(--c-bg) 0%,rgba(0,80,255,.04) 100%);border:1.5px solid var(--c-primary);border-radius:var(--radius-sm);padding:12px;margin-top:10px">
-          <div style="font-size:11px;font-weight:700;color:var(--c-primary);margin-bottom:8px">Analyse Gemini</div>
-          <div style="font-size:13px;line-height:1.65;white-space:pre-wrap;color:var(--c-text)">${s.geminiAnalyse}</div>
-        </div>` : ''}
-
-        <button type="button" class="btn-secondaire" style="width:100%;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px"
-                onclick="VuePhoning.analyserAvecGemini()"
-                ${s.geminiEnCours ? 'disabled' : ''}>
-          ${s.geminiEnCours
-            ? 'Analyse Gemini…'
-            : (s.geminiAnalyse ? 'Relancer l\'analyse Gemini' : 'Analyser avec Gemini')}
-        </button>
       </div>` : ''}
 
       <label class="q-label">Statut de l'appel ${this._r('statutAppel', statutsAppel)}</label>
@@ -2314,6 +2298,26 @@ window.VuePhoning = {
     } else {
       if (!f.idCompte) { Toast.afficher('Sélectionnez un compte', 'warning'); return; }
     }
+    // Feuille de route Phase 1 — aucune détection de conflit n'existait ici
+    // (contrairement à Visites) : deux appels pouvaient être planifiés au même
+    // instant pour le même commercial sans avertissement. Pas de champ durée
+    // pour un appel (contrairement à une visite) → fenêtre fixe de 20 min de
+    // part et d'autre, suffisante pour repérer un doublon de créneau sans
+    // bloquer deux appels simplement proches dans la journée.
+    const FENETRE_MIN = 20 * 60000;
+    const tCible = new Date(f.datePlanifiee).getTime();
+    if (!isNaN(tCible)) {
+      const conflit = (this.state.planning || []).find(a => {
+        if (String(a.deleted || '').toUpperCase() === 'TRUE') return false;
+        if (String(a.PIN_CDS) !== String(Session.pin)) return false;
+        const t = new Date(a.Date_Planifiee).getTime();
+        return !isNaN(t) && Math.abs(t - tCible) < FENETRE_MIN;
+      });
+      if (conflit) {
+        Toast.afficher(`⚠️ Appel déjà planifié à ${new Date(conflit.Date_Planifiee).toLocaleString('fr-FR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} (${conflit.Reseller}) — créneau trop proche`, 'warning');
+        return;
+      }
+    }
     this.state.envoiEnCours = true;
     this.render();
     try {
@@ -2408,43 +2412,4 @@ window.VuePhoning = {
   },
 
   setFiltrePlanning(f) { this.state.filtrePlanning = f; this.render(); },
-
-  // ── F1 : Analyse Gemini du questionnaire appel à froid ──
-  async analyserAvecGemini() {
-    const s = this.state, d = s.d, c = s.cible;
-    if (!c) return;
-    s.geminiEnCours = true;
-    this.render();
-    try {
-      const ctx = `Tu es un assistant commercial expert en distribution IT/cybersécurité (Norton France). Tu analyses des appels commerciaux terrain et fournis des recommandations opérationnelles.`;
-      const stars = d.interetScore > 0 ? '★'.repeat(d.interetScore) + '☆'.repeat(5 - d.interetScore) : '—';
-      const prompt = `Analyse cet appel commercial et donne une recommandation précise :
-
-Compte : ${c.Nom_Compte || '—'} (${c.Ville || '—'} · canal ${c.CANAL || '—'})
-Type d'appel : ${d.typeAppel || '—'}
-Intérêt EMPOWER déclaré : ${d.interetEmpower || '—'}
-Score d'intérêt (1-5) : ${d.interetScore || '—'}/5 ${stars}
-Frein principal : ${d.frein || '—'}
-Concurrent actuel : ${d.concurrentActuel || 'non renseigné'}
-Potentiel estimé : ${d.potentielEstime || '—'}
-Statut de l'appel : ${d.statutAppel || '—'}
-Notes : ${d.note || 'aucune'}
-
-Fournis exactement :
-1. BILAN (2 lignes max — ce qui a bien/mal fonctionné)
-2. PROCHAINE ACTION (1 action concrète + délai suggéré)
-3. ARGUMENT CLÉ (1-2 phrases adaptées au frein et concurrent détectés)
-
-Ton : direct, professionnel, actionnable. Français. 150 mots max.`;
-      s.geminiAnalyse = await GeminiAPI._appeler(prompt, ctx);
-    } catch(e) {
-      const msg = String(e.message).includes('404')
-        ? 'Gemini indisponible (404) — vérifiez la clé Gemini dans Admin → Paramètres'
-        : '❌ Gemini : ' + e.message;
-      Toast.afficher(msg, 'erreur');
-      s.geminiAnalyse = null;
-    }
-    s.geminiEnCours = false;
-    this.render();
-  },
 };

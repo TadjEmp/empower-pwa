@@ -17,6 +17,8 @@ window.VueComptes = {
     // la liste reste visible et cliquable derrière (≥900px uniquement).
     ficheDockee: null, ficheDockeeChargement: false,
     datesLive: new Map(), // Bloc 1 §6.2 — clé ID_Compte, cf. _calculerDatesLive
+    // Feuille de route Phase 2 — vues de filtre sauvegardées
+    vuesFiltres: [], vueFiltreActive: null,
   },
 
   // ── Bloc 1 §6.2 — dates dernière visite / dernier appel / prochaine visite,
@@ -146,14 +148,16 @@ window.VueComptes = {
     this.state.chargement = true;
     this.render();
     try {
-      const [raw, objectifs, cdsApi, visites, appels, params] = await Promise.all([
+      const [raw, objectifs, cdsApi, visites, appels, params, vuesFiltres] = await Promise.all([
         SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
         SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
         SheetsAPI.lireCDS(), // V5 BUG1 — liste CDS dynamique (inclut Alexandra)
         SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES').catch(() => []),
         SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING').catch(() => []),
         SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS').catch(() => []),
+        VuesFiltres.lister('comptes'),
       ]);
+      this.state.vuesFiltres = vuesFiltres;
       initCDSRegistry(objectifs); // BUG-02
       // BLOC 07 §8 — quarter FY27 actif, même pattern que vue-dashboard-manager.js
       const paramMap = Object.fromEntries((params || []).map(p => [p.Parametre, p.Valeur]));
@@ -331,6 +335,16 @@ window.VueComptes = {
                value="${this.state.recherche}"
                style="border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:8px 12px;font-size:14px;width:100%"
                oninput="VueComptes.setRecherche(this.value)"/>
+
+        <!-- Feuille de route Phase 2 — vues de filtre sauvegardées -->
+        <div class="filtres-flags" style="align-items:center">
+          <select style="flex:1;min-width:140px" onchange="VueComptes.appliquerVueFiltre(this.value)">
+            <option value="">💾 Vues sauvegardées…</option>
+            ${this.state.vuesFiltres.map(v => `<option value="${v.id}" ${this.state.vueFiltreActive === v.id ? 'selected' : ''}>${v.nom}</option>`).join('')}
+          </select>
+          <button class="btn-filtre" title="Enregistrer les filtres actuels" onclick="VueComptes.demanderSauvegardeVue()">💾</button>
+          ${this.state.vueFiltreActive ? `<button class="btn-filtre" title="Supprimer cette vue" onclick="VueComptes.supprimerVueFiltre()">🗑️</button>` : ''}
+        </div>
 
         <!-- BUG-05 : filtres statut calculé -->
         <div class="filtres-flags">
@@ -547,4 +561,55 @@ window.VueComptes = {
   setFiltreEmpower(c) { this.state.filtreEmpower = c; this.render(); },
   setFiltreCDS(p) { this.state.filtreCDSPin = p; this.render(); },
   setTri(t)       { this.state.triPar = t; this.state.triCol = null; this.render(); },
+
+  // ── Feuille de route Phase 2 — vues de filtre sauvegardées ──
+  demanderSauvegardeVue() {
+    ConfirmModal.demander({
+      titre: 'Enregistrer cette vue',
+      detail: 'Statut, filtre EMPOWER, CDS, tri et recherche actuels seront mémorisés sous ce nom.',
+      champ: { placeholder: 'ex : Mes comptes actifs à relancer' },
+      labelConfirmer: 'Enregistrer',
+      onConfirm: nom => this._sauvegarderVue(nom),
+    });
+  },
+
+  async _sauvegarderVue(nom) {
+    if (!nom || !nom.trim()) { Toast.afficher('Nom requis', 'warning'); return; }
+    const s = this.state;
+    const filtres = {
+      recherche: s.recherche, filtreStatut: s.filtreStatut,
+      filtreEmpower: s.filtreEmpower, filtreCDSPin: s.filtreCDSPin, triPar: s.triPar,
+    };
+    try {
+      await VuesFiltres.sauvegarder('comptes', nom, filtres);
+      s.vuesFiltres = await VuesFiltres.lister('comptes');
+      Toast.afficher(`💾 Vue "${nom}" enregistrée`, 'succes');
+      this.render();
+    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+  },
+
+  appliquerVueFiltre(id) {
+    if (!id) { this.state.vueFiltreActive = null; this.render(); return; }
+    const v = this.state.vuesFiltres.find(x => String(x.id) === String(id));
+    if (!v) return;
+    const f = v.filtres_json || {};
+    Object.assign(this.state, {
+      recherche: f.recherche || '', filtreStatut: f.filtreStatut || 'TOUS',
+      filtreEmpower: f.filtreEmpower || 'TOUS', filtreCDSPin: f.filtreCDSPin || 'TOUS',
+      triPar: f.triPar || 'PRIORITE', vueFiltreActive: id,
+    });
+    this.render();
+  },
+
+  async supprimerVueFiltre() {
+    const id = this.state.vueFiltreActive;
+    if (!id) return;
+    try {
+      await VuesFiltres.supprimer(id);
+      this.state.vuesFiltres = this.state.vuesFiltres.filter(v => String(v.id) !== String(id));
+      this.state.vueFiltreActive = null;
+      Toast.afficher('🗑️ Vue supprimée', 'succes');
+      this.render();
+    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+  },
 };

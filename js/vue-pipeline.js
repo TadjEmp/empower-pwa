@@ -82,11 +82,13 @@ window.VuePipeline = {
       // Densité Kanban (cartes complètes vs lignes compactes) — persistée comme
       // les colonnes du tableau, pour éviter de la re-choisir à chaque visite.
       kanbanDense: localStorage.getItem('esi_kanban_dense') === '1',
+      // Feuille de route Phase 2 — vues de filtre sauvegardées
+      vuesFiltres: [], vueFiltreActive: null,
     };
     this._ecouterContacts(); // Bloc 6 — Kanban live (abonnement idempotent)
     this.render();
     try {
-      const [raw, params, objectifs, cdsApi, sellin] = await Promise.all([
+      const [raw, params, objectifs, cdsApi, sellin, vuesFiltres] = await Promise.all([
         // nocache : 📋_PROSPECTS est alimenté en continu par plusieurs profils
         // (CDS, Admin, Channel) sur des appareils différents — le cache IndexedDB
         // partagé (TTL 30 min, api.js) masquait jusqu'à 30 min les leads ajoutés
@@ -100,7 +102,9 @@ window.VuePipeline = {
         // que _creerCompteDepuisLead. Règle validée : CA > 0 sur n'importe
         // quel trimestre FY27 (pas seulement le trimestre actif).
         SheetsAPI.lire('EMPOWER_MDB', '📋 COMPTES HISTORIQUES').catch(() => []),
+        VuesFiltres.lister('tracker'),
       ]);
+      this.state.vuesFiltres = vuesFiltres;
       this._chargerCDS(params, objectifs, cdsApi);
       initCDSRegistry(objectifs); // BUG-02 : peuple le registre global
 
@@ -599,6 +603,59 @@ window.VuePipeline = {
 
   setMode(m) { this.modeAffichage = m; this.render(); },
 
+  // ── Feuille de route Phase 2 — vues de filtre sauvegardées ──
+  demanderSauvegardeVue() {
+    ConfirmModal.demander({
+      titre: 'Enregistrer cette vue',
+      detail: 'CDS, statut, potentiel, alerte, origine, canal et recherche actuels seront mémorisés sous ce nom.',
+      champ: { placeholder: 'ex : Mes leads chauds sans contact' },
+      labelConfirmer: 'Enregistrer',
+      onConfirm: nom => this._sauvegarderVue(nom),
+    });
+  },
+
+  async _sauvegarderVue(nom) {
+    if (!nom || !nom.trim()) { Toast.afficher('Nom requis', 'warning'); return; }
+    const s = this.state;
+    const filtres = {
+      recherche: s.recherche, filtreCDS: s.filtreCDS, filtrePotentiel: s.filtrePotentiel,
+      filtreStatut: s.filtreStatut, filtreAlerte: s.filtreAlerte,
+      filtreOrigine: s.filtreOrigine, filtreChannel: s.filtreChannel,
+    };
+    try {
+      await VuesFiltres.sauvegarder('tracker', nom, filtres);
+      s.vuesFiltres = await VuesFiltres.lister('tracker');
+      Toast.afficher(`💾 Vue "${nom}" enregistrée`, 'succes');
+      this.render();
+    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+  },
+
+  appliquerVueFiltre(id) {
+    if (!id) { this.state.vueFiltreActive = null; this.render(); return; }
+    const v = this.state.vuesFiltres.find(x => String(x.id) === String(id));
+    if (!v) return;
+    const f = v.filtres_json || {};
+    Object.assign(this.state, {
+      recherche: f.recherche || '', filtreCDS: f.filtreCDS || 'TOUS',
+      filtrePotentiel: f.filtrePotentiel || 'TOUS', filtreStatut: f.filtreStatut || 'TOUS',
+      filtreAlerte: f.filtreAlerte || 'TOUS', filtreOrigine: f.filtreOrigine || 'TOUS',
+      filtreChannel: f.filtreChannel || 'TOUS', vueFiltreActive: id,
+    });
+    this.render();
+  },
+
+  async supprimerVueFiltre() {
+    const id = this.state.vueFiltreActive;
+    if (!id) return;
+    try {
+      await VuesFiltres.supprimer(id);
+      this.state.vuesFiltres = this.state.vuesFiltres.filter(v => String(v.id) !== String(id));
+      this.state.vueFiltreActive = null;
+      Toast.afficher('🗑️ Vue supprimée', 'succes');
+      this.render();
+    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+  },
+
   // ── Datagrid desktop (Bloc 3) : tri de colonnes ──
   _valeurTri(l, col) {
     switch (col) {
@@ -758,6 +815,15 @@ window.VuePipeline = {
             ${this.CHANNELS.map(c => `<option value="${c}" ${this.state.filtreChannel===c?'selected':''}>${c}</option>`).join('')}
           </select>` : ''}
         </div>
+        <!-- Feuille de route Phase 2 — vues de filtre sauvegardées -->
+        <div class="filtres-statut">
+          <select onchange="VuePipeline.appliquerVueFiltre(this.value)">
+            <option value="">💾 Vues sauvegardées…</option>
+            ${this.state.vuesFiltres.map(v => `<option value="${v.id}" ${this.state.vueFiltreActive === v.id ? 'selected' : ''}>${v.nom}</option>`).join('')}
+          </select>
+          <button class="btn-filtre" title="Enregistrer les filtres actuels" onclick="VuePipeline.demanderSauvegardeVue()">💾</button>
+          ${this.state.vueFiltreActive ? `<button class="btn-filtre" title="Supprimer cette vue" onclick="VuePipeline.supprimerVueFiltre()">🗑️</button>` : ''}
+        </div>
       </div>
 
       ${this.modeAffichage === 'kanban' ? `
@@ -802,24 +868,25 @@ window.VuePipeline = {
           const affichees = etendue ? col : col.slice(0, limite);
           const masques = col.length - affichees.length;
           return `
-          <div class="kanban-col">
+          <div class="kanban-col" data-statut="${st.id}">
             <div class="kanban-col-head">
               <span class="kanban-dot" style="background:${st.coul}"></span>
               <span class="kanban-col-titre">${st.lbl}</span>
               <span class="badge-compteur">${col.length}</span>
             </div>
+            <div class="kanban-col-cartes">
             ${this.state.kanbanDense ? affichees.map(l => {
               const alerte = this._retardWelcomePack(l) || this._alerte45jSansContact(l);
               const potCoul = { fort: 'var(--c-success)', moyen: 'var(--c-warning)', faible: 'var(--c-text-2)' }[(l.POTENTIEL || '').toLowerCase()] || 'var(--c-border)';
               return `
-              <div class="kanban-ligne" onclick="VuePipeline.ouvrirLead('${l.ID_Prospect}')" title="${l.Nom_Compte}">
+              <div class="kanban-ligne" data-id="${l.ID_Prospect}" onclick="VuePipeline.ouvrirLead('${l.ID_Prospect}')" title="${l.Nom_Compte}">
                 <span class="kanban-ligne-pot" style="background:${potCoul}"></span>
                 <span class="kanban-ligne-nom">${l.Nom_Compte}</span>
                 ${alerte ? '<span class="kanban-ligne-alerte">⚠️</span>' : ''}
                 <span class="kanban-ligne-cds">${this._nomCDS(l.PIN_CDS_Assigne).slice(0, 1)}</span>
               </div>`;
             }).join('') : affichees.map(l => `
-              <div class="kanban-carte ${this._retardWelcomePack(l) ? 'kanban-alerte' : ''}"
+              <div class="kanban-carte ${this._retardWelcomePack(l) ? 'kanban-alerte' : ''}" data-id="${l.ID_Prospect}"
                    onclick="VuePipeline.ouvrirLead('${l.ID_Prospect}')">
                 <div class="kanban-carte-nom" style="display:flex;align-items:baseline;justify-content:space-between;gap:6px">
                   <span>${l.Nom_Compte}</span>
@@ -850,11 +917,12 @@ window.VuePipeline = {
                   <span class="kanban-voir" style="margin-left:auto">Voir →</span>
                 </div>
               </div>`).join('')}
+            ${col.length === 0 ? '<div class="kanban-vide">—</div>' : ''}
+            </div>
             ${masques > 0 ? `
               <div class="kanban-voir-plus" onclick="VuePipeline.etendre('${st.id}')">
                 +${masques} autres · voir tous
               </div>` : ''}
-            ${col.length === 0 ? '<div class="kanban-vide">—</div>' : ''}
           </div>`;
         }).join('')}
       </div>` : this._renderTableau(leads, voitTous)}
@@ -865,6 +933,35 @@ window.VuePipeline = {
       ${this._renderModal()}
       ${this._renderPanneauExport()}
     `;
+    this._initSortableKanban();
+  },
+
+  // ── Feuille de route Phase 1 — glisser-déposer entre colonnes du Kanban.
+  // ARCHIVE volontairement exclue (ni source ni cible) : l'archivage exige un
+  // motif obligatoire (cf. demanderMotifArchive) — le geste "😬 glissé par
+  // erreur" ne doit jamais suffire à archiver un lead sans passer par le
+  // bouton dédié. Toutes les autres colonnes s'échangent librement.
+  _initSortableKanban() {
+    if (typeof Sortable === 'undefined') return;
+    if (this.modeAffichage !== 'kanban') return;
+    document.querySelectorAll('.kanban-col').forEach(col => {
+      if (col.dataset.statut === 'ARCHIVE') return;
+      const conteneur = col.querySelector('.kanban-col-cartes');
+      if (!conteneur) return;
+      Sortable.create(conteneur, {
+        group: 'tracker-kanban',
+        animation: 150,
+        delay: 80, delayOnTouchOnly: true, // évite de capturer un simple tap/scroll tactile comme un drag
+        ghostClass: 'kanban-carte-ghost',
+        onEnd: evt => {
+          const id = evt.item.dataset.id;
+          const statutCible = evt.to.closest('.kanban-col')?.dataset.statut;
+          const statutOrigine = evt.from.closest('.kanban-col')?.dataset.statut;
+          if (!id || !statutCible || statutCible === statutOrigine) return;
+          VuePipeline.deplacer(id, statutCible);
+        },
+      });
+    });
   },
 
   _renderTableau(leadsEntree, voitTous) {

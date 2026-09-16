@@ -166,6 +166,12 @@ const SheetsAPI = {
       decideur_rencontre: 'Decideur_Rencontre', decideur_nom: 'Decideur_Nom',
       decideur_fonction: 'Decideur_Fonction', concurrents_json: 'Concurrents_JSON',
       id_action_origine: 'ID_Action_Origine',
+      // Feuille de route Phase 1 — durée prévue, saisie depuis toujours au
+      // formulaire de planification (vue-visites.js#planifier, f.dureeVisite)
+      // mais jamais mappée ici : Duree_Prevue n'atteignait donc jamais cette
+      // colonne (_toDBRow ignore silencieusement toute clé absente du map),
+      // qui restait vide — sert désormais la détection de chevauchement.
+      duree_estimee: 'Duree_Prevue', nb_employes: 'Nb_Employes',
       deleted: 'deleted', deleted_at: 'deleted_at', deleted_by: 'deleted_by',
       id: '_uuid',
     },
@@ -327,6 +333,7 @@ const SheetsAPI = {
       'Decideur_Fonction': 'decideur_fonction', 'Concurrents_JSON': 'concurrents_json',
       'Norton_Reference': 'produits_norton',
       'ID_Action_Origine': 'id_action_origine',
+      'Duree_Prevue': 'duree_estimee', 'Nb_Employes': 'nb_employes',
     },
     phoning: {
       'ID_Appel': 'id_appel_gas', 'Date': 'date_appel', 'Semaine_ISO': 'semaine_iso',

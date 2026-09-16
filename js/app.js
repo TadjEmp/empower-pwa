@@ -13,6 +13,11 @@
   // 3. Init routeur (déclenchera la bonne vue)
   Router.init();
 
+  // Feuille de route Phase 1 — piège de focus + Échap génériques sur toute
+  // modale/drawer, actif dès le boot (indépendant de la session : le login
+  // n'a pas de modale aujourd'hui, mais rien n'empêche d'en avoir une).
+  if (window.ModalAccessibilite) ModalAccessibilite.init();
+
   // 4. Enregistrer le Service Worker + auto-reload dès qu'une nouvelle version prend la main
   //    (le SW est network-first pour le shell — voir sw.js — donc un simple reload suffit
   //    désormais à récupérer le code à jour, plus besoin de vider le cache manuellement).

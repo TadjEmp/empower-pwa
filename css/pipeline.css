@@ -36,6 +36,17 @@
 .kanban-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .kanban-col-titre { font-size: 14px; font-weight: 700; flex: 1; }
 .kanban-vide { text-align: center; color: var(--c-text-2); padding: 16px; font-size: 13px; }
+/* Feuille de route Phase 1 — conteneur des cartes glissables (SortableJS),
+   distinct de .kanban-col pour ne jamais rendre l'entête/le "voir tous"
+   déplaçables avec elles. */
+.kanban-col-cartes {
+  display: flex; flex-direction: column; gap: 8px;
+  min-height: 40px; /* zone de dépôt visible même colonne vide */
+}
+.kanban-carte, .kanban-ligne { cursor: grab; }
+.kanban-carte:active, .kanban-ligne:active { cursor: grabbing; }
+.kanban-carte-ghost { opacity: .4; }
+.sortable-chosen.kanban-carte, .sortable-chosen.kanban-ligne { box-shadow: var(--shadow); }
 
 .kanban-carte {
   background: var(--c-surface); border-radius: var(--radius);

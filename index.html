@@ -17,9 +17,17 @@
   <link rel="stylesheet" href="css/comptes.css?v=3"/>
   <link rel="stylesheet" href="css/questionnaire.css?v=5"/>
   <link rel="stylesheet" href="css/dashboard.css?v=9"/>
-  <link rel="stylesheet" href="css/pipeline.css?v=13"/>
+  <link rel="stylesheet" href="css/pipeline.css?v=14"/>
   <link rel="stylesheet" href="css/v7.css?v=11"/>
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <!-- Feuille de route Phase 1 — piège de focus pour les modales/drawer (utils.js#ModalAccessibilite) -->
+  <script src="https://cdn.jsdelivr.net/npm/tabbable@6.5.0/dist/index.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/focus-trap@7.8.0/dist/focus-trap.umd.js"></script>
+  <!-- Feuille de route Phase 1 — glisser-déposer du Tracker (vue-pipeline.js), animation
+       de drag incluse (option `animation`) — cf. décision "auto-animate" dans le journal
+       de la feuille de route : ce paquet suppose des mutations DOM incrémentales, incompatible
+       avec le render() de cette app (innerHTML entièrement remplacé à chaque appel). -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.7/Sortable.min.js"></script>
 </head>
 <body>
   <div id="drawer-root"></div>
@@ -43,7 +51,7 @@
   </div>
 
   <!-- Couche API & utilitaires -->
-  <script src="js/utils.js?v=29"></script>
+  <script src="js/utils.js?v=30"></script>
   <script src="js/fiscal-weeks.js?v=1"></script>
   <script src="js/filter-state.js?v=1"></script>
   <script src="js/questionnaire-branching.js?v=1"></script>
@@ -51,7 +59,7 @@
   <script src="js/session.js?v=3"></script>
   <script src="js/dashboard-activite.js?v=4"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="js/api.js?v=38"></script>
+  <script src="js/api.js?v=39"></script>
   <script src="js/groq.js?v=6"></script>
   <script src="js/gemini.js?v=3"></script>
   <script src="js/toast.js?v=4"></script>
@@ -62,13 +70,13 @@
   <script src="js/vue-login.js?v=6"></script>
   <script src="js/vue-dashboard-cds.js?v=26"></script>
   <!-- EMPOWER TRACKER (B3 : renommage complet) -->
-  <script src="js/vue-pipeline.js?v=49"></script>
+  <script src="js/vue-pipeline.js?v=50"></script>
   <!-- COMPTES HISTORIQUES -->
   <script src="js/vue-comptes-historiques.js?v=14"></script>
   <!-- PHONING -->
-  <script src="js/vue-phoning.js?v=30"></script>
+  <script src="js/vue-phoning.js?v=31"></script>
   <!-- VISITES -->
-  <script src="js/vue-visites.js?v=33"></script>
+  <script src="js/vue-visites.js?v=34"></script>
   <!-- Section 9 cahier des charges : vue consolidée Channel (lecture seule FDV) -->
   <script src="js/vue-visites-fdv.js?v=3"></script>
   <!-- SUIVI DES OBJECTIFS -->
@@ -77,16 +85,16 @@
   <script src="js/vue-primes.js?v=14"></script>
   <!-- Vues auxiliaires -->
   <script src="js/vue-photos.js?v=8"></script>
-  <script src="js/vue-comptes.js?v=21"></script>
-  <script src="js/vue-fiche-compte.js?v=21"></script>
+  <script src="js/vue-comptes.js?v=22"></script>
+  <script src="js/vue-fiche-compte.js?v=22"></script>
   <script src="js/vue-questionnaire.js?v=20"></script>
-  <script src="js/vue-dashboard-manager.js?v=29"></script>
+  <script src="js/vue-dashboard-manager.js?v=30"></script>
   <script src="js/vue-admin.js?v=26"></script>
 
   <!-- Centre de notifications (cloche + badge + panneau) -->
   <script src="js/notif-center.js?v=5"></script>
 
   <!-- Boot -->
-  <script src="js/app.js?v=13"></script>
+  <script src="js/app.js?v=14"></script>
 </body>
 </html>
