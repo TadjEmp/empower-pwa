@@ -284,7 +284,7 @@ window.VuePhoning = {
     this.state.mode       = 'APPEL';
     this.state.phase      = 'PRE';
     this.state.recherche  = '';
-    Object.assign(this.state.d, { objectif:'', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'', typeAppel:'', interetScore:0, concurrentActuel:'', potentielEstime:'', statutCallPills:'', empowerQ:[false,false,false,false,false], norton360:[], opCommerciale:[] });
+    Object.assign(this.state.d, { objectif:'', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'', typeAppel:'', interetScore:0, concurrentActuel:'', potentielEstime:'', statutCallPills:'', empowerQ:[false,false,false,false,false], norton360:[], opCommerciale:[], coordTel: undefined, coordEmail: undefined });
     this._trackerAjoute = false; this._modalAjoutTracker = null;
     this.render();
   },
@@ -308,7 +308,7 @@ window.VuePhoning = {
     this.state.phase      = 'CALL';   // accès direct depuis Base — pas de friction PRE
     this.state.callStep   = 1;
     this.state.recherche  = c.Nom_Compte;
-    Object.assign(this.state.d, { objectif:'Prospection Empower', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'', typeAppel:'', interetScore:0, concurrentActuel:'', potentielEstime:'', statutCallPills:'', empowerQ:[false,false,false,false,false], norton360:[], opCommerciale:[] });
+    Object.assign(this.state.d, { objectif:'Prospection Empower', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'', typeAppel:'', interetScore:0, concurrentActuel:'', potentielEstime:'', statutCallPills:'', empowerQ:[false,false,false,false,false], norton360:[], opCommerciale:[], coordTel: undefined, coordEmail: undefined });
     this._trackerAjoute = false; this._modalAjoutTracker = null;
     this._demarrerTimerAppel();
     this.render();
@@ -324,7 +324,7 @@ window.VuePhoning = {
     this.state.mode       = 'APPEL';
     this.state.phase      = 'POST';
     this.state.recherche  = c.Nom_Compte;
-    Object.assign(this.state.d, { objectif:'Prospection Empower', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'', typeAppel:'', interetScore:0, concurrentActuel:'', potentielEstime:'', statutCallPills:'', empowerQ:[false,false,false,false,false], norton360:[], opCommerciale:[] });
+    Object.assign(this.state.d, { objectif:'Prospection Empower', accroche:'', statutAppel:'', interetEmpower:'', frein:'', prochaineAction:'', dateRappel:'', note:'', commandeAnnoncee:'', montantEstime:'', statutFinal:'', typeAppel:'', interetScore:0, concurrentActuel:'', potentielEstime:'', statutCallPills:'', empowerQ:[false,false,false,false,false], norton360:[], opCommerciale:[], coordTel: undefined, coordEmail: undefined });
     this._trackerAjoute = false; this._modalAjoutTracker = null;
     this.render();
   },
@@ -703,10 +703,37 @@ window.VuePhoning = {
     if (this.state.envoiEnCours) return;
     const s = this.state, d = s.d, c = s.cible;
     if (!d.statutAppel) { Toast.afficher('Indiquez le statut de l\'appel', 'warning'); return; }
+
+    // BLOC — coordonnées éditées pendant l'appel (fiche contact, _phaseCALL) :
+    // si le compte/lead en avait déjà de différentes, on confirme avant
+    // d'écraser (option retenue : ni silencieux, ni bloquant) — même
+    // principe déjà posé sur la modal Planifier appel (BLOC 08 pt.3).
+    const nouveauTel   = d.coordTel   !== undefined ? d.coordTel.trim()   : '';
+    const nouveauEmail = d.coordEmail !== undefined ? d.coordEmail.trim() : '';
+    const conflitsCoord = [];
+    if (nouveauTel   && c.Tel   && nouveauTel   !== String(c.Tel).trim())   conflitsCoord.push(`Téléphone : "${c.Tel}" → "${nouveauTel}"`);
+    if (nouveauEmail && c.Email && nouveauEmail !== String(c.Email).trim()) conflitsCoord.push(`Email : "${c.Email}" → "${nouveauEmail}"`);
+    if (conflitsCoord.length) {
+      ConfirmModal.demander({
+        titre: 'Remplacer les coordonnées ?',
+        message: `${c.Nom_Compte} a déjà des coordonnées renseignées :\n${conflitsCoord.join('\n')}`,
+        labelConfirmer: 'Remplacer', labelAnnuler: 'Garder les anciennes',
+        onConfirm: () => this._finaliserValider(true),
+        onAnnuler: () => this._finaliserValider(false),
+      });
+      return;
+    }
+    await this._finaliserValider(true);
+  },
+
+  async _finaliserValider(ecraserCoordonnees) {
+    const s = this.state, d = s.d, c = s.cible;
     s.envoiEnCours = true;
     this.render();
     const estProspect = s.typeSource === 'PROSPECT';
     const idCible = estProspect ? c.ID_Prospect : c.ID_Compte;
+    const nouveauTel   = d.coordTel   !== undefined ? d.coordTel.trim()   : '';
+    const nouveauEmail = d.coordEmail !== undefined ? d.coordEmail.trim() : '';
 
     try {
       // 1. Ligne 📞_PHONING
@@ -772,6 +799,10 @@ window.VuePhoning = {
           Date_prochaine_action: d.dateRappel, Flag_traite: 'TRUE',
           Date_Derniere_Action: dateISOLocale(), Type_Derniere_Action: 'Appel',
         };
+        // BLOC — coordonnées saisies/corrigées pendant l'appel : toujours si
+        // le champ était vide, seulement si l'écrasement a été confirmé sinon.
+        if (nouveauTel   && (ecraserCoordonnees || !c.Tel))   maj.Tel   = nouveauTel;
+        if (nouveauEmail && (ecraserCoordonnees || !c.Email)) maj.Email = nouveauEmail;
         const res = d.resultatProspect;
 
         if (res === 'NON_INTERESSE') {
@@ -809,6 +840,10 @@ window.VuePhoning = {
           Prochaine_Action: d.prochaineAction,
           Date_Prochaine_Action: d.dateRappel || null,
         };
+        // BLOC — coordonnées saisies/corrigées pendant l'appel — même règle
+        // que côté prospect ci-dessus (jamais d'écrasement silencieux).
+        if (nouveauTel   && (ecraserCoordonnees || !c.Tel))   majCompte.Tel   = nouveauTel;
+        if (nouveauEmail && (ecraserCoordonnees || !c.Email)) majCompte.Email = nouveauEmail;
         // BLOC 3 — statut final aligné sur le vocabulaire réel (EN_COURS/INTEGRE/ARCHIVE)
         if (['EN_COURS', 'INTEGRE', 'ARCHIVE'].includes(d.statutFinal)) {
           majCompte.STATUT_COMPTE = d.statutFinal;
@@ -1858,9 +1893,26 @@ window.VuePhoning = {
             <span id="phoning-timer-appel">00:00</span>
           </div>
         </div>
-        <div style="display:flex;flex-direction:column;gap:5px">
-          ${c?.Tel ? `<a class="lien-tel" href="tel:${String(c.Tel).replace(/\s/g,'')}">📞 ${c.Tel}</a>` : '<span style="font-size:12px;color:var(--c-text-2)">Pas de téléphone enregistré</span>'}
-          ${c?.Email ? `<span style="font-size:12px;color:var(--c-text-2)">✉ ${c.Email}</span>` : ''}
+        <!-- BLOC — coordonnées éditables pendant l'appel (au lieu du seul
+             affichage lecture-seule) : la personne au bout du fil confirme
+             ou corrige tél/email en direct, plutôt que de devoir rouvrir la
+             fiche compte après coup. Répercuté sur le compte/lead à la
+             validation (cf. valider()/_finaliserValider), donc visible
+             ensuite partout où ces coordonnées sont lues (fiche compte,
+             liste Comptes, modal Planifier appel — même principe déjà
+             posé pour ce dernier, BLOC 08 pt.3). -->
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;gap:6px;align-items:center">
+            <input class="q-input" type="tel" style="flex:1;font-size:13px;padding:6px 8px"
+                   value="${(d.coordTel !== undefined ? d.coordTel : c?.Tel) || ''}"
+                   placeholder="📞 Téléphone — manquant"
+                   oninput="VuePhoning.state.d.coordTel=this.value"/>
+            ${(d.coordTel !== undefined ? d.coordTel : c?.Tel) ? `<a class="btn-lien" style="flex-shrink:0;padding:6px 8px" href="tel:${String(d.coordTel !== undefined ? d.coordTel : c.Tel).replace(/\s/g,'')}">☎</a>` : ''}
+          </div>
+          <input class="q-input" type="email" style="font-size:13px;padding:6px 8px"
+                 value="${(d.coordEmail !== undefined ? d.coordEmail : c?.Email) || ''}"
+                 placeholder="✉ Email — manquant"
+                 oninput="VuePhoning.state.d.coordEmail=this.value"/>
           ${(c?.Adresse || c?.Ville) ? `<span style="font-size:12px;color:var(--c-text-2)">📍 ${[c.Adresse, c.Ville].filter(Boolean).join(' · ')}</span>` : ''}
           ${(c?.CANAL || c?.CA_FY26) ? `<span style="font-size:11px;color:var(--c-text-2)">${[c?.CANAL, c?.CA_FY26 ? 'CA FY26 : ' + fmtCA(c.CA_FY26) + ' €' : ''].filter(Boolean).join(' · ')}</span>` : ''}
         </div>
@@ -2507,6 +2559,7 @@ window.VuePhoning = {
       this.state.mode           = 'APPEL';
       this.state.phase          = 'PRE';
       this.state.d.objectif     = plan.Objectif_Appel || '';
+      this.state.d.coordTel = undefined; this.state.d.coordEmail = undefined;
       this.render();
       return;
     }
@@ -2519,6 +2572,7 @@ window.VuePhoning = {
     this.state.mode           = 'APPEL';
     this.state.phase          = 'PRE';
     this.state.d.objectif     = plan.Objectif_Appel || '';
+    this.state.d.coordTel = undefined; this.state.d.coordEmail = undefined;
     this.state.recherche      = resolu.nom;
     this.render();
   },
