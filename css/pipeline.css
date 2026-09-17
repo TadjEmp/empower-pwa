@@ -22,6 +22,30 @@
   .kanban::-webkit-scrollbar-track { background: transparent; }
   .kanban::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 4px; }
   .kanban::-webkit-scrollbar-thumb:hover { background: var(--c-text-2); }
+
+  /* BLOC 08 pt.6 — .kanban n'était borné en hauteur par rien : sa boîte
+     grandissait avec le nombre de cartes (jusqu'à LIMITE_COL=20/colonne),
+     poussant sa scrollbar horizontale (rendue au bas de sa propre boîte)
+     à des milliers de px sous le viewport visible — mesuré en conditions
+     réelles : kanban haut de 3556px, scrollbar à ~3876px du haut de page
+     pour un viewport de 900px. Invisible et injoignable sans scroller la
+     page verticalement d'abord. Fix : borner .kanban au viewport, chaque
+     colonne scrolle sa propre liste de cartes verticalement — la scrollbar
+     horizontale reste alors épinglée juste sous les filtres, toujours
+     visible. Desktop uniquement — le mobile garde le scroll de page complet
+     (comportement inchangé, jamais signalé comme cassé). */
+  .kanban {
+    max-height: calc(100dvh - 230px);
+    min-height: 320px;
+    overflow-y: hidden;
+    padding-bottom: 16px;
+  }
+  .kanban-col { min-height: 0; }
+  .kanban-col-cartes {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
 }
 .kanban-col {
   flex: 0 0 280px; scroll-snap-align: start;

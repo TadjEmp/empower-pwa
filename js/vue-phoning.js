@@ -64,6 +64,7 @@ window.VuePhoning = {
       filtrePlanning: 'SEMAINE', // SEMAINE | MOIS | TOUS
       idPlanifEnCours: null,   // ID_Appel du plan lancé
       commercialSelectionne: null, // groupement planning par commercial (Manager/Channel)
+      commerciauxEtendusPlanning: {}, // BLOC 08 pt.2 — plier/déplier par commercial, cf. VueVisites.commerciauxEtendusJour
       // R5 — historique appels + edit/delete
       journal: [],
       journalChargement: false,
@@ -1464,8 +1465,16 @@ window.VuePhoning = {
       </header>
       <!-- Bloc 3 §1/§5 — desktop dense pour les modes liste/pilotage (Planning,
            Base, Journal) ; le flux d'appel (PRE/CALL/POST) reste centré et
-           focalisé, cf. commentaire questionnaire.css. -->
-      <div class="q-contenu avec-nav ${['PLANNING','BASE','HISTORIQUE'].includes(s.mode) ? 'q-contenu-large' : ''}">
+           focalisé, cf. commentaire questionnaire.css.
+           BLOC 08 pt.4 — l'étape CALL a son propre footer fixe .q-nav-fixe
+           (Suivant/Précédent) : .q-contenu réserve déjà le padding-bottom
+           qu'il faut pour le dégager (120px). "avec-nav" réserve un padding
+           différent, pensé pour la bottom-nav seule, et l'écrase en
+           !important (72px mobile / 24px desktop) — trop court, la fin du
+           questionnaire Empower /9 se retrouvait sous le bouton "Suivant"
+           sans pouvoir scroller pour l'atteindre. Retiré uniquement pour
+           CALL ; PRE/POST n'ont pas de q-nav-fixe et gardent avec-nav. -->
+      <div class="q-contenu ${s.mode === 'APPEL' && s.phase === 'CALL' ? '' : 'avec-nav'} ${['PLANNING','BASE','HISTORIQUE'].includes(s.mode) ? 'q-contenu-large' : ''}">
         ${s.mode === 'PLANNING'    ? this._renderPlanning()
         : s.mode === 'BASE'        ? this._renderBaseComptes()
         : s.mode === 'HISTORIQUE'  ? this._renderJournal()
@@ -2032,6 +2041,13 @@ window.VuePhoning = {
   // ses cartes d'appels compactes (même esprit que VueVisites._renderGroupeJour) :
   // le manager voyait avant "Johanne — 3 appels planifiés" sans le moindre
   // détail, il faut ouvrir chaque commercial un par un pour tout consulter.
+  // BLOC 08 pt.2 — le clic sur l'en-tête ne faisait QUE naviguer vers la vue
+  // filtrée d'un commercial (selectionnerCommercialPlanning) : les cartes de
+  // CHAQUE commercial étaient toujours affichées en entier, sans moyen de les
+  // replier pour juste scanner "qui a combien d'appels planifiés". Repliées
+  // par défaut ; un chevron dédié bascule l'affichage SANS quitter la vue
+  // groupée (le nom/avatar garde son rôle de raccourci vers le détail),
+  // même pattern que VueVisites.toggleCommercialJour.
   _renderCartesCommerciauxPlanning(liste, now, badges) {
     const groupes = this._grouperParCommercialPlanning(liste);
     const auj = dateISOLocale();
@@ -2040,14 +2056,19 @@ window.VuePhoning = {
     }
     return groupes.map(g => {
       const enRetard = g.appels.filter(a => (a.Date_Planifiee || '').slice(0, 10) < auj).length;
+      const etendu = !!this.state.commerciauxEtendusPlanning[g.pin];
       return `
       <div class="planning-groupe-jour">
-        <div class="pg-groupe-head" style="cursor:pointer" onclick="VuePhoning.selectionnerCommercialPlanning('${g.pin}')">
-          ${avatarCDS(g.pin, 26)}<strong>${g.nom}</strong>
-          <span class="badge-compteur">${g.appels.length}</span>
-          ${enRetard ? `<span style="font-size:11px;color:var(--c-danger);font-weight:700;margin-left:auto">${enRetard} en retard</span>` : ''}
+        <div class="pg-groupe-head">
+          <span style="cursor:pointer;display:flex;align-items:center;gap:8px;flex:1" onclick="VuePhoning.selectionnerCommercialPlanning('${g.pin}')">
+            ${avatarCDS(g.pin, 26)}<strong>${g.nom}</strong>
+            <span class="badge-compteur">${g.appels.length}</span>
+            ${enRetard ? `<span style="font-size:11px;color:var(--c-danger);font-weight:700;margin-left:auto">${enRetard} en retard</span>` : ''}
+          </span>
+          <button type="button" class="btn-retour" style="flex-shrink:0" title="${etendu ? 'Replier' : 'Déplier'}"
+                  onclick="event.stopPropagation();VuePhoning.toggleCommercialPlanning('${g.pin}')">${etendu ? '▲' : '▼'}</button>
         </div>
-        ${g.appels.map(a => this._carteAppelPlanifie(a, now, badges)).join('')}
+        ${etendu ? g.appels.map(a => this._carteAppelPlanifie(a, now, badges)).join('') : ''}
       </div>`;
     }).join('');
   },
@@ -2058,6 +2079,10 @@ window.VuePhoning = {
 
   selectionnerCommercialPlanning(pin) { this.state.commercialSelectionne = pin; this.render(); },
   retourCommerciauxPlanning() { this.state.commercialSelectionne = null; this.render(); },
+  toggleCommercialPlanning(pin) {
+    this.state.commerciauxEtendusPlanning[pin] = !this.state.commerciauxEtendusPlanning[pin];
+    this.render();
+  },
 
   _renderPlanning() {
     const s = this.state;
@@ -2177,6 +2202,21 @@ window.VuePhoning = {
                <div id="planif-suggestions"></div>`
           }
         </label>
+        ${f.idCompte ? `
+        <!-- BLOC 08 pt.3 — complète les coordonnées manquantes du compte
+             directement ici, sans repasser par la fiche compte. Écrites sur
+             le compte à la sauvegarde (avec confirmation si ça remplace une
+             valeur déjà renseignée, cf. sauvegarderPlanif). -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <label class="q-label">Téléphone ${!f.tel ? '<span style="color:var(--c-warning);font-weight:400">— manquant</span>' : ''}
+            <input class="q-input" type="tel" placeholder="06…" value="${f.tel || ''}"
+                   oninput="VuePhoning.state.formPlanif.tel=this.value"/>
+          </label>
+          <label class="q-label">Email ${!f.email ? '<span style="color:var(--c-warning);font-weight:400">— manquant</span>' : ''}
+            <input class="q-input" type="email" placeholder="contact@…" value="${f.email || ''}"
+                   oninput="VuePhoning.state.formPlanif.email=this.value"/>
+          </label>
+        </div>` : ''}
         ` : `
         <label class="q-label">Nom de l'enseigne *
           <input class="q-input" placeholder="ex : Informatique Plus" value="${f.froidNom || ''}"
@@ -2265,8 +2305,14 @@ window.VuePhoning = {
 
   _choisirComptePlanif(id, nom) {
     if (!this.state.formPlanif) return;
+    const allC = this.state.tousComptes || this.state.comptes;
+    const c = allC.find(x => String(x.ID_Compte) === String(id));
     this.state.formPlanif.idCompte = id;
     this.state.formPlanif.nomCompte = nom;
+    // BLOC 08 pt.3 — pré-remplit tel/email depuis le compte choisi via la
+    // recherche (ouvrirFormPlanif() sans idCompte ne les avait pas encore).
+    this.state.formPlanif.tel = c?.Tel || '';
+    this.state.formPlanif.email = c?.Email || '';
     this.render();
   },
 
@@ -2283,6 +2329,9 @@ window.VuePhoning = {
       modeFroid: false,
       froidNom: '', froidDept: '', froidVille: '', froidTel: '', froidEmail: '',
       idActionOrigine: '',
+      // BLOC 08 pt.3 — coordonnées du compte existant, complétables depuis ce
+      // modal au lieu d'obliger à ouvrir la fiche compte séparément.
+      tel: c?.Tel || '', email: c?.Email || '',
     };
     this.render();
   },
@@ -2318,11 +2367,51 @@ window.VuePhoning = {
         return;
       }
     }
+    // BLOC 08 pt.3 — si le compte existant a déjà un tél/email renseigné et
+    // que la saisie du modal le change, on confirme avant d'écraser (option
+    // retenue : ni silencieux, ni bloquant) ; s'il était vide, on écrit
+    // directement (pas de conflit possible).
+    if (!f.modeFroid) {
+      const allC = this.state.tousComptes || this.state.comptes;
+      const c = allC.find(x => String(x.ID_Compte) === String(f.idCompte));
+      const conflits = [];
+      if (c) {
+        if (f.tel && c.Tel && f.tel.trim() !== String(c.Tel).trim())    conflits.push(`Téléphone : "${c.Tel}" → "${f.tel.trim()}"`);
+        if (f.email && c.Email && f.email.trim() !== String(c.Email).trim()) conflits.push(`Email : "${c.Email}" → "${f.email.trim()}"`);
+      }
+      if (conflits.length) {
+        ConfirmModal.demander({
+          titre: 'Remplacer les coordonnées du compte ?',
+          message: `${c.Nom_Compte} a déjà des coordonnées renseignées :\n${conflits.join('\n')}`,
+          labelConfirmer: 'Remplacer', labelAnnuler: 'Garder les anciennes',
+          onConfirm: () => this._finaliserSauvegardePlanif(true),
+          onAnnuler: () => this._finaliserSauvegardePlanif(false),
+        });
+        return;
+      }
+    }
+    await this._finaliserSauvegardePlanif(true);
+  },
+
+  async _finaliserSauvegardePlanif(ecraserCoordonnees) {
+    const f = this.state.formPlanif;
+    if (!f) return;
     this.state.envoiEnCours = true;
     this.render();
     try {
       const allC = this.state.tousComptes || this.state.comptes;
       const c = f.modeFroid ? null : allC.find(x => String(x.ID_Compte) === String(f.idCompte));
+      // BLOC 08 pt.3 — écrit les coordonnées saisies sur le compte réel :
+      // toujours si le champ était vide, seulement si confirmé sinon.
+      if (c && !f.modeFroid) {
+        const majCoord = {};
+        if (f.tel && f.tel.trim() && (ecraserCoordonnees || !c.Tel))     majCoord.Tel   = f.tel.trim();
+        if (f.email && f.email.trim() && (ecraserCoordonnees || !c.Email)) majCoord.Email = f.email.trim();
+        if (Object.keys(majCoord).length) {
+          await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', c.ID_Compte, majCoord);
+          Object.assign(c, majCoord);
+        }
+      }
       const record = {
         ID_Appel: genId('APPEL'),
         Date_Planifiee: f.datePlanifiee,

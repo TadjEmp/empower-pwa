@@ -33,15 +33,18 @@ window.VuePipeline = {
   CHANNELS: [],
 
   _chargerCDS(params, objectifs, cdsApi) {
-    // Bloc D2 (07/2026) — source de vérité = lireCDS (backend), mais Alexandra
-    // (5000) est explicitement exclue même si le backend la renvoie : elle
-    // fournit les leads (CHANNEL_MANAGER), ce n'est pas une commerciale
-    // terrain, elle ne doit apparaître ni dans le filtre "Filtrer par CDS" ni
-    // dans les dropdowns d'attribution du Tracker.
+    // Bloc D2 (07/2026) — source de vérité = lireCDS (backend). BLOC 08 pt.5 —
+    // l'exclusion par pin en dur (5000=Alexandra) ne suffit pas : tout autre
+    // CHANNEL_MANAGER (Sabine 5001, Sophie 5002…) fuitait dans le filtre
+    // "Filtrer par CDS" et les dropdowns d'attribution alors que ce ne sont
+    // pas des commerciales terrain. Filtre par rôle (ADMIN + CDS uniquement),
+    // même pattern déjà correct dans vue-comptes.js _cdsListe.
     // GARANTIE ABSOLUE : si l'API est indisponible, fallback codé en dur (4 entrées).
     // Ne dépend plus de ⚙️_PARAMS (évite tout bug de cache IDB ou PINS_CDS erronée).
     if (Array.isArray(cdsApi) && cdsApi.length) {
-      this.CDS = cdsApi.map(c => ({ pin: Number(c.pin), nom: String(c.nom) })).filter(c => c.pin !== 5000);
+      this.CDS = cdsApi
+        .filter(c => ['ADMIN', 'CDS'].includes(String(c.role).toUpperCase()))
+        .map(c => ({ pin: Number(c.pin), nom: String(c.nom) }));
     } else {
       const NOMS = { 1000:'Tadjidine', 4001:'Lyes', 4002:'Mehdi', 4003:'Johanne' };
       const nomMap = {};
