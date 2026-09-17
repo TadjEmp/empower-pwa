@@ -77,6 +77,7 @@ window.VueFicheCompte = {
     this.state.editCoord = false;
     this.state.formCoord = { adresse: '', ville: '', code_postal: '', departement: '', tel: '', email: '' };
     this.state.modalRapportPhoning = false;
+    this._trackerAjouteDepuisFiche = false;
     this.state.suppressionEnCours = false;
     const [comptes, rawV17, visites, appels, params] = await Promise.all([
       SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
@@ -224,6 +225,85 @@ window.VueFicheCompte = {
       Toast.afficher('❌ ' + e.message, 'erreur');
     }
     this.state.empowerEnCours = false;
+    this._rerender();
+  },
+
+  // BLOC — demande utilisateur : un compte Grossiste à onboarder EMPOWER doit
+  // pouvoir être ajouté au Tracker (suivi d'onboarding structuré : SAISIE →
+  // ASSIGNE → EN_COURS → COMPTE_CREE → INTEGRE), pas seulement basculé
+  // directement en EMPOWER via basculerEmpower() qui ne laisse aucune trace
+  // de suivi. Accès : le CDS propriétaire du compte, ou un manager (ADMIN) —
+  // jamais CHANNEL_MANAGER (lecture seule, même règle que le reste de l'app).
+  _peutAjouterAuTracker(c) {
+    return Session.estManager() || (Session.estCDS() && Number(c.PIN_CDS_Assigne) === Session.pin);
+  },
+
+  ouvrirAjoutTrackerDepuisCompte() {
+    const c = this.state.compte;
+    ConfirmModal.demander({
+      titre: `Ajouter ${c.Nom_Compte} au Tracker ?`,
+      message: `Démarre le suivi d'onboarding EMPOWER pour ce compte Grossiste — visible dans le Tracker, attribué à ${window.resolveCDS(c.PIN_CDS_Assigne || c.Nom_CDS)}.`,
+      champ: { placeholder: 'Note (optionnel) — contexte, pourquoi maintenant…' },
+      labelConfirmer: 'Ajouter au Tracker',
+      onConfirm: (note) => this._confirmerAjoutTrackerDepuisCompte(note),
+    });
+  },
+
+  async _confirmerAjoutTrackerDepuisCompte(note) {
+    const c = this.state.compte;
+    if (this.state.ajoutTrackerEnCours) return;
+    this.state.ajoutTrackerEnCours = true;
+    this._rerender();
+    try {
+      // Anti-doublon : jamais deux fois le même compte dans le Tracker.
+      const prospects = await SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS');
+      const nomNorm = normaliserNom(c.Nom_Compte || '');
+      const dejaLead = (prospects || []).find(p => normaliserNom(p.Nom_Compte || '') === nomNorm
+        && !['ARCHIVE'].includes(String(p.STATUT_EMPOWER || '').toUpperCase()));
+      if (dejaLead) {
+        Toast.afficher(`⚠️ ${c.Nom_Compte} est déjà dans le Tracker`, 'warning');
+        this.state.ajoutTrackerEnCours = false;
+        this._rerender();
+        return;
+      }
+      const lead = {
+        ID_Prospect: genId('PROS'),
+        Nom_Compte: c.Nom_Compte, Adresse: c.Adresse || '', Ville: c.Ville || '',
+        Departement: c.Departement || '', Code_Postal: c.Code_Postal || '',
+        Tel: c.Tel || '', Email: c.Email || '',
+        CONTACT_NOM: c.Contact_Nom || '', CONTACT_FONCTION: c.Contact_Fonction || '',
+        CANAL: c.CANAL || '', SECTEUR: c.SECTEUR || '',
+        // Compte déjà attribué : on garde le même commercial plutôt que de
+        // repartir de SAISIE (non attribué) — cohérent avec "selon commercial".
+        PIN_CDS_Assigne: c.PIN_CDS_Assigne || '', Nom_CDS: window.resolveCDS(c.PIN_CDS_Assigne || c.Nom_CDS),
+        STATUT_EMPOWER: c.PIN_CDS_Assigne ? 'ASSIGNE' : 'SAISIE', FLAG_ACTION: 'SAISIE',
+        Source_Import: 'FICHE_COMPTE', ORIGINE: 'GROSSISTE_A_ONBOARDER',
+        Flag_traite: 'FALSE', Flag_converti: 'FALSE',
+        Note_initiale: `Ajouté au Tracker depuis la fiche compte le ${dateISOLocale()} (Grossiste à onboarder EMPOWER).${note ? '\n' + note : ''}`,
+        Date_Import: dateISOLocale(),
+        Timestamp: new Date().toISOString(),
+      };
+      await SheetsAPI.ecrire('EMPOWER_MDB', '📋_PROSPECTS', lead);
+      // Notifs ADMIN + CHANNEL_MANAGER — même roster dynamique que
+      // vue-questionnaire.js._destinatairesAlerteTracker (jamais de pins en dur).
+      const roster = await SheetsAPI.lireCDS().catch(() => null);
+      const dests = [...new Set(
+        (roster || []).filter(u => ['ADMIN', 'CHANNEL_MANAGER'].includes(String(u.role).toUpperCase())).map(u => Number(u.pin))
+      )];
+      for (const dest of (dests.length ? dests : [1000, 5000])) {
+        SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
+          ID_Notif: genId('NOTIF'), Date_Envoi: new Date().toISOString(),
+          PIN_Destinataire: dest, Type_Notif: 'NOUVEAU_LEAD',
+          Message: `🎯 Nouveau lead depuis fiche compte (${Session.nom}) : ${c.Nom_Compte} — Grossiste à onboarder`,
+          ID_Cible: lead.ID_Prospect, Statut_Lu: false, Timestamp: new Date().toISOString(),
+        }).catch(() => {});
+      }
+      this._trackerAjouteDepuisFiche = true;
+      Toast.afficher(`✅ ${c.Nom_Compte} ajouté au Tracker`, 'succes', 5000);
+    } catch(e) {
+      Toast.afficher('❌ ' + e.message, 'erreur');
+    }
+    this.state.ajoutTrackerEnCours = false;
     this._rerender();
   },
 
@@ -428,6 +508,13 @@ window.VueFicheCompte = {
                       ${this.state.empowerEnCours ? 'disabled' : ''}>
                 ${window.estEmpower(c) ? '↩︎ Repasser Grossiste' : '⭐ Marquer Empower'}
               </button>
+              ${!window.estEmpower(c) && this._peutAjouterAuTracker(c) ? `
+              <button class="btn-lien" style="font-size:12px;color:var(--c-primary)"
+                      title="Démarre le suivi d'onboarding EMPOWER dans le Tracker"
+                      onclick="VueFicheCompte.ouvrirAjoutTrackerDepuisCompte()"
+                      ${this.state.ajoutTrackerEnCours || this._trackerAjouteDepuisFiche ? 'disabled' : ''}>
+                ${this._trackerAjouteDepuisFiche ? '✅ Dans le Tracker' : '🎯 Ajouter au Tracker'}
+              </button>` : ''}
             </span>
           </div>
           <div class="id-ligne"><span>Dernière visite</span><strong>${this._dateLigne(this._dernierVisiteRealisee())}</strong></div>

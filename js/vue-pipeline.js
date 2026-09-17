@@ -1570,8 +1570,24 @@ window.VuePipeline = {
       const nomNorm = normaliserNom(lead.Nom_Compte || '');
       const existant = (comptes || []).find(c => normaliserNom(c.Nom_Compte || '') === nomNorm);
       if (existant) {
-        if (String(existant.Has_EMPOWER || '').toLowerCase() !== 'oui') {
-          await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', existant._uuid, { Has_EMPOWER: 'Oui' });
+        const maj = {};
+        if (String(existant.Has_EMPOWER || '').toLowerCase() !== 'oui') maj.Has_EMPOWER = 'Oui';
+        // BLOC — retour utilisateur : "compte issu du tracker" demandait quand
+        // même de ressaisir tél/email alors qu'ils étaient déjà connus sur le
+        // lead. Cause : ce chemin (compte préexistant, ex. importé Sell-In
+        // sans coordonnées) ne faisait jamais que basculer Has_EMPOWER, sans
+        // jamais reporter les coordonnées du lead. Uniquement les champs
+        // vides sur le compte — jamais d'écrasement d'une valeur déjà saisie.
+        if (!existant.Tel && lead.Tel)                 maj.Tel = lead.Tel;
+        if (!existant.Email && lead.Email)              maj.Email = lead.Email;
+        if (!existant.Adresse && lead.Adresse)          maj.Adresse = lead.Adresse;
+        if (!existant.Ville && lead.Ville)               maj.Ville = lead.Ville;
+        if (!existant.Code_Postal && lead.Code_Postal)   maj.Code_Postal = lead.Code_Postal;
+        if (!existant.Departement && lead.Departement)   maj.Departement = lead.Departement;
+        if (!existant.Contact_Nom && lead.CONTACT_NOM)   maj.Contact_Nom = lead.CONTACT_NOM;
+        if (!existant.Contact_Fonction && lead.CONTACT_FONCTION) maj.Contact_Fonction = lead.CONTACT_FONCTION;
+        if (Object.keys(maj).length) {
+          await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', existant._uuid, maj);
           await SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES');
         }
         return;
