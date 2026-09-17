@@ -962,6 +962,15 @@ window.VuePhoning = {
     if (zone) zone.innerHTML = this._renderBaseGrid();
   },
 
+  // Dernier appel réel (date + note) pour un compte — depuis le Journal
+  // (state.journal, déjà trié desc, déjà filtré aux appels réellement
+  // passés), jamais depuis comptes.Date_Derniere_Action : ce champ figé est
+  // vide sur 90% des comptes (cf. audit BLOC08), vue-comptes.js le
+  // contourne déjà de la même façon avec ses visites/phoning en direct.
+  _dernierAppelCompte(idCompte) {
+    return (this.state.journal || []).find(a => String(a.ID_Cible) === String(idCompte)) || null;
+  },
+
   _renderBaseGrid() {
     const s = this.state;
     let liste = s.comptes;
@@ -974,7 +983,10 @@ window.VuePhoning = {
     if (liste.length === 0) return '<div style="padding:24px;text-align:center;color:var(--c-text-2)">Aucun résultat</div>';
     return `<div class="phoning-base-grid">` + liste.map(c => {
       const statut = c.STATUT_COMPTE || '—';
-      const silence = (() => { const ref = c.Date_Derniere_Action; return ref ? Math.floor((Date.now() - new Date(ref).getTime()) / (7*86400000)) : null; })();
+      const dernierAppel = this._dernierAppelCompte(c.ID_Compte);
+      const silence = dernierAppel
+        ? Math.floor((Date.now() - new Date(dernierAppel.Date).getTime()) / (7*86400000))
+        : null;
       return `
     <div style="background:var(--c-surface);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:11px;margin-bottom:8px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
@@ -984,8 +996,9 @@ window.VuePhoning = {
       <div style="font-size:12px;color:var(--c-text-2);margin-bottom:8px">
         ${c.Ville ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:2px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${c.Ville}` : ''}
         ${statut !== '—' ? ` · ${statut}` : ''}
-        ${silence !== null ? ` · <span style="color:${silence > 4 ? 'var(--c-danger)' : 'var(--c-text-2)'}">${silence}s silence</span>` : ''}
+        ${silence !== null ? ` · <span style="color:${silence > 4 ? 'var(--c-danger)' : 'var(--c-text-2)'}">📞 ${silence === 0 ? "cette sem." : `${silence}s silence`}</span>` : ''}
       </div>
+      ${dernierAppel?.Note ? `<div style="font-size:11px;color:var(--c-text-2);background:var(--c-bg);border-radius:6px;padding:5px 8px;margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${String(dernierAppel.Note).replace(/"/g,'&quot;')}">💬 ${dernierAppel.Note}</div>` : ''}
       <div style="display:flex;gap:8px">
         ${c.Tel ? `<a class="btn-secondaire" style="flex:1;font-size:12px;text-decoration:none;text-align:center;padding:8px" href="tel:${String(c.Tel).replace(/\s/g,'')}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${c.Tel}</a>` : ''}
         <button class="btn-primaire" style="flex:2;font-size:12px;padding:8px"
