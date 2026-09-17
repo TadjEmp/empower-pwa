@@ -6,7 +6,7 @@
 //  Le cache ne sert plus que de secours hors-ligne.
 // ═══════════════════════════════════════
 
-const CACHE_NAME  = 'esi-v5-119';
+const CACHE_NAME  = 'esi-v5-120';
 // Assets immuables (jamais modifiés après publication) → cache-first.
 const STATIC_RE = /\.(png|jpe?g|svg|webp|gif|ico|woff2?|ttf)$/i;
 // Chemins relatifs : fonctionne à la racine d'un domaine comme en sous-dossier GitHub Pages
@@ -68,9 +68,16 @@ async function metEnCache(request, resp) {
 }
 
 // Shell (HTML/JS/CSS) : réseau d'abord — repli sur le cache seulement hors-ligne.
+// BLOC — retour utilisateur : un push + déploiement confirmés ne suffisaient
+// pas, le comportement resté ancien après reload. Cause : fetch(request) sans
+// directive de cache reste soumis au cache HTTP disque du navigateur (le
+// serveur peut répondre "pas modifié"/servir une réponse mise en cache) même
+// en stratégie "network-first" — le Service Worker croit interroger le
+// réseau, mais reçoit une réponse potentiellement périmée. cache:'no-store'
+// force un aller-retour réseau réel à chaque requête du shell.
 async function networkFirst(request) {
   try {
-    return await metEnCache(request, await fetch(request));
+    return await metEnCache(request, await fetch(request, { cache: 'no-store' }));
   } catch (e) {
     const cached = await caches.match(request);
     if (cached) return cached;
