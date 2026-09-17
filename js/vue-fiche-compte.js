@@ -442,6 +442,11 @@ window.VueFicheCompte = {
           <div class="id-ligne"><span>Potentiel</span><strong>${c.POTENTIEL || this.state.v17?.POTENTIEL_UPSELL || '—'}</strong></div>
           ${this.state.v17?.GROSSISTE_PRINCIPAL ? `<div class="id-ligne"><span>Grossiste</span><strong>${this.state.v17.GROSSISTE_PRINCIPAL}</strong></div>` : ''}
         </div>
+        ${this.state.appels[0]?.Note ? `
+        <div style="margin-top:10px;padding:10px 12px;background:var(--c-bg);border-radius:var(--radius-sm);border:1px solid var(--c-border)">
+          <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.03em;text-transform:uppercase;margin-bottom:4px">📞 Note du dernier appel · ${this._dateLigne(this.state.appels[0].Date)}</div>
+          <div style="font-size:12.5px;color:var(--c-text);line-height:1.5;white-space:pre-line">${String(this.state.appels[0].Note).slice(0, 240)}${String(this.state.appels[0].Note).length > 240 ? '…' : ''}</div>
+        </div>` : ''}
         ${c.Source_Import === 'VISITE_FROID_CONVERTI' ? `
         <div style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;background:color-mix(in srgb,var(--c-primary) 12%,transparent);color:var(--c-primary);border:1px solid color-mix(in srgb,var(--c-primary) 30%,transparent)">
           ❄️ Créé depuis visite à froid

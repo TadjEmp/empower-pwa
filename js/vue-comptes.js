@@ -418,6 +418,20 @@ window.VueComptes = {
                   ? `<span class="v7-statut" style="color:var(--c-warning);font-size:11px">il y a ${dernActSem} sem.</span>`
                   : `<span class="v7-statut" style="color:var(--c-danger);font-size:11px">${dernActSem} sem. sans contact</span>`)
               : '';
+            // Badge "dernier appel" (distinct du badgeDernier visite+appel
+            // confondus ci-dessus) — répond spécifiquement à "où en est le
+            // commercial dans ses appels", cf. demande utilisateur. Purement
+            // informatif (pas de code couleur alerte, déjà porté par
+            // badgeDernier/alerteInactivite) : la date exacte est dans le title.
+            const dernierAppelDate = live.dernierAppel || null;
+            const dernierAppelJours = dernierAppelDate
+              ? Math.max(0, Math.floor((Date.now() - new Date(dernierAppelDate).getTime()) / 86400000))
+              : null;
+            const badgeDernierAppel = dernierAppelDate
+              ? `<span class="v7-statut" style="color:var(--c-text-2);font-size:11px" title="Dernier appel : ${new Date(dernierAppelDate).toLocaleDateString('fr-FR')}">📞 ${
+                  dernierAppelJours === 0 ? "aujourd'hui" : dernierAppelJours === 1 ? 'hier' : `il y a ${dernierAppelJours}j`
+                }</span>`
+              : '';
             const alerteInactivite = inactif45
               ? `<div class="alerte-inactivite"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> INACTIF ${dernActJours}j — aucun contact</div>`
               : '';
@@ -430,6 +444,7 @@ window.VueComptes = {
               ${this._badgeEmpower(c)}
               ${estDoublon ? `<span style="color:var(--c-warning);font-size:11px;font-weight:700" title="Un autre compte porte le même nom — ouvrir la fiche pour supprimer le doublon">⚠️ Doublon</span>` : ''}
               ${badgeDernier}
+              ${badgeDernierAppel}
               ${this._badgePriorite(c.Priorite)}
               <span style="margin-left:auto;font-size:12px;color:var(--c-muted)">FY26 ${caFY26}</span>
               <span style="font-size:13px;font-weight:700;color:var(--c-title)">FY27 ${this.state.quarter} ${caQ1 !== '—' ? caQ1 : '—'}</span>
