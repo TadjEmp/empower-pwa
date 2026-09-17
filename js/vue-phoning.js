@@ -33,6 +33,11 @@ window.VuePhoning = {
       comptes: [], tousComptes: [], prospects: [], cdsListe: [],
       typeSource: 'EXISTANT', cible: null,
       mode: 'BASE',            // BASE | PLANNING | APPEL | HISTORIQUE
+      // BLOC — pile des modes traversés (Base/Planning/Journal), pour que "←"
+      // les redéroule un par un au lieu de sauter hors de Phoning en un clic
+      // (setMode() ne pousse jamais dans l'historique navigateur, cf. retour()
+      // plus bas — Router.retour()/history.back() n'en avait donc aucune trace).
+      _modeHistorique: [],
       filtreListe: 'TOUS',
       recherche: '', rechercheBase: '', filtreCDSBase: 'TOUS', script: '', scriptEnCours: false,
       enregistre: false, transcription: '', qualif: null,
@@ -273,9 +278,23 @@ window.VuePhoning = {
     // "raw CDS", cf. permissions.js) : seul l'ancien onglet Rapport Phoning séparé
     // lui était ouvert, désormais fusionné ici.
     if (Session.role === 'CHANNEL_MANAGER' && m !== 'HISTORIQUE') return;
+    if (m !== this.state.mode) this.state._modeHistorique.push(this.state.mode);
     this.state.mode = m;
     if (m === 'HISTORIQUE') this._chargerJournal();
     this.render();
+  },
+
+  // BLOC — "←" depuis Planning/Base/Journal : redéroule la pile des modes
+  // traversés un par un (Journal → Base → …) avant de sortir de Phoning via
+  // Router.retour(), au lieu d'y sauter directement en un seul clic.
+  retourMode() {
+    const pile = this.state._modeHistorique;
+    if (pile && pile.length) {
+      this.state.mode = pile.pop();
+      this.render();
+    } else {
+      Router.retour();
+    }
   },
 
   demarrerAppelDirect() {
@@ -1506,9 +1525,14 @@ window.VuePhoning = {
     // de toute façon que son propre journal, déjà filtré par PIN à la source),
     // aligné sur Visites qui l'a toujours permis.
     const peutExtraire = true;
-    const backAction = (s.mode === 'PLANNING' || s.mode === 'HISTORIQUE')
-      ? 'Router.retour()'
-      : 'VuePhoning.setMode(\'PLANNING\')';
+    // BLOC — "←" redéroule désormais la pile des modes traversés (Base ↔
+    // Planning ↔ Journal) au lieu de sauter directement hors de Phoning
+    // (Journal → Router.retour() direct) ou de forcer Planning depuis Base
+    // sans tenir compte d'où on venait réellement. Le flux d'appel (APPEL)
+    // garde son comportement propre — pas d'unwind pendant un appel en cours.
+    const backAction = s.mode === 'APPEL'
+      ? 'VuePhoning.setMode(\'PLANNING\')'
+      : 'VuePhoning.retourMode()';
     const titre = s.mode === 'PLANNING' ? 'Planning phoning'
       : s.mode === 'HISTORIQUE' ? 'Journal appels'
       : TITRES[s.phase];
