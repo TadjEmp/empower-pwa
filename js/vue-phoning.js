@@ -66,6 +66,7 @@ window.VuePhoning = {
       planning: [],
       planningChargement: false,
       formPlanif: null,        // null = fermé; objet = formulaire ouvert
+      apercuCompte: null,      // BLOC — ID_Compte affiché en overlay coordonnées depuis le Journal
       filtrePlanning: 'SEMAINE', // SEMAINE | MOIS | TOUS
       idPlanifEnCours: null,   // ID_Appel du plan lancé
       commercialSelectionne: null, // groupement planning par commercial (Manager/Channel)
@@ -1365,11 +1366,18 @@ window.VuePhoning = {
         // Alexandra (CHANNEL_MANAGER) : lecture seule, jamais d'édition de données CDS brutes.
         const peutModif = Session.role === 'ADMIN' || Number(a.PIN_CDS) === Session.pin;
         const coul = COUL[a.Statut_Appel] || 'var(--c-text-2)';
+        // BLOC — "voir les coordonnées depuis le Journal sans revenir sur
+        // Comptes" : ouvre la fiche compte (route dédiée, pas d'équivalent
+        // pour un lead Tracker — reste texte simple dans ce cas).
+        const compteLie = (this.state.tousComptes || this.state.comptes).find(x => String(x.ID_Compte) === String(a.ID_Cible));
         return `
         <div style="background:var(--c-surface);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:11px;margin-bottom:8px">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
             <span style="font-size:11px;color:var(--c-text-2)">${(a.Date || '').slice(0, 10)}</span>
-            <strong style="font-size:14px;flex:1">${a.Reseller || '—'}</strong>
+            ${compteLie
+              ? `<strong style="font-size:14px;flex:1;color:var(--c-primary);cursor:pointer;text-decoration:underline dotted"
+                        onclick="VuePhoning.ouvrirApercuCompte('${compteLie.ID_Compte}')" title="Voir les coordonnées">${a.Reseller || '—'}</strong>`
+              : `<strong style="font-size:14px;flex:1">${a.Reseller || '—'}</strong>`}
             <span style="font-size:11px;font-weight:700;color:${coul}">${a.Statut_Appel || '—'}</span>
           </div>
           ${a.Interet_EMPOWER ? `<div style="font-size:12px;color:var(--c-text-2)">Intérêt : ${a.Interet_EMPOWER}</div>` : ''}
@@ -1377,7 +1385,7 @@ window.VuePhoning = {
           ${a.Note ? (String(a.Note).length > 80 ? `
           <details style="margin-top:4px">
             <summary style="font-size:12px;font-style:italic;color:var(--c-text-2);cursor:pointer;list-style:none">${String(a.Note).slice(0, 80)}…</summary>
-            <div style="font-size:12px;color:var(--c-text-2);margin-top:4px;white-space:pre-line">${String(a.Note)}</div>
+            <div style="font-size:12px;color:var(--c-text-2);margin-top:4px;white-space:pre-line">${String(a.Note).slice(80)}</div>
           </details>` : `<div style="font-size:12px;font-style:italic;color:var(--c-text-2);margin-top:4px">${a.Note}</div>`) : ''}
           ${peutModif ? `
           <div style="display:flex;gap:6px;margin-top:8px">
@@ -1389,6 +1397,45 @@ window.VuePhoning = {
         </div>`;
       }).join('')}
     `;
+  },
+
+  // ── BLOC — aperçu coordonnées depuis le Journal ─────────────────────────
+  // Retour utilisateur : pouvoir voir les coordonnées d'un compte depuis le
+  // Journal des appels sans revenir sur Comptes. Un aperçu léger en overlay
+  // (pas de navigation vers #/compte/:id) : quitter puis revenir sur
+  // #/phoning ré-exécute init(), qui remet mode à 'BASE' — un aller-retour
+  // via le routeur aurait donc perdu l'onglet Journal (mode HISTORIQUE)
+  // qu'on cherchait justement à ne pas perdre. Les données viennent de
+  // tousComptes, déjà en mémoire — aucun appel réseau supplémentaire.
+  ouvrirApercuCompte(idCompte) {
+    this.state.apercuCompte = idCompte;
+    this.render();
+  },
+  fermerApercuCompte() {
+    this.state.apercuCompte = null;
+    this.render();
+  },
+  _renderApercuCompte() {
+    const idCompte = this.state.apercuCompte;
+    if (!idCompte) return '';
+    const c = (this.state.tousComptes || this.state.comptes).find(x => String(x.ID_Compte) === String(idCompte));
+    if (!c) return '';
+    return `
+    <div class="modal-overlay" onclick="if(event.target===this)VuePhoning.fermerApercuCompte()">
+      <div class="modal" style="max-width:380px">
+        <h3>${c.Nom_Compte}</h3>
+        <div style="display:flex;flex-direction:column;gap:8px;margin:10px 0">
+          <div class="id-ligne"><span>Téléphone</span><strong>${c.Tel ? `<a class="lien-tel" href="tel:${String(c.Tel).replace(/\s/g,'')}">${c.Tel}</a>` : '—'}</strong></div>
+          <div class="id-ligne"><span>Email</span><strong>${c.Email ? `<a class="lien-email" href="mailto:${c.Email}">${c.Email}</a>` : '—'}</strong></div>
+          <div class="id-ligne"><span>Adresse</span><strong>${[c.Adresse, c.Ville, c.Code_Postal].filter(Boolean).join(' · ') || '—'}</strong></div>
+          <div class="id-ligne"><span>Contact</span><strong>${c.Contact_Nom ? `${c.Contact_Nom}${c.Contact_Fonction ? ' · ' + c.Contact_Fonction : ''}` : '—'}</strong></div>
+        </div>
+        <div class="modal-btns">
+          <button type="button" onclick="VuePhoning.fermerApercuCompte()">Fermer</button>
+          <button type="button" class="btn-primaire" onclick="Router.aller('#/compte/${c.ID_Compte}')">Fiche complète →</button>
+        </div>
+      </div>
+    </div>`;
   },
 
   // ── Modal édition appel ──
@@ -1573,6 +1620,7 @@ window.VuePhoning = {
       ${this._renderConfirmDeleteAppel()}
       ${this._renderExtraction()}
       ${this._renderFormPlanif()}
+      ${this._renderApercuCompte()}
     `;
     if (s.mode === 'APPEL') this._renderSuggestions();
   },
