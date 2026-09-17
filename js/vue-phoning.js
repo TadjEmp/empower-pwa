@@ -161,10 +161,21 @@ window.VuePhoning = {
       } else if (idCible) {
         const resolu = this._resoudreCible(idCible, comptes, this.state.prospects);
         if (resolu) {
+          // BLOC 08 pt.3 (suite) — ce chemin (Tracker → "Planifier appel",
+          // #/phoning/:id) peut résoudre un COMPTE ou un PROSPECT/lead
+          // Tracker (cf. _resoudreCible) ; les deux ont un Tel/Email en base,
+          // mais seuls ceux d'un compte étaient pré-remplis (via
+          // ouvrirFormPlanif/_choisirComptePlanif). Ici le formulaire se
+          // construit directement sans passer par ces deux fonctions, donc
+          // tel/email restaient vides même quand la donnée existait déjà sur
+          // le lead (ex. saisie lors d'une visite à froid). typeCible retenu
+          // pour que sauvegarderPlanif sache où écrire (comptes vs leads).
           this.state.formPlanif = {
             idCompte: resolu.id, nomCompte: resolu.nom,
             datePlanifiee: '', objectif: '', note: suivi?.note || '',
             idActionOrigine: suivi?.idVisite || '',
+            tel: resolu.obj.Tel || '', email: resolu.obj.Email || '',
+            typeCible: resolu.type,
           };
         }
       }
@@ -2313,6 +2324,7 @@ window.VuePhoning = {
     // recherche (ouvrirFormPlanif() sans idCompte ne les avait pas encore).
     this.state.formPlanif.tel = c?.Tel || '';
     this.state.formPlanif.email = c?.Email || '';
+    this.state.formPlanif.typeCible = 'COMPTE'; // cette recherche ne porte que sur tousComptes
     this.render();
   },
 
@@ -2332,6 +2344,7 @@ window.VuePhoning = {
       // BLOC 08 pt.3 — coordonnées du compte existant, complétables depuis ce
       // modal au lieu d'obliger à ouvrir la fiche compte séparément.
       tel: c?.Tel || '', email: c?.Email || '',
+      typeCible: 'COMPTE',
     };
     this.render();
   },
@@ -2367,13 +2380,14 @@ window.VuePhoning = {
         return;
       }
     }
-    // BLOC 08 pt.3 — si le compte existant a déjà un tél/email renseigné et
-    // que la saisie du modal le change, on confirme avant d'écraser (option
-    // retenue : ni silencieux, ni bloquant) ; s'il était vide, on écrit
-    // directement (pas de conflit possible).
+    // BLOC 08 pt.3 — si le compte/lead existant a déjà un tél/email renseigné
+    // et que la saisie du modal le change, on confirme avant d'écraser
+    // (option retenue : ni silencieux, ni bloquant) ; s'il était vide, on
+    // écrit directement (pas de conflit possible). Couvre aussi bien un
+    // compte réel (🏢_COMPTES) qu'un lead Tracker (📋_PROSPECTS, résolu via
+    // #/phoning/:id depuis vue-pipeline.js — cf. init()/typeCible).
     if (!f.modeFroid) {
-      const allC = this.state.tousComptes || this.state.comptes;
-      const c = allC.find(x => String(x.ID_Compte) === String(f.idCompte));
+      const c = this._cibleCoordonnees(f);
       const conflits = [];
       if (c) {
         if (f.tel && c.Tel && f.tel.trim() !== String(c.Tel).trim())    conflits.push(`Téléphone : "${c.Tel}" → "${f.tel.trim()}"`);
@@ -2393,22 +2407,37 @@ window.VuePhoning = {
     await this._finaliserSauvegardePlanif(true);
   },
 
+  // BLOC 08 pt.3 (suite) — résout l'objet réel (compte ou lead Tracker) que
+  // formPlanif cible, pour lire/écrire son Tel/Email. Centralisé : utilisé
+  // par le contrôle de conflit et par l'écriture finale, sur les deux tables
+  // possibles selon typeCible (posé par ouvrirFormPlanif/_choisirComptePlanif
+  // pour un compte, ou par init() pour un lead résolu depuis le Tracker).
+  _cibleCoordonnees(f) {
+    if (f.typeCible === 'PROSPECT') {
+      return this.state.prospects.find(x => String(x.ID_Prospect) === String(f.idCompte));
+    }
+    const allC = this.state.tousComptes || this.state.comptes;
+    return allC.find(x => String(x.ID_Compte) === String(f.idCompte));
+  },
+
   async _finaliserSauvegardePlanif(ecraserCoordonnees) {
     const f = this.state.formPlanif;
     if (!f) return;
     this.state.envoiEnCours = true;
     this.render();
     try {
-      const allC = this.state.tousComptes || this.state.comptes;
-      const c = f.modeFroid ? null : allC.find(x => String(x.ID_Compte) === String(f.idCompte));
-      // BLOC 08 pt.3 — écrit les coordonnées saisies sur le compte réel :
-      // toujours si le champ était vide, seulement si confirmé sinon.
+      const c = f.modeFroid ? null : this._cibleCoordonnees(f);
+      // BLOC 08 pt.3 — écrit les coordonnées saisies sur le compte/lead réel :
+      // toujours si le champ était vide, seulement si confirmé sinon. Sur la
+      // bonne table (🏢_COMPTES ou 📋_PROSPECTS) selon ce que le modal cible.
       if (c && !f.modeFroid) {
         const majCoord = {};
         if (f.tel && f.tel.trim() && (ecraserCoordonnees || !c.Tel))     majCoord.Tel   = f.tel.trim();
         if (f.email && f.email.trim() && (ecraserCoordonnees || !c.Email)) majCoord.Email = f.email.trim();
         if (Object.keys(majCoord).length) {
-          await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', c.ID_Compte, majCoord);
+          const onglet = f.typeCible === 'PROSPECT' ? '📋_PROSPECTS' : '🏢_COMPTES';
+          const id     = f.typeCible === 'PROSPECT' ? c.ID_Prospect  : c.ID_Compte;
+          await SheetsAPI.mettreAJour('EMPOWER_MDB', onglet, id, majCoord);
           Object.assign(c, majCoord);
         }
       }
