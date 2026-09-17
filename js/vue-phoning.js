@@ -66,7 +66,7 @@ window.VuePhoning = {
       planning: [],
       planningChargement: false,
       formPlanif: null,        // null = fermé; objet = formulaire ouvert
-      apercuCompte: null,      // BLOC — ID_Compte affiché en overlay coordonnées depuis le Journal
+      apercuCible: null,       // BLOC — {type, id} affiché en overlay coordonnées depuis le Journal
       filtrePlanning: 'SEMAINE', // SEMAINE | MOIS | TOUS
       idPlanifEnCours: null,   // ID_Appel du plan lancé
       commercialSelectionne: null, // groupement planning par commercial (Manager/Channel)
@@ -90,7 +90,32 @@ window.VuePhoning = {
 
   async init(idCible = null) {
     this._arreterTimerAppel(); // Bloc 6 — évite un timer orphelin si on quitte un appel en cours
+    // BLOC — audit retour arrière (retour utilisateur) : le routeur ré-exécute
+    // init() à chaque fois que le hash re-matche #/phoning, y compris pour un
+    // simple retour navigateur depuis une fiche compte ouverte au clic dans
+    // le Journal ("Fiche complète →"). Base/Planning/Journal n'ont pas de
+    // hash dédié (purement internes, cf. setMode/_modeHistorique) : sans ce
+    // repli, "←" perdait toujours l'onglet quitté et retombait sur Base.
+    // Uniquement pour un retour simple (pas de idCible explicite, qui signale
+    // une ouverture délibérée — planif/lead/suivi — devant partir à neuf).
+    // router.js retombe sur vue.init(Session.pin) pour #/phoning SANS
+    // segment /:id (aucune autre route n'a ce comportement) : idCible vaut
+    // alors le PIN du CDS, jamais null — à exclure explicitement, sinon
+    // toute navigation #/phoning "nue" (dont un simple retour) était prise
+    // pour une ouverture délibérée et ne préservait jamais rien.
+    const idCibleReel = (idCible && String(idCible) !== String(Session.pin)) ? idCible : null;
+    const ancien = (!idCibleReel && this.state) ? this.state : null;
     this.state = this._etatInitial();
+    if (ancien) {
+      this.state.mode = ancien.mode;
+      this.state._modeHistorique = ancien._modeHistorique || [];
+      this.state.journalVue = ancien.journalVue;
+      this.state.journalDate = ancien.journalDate;
+      this.state.commercialSelectionne = ancien.commercialSelectionne;
+      this.state.filtrePlanning = ancien.filtrePlanning;
+      this.state.rechercheBase = ancien.rechercheBase;
+      this.state.filtreCDSBase = ancien.filtreCDSBase;
+    }
     // Bloc 3 §4 — Alexandra atterrit directement sur le Journal (ex-Rapport
     // Phoning), seul mode auquel elle a accès (cf. setMode()).
     if (Session.role === 'CHANNEL_MANAGER') this.state.mode = 'HISTORIQUE';
@@ -1367,16 +1392,20 @@ window.VuePhoning = {
         const peutModif = Session.role === 'ADMIN' || Number(a.PIN_CDS) === Session.pin;
         const coul = COUL[a.Statut_Appel] || 'var(--c-text-2)';
         // BLOC — "voir les coordonnées depuis le Journal sans revenir sur
-        // Comptes" : ouvre la fiche compte (route dédiée, pas d'équivalent
-        // pour un lead Tracker — reste texte simple dans ce cas).
-        const compteLie = (this.state.tousComptes || this.state.comptes).find(x => String(x.ID_Compte) === String(a.ID_Cible));
+        // Comptes" — étendu aux appels liés à un lead Tracker (pas seulement
+        // aux comptes) : un appel planifié depuis le Tracker cible un
+        // ID_Prospect, jamais trouvé dans tousComptes, donc jamais cliquable
+        // jusqu'ici.
+        const compteLie   = (this.state.tousComptes || this.state.comptes).find(x => String(x.ID_Compte) === String(a.ID_Cible));
+        const prospectLie = !compteLie ? (this.state.prospects || []).find(x => String(x.ID_Prospect) === String(a.ID_Cible)) : null;
+        const cibleLiee = compteLie ? { type: 'COMPTE', id: compteLie.ID_Compte } : prospectLie ? { type: 'PROSPECT', id: prospectLie.ID_Prospect } : null;
         return `
         <div style="background:var(--c-surface);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:11px;margin-bottom:8px">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
             <span style="font-size:11px;color:var(--c-text-2)">${(a.Date || '').slice(0, 10)}</span>
-            ${compteLie
+            ${cibleLiee
               ? `<strong style="font-size:14px;flex:1;color:var(--c-primary);cursor:pointer;text-decoration:underline dotted"
-                        onclick="VuePhoning.ouvrirApercuCompte('${compteLie.ID_Compte}')" title="Voir les coordonnées">${a.Reseller || '—'}</strong>`
+                        onclick="VuePhoning.ouvrirApercuCible('${cibleLiee.type}','${cibleLiee.id}')" title="Voir les coordonnées">${a.Reseller || '—'}</strong>`
               : `<strong style="font-size:14px;flex:1">${a.Reseller || '—'}</strong>`}
             <span style="font-size:11px;font-weight:700;color:${coul}">${a.Statut_Appel || '—'}</span>
           </div>
@@ -1400,39 +1429,51 @@ window.VuePhoning = {
   },
 
   // ── BLOC — aperçu coordonnées depuis le Journal ─────────────────────────
-  // Retour utilisateur : pouvoir voir les coordonnées d'un compte depuis le
-  // Journal des appels sans revenir sur Comptes. Un aperçu léger en overlay
-  // (pas de navigation vers #/compte/:id) : quitter puis revenir sur
-  // #/phoning ré-exécute init(), qui remet mode à 'BASE' — un aller-retour
-  // via le routeur aurait donc perdu l'onglet Journal (mode HISTORIQUE)
-  // qu'on cherchait justement à ne pas perdre. Les données viennent de
-  // tousComptes, déjà en mémoire — aucun appel réseau supplémentaire.
-  ouvrirApercuCompte(idCompte) {
-    this.state.apercuCompte = idCompte;
+  // Retour utilisateur : pouvoir voir les coordonnées d'un compte OU d'un
+  // lead Tracker depuis le Journal des appels sans revenir sur Comptes/le
+  // Tracker. Un aperçu léger en overlay (pas de navigation vers #/compte/:id)
+  // : quitter puis revenir sur #/phoning ré-exécute init(), qui perdait
+  // l'onglet Journal avant le correctif de préservation de mode — même
+  // logique conservée ici par prudence. Les données viennent de
+  // tousComptes/prospects, déjà en mémoire — aucun appel réseau supplémentaire.
+  ouvrirApercuCible(type, id) {
+    this.state.apercuCible = { type, id };
     this.render();
   },
   fermerApercuCompte() {
-    this.state.apercuCompte = null;
+    this.state.apercuCible = null;
     this.render();
   },
   _renderApercuCompte() {
-    const idCompte = this.state.apercuCompte;
-    if (!idCompte) return '';
-    const c = (this.state.tousComptes || this.state.comptes).find(x => String(x.ID_Compte) === String(idCompte));
+    const cible = this.state.apercuCible;
+    if (!cible) return '';
+    const estProspect = cible.type === 'PROSPECT';
+    const c = estProspect
+      ? (this.state.prospects || []).find(x => String(x.ID_Prospect) === String(cible.id))
+      : (this.state.tousComptes || this.state.comptes).find(x => String(x.ID_Compte) === String(cible.id));
     if (!c) return '';
+    const contactNom = estProspect ? c.CONTACT_NOM : c.Contact_Nom;
+    const contactFonction = estProspect ? c.CONTACT_FONCTION : c.Contact_Fonction;
+    // Pas de route dédiée pour un lead Tracker (VuePipeline.ouvrirLead() est
+    // un état client, pas un hash) — dépose une intention consommée une
+    // seule fois par VuePipeline.init(), même convention que
+    // window._suiviActionOrigine (visite → phoning) déjà utilisée ailleurs.
+    const actionFiche = estProspect
+      ? `window._ouvrirLeadTracker='${c.ID_Prospect}';Router.aller('#/empower-tracker')`
+      : `Router.aller('#/compte/${c.ID_Compte}')`;
     return `
     <div class="modal-overlay" onclick="if(event.target===this)VuePhoning.fermerApercuCompte()">
       <div class="modal" style="max-width:380px">
-        <h3>${c.Nom_Compte}</h3>
+        <h3>${c.Nom_Compte}${estProspect ? ' <span style="font-size:11px;font-weight:400;color:var(--c-text-2)">· lead Tracker</span>' : ''}</h3>
         <div style="display:flex;flex-direction:column;gap:8px;margin:10px 0">
           <div class="id-ligne"><span>Téléphone</span><strong>${c.Tel ? `<a class="lien-tel" href="tel:${String(c.Tel).replace(/\s/g,'')}">${c.Tel}</a>` : '—'}</strong></div>
           <div class="id-ligne"><span>Email</span><strong>${c.Email ? `<a class="lien-email" href="mailto:${c.Email}">${c.Email}</a>` : '—'}</strong></div>
           <div class="id-ligne"><span>Adresse</span><strong>${[c.Adresse, c.Ville, c.Code_Postal].filter(Boolean).join(' · ') || '—'}</strong></div>
-          <div class="id-ligne"><span>Contact</span><strong>${c.Contact_Nom ? `${c.Contact_Nom}${c.Contact_Fonction ? ' · ' + c.Contact_Fonction : ''}` : '—'}</strong></div>
+          <div class="id-ligne"><span>Contact</span><strong>${contactNom ? `${contactNom}${contactFonction ? ' · ' + contactFonction : ''}` : '—'}</strong></div>
         </div>
         <div class="modal-btns">
           <button type="button" onclick="VuePhoning.fermerApercuCompte()">Fermer</button>
-          <button type="button" class="btn-primaire" onclick="Router.aller('#/compte/${c.ID_Compte}')">Fiche complète →</button>
+          <button type="button" class="btn-primaire" onclick="${actionFiche}">${estProspect ? 'Voir dans le Tracker →' : 'Fiche complète →'}</button>
         </div>
       </div>
     </div>`;

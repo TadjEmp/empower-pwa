@@ -68,25 +68,30 @@ window.VuePipeline = {
   _peutSaisir()  { return Session.estManager() || Session.estChannel() || Session.estCDS(); },
 
   async init() {
+    // BLOC — audit retour arrière : même défaut que VuePhoning — le routeur
+    // ré-exécute init() à chaque retour sur #/empower-tracker (ex. depuis la
+    // fiche d'un compte lié à un lead), qui écrasait recherche/filtres/
+    // sélection commercial sans que rien de tout ça ait de hash dédié.
+    const ancien = this.state;
     this.state = {
       leads: [], chargement: true, envoiEnCours: false,
-      recherche: '', filtreCDS: 'TOUS', filtrePotentiel: 'TOUS',
-      filtreStatut: 'TOUS', filtreAlerte: 'TOUS', filtreOrigine: 'TOUS',
-      filtreChannel: 'TOUS', // BLOC 7
-      colonnesEtendues: {},
+      recherche: ancien?.recherche || '', filtreCDS: ancien?.filtreCDS || 'TOUS', filtrePotentiel: ancien?.filtrePotentiel || 'TOUS',
+      filtreStatut: ancien?.filtreStatut || 'TOUS', filtreAlerte: ancien?.filtreAlerte || 'TOUS', filtreOrigine: ancien?.filtreOrigine || 'TOUS',
+      filtreChannel: ancien?.filtreChannel || 'TOUS', // BLOC 7
+      colonnesEtendues: ancien?.colonnesEtendues || {},
       modal: null,
       exportOuvert: false,
       exportFiltres: { debut: '', fin: '', periode: 'MOIS' },
-      triCol: null, triSens: 'asc',
+      triCol: ancien?.triCol ?? null, triSens: ancien?.triSens || 'asc',
       selection: new Set(),
-      pageTable: 1,
+      pageTable: ancien?.pageTable || 1,
       colonnesMenuOuvert: false,
       colonnesTable: this._chargerPrefColonnes(),
       // Densité Kanban (cartes complètes vs lignes compactes) — persistée comme
       // les colonnes du tableau, pour éviter de la re-choisir à chaque visite.
       kanbanDense: localStorage.getItem('esi_kanban_dense') === '1',
       // Feuille de route Phase 2 — vues de filtre sauvegardées
-      vuesFiltres: [], vueFiltreActive: null,
+      vuesFiltres: [], vueFiltreActive: ancien?.vueFiltreActive || null,
     };
     this._ecouterContacts(); // Bloc 6 — Kanban live (abonnement idempotent)
     this.render();
@@ -206,6 +211,16 @@ window.VuePipeline = {
         .filter(p => this._voitTous() || Number(p.PIN_CDS_Assigne) === Session.pin);
       this.state.chargement = false;
       this.render();
+      // BLOC — ouverture différée d'un lead depuis le Journal Phoning (aperçu
+      // coordonnées → "Voir dans le Tracker →"), même convention que
+      // window._suiviActionOrigine (visite → phoning) déjà utilisée ailleurs :
+      // une intention posée juste avant Router.aller(), consommée une seule
+      // fois ici plutôt que persistée.
+      if (window._ouvrirLeadTracker) {
+        const idLead = window._ouvrirLeadTracker;
+        window._ouvrirLeadTracker = null;
+        if (this.state.leads.some(l => String(l.ID_Prospect) === String(idLead))) this.ouvrirLead(idLead);
+      }
     } catch(e) {
       if (!this.CDS.length) this.CDS = this.CDS_FALLBACK;
       this.state.chargement = false;
