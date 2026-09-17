@@ -188,7 +188,13 @@ window.VueComptes = {
   },
 
   // Statut compte calculé avec parseCA (immunisé dates corrompues type "11/4/1903")
+  // BLOC — même correctif que badgeStatutCompte (helpers.js) : le Statut
+  // stocké (mis à jour par un appel/visite ou la conversion Tracker) prime
+  // sur le calcul CA, sinon un filtre "Silencieux"/KPI restait incohérent
+  // avec le badge affiché sur la carte du même compte.
   _statutCompte(c) {
+    const stocke = window.statutStockeVersBadge ? window.statutStockeVersBadge(c) : null;
+    if (stocke) return stocke;
     const qActif = window.caQuarterActif(c, this.state.quarter);
     if (qActif !== null && qActif > 0) return 'actif';
     const fy26 = window.parseCA(c.CA_FY26);

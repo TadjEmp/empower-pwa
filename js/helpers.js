@@ -36,8 +36,28 @@ function initCDSRegistry(objectifs) {
   });
 }
 
+// BLOC — retour utilisateur : un compte créé/mis à jour depuis le Tracker
+// (conversion, appel, visite) écrit un vrai Statut ('ACTIF'/'REACTIVER'/
+// 'CHURN'/'INTEGRE'/'EN_COURS', cf. vue-pipeline.js._creerCompteDepuisLead et
+// vue-phoning.js.valider()) mais le badge ne le lisait jamais — recalculé
+// uniquement depuis le CA. Un compte fraîchement onboardé a 0€ de CA (normal,
+// il vient d'être intégré) : le badge restait bloqué sur "Silencieux" quel
+// que soit le nombre d'appels/visites réels. Le Statut stocké, quand
+// reconnu, prime désormais sur le calcul CA — qui ne sert plus que de repli
+// pour les comptes sans Statut renseigné (imports legacy).
+const STATUT_STOCKE_VERS_BADGE = {
+  ACTIF: 'actif', INTEGRE: 'actif', EN_COURS: 'actif',
+  REACTIVER: 'a_reactiver',
+  CHURN: 'silencieux',
+};
+function statutStockeVersBadge(c) {
+  return STATUT_STOCKE_VERS_BADGE[String(c.Statut || c.STATUT_COMPTE || '').toUpperCase().trim()] || null;
+}
+
 // ── BUG-05 — Statut compte calculé dynamiquement ─────────────────────────
 function getStatutCompte(c) {
+  const stocke = statutStockeVersBadge(c);
+  if (stocke) return stocke;
   if (parseAmount(c.CA_Q1FY27 || 0) > 0)  return 'actif';
   if (parseAmount(c.CA_FY26   || 0) > 0)  return 'a_reactiver';
   return 'silencieux';
