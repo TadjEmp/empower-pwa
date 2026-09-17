@@ -1374,7 +1374,11 @@ window.VuePhoning = {
           </div>
           ${a.Interet_EMPOWER ? `<div style="font-size:12px;color:var(--c-text-2)">Intérêt : ${a.Interet_EMPOWER}</div>` : ''}
           ${a.Frein_Principal ? `<div style="font-size:12px;color:var(--c-text-2)">Frein : ${a.Frein_Principal}</div>` : ''}
-          ${a.Note ? `<div style="font-size:12px;font-style:italic;color:var(--c-text-2);margin-top:4px">${String(a.Note).slice(0, 80)}${String(a.Note).length > 80 ? '…' : ''}</div>` : ''}
+          ${a.Note ? (String(a.Note).length > 80 ? `
+          <details style="margin-top:4px">
+            <summary style="font-size:12px;font-style:italic;color:var(--c-text-2);cursor:pointer;list-style:none">${String(a.Note).slice(0, 80)}…</summary>
+            <div style="font-size:12px;color:var(--c-text-2);margin-top:4px;white-space:pre-line">${String(a.Note)}</div>
+          </details>` : `<div style="font-size:12px;font-style:italic;color:var(--c-text-2);margin-top:4px">${a.Note}</div>`) : ''}
           ${peutModif ? `
           <div style="display:flex;gap:6px;margin-top:8px">
             <button class="btn-secondaire" style="padding:5px 10px;font-size:12px;width:auto"
