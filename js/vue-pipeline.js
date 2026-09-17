@@ -91,7 +91,7 @@ window.VuePipeline = {
     this._ecouterContacts(); // Bloc 6 — Kanban live (abonnement idempotent)
     this.render();
     try {
-      const [raw, params, objectifs, cdsApi, sellin, vuesFiltres] = await Promise.all([
+      const [raw, params, objectifs, cdsApi, sellin, vuesFiltres, phoning] = await Promise.all([
         // nocache : 📋_PROSPECTS est alimenté en continu par plusieurs profils
         // (CDS, Admin, Channel) sur des appareils différents — le cache IndexedDB
         // partagé (TTL 30 min, api.js) masquait jusqu'à 30 min les leads ajoutés
@@ -106,8 +106,20 @@ window.VuePipeline = {
         // quel trimestre FY27 (pas seulement le trimestre actif).
         SheetsAPI.lire('EMPOWER_MDB', '📋 COMPTES HISTORIQUES').catch(() => []),
         VuesFiltres.lister('tracker'),
+        // BLOC — dernier appel + note par lead (cf. demande utilisateur : la
+        // carte du prospect n'affichait jamais la note d'appel après la
+        // saisie). Live depuis le Journal plutôt que dupliqué sur le lead :
+        // un appel peut être édité/supprimé après coup (R5), une copie
+        // figée sur le lead se serait désynchronisée. Même principe que
+        // VuePhoning._dernierAppelCompte.
+        SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING').catch(() => []),
       ]);
       this.state.vuesFiltres = vuesFiltres;
+      this._dernierAppelParLead = new Map();
+      phoning
+        .filter(a => String(a.deleted || '').toUpperCase() !== 'TRUE' && estAppelRealise(a))
+        .sort((a, b) => (a.Date || '').localeCompare(b.Date || ''))
+        .forEach(a => { if (a.ID_Cible) this._dernierAppelParLead.set(String(a.ID_Cible), a); });
       this._chargerCDS(params, objectifs, cdsApi);
       initCDSRegistry(objectifs); // BUG-02 : peuple le registre global
 
@@ -315,6 +327,12 @@ window.VuePipeline = {
     // V7 §4 (BLOC 02) — ancienneté = donnée : typo + couleur sémantique,
     // pas de pill cerclée.
     return `<span class="badge-age" title="${titre}" style="font-size:11px;font-weight:700;color:${coul};white-space:nowrap;font-variant-numeric:tabular-nums">${j}j</span>`;
+  },
+
+  // Dernier appel réel (objet 📞_PHONING complet, avec sa Note) pour un lead —
+  // cf. commentaire sur _dernierAppelParLead dans init().
+  _dernierAppelLead(idProspect) {
+    return (this._dernierAppelParLead && this._dernierAppelParLead.get(String(idProspect))) || null;
   },
 
   _retardWelcomePack(p) {
@@ -903,7 +921,17 @@ window.VuePipeline = {
                   <span style="color:var(--c-text-2);font-size:11px">👤 ${this._nomCDS(l.PIN_CDS_Assigne)}</span>
                   ${l.FLAG_ACTION && l.FLAG_ACTION !== 'SAISIE' ? `<span style="font-size:10px;color:var(--c-primary);font-weight:700">${this._labelFlag(l.FLAG_ACTION)}</span>` : ''}
                 </div>
-                ${l.Note_initiale ? `<div class="kanban-carte-note">${String(l.Note_initiale).slice(0, 60)}</div>` : ''}
+                ${(() => {
+                  // BLOC — la carte affichait toujours Note_initiale (la note de
+                  // création), jamais mise à jour par les appels suivants : après
+                  // une saisie d'appel, la dernière note écrite n'apparaissait
+                  // nulle part sur la carte. Priorité à la note du dernier appel
+                  // réel (Journal, live) ; repli sur Note_initiale seulement si
+                  // aucun appel n'a encore été loggé pour ce lead.
+                  const da = this._dernierAppelLead(l.ID_Prospect);
+                  const note = da?.Note || l.Note_initiale;
+                  return note ? `<div class="kanban-carte-note">${da?.Note ? '📞 ' : ''}${String(note).slice(0, 60)}</div>` : '';
+                })()}
                 ${l._activationSellIn || l._activationSellInFlou || l.Commande_Manuelle ? `<div class="kanban-carte-note" style="color:var(--c-success);font-weight:700">💰 ${
                   l._activationSellIn && l.Commande_Manuelle ? `Commande (Sell-In + déclarée)${this._sellInFraicheur()}`
                   : l._activationSellIn ? `Commande détectée (Sell-In)${this._sellInFraicheur()}`
@@ -1352,6 +1380,16 @@ window.VuePipeline = {
               </select>
             </label>
           </div>
+          ${!['COMPTE_CREE', 'INTEGRE'].includes(l._statut) ? `
+          <!-- BLOC — "aucune possibilité depuis le tracker d'ajouter le
+               prospect au compte une fois onboarding effectué" : le
+               mécanisme existe déjà (_creerCompteDepuisLead, déclenché au
+               changement de Statut ci-dessus) mais rien ne le disait — un
+               simple select "Statut" ne laisse pas deviner qu'il crée
+               réellement la fiche compte. Rendu explicite. -->
+          <div style="font-size:11px;color:var(--c-primary);background:color-mix(in srgb,var(--c-primary) 8%,transparent);border:1px solid color-mix(in srgb,var(--c-primary) 25%,transparent);border-radius:var(--radius-sm);padding:7px 9px;margin:-2px 0 8px;line-height:1.4">
+            💡 Onboarding terminé ? Passe le Statut ci-dessus à <strong>"Compte créé"</strong> ou <strong>"Intégré"</strong> puis enregistre — la fiche compte EMPOWER correspondante est créée automatiquement.
+          </div>` : ''}
 
           <label style="font-size:12px;color:var(--c-text-2)">Prochaine action
             <input type="date" id="lead-date-action" class="q-input" style="margin-top:3px"
@@ -1366,6 +1404,19 @@ window.VuePipeline = {
           <button class="btn-primaire" style="width:100%;margin-top:8px;font-size:13px"
                   onclick="VuePipeline.mettreAJourLead('${l.ID_Prospect}')">✅ Enregistrer la mise à jour</button>
         </div>` : ''}
+
+        <!-- Dernier appel réel (Journal, live) — cf. demande utilisateur : la
+             fiche lead n'affichait jamais la note du dernier appel passé,
+             seulement Note_initiale (la note de création, jamais mise à jour). -->
+        ${(() => {
+          const da = this._dernierAppelLead(l.ID_Prospect);
+          if (!da?.Note) return '';
+          return `
+        <div style="margin-bottom:12px;padding:10px 12px;background:var(--c-bg);border-radius:var(--radius-sm);border:1px solid var(--c-border)">
+          <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.03em;text-transform:uppercase;margin-bottom:4px">📞 Note du dernier appel · ${dateRelative(da.Date)}</div>
+          <div style="font-size:12.5px;color:var(--c-text);line-height:1.5;white-space:pre-line">${String(da.Note).replace(/</g,'&lt;').slice(0, 300)}</div>
+        </div>`;
+        })()}
 
         <!-- Historique complet -->
         ${l.Note_initiale ? `
