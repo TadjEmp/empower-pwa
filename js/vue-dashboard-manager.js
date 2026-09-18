@@ -333,9 +333,12 @@ window.VueDashboardManager = {
       return {
         pin, nom: o.Nom_CDS, ca, obj, pct, caFY26,
         pace:       pct >= 100 ? 'ON_TRACK' : pct >= 80 ? 'WATCH' : 'AT_RISK',
-        visitesSem: visites.filter(v => Number(v.PIN_CDS) === pin && v.Semaine_ISO === semaine).length,
+        // Bug remonté (09/2026) — même correctif que VueDashboardCDS : semaine
+        // calendaire lundi→dimanche (dates réelles), pas Semaine_ISO fiscal
+        // (semaines qui démarrent un vendredi, cf. fiscal-weeks.js).
+        visitesSem: visites.filter(v => Number(v.PIN_CDS) === pin && FiscalWeeks.dansSemaineCalendaire(v.Date)).length,
         // Bloc Phoning (07/2026) — un appel planifié pas encore réalisé ne compte pas.
-        appelsSem:  appels.filter(a => Number(a.PIN_CDS) === pin && a.Semaine_ISO === semaine && estAppelRealise(a)).length,
+        appelsSem:  appels.filter(a => Number(a.PIN_CDS) === pin && FiscalWeeks.dansSemaineCalendaire(a.Date) && estAppelRealise(a)).length,
         leadsEnCours: leadsTracker.filter(p =>
           Number(p.PIN_CDS_Assigne) === pin &&
           !['ARCHIVE','INTEGRE'].includes(String(p.STATUT_EMPOWER||'').toUpperCase())

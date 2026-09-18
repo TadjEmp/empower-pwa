@@ -74,6 +74,33 @@ const FiscalWeeks = (function () {
       .map(s => ({ semaine: s.semaine, label: `W${s.semaine}`, debutISO: s.debutISO }));
   }
 
-  return { semaineDe, labelDe, codeDe, semainesDuQuarter, QUARTER_START };
+  // Bug remonté (09/2026) — "Visites sem./Appels sem." utilisait semaineDe/codeDe,
+  // dont chaque semaine DÉMARRE UN VENDREDI (référentiel Q1-Q4 ci-dessus, vérifié :
+  // les 4 dates QUARTER_START tombent toutes un vendredi). Pour le suivi d'activité
+  // (visites/appels visés "cette semaine"), les commerciaux raisonnent en semaine
+  // calendaire réelle lundi→vendredi : le compteur retombait à 0 chaque vendredi
+  // matin et mélangeait vendredi-lundi-jeudi dans une même "semaine". Uniquement
+  // pour ce cas d'usage (activité, pas CA/objectifs qui reste sur le référentiel
+  // fiscal ci-dessus) — plage du lundi 00:00 au dimanche 23:59 contenant `date`.
+  function plageCalendaire(date = new Date()) {
+    const jour = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const jsDay = jour.getDay();               // 0=dimanche..6=samedi
+    const decalLundi = jsDay === 0 ? -6 : 1 - jsDay;
+    const lundi = new Date(jour); lundi.setDate(lundi.getDate() + decalLundi);
+    const dimanche = new Date(lundi); dimanche.setDate(dimanche.getDate() + 6);
+    const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return { debutISO: fmt(lundi), finISO: fmt(dimanche) };
+  }
+
+  // true si `dateStr` (YYYY-MM-DD ou ISO datetime) tombe dans la semaine
+  // calendaire (lundi→dimanche) contenant `refDate` (défaut aujourd'hui).
+  function dansSemaineCalendaire(dateStr, refDate = new Date()) {
+    if (!dateStr) return false;
+    const jour = String(dateStr).slice(0, 10);
+    const { debutISO, finISO } = plageCalendaire(refDate);
+    return jour >= debutISO && jour <= finISO;
+  }
+
+  return { semaineDe, labelDe, codeDe, semainesDuQuarter, plageCalendaire, dansSemaineCalendaire, QUARTER_START };
 })();
 window.FiscalWeeks = FiscalWeeks;

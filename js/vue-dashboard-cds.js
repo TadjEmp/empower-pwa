@@ -286,9 +286,13 @@ window.VueDashboardCDS = {
       .slice(0, 5);
 
     // ── Activité semaine ──
-    const visitesSem = visites.filter(v => this._estMoi(v.PIN_CDS) && v.Semaine_ISO === semaine).length;
+    // Bug remonté (09/2026) — Semaine_ISO suit le référentiel fiscal (semaines
+    // qui démarrent un vendredi, cf. fiscal-weeks.js), pas la semaine calendaire
+    // lundi→vendredi attendue pour "Visites/Appels sem." : filtre désormais sur
+    // la vraie date (v.Date/a.Date) via FiscalWeeks.dansSemaineCalendaire.
+    const visitesSem = visites.filter(v => this._estMoi(v.PIN_CDS) && FiscalWeeks.dansSemaineCalendaire(v.Date)).length;
     // Bloc Phoning (07/2026) — un appel planifié pas encore réalisé ne compte pas.
-    const appelsSem  = appels.filter(a => this._estMoi(a.PIN_CDS) && a.Semaine_ISO === semaine && estAppelRealise(a)).length;
+    const appelsSem  = appels.filter(a => this._estMoi(a.PIN_CDS) && FiscalWeeks.dansSemaineCalendaire(a.Date) && estAppelRealise(a)).length;
     const objVisites = Number(paramMap.ObjVisitesCDS || 8);
     const objAppels  = Number(paramMap.ObjAppelsSemaine || 10);
 
@@ -349,15 +353,17 @@ window.VueDashboardCDS = {
     })();
 
     // ── Activité 6 dernières semaines (graphique) ──
-    const semaines6 = Array.from({length: 6}, (_, i) => {
+    // Même correctif que visitesSem/appelsSem ci-dessus : semaine calendaire
+    // lundi→dimanche (dates de référence), pas le libellé fiscal vendredi→jeudi.
+    const refSemaines6 = Array.from({length: 6}, (_, i) => {
       const d = new Date();
       d.setDate(d.getDate() - (5 - i) * 7);
-      return FiscalWeeks.codeDe(d);
+      return d;
     });
-    const activiteSemaines = semaines6.map(sem => ({
-      sem,
-      visites: visites.filter(v => this._estMoi(v.PIN_CDS) && v.Semaine_ISO === sem).length,
-      appels:  appels.filter(a => this._estMoi(a.PIN_CDS) && a.Semaine_ISO === sem && estAppelRealise(a)).length,
+    const activiteSemaines = refSemaines6.map(ref => ({
+      sem: FiscalWeeks.labelDe(ref),
+      visites: visites.filter(v => this._estMoi(v.PIN_CDS) && FiscalWeeks.dansSemaineCalendaire(v.Date, ref)).length,
+      appels:  appels.filter(a => this._estMoi(a.PIN_CDS) && FiscalWeeks.dansSemaineCalendaire(a.Date, ref) && estAppelRealise(a)).length,
     }));
 
     // ── Ma base prospects (assignés, non archivés, hors imports base) ──
