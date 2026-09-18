@@ -31,7 +31,10 @@ window.VueDashboardManager = {
         // (même défaut que celui déjà corrigé pour objectifs_primes ci-dessus).
         SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES', { nocache: true }),
         SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING', { nocache: true }),
-        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS'),
+        // nocache : même correctif que initChannel() ci-dessous et le Tracker
+        // (vue-pipeline.js) — sans ça, la Vue équipe ADMIN affichait des
+        // compteurs de leads périmés jusqu'à 30 min après une action terrain.
+        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS', { nocache: true }),
         SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES', { nocache: true }),
         SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
       ]);
@@ -1074,6 +1077,9 @@ window.VueDashboardManager = {
           <button class="raccourci" onclick="Router.aller('#/empower-tracker')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Pipeline</span></button>
           <button class="raccourci" onclick="Router.aller('#/comptes-historiques')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/></svg><span>Historiques</span></button>
           <button class="raccourci" onclick="Router.aller('#/phoning')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span>Phoning</span></button>
+          <!-- BLOC 11 Partie B (09/2026) — même correctif que VueDashboardCDS : Mailing
+               (mobileNav:false) n'avait aucun accès mobile/Web App sans ce raccourci. -->
+          <button class="raccourci" onclick="Router.aller('#/mailing')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg><span>Mailing</span></button>
           <button class="raccourci" onclick="Router.aller('#/objectifs')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg><span>Objectifs</span></button>
           <button class="raccourci" onclick="Router.aller('#/admin')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>Exports</span></button>
           <button class="raccourci" onclick="Router.aller('#/admin')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg><span>Admin</span></button>

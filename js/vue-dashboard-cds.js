@@ -23,7 +23,10 @@ window.VueDashboardCDS = {
         // Reporting CDS pouvait rester figé jusqu'à 30 min après une synchro
         // faite ailleurs (07/2026).
         SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES', { nocache: true }),
-        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS'),
+        // nocache : même correctif que VueDashboardManager.initChannel() et le
+        // Tracker (vue-pipeline.js) — sans ça, "Leads actifs" pouvait rester
+        // périmé jusqu'à 30 min après une action terrain (Tracker, conversion).
+        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS', { nocache: true }),
         SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
         SheetsAPI.lire('EMPOWER_MDB', '🔔_NOTIFS').catch(() => []),
       ]);
@@ -578,6 +581,10 @@ window.VueDashboardCDS = {
           <button class="raccourci" onclick="Router.aller('#/visites')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span>Planning visites</span></button>
           <button class="raccourci" onclick="Router.aller('#/phoning')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span>Phoning</span></button>
           <button class="raccourci" onclick="Router.aller('#/empower-tracker')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Tracker leads</span></button>
+          <!-- BLOC 11 Partie B (09/2026) — Mailing a un onglet de nav (utils.js#NavBar) mais
+               mobileNav:false (masqué en barre mobile/Web App comme Phoning) : sans ce
+               raccourci, aucun accès mobile n'existait, contrairement à Phoning ci-dessus. -->
+          <button class="raccourci" onclick="Router.aller('#/mailing')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg><span>Mailing</span></button>
           <button class="raccourci" onclick="Router.aller('#/comptes-historiques')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/></svg><span>Base comptes</span></button>
           <button class="raccourci" onclick="Router.aller('#/objectifs')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg><span>Objectifs</span></button>
           <button class="raccourci" onclick="Router.aller('#/primes')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg><span>Mes primes</span></button>

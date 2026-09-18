@@ -226,6 +226,12 @@ const SheetsAPI = {
       note: 'Note_initiale', flag_alerte: 'FLAG_ALERTE', id_compte_gas: 'ID_Compte_Gas',
       date_prochaine_action: 'Date_prochaine_action',
       contact_nom: 'CONTACT_NOM', contact_fonction: 'CONTACT_FONCTION',
+      // BUG dashboards/tracker "tout à zéro" (09/2026) — flag_traite/source_import
+      // étaient écrits (cf. _MAPS_GAS_TO_DB.leads) mais jamais relus : absents de
+      // cette map DB→GAS, _transformRow() les droppait silencieusement sur
+      // toute lecture, donc p.Source_Import/p.Flag_traite valaient toujours
+      // undefined côté app (leads actifs, Tracker, Pipeline Kanban, etc.).
+      flag_traite: 'Flag_traite', source_import: 'Source_Import',
       // Bloc 6 (09/2026) — colonnes déjà présentes en base (comme sur comptes)
       // mais jamais mappées côté leads : réutilisées pour "dernier contact réel"
       // (appel ou visite), au lieu de Date_Statut_Change qui ne mesure que
