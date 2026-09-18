@@ -344,6 +344,11 @@ function NavBar(actif) {
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="8" y1="18" x2="8" y2="18"/><line x1="12" y1="18" x2="12" y2="18"/></svg>' },
     { id: 'phoning',     hash: '#/phoning',             mobileNav: false, lbl: 'Phoning',
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>' },
+    // BLOC 11 Partie B — Mailing loggué comme action commerciale (option 1 :
+    // onglet dédié, pas un 4e mode Phoning — couvre les comptes base ET les
+    // leads Tracker, cf. vue-mailing.js).
+    { id: 'mailing',     hash: '#/mailing',             mobileNav: false, lbl: 'Mailing',
+      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>' },
     { id: 'photos',      hash: '#/photos',              mobileNav: false, lbl: 'Mes Photos',
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>' },
     // Section 9 cahier des charges — vue consolidée Channel (lecture seule FDV)
@@ -374,7 +379,7 @@ function NavBar(actif) {
   // Les routes fusionnées restent valides (rétro-compat) mais sortent de la nav.
   const SECTIONS = [
     { lbl: null,        ids: ['home', 'tracker', 'comptes'] },
-    { lbl: 'Activité',  ids: ['visites', 'phoning'] },
+    { lbl: 'Activité',  ids: ['visites', 'phoning', 'mailing'] },
     { lbl: 'Données',   ids: ['objectifs'] },
     { lbl: 'Admin',     ids: ['admin'] },
   ];

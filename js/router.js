@@ -40,6 +40,7 @@ const Router = {
 
     // ── Routes auxiliaires ──
     { pattern: /^#\/photos$/,                       vue: 'VuePhotos',             auth: true  },
+    { pattern: /^#\/mailing$/,                      vue: 'VueMailing',            auth: true  },
     { pattern: /^#\/comptes$/,                      vue: 'VueComptes',            auth: true  },
     { pattern: /^#\/compte\/([^/]+)$/,             vue: 'VueFicheCompte',        auth: true, param: 1 },
     { pattern: /^#\/questionnaire$/,                vue: 'VueQuestionnaire',      auth: true  },

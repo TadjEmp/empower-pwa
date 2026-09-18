@@ -15,13 +15,13 @@
     ADMIN: [
       'home', 'tracker', 'historiques', 'phoning', 'visites',
       'objectifs', 'primes', 'comptes', 'manager', 'admin',
-      'questionnaire', 'reporting', 'photos',
+      'questionnaire', 'reporting', 'photos', 'mailing',
     ],
     // Bloc 2 §1 — 'reporting_cds' : espace d'analyse personnel distinct de
     // l'Accueil (#/dashboard), cf. VueDashboardCDS._contexteReporting().
     CDS: [
       'home', 'tracker', 'historiques', 'phoning', 'visites',
-      'objectifs', 'primes', 'questionnaire', 'comptes', 'photos', 'reporting_cds',
+      'objectifs', 'primes', 'questionnaire', 'comptes', 'photos', 'reporting_cds', 'mailing',
     ],
     // V5 BUG5 — Alexandra : conserve OBJECTIFS ; jamais Primes (raw CDS).
     // 'reporting' réactivé : #/manager affiche désormais pour elle la Vue équipe
@@ -33,7 +33,7 @@
     // quasi-admin sur le Tracker également (cf. vue-pipeline.js _peutAssigner).
     CHANNEL_MANAGER: [
       'home', 'tracker', 'comptes', 'objectifs', 'photos', 'admin',
-      'visites_fdv', 'phoning', 'reporting',
+      'visites_fdv', 'phoning', 'reporting', 'mailing',
     ],
     EXTERNE: [
       'tracker',
@@ -65,6 +65,7 @@
     if (/^#\/questionnaire(\/[^/]+)?$/.test(h))return 'questionnaire';
     if (/^#\/admin$/.test(h))                  return 'admin';
     if (/^#\/photos$/.test(h))                 return 'photos';
+    if (/^#\/mailing$/.test(h))                return 'mailing';
 
     return null;
   }
@@ -86,6 +87,7 @@
     admin:         '#/admin',
     photos:        '#/photos',
     visites_fdv:   '#/visites-fdv',
+    mailing:       '#/mailing',
   };
 
   function onglets(role) {
