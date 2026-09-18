@@ -20,7 +20,7 @@ window.VueMailing = {
       chargement: true,
       mode: 'BASE',           // BASE (recherche + saisie) | JOURNAL (historique)
       comptes: [], prospects: [], cdsListe: [],
-      recherche: '', filtreCDS: 'TOUS',
+      recherche: '', filtreCDS: 'TOUS', filtreType: 'TOUS', // TOUS | COMPTE | LEAD
       cible: null,             // { type:'compte'|'lead', id, nom, obj }
       motifs: [], note: '',
       envoiEnCours: false,
@@ -69,11 +69,25 @@ window.VueMailing = {
     const zone = document.getElementById('mailing-resultats-zone');
     if (zone) zone.innerHTML = this._renderResultatsZone();
   },
+  // Filtre Comptes base / Leads Tracker / Tous — corrige l'impression de liste
+  // tronquée : la recherche croisée mélangeait les deux sources sans moyen de
+  // les parcourir séparément dans leur intégralité.
+  setFiltreType(t) {
+    this.state.filtreType = t;
+    // Deux zones à patcher : les pastilles (surbrillance active) ET les
+    // résultats — sinon la pastille cliquée restait visuellement inactive
+    // (bug remonté : le filtre Tracker fonctionnait mais ne se voyait pas).
+    const pastilles = document.getElementById('mailing-filtre-type');
+    if (pastilles) pastilles.innerHTML = this._renderPastillesType();
+    const zone = document.getElementById('mailing-resultats-zone');
+    if (zone) zone.innerHTML = this._renderResultatsZone();
+  },
 
   get resultats() {
     const q = this.state.recherche ? normaliserNom(this.state.recherche) : '';
-    let comptes = this.state.comptes;
-    let leads = this.state.prospects;
+    const ft = this.state.filtreType;
+    let comptes = ft === 'LEAD' ? [] : this.state.comptes;
+    let leads   = ft === 'COMPTE' ? [] : this.state.prospects;
     if (Session.voitTout() && this.state.filtreCDS !== 'TOUS') {
       comptes = comptes.filter(c => String(c.PIN_CDS_Assigne) === String(this.state.filtreCDS));
       leads   = leads.filter(p => String(p.PIN_CDS_Assigne) === String(this.state.filtreCDS));
@@ -82,11 +96,12 @@ window.VueMailing = {
       comptes = comptes.filter(c => normaliserNom(c.Nom_Compte).includes(q) || normaliserNom(c.Ville || '').includes(q));
       leads   = leads.filter(p => normaliserNom(p.Nom_Compte).includes(q) || normaliserNom(p.Ville || '').includes(q));
     }
-    const r = [
+    // Pas de plafond artificiel — même principe que _renderBaseGrid de
+    // vue-phoning.js (liste complète, affinée par la recherche/le filtre).
+    return [
       ...comptes.map(c => ({ type: 'compte', id: c.ID_Compte, nom: c.Nom_Compte, obj: c })),
       ...leads.map(p => ({ type: 'lead', id: p.ID_Prospect, nom: p.Nom_Compte, obj: p })),
     ];
-    return q.length >= 2 ? r.slice(0, 30) : r.slice(0, 12);
   },
 
   choisirCible(type, id) {
@@ -202,15 +217,21 @@ window.VueMailing = {
   render() {
     const s = this.state;
     if (!s) return;
-    document.getElementById('app').innerHTML = `
-      ${NavBar('mailing')}
-      <main class="app-contenu">
-        <div class="app-header-page">
-          <h1>📧 Mailing</h1>
-          <p class="app-header-sous">Logguer un mailing envoyé — compte base ou lead Tracker</p>
-        </div>
+    const app = document.getElementById('app');
+    // Header standard de l'app (même convention que vue-comptes.js/vue-phoning.js) :
+    // "←" contextuel — ferme la fiche ouverte si une cible est sélectionnée,
+    // sinon quitte Mailing (Router.retour()). Corrige l'absence de bouton
+    // retour une fois un compte/lead ouvert (remontée utilisateur).
+    const backAction = s.cible ? 'VueMailing.fermerCible()' : 'Router.retour()';
+    app.innerHTML = `
+      <header class="header-vue">
+        <button onclick="${backAction}" class="btn-retour">←</button>
+        <h1>📧 Mailing</h1>
+      </header>
+      <div class="q-contenu avec-nav q-contenu-large">
         ${s.chargement ? '<div class="q-champs"><div style="padding:32px;text-align:center;color:var(--c-text-2)">Chargement…</div></div>' : this._renderCorps()}
-      </main>`;
+      </div>
+      ${NavBar('mailing')}`;
   },
 
   _renderTabs() {
@@ -231,9 +252,23 @@ window.VueMailing = {
     </div>`;
   },
 
+  _renderPastillesType() {
+    const s = this.state;
+    const nbComptes = this.state.comptes.length;
+    const nbLeads = this.state.prospects.length;
+    const _typeBtn = (val, lbl) => `<button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:${s.filtreType===val?'var(--c-title)':'transparent'};color:${s.filtreType===val?'#fff':'var(--c-text-2)'}"
+        onclick="VueMailing.setFiltreType('${val}')">${lbl}</button>`;
+    return `${_typeBtn('TOUS', `Tous (${nbComptes + nbLeads})`)}
+      ${_typeBtn('COMPTE', `Comptes (${nbComptes})`)}
+      ${_typeBtn('LEAD', `Tracker (${nbLeads})`)}`;
+  },
+
   _renderRecherche() {
     const s = this.state;
     return `
+      <div id="mailing-filtre-type" style="display:flex;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:4px;background:var(--c-surface);margin-bottom:10px">
+        ${this._renderPastillesType()}
+      </div>
       <div style="display:flex;gap:8px;margin-bottom:12px">
         <input class="q-input" placeholder="🔍 Rechercher un compte ou un lead…" value="${s.recherche || ''}"
                oninput="VueMailing.setRecherche(this.value)" style="flex:2"/>
