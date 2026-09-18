@@ -317,7 +317,7 @@ window.VueComptes = {
       <header class="header-vue">
         <button onclick="Router.retour()" class="btn-retour">←</button>
         <h1>Mes comptes</h1>
-        <span class="badge-compteur">${liste.length}/${total}</span>
+        <span class="badge-compteur" id="comptes-compteur">${liste.length}/${total}</span>
       </header>
 
       <!-- Onglets Comptes actifs / Historique CA (audit UX § "simplification nav" —
@@ -392,8 +392,38 @@ window.VueComptes = {
         </div>
       </div>
 
-      <div class="liste-comptes avec-nav">
-        ${liste.length === 0 ? '<div class="vide">Aucun compte pour ces critères</div>' : `
+      <div class="liste-comptes avec-nav" id="comptes-liste-zone">${this._renderListeZone(liste, doublons, cdsList)}</div>
+
+      ${Session.role !== 'CHANNEL_MANAGER' ? `<button class="fab" onclick="VueQuestionnaire._visitePlanifiee=null;Router.aller('#/questionnaire')" title="Nouvelle visite" style="bottom:140px">＋</button>` : ''}
+      ${NavBar('comptes')}
+      ${this.state.ficheDockee ? this._renderFicheDockee() : ''}
+    `;
+    const champ = document.getElementById('recherche-comptes');
+    if (this.state.recherche && champ) {
+      champ.focus();
+      champ.setSelectionRange(champ.value.length, champ.value.length);
+    }
+  },
+
+  // BLOC 11 — extrait de render() : la liste/le tableau, seule partie qui
+  // change quand on tape dans la recherche. Recherche/tri/filtre appellent
+  // désormais cette méthode isolément (patch de #comptes-liste-zone) plutôt
+  // que render() en entier — sinon chaque frappe (après le debounce de
+  // setRecherche) détruisait et recréait TOUTE la page, y compris le champ
+  // de saisie lui-même : sur les 321 comptes de la liste, cette
+  // reconstruction complète prend assez de temps pour qu'une frappe suivante
+  // arrive pendant que le champ n'existe plus, corrompant la saisie (lettres
+  // qui se réinsèrent au mauvais endroit). Cause confirmée en instrumentant
+  // render() en conditions réelles. Même pattern déjà utilisé par
+  // VuePhoning._renderBaseGrid()/#ph-base-grid pour cette raison exacte.
+  _renderListeZone(liste, doublons, cdsList) {
+    liste    = liste    || this.listeFiltree;
+    doublons = doublons || this._doublonsSet();
+    cdsList  = cdsList  || (this._cdsListe || [
+      { pin: 1000, nom: 'Tadjidine' }, { pin: 4001, nom: 'Lyes' },
+      { pin: 4002, nom: 'Mehdi' },     { pin: 4003, nom: 'Johanne' },
+    ]);
+    return `${liste.length === 0 ? '<div class="vide">Aucun compte pour ces critères</div>' : `
         <!-- MOBILE : fiches empilées -->
         <div class="mobile-card-list-view">
           ${liste.map(c => {
@@ -546,18 +576,7 @@ window.VueComptes = {
               }).join('')}
             </tbody>
           </table>
-        </div>`}
-      </div>
-
-      ${Session.role !== 'CHANNEL_MANAGER' ? `<button class="fab" onclick="VueQuestionnaire._visitePlanifiee=null;Router.aller('#/questionnaire')" title="Nouvelle visite" style="bottom:140px">＋</button>` : ''}
-      ${NavBar('comptes')}
-      ${this.state.ficheDockee ? this._renderFicheDockee() : ''}
-    `;
-    const champ = document.getElementById('recherche-comptes');
-    if (this.state.recherche && champ) {
-      champ.focus();
-      champ.setSelectionRange(champ.value.length, champ.value.length);
-    }
+        </div>`}`;
   },
 
   async attribuer(idCompte, pin) {
@@ -577,7 +596,17 @@ window.VueComptes = {
     } catch(e) { Toast.afficher('Erreur : ' + (e.message || e), 'erreur'); }
   },
 
-  setRecherche:   debounce(function(v) { VueComptes.state.recherche = v;      VueComptes.render(); }, 250),
+  // BLOC 11 — patch ciblé de la zone liste au lieu d'un render() complet (cf.
+  // commentaire sur _renderListeZone) : garde le champ de saisie intact.
+  setRecherche: debounce(function(v) {
+    VueComptes.state.recherche = v;
+    const zone = document.getElementById('comptes-liste-zone');
+    if (zone) {
+      zone.innerHTML = VueComptes._renderListeZone();
+      const compteur = document.getElementById('comptes-compteur');
+      if (compteur) compteur.textContent = `${VueComptes.listeFiltree.length}/${VueComptes.state.comptes.length}`;
+    } else VueComptes.render(); // repli si la zone n'est pas encore montée
+  }, 250),
   setFiltre(s)    { this.state.filtreStatut = s; this.render(); },
   setFiltreEmpower(c) { this.state.filtreEmpower = c; this.render(); },
   setFiltreCDS(p) { this.state.filtreCDSPin = p; this.render(); },

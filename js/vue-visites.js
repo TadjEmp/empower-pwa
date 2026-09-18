@@ -1599,6 +1599,74 @@ window.VueVisites = {
   },
 
   // ── Modal planification (R1 : uniquement comptes) ──
+  // BLOC 11 — extrait de _renderModal() : la recherche de compte (Module 2)
+  // dans la modale de planification, seule partie qui change quand on tape.
+  // Même correctif que VueComptes._renderListeZone (cause identique) : le
+  // oninput appelait VueVisites.render() — la page ENTIÈRE, derrière la
+  // modale, pas seulement elle — et détruisait ses propres champs de saisie
+  // à chaque frappe (après leur debounce).
+  _renderRechercheCompteModal() {
+    const f = this.state.formPlanif;
+    // Module 2 — Recherche par nom/ville ET par département
+    const q     = normaliserNom(f.rechercheCompte || '');
+    const qDept = (f.rechercheDept || '').trim().toLowerCase();
+    const actif = q.length >= 2 || qDept.length >= 1;
+    const comptesFiltres = actif
+      ? this.comptesTries.filter(c => {
+          const nomOk  = q.length >= 2 ? (normaliserNom(c.Nom_Compte).includes(q) || normaliserNom(c.Ville || '').includes(q)) : true;
+          const deptOk = qDept.length >= 1 ? (
+            (c.Departement || '').startsWith(qDept) ||
+            normaliserNom(c.Ville || '').includes(qDept)
+          ) : true;
+          return nomOk && deptOk;
+        })
+      : [...this.state.comptes].sort((a, b) => (a.Nom_Compte || '').localeCompare(b.Nom_Compte || '', 'fr'));
+    const aucunDept = qDept.length >= 1 && comptesFiltres.length === 0;
+    return `
+     <div style="display:flex;gap:6px;margin-bottom:6px">
+       <label style="flex:1;margin-bottom:0">🔍 Nom / Ville
+         <input placeholder="Nom ou ville…" value="${f.rechercheCompte || ''}"
+                oninput="VueVisites.setRechercheCompteModal(this.value)"/>
+       </label>
+       <label style="flex:0 0 70px;margin-bottom:0">Dept
+         <input placeholder="75…" maxlength="3" value="${f.rechercheDept || ''}"
+                oninput="VueVisites.setRechercheDeptModal(this.value)"/>
+       </label>
+     </div>
+     ${aucunDept ? `
+     <div style="font-size:12px;color:var(--c-text-2);padding:8px;background:var(--c-bg);border-radius:var(--radius-sm);margin-bottom:8px">
+       Aucun compte dans ce département.
+       <button type="button" class="btn-secondaire" style="font-size:11px;padding:4px 8px;margin-left:6px;width:auto"
+               onclick="VueVisites.state.formPlanif.horsBase=true;VueVisites.render()">
+         ❄️ Créer une visite à froid
+       </button>
+     </div>` : ''}
+     <label>Compte * <span style="font-size:11px;color:var(--c-text-2);font-weight:400">${actif ? comptesFiltres.length + ' résultat(s)' : 'trié par nom'}</span>
+       <select required size="7" style="height:180px"
+               onchange="VueVisites.setCible(this.value, this.options[this.selectedIndex].dataset.nom)">
+         <option value="">— sélectionner —</option>
+         ${comptesFiltres.map(c =>
+           `<option value="${c.ID_Compte}" data-nom="${c.Nom_Compte}" ${f.idCible === c.ID_Compte ? 'selected' : ''}>${c.urgent ? '! ' : ''}${c.Nom_Compte}${c.Departement ? ' [' + c.Departement + ']' : ''}${c.Ville ? ' — ' + c.Ville : ''}${c.silence != null ? ' · ' + c.silence + 's' : ''}</option>`
+         ).join('')}
+       </select>
+     </label>
+     ${this._ficheCompteSelectionne(f.idCible)}`;
+  },
+
+  // Patch ciblé de #visites-recherche-modal au lieu d'un render() complet.
+  setRechercheCompteModal: debounce(function(v) {
+    VueVisites.state.formPlanif.rechercheCompte = v;
+    const zone = document.getElementById('visites-recherche-modal');
+    if (zone) zone.innerHTML = VueVisites._renderRechercheCompteModal();
+    else VueVisites.render();
+  }, 250),
+  setRechercheDeptModal: debounce(function(v) {
+    VueVisites.state.formPlanif.rechercheDept = v;
+    const zone = document.getElementById('visites-recherche-modal');
+    if (zone) zone.innerHTML = VueVisites._renderRechercheCompteModal();
+    else VueVisites.render();
+  }, 250),
+
   _renderModal() {
     if (!this.state.modalPlanif) return '';
     const f = this.state.formPlanif;
@@ -1648,52 +1716,7 @@ window.VueVisites = {
                <div style="font-size:11px;color:var(--c-text-2);margin:-4px 0 10px;padding:6px 10px;background:var(--c-bg);border-radius:var(--radius-sm)">
                  Hors base : mémorisé sur cet appareil. Après la visite, vous pourrez créer ce compte dans la base.
                </div>`
-            : (() => {
-              // Module 2 — Recherche par nom/ville ET par département
-              const q     = normaliserNom(f.rechercheCompte || '');
-              const qDept = (f.rechercheDept || '').trim().toLowerCase();
-              const actif = q.length >= 2 || qDept.length >= 1;
-              const comptesFiltres = actif
-                ? this.comptesTries.filter(c => {
-                    const nomOk  = q.length >= 2 ? (normaliserNom(c.Nom_Compte).includes(q) || normaliserNom(c.Ville || '').includes(q)) : true;
-                    const deptOk = qDept.length >= 1 ? (
-                      (c.Departement || '').startsWith(qDept) ||
-                      normaliserNom(c.Ville || '').includes(qDept)
-                    ) : true;
-                    return nomOk && deptOk;
-                  })
-                : [...this.state.comptes].sort((a, b) => (a.Nom_Compte || '').localeCompare(b.Nom_Compte || '', 'fr'));
-              const aucunDept = qDept.length >= 1 && comptesFiltres.length === 0;
-              return `
-               <div style="display:flex;gap:6px;margin-bottom:6px">
-                 <label style="flex:1;margin-bottom:0">🔍 Nom / Ville
-                   <input placeholder="Nom ou ville…" value="${f.rechercheCompte || ''}"
-                          oninput="VueVisites.state.formPlanif.rechercheCompte=this.value;VueVisites.render()"/>
-                 </label>
-                 <label style="flex:0 0 70px;margin-bottom:0">Dept
-                   <input placeholder="75…" maxlength="3" value="${f.rechercheDept || ''}"
-                          oninput="VueVisites.state.formPlanif.rechercheDept=this.value;VueVisites.render()"/>
-                 </label>
-               </div>
-               ${aucunDept ? `
-               <div style="font-size:12px;color:var(--c-text-2);padding:8px;background:var(--c-bg);border-radius:var(--radius-sm);margin-bottom:8px">
-                 Aucun compte dans ce département.
-                 <button type="button" class="btn-secondaire" style="font-size:11px;padding:4px 8px;margin-left:6px;width:auto"
-                         onclick="VueVisites.state.formPlanif.horsBase=true;VueVisites.render()">
-                   ❄️ Créer une visite à froid
-                 </button>
-               </div>` : ''}
-               <label>Compte * <span style="font-size:11px;color:var(--c-text-2);font-weight:400">${actif ? comptesFiltres.length + ' résultat(s)' : 'trié par nom'}</span>
-                 <select required size="7" style="height:180px"
-                         onchange="VueVisites.setCible(this.value, this.options[this.selectedIndex].dataset.nom)">
-                   <option value="">— sélectionner —</option>
-                   ${comptesFiltres.map(c =>
-                     `<option value="${c.ID_Compte}" data-nom="${c.Nom_Compte}" ${f.idCible === c.ID_Compte ? 'selected' : ''}>${c.urgent ? '! ' : ''}${c.Nom_Compte}${c.Departement ? ' [' + c.Departement + ']' : ''}${c.Ville ? ' — ' + c.Ville : ''}${c.silence != null ? ' · ' + c.silence + 's' : ''}</option>`
-                   ).join('')}
-                 </select>
-               </label>
-               ${this._ficheCompteSelectionne(f.idCible)}`;
-            })()
+            : `<div id="visites-recherche-modal">${this._renderRechercheCompteModal()}</div>`
           }
           <!-- D3 — Section Planification -->
           <div class="modal-section-sep">Planification</div>

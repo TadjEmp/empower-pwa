@@ -231,14 +231,14 @@ window.VuePhotos = {
       <header class="header-vue">
         <button onclick="Router.retour()" class="btn-retour">←</button>
         <h1>Mes Photos</h1>
-        <span class="badge-compteur">${flat.length}</span>
+        <span class="badge-compteur" id="photos-compteur">${flat.length}</span>
       </header>
 
       <div style="padding:10px 12px 0 12px">
-        <input type="search" placeholder="🔍 Filtrer par compte…"
+        <input type="search" id="photos-filtre-q" placeholder="🔍 Filtrer par compte…"
                value="${this.state.filtreQ}"
                style="width:100%;box-sizing:border-box;padding:11px 14px;border:1.5px solid var(--c-border);border-radius:var(--radius);font-size:14px;background:var(--c-surface);color:var(--c-text)"
-               oninput="VuePhotos.state.filtreQ=this.value;VuePhotos.render()"/>
+               oninput="VuePhotos.setFiltreQ(this.value)"/>
       </div>
 
       ${Session.voitTout() ? `
@@ -252,8 +252,18 @@ window.VuePhotos = {
         </select>
       </div>` : ''}
 
-      <div class="avec-nav" style="padding:12px">
-        ${flat.length === 0
+      <div class="avec-nav" style="padding:12px" id="photos-grille-zone">${this._renderGrilleZone(flat, groupes)}</div>`;
+  },
+
+  // BLOC 11 — extrait de render() : la grille de photos, seule partie qui
+  // change quand on tape dans le filtre. Même correctif que
+  // VueComptes._renderListeZone (cause identique) — ce champ n'avait même
+  // pas de debounce, donc rendait/détruisait la page à CHAQUE frappe, pire
+  // encore que les autres champs concernés.
+  _renderGrilleZone(flat, groupes) {
+    flat = flat || this._buildFlat();
+    groupes = groupes || this._grouper(flat);
+    return `${flat.length === 0
           ? `<div style="text-align:center;padding:48px 20px;color:var(--c-text-2)">
                <div style="font-size:40px;margin-bottom:12px">📷</div>
                <div style="font-size:15px;font-weight:700;margin-bottom:6px">Aucune photo</div>
@@ -287,7 +297,20 @@ window.VuePhotos = {
                   </div>`;
                 }).join('')}
               </div>`;
-            }).join('')}
-      </div>`;
+            }).join('')}`;
   },
+
+  // BLOC 11 — patch ciblé de #photos-grille-zone au lieu d'un render()
+  // complet, DÉSORMAIS débouncé (ce champ n'avait aucun debounce avant :
+  // pire cas de tous, un render() complet à chaque frappe sans exception).
+  setFiltreQ: debounce(function(v) {
+    VuePhotos.state.filtreQ = v;
+    const zone = document.getElementById('photos-grille-zone');
+    if (zone) {
+      const flat = VuePhotos._buildFlat();
+      zone.innerHTML = VuePhotos._renderGrilleZone(flat);
+      const compteur = document.getElementById('photos-compteur');
+      if (compteur) compteur.textContent = flat.length;
+    } else VuePhotos.render();
+  }, 250),
 };

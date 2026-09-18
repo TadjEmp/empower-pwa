@@ -152,7 +152,7 @@ window.VueComptesHistoriques = {
       <header class="header-vue">
         <button onclick="Router.retour()" class="btn-retour">←</button>
         <h1>Comptes Historiques</h1>
-        <span class="badge-compteur">${liste.length}/${total}</span>
+        <span class="badge-compteur" id="ch-compteur">${liste.length}/${total}</span>
       </header>
 
       <!-- Onglets Comptes actifs / Historique CA — cf. vue-comptes.js -->
@@ -187,8 +187,19 @@ window.VueComptesHistoriques = {
       </div>
 
       <!-- Liste -->
-      <div class="liste-comptes avec-nav">
-        ${liste.length === 0
+      <div class="liste-comptes avec-nav" id="ch-liste-zone">${this._renderListeZone(liste)}</div>
+
+      ${NavBar('historiques')}
+    `;
+
+    const champ = document.getElementById('ch-recherche');
+    if (this.state.recherche && champ) champ.focus();
+  },
+
+  // BLOC 11 — même correctif que VueComptes._renderListeZone (cause identique).
+  _renderListeZone(liste) {
+    liste = liste || this.listeFiltree;
+    return `${liste.length === 0
           ? '<div class="vide" style="padding:32px;text-align:center;color:var(--c-text-2)">Aucun compte pour ces critères</div>'
           : `
         <!-- MOBILE : fiches empilées -->
@@ -257,17 +268,20 @@ window.VueComptesHistoriques = {
               }).join('')}
             </tbody>
           </table>
-        </div>`}
-      </div>
-
-      ${NavBar('historiques')}
-    `;
-
-    const champ = document.getElementById('ch-recherche');
-    if (this.state.recherche && champ) champ.focus();
+        </div>`}`;
   },
 
-  setRecherche: debounce(function(v) { VueComptesHistoriques.state.recherche = v; VueComptesHistoriques.render(); }, 250),
+  // BLOC 11 — patch ciblé de #ch-liste-zone au lieu d'un render() complet
+  // (cf. VueComptes._renderListeZone pour le détail de la cause).
+  setRecherche: debounce(function(v) {
+    VueComptesHistoriques.state.recherche = v;
+    const zone = document.getElementById('ch-liste-zone');
+    if (zone) {
+      zone.innerHTML = VueComptesHistoriques._renderListeZone();
+      const compteur = document.getElementById('ch-compteur');
+      if (compteur) compteur.textContent = `${VueComptesHistoriques.listeFiltree.length}/${VueComptesHistoriques.state.comptes.length}`;
+    } else VueComptesHistoriques.render();
+  }, 250),
   setStatut(s) { this.state.filtreStatut = s; this.render(); },
   setTri(t)    { this.state.triPar = t; this.state.triCol = null; this.render(); },
 };

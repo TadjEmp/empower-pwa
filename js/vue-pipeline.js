@@ -771,13 +771,27 @@ window.VuePipeline = {
   },
   archiverSelection() { this.demanderMotifArchiveBulk(); },
 
+  // BLOC 11 — patch ciblé de #tracker-resultats-zone au lieu d'un render()
+  // complet : sur ~100 leads, le re-render détruisait/recréait le champ de
+  // recherche assez lentement pour qu'une frappe suivante le trouve absent
+  // (même cause que VueComptes, cf. son commentaire détaillé). Ré-initialise
+  // le drag & drop (Sortable) et les compteurs, tous deux régénérés ou hors
+  // de la zone patchée.
   setRecherche: debounce(function(v) {
     VuePipeline.state.recherche = v;
     VuePipeline.state.pageTable = 1;
     // Quand on tape une recherche, on affiche tout pour ne rien masquer
     if (v) VuePipeline.state.colonnesEtendues = { SAISIE:true, ASSIGNE:true, EN_COURS:true, COMPTE_CREE:true, INTEGRE:true, ARCHIVE:true };
     else    VuePipeline.state.colonnesEtendues = {};
-    VuePipeline.render();
+    const zone = document.getElementById('tracker-resultats-zone');
+    if (zone) {
+      const leads = VuePipeline.leadsFiltres;
+      zone.innerHTML = VuePipeline._renderResultatsZone(leads);
+      VuePipeline._initSortableKanban();
+      const compteurHeader = document.getElementById('tracker-compteur-header');
+      if (compteurHeader) compteurHeader.textContent = `${leads.length} leads`;
+      document.querySelectorAll('.tab-num').forEach(el => el.textContent = leads.length);
+    } else VuePipeline.render(); // repli si la zone n'est pas encore montée
   }, 250),
 
   // ── RENDER ──
@@ -797,7 +811,7 @@ window.VuePipeline = {
       <header class="header-vue">
         <button onclick="Router.retour()" class="btn-retour">←</button>
         <h1>EMPOWER TRACKER</h1>
-        <span class="badge-compteur">${leads.length} leads</span>
+        <span class="badge-compteur" id="tracker-compteur-header">${leads.length} leads</span>
       </header>
 
       <!-- Toggle Kanban / Table — tabs premium -->
@@ -862,7 +876,24 @@ window.VuePipeline = {
         </div>
       </div>
 
-      ${this.modeAffichage === 'kanban' ? `
+      <div id="tracker-resultats-zone">${this._renderResultatsZone(leads, voitTous)}</div>
+
+      ${peutSaisir ? '<button class="fab" onclick="VuePipeline.ouvrirSaisie()" title="Nouveau lead" style="bottom:140px">＋</button>' : ''}
+      ${(Session.estManager() || Session.estChannel()) ? `<button class="fab fab-export" onclick="VuePipeline.ouvrirExport()" title="Export Excel" style="bottom:210px;background:var(--c-success);font-size:18px">📥</button>` : ''}
+      ${NavBar('tracker')}
+      ${this._renderModal()}
+      ${this._renderPanneauExport()}
+    `;
+    this._initSortableKanban();
+  },
+
+  // BLOC 11 — extrait de render() : le Kanban/Tableau, seule partie qui
+  // change quand on tape dans la recherche. Même correctif que
+  // VueComptes._renderListeZone (cf. son commentaire) — cause identique.
+  _renderResultatsZone(leads, voitTous) {
+    leads = leads || this.leadsFiltres;
+    voitTous = voitTous === undefined ? this._voitTous() : voitTous;
+    return `${this.modeAffichage === 'kanban' ? `
       <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:6px">
         <p style="font-size:11px;color:var(--c-text-2);margin:0">← Glisser pour voir les statuts →</p>
         <button class="btn-secondaire" style="width:auto;padding:4px 10px;font-size:11px;display:flex;align-items:center;gap:5px"
@@ -971,15 +1002,7 @@ window.VuePipeline = {
               </div>` : ''}
           </div>`;
         }).join('')}
-      </div>` : this._renderTableau(leads, voitTous)}
-
-      ${peutSaisir ? '<button class="fab" onclick="VuePipeline.ouvrirSaisie()" title="Nouveau lead" style="bottom:140px">＋</button>' : ''}
-      ${(Session.estManager() || Session.estChannel()) ? `<button class="fab fab-export" onclick="VuePipeline.ouvrirExport()" title="Export Excel" style="bottom:210px;background:var(--c-success);font-size:18px">📥</button>` : ''}
-      ${NavBar('tracker')}
-      ${this._renderModal()}
-      ${this._renderPanneauExport()}
-    `;
-    this._initSortableKanban();
+      </div>` : this._renderTableau(leads, voitTous)}`;
   },
 
   // ── Feuille de route Phase 1 — glisser-déposer entre colonnes du Kanban.
