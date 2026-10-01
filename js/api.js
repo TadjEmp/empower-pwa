@@ -76,6 +76,7 @@ const SheetsAPI = {
     '📋_PROSPECTS': 'leads', 'LEADS': 'leads',
     '📝_ACTIONS': 'actions', '📊_ACTIONS': 'actions', 'ACTIONS': 'actions',
     '👤_UTILISATEURS': 'utilisateurs', 'UTILISATEURS': 'utilisateurs',
+    '❄️_FICHES_FROIDES': 'fiches_froides', 'FICHES_FROIDES': 'fiches_froides',
   },
 
   // Tables volontairement vides (table physique absente — ne jamais interroger).
@@ -166,6 +167,8 @@ const SheetsAPI = {
       decideur_rencontre: 'Decideur_Rencontre', decideur_nom: 'Decideur_Nom',
       decideur_fonction: 'Decideur_Fonction', concurrents_json: 'Concurrents_JSON',
       id_action_origine: 'ID_Action_Origine',
+      // Lot 1 (10/2026) — lien visite → fiche magasin à froid (fiches_froides.id_fiche_gas)
+      id_fiche_froide: 'ID_Fiche_Froide',
       // Feuille de route Phase 1 — durée prévue, saisie depuis toujours au
       // formulaire de planification (vue-visites.js#planifier, f.dureeVisite)
       // mais jamais mappée ici : Duree_Prevue n'atteignait donc jamais cette
@@ -202,6 +205,17 @@ const SheetsAPI = {
       id_action_gas: 'ID_Action', date_action: 'Date_Action', type_action: 'Type_Action',
       source: 'Source', pin_cds: 'PIN_CDS', nom_compte: 'Nom_Compte',
       statut_avant: 'Statut_Avant', statut_apres: 'Statut_Apres', resum_ia: 'Resum_IA', id: '_uuid',
+    },
+    fiches_froides: {
+      id_fiche_gas: 'ID_Fiche', nom_magasin: 'Nom_Magasin', nom_norm: 'Nom_Norm',
+      ville: 'Ville', departement: 'Departement', adresse: 'Adresse', tel: 'Tel', email: 'Email',
+      contact_nom: 'Contact_Nom', contact_fonction: 'Contact_Fonction',
+      pin_cds: 'PIN_CDS', nom_cds: 'Nom_CDS',
+      date_premiere_visite: 'Date_Premiere_Visite', date_derniere_visite: 'Date_Derniere_Visite',
+      resultat_derniere: 'Resultat_Derniere', prochaine_action: 'Prochaine_Action',
+      date_relance: 'Date_Relance', commentaire: 'Commentaire', statut: 'Statut',
+      id_compte_lie: 'ID_Compte_Lie', id_lead_lie: 'ID_Lead_Lie', nb_visites: 'Nb_Visites',
+      doublon_a_revoir: 'Doublon_A_Revoir', deleted: 'deleted', id: '_uuid',
     },
     notifs: {
       id_notif_gas: 'ID_Notif', date_envoi: 'Date_Envoi', pin_destinataire: 'PIN_Destinataire',
@@ -316,8 +330,19 @@ const SheetsAPI = {
       'Contact_Nom': 'contact_nom', 'Contact_Fonction': 'contact_fonction',
       'Date_Onboarding_Empower': 'date_onboarding_empower',
     },
+    fiches_froides: {
+      'ID_Fiche': 'id_fiche_gas', 'Nom_Magasin': 'nom_magasin', 'Nom_Norm': 'nom_norm',
+      'Ville': 'ville', 'Departement': 'departement', 'Adresse': 'adresse', 'Tel': 'tel', 'Email': 'email',
+      'Contact_Nom': 'contact_nom', 'Contact_Fonction': 'contact_fonction',
+      'PIN_CDS': 'pin_cds', 'Nom_CDS': 'nom_cds',
+      'Date_Premiere_Visite': 'date_premiere_visite', 'Date_Derniere_Visite': 'date_derniere_visite',
+      'Resultat_Derniere': 'resultat_derniere', 'Prochaine_Action': 'prochaine_action',
+      'Date_Relance': 'date_relance', 'Commentaire': 'commentaire', 'Statut': 'statut',
+      'ID_Compte_Lie': 'id_compte_lie', 'ID_Lead_Lie': 'id_lead_lie', 'Nb_Visites': 'nb_visites',
+      'Doublon_A_Revoir': 'doublon_a_revoir',
+    },
     visites: {
-      'ID_Visite': 'id_visite_gas', 'ID_Cible': 'id_cible_gas',
+      'ID_Visite': 'id_visite_gas', 'ID_Cible': 'id_cible_gas', 'ID_Fiche_Froide': 'id_fiche_froide',
       'Date': 'date_visite', 'Date_Planif': 'date_visite',
       'Heure': 'heure', 'Semaine_ISO': 'semaine_iso',
       'PIN_CDS': 'pin_cds', 'Nom_CDS': 'nom_cds', 'Nom_Compte': 'nom_compte',
@@ -467,6 +492,7 @@ const SheetsAPI = {
       nsb_commandes:    ['montant_eur', 'pin_cds'],
       comptes:          ['pin_cds_assigne', 'slider_receptivite', 'ca_fy25', 'ca_fy26', 'ca_q1fy27'],
       visites:          ['pin_cds', 'slider_receptivite', 'duree_minutes', 'gps_lat', 'gps_lng'],
+      fiches_froides:   ['pin_cds', 'nb_visites'],
       objectifs_primes: ['pin_cds', 'q1_obj_initial','q1_obj_revise','q1_ca_realise',
                          'q2_obj_initial','q2_obj_revise','q2_ca_realise',
                          'q3_obj_initial','q3_obj_revise','q3_ca_realise',
@@ -507,7 +533,7 @@ const SheetsAPI = {
       // comptes : soft-delete (doublons supprimables par le commercial, cf.
       // VueFicheCompte.supprimerCompte / VueComptes.supprimerCompte) — exclu
       // à la source comme visites, pour ne dépendre d'aucun filtre côté vue.
-      if (table === 'visites' || table === 'comptes') q = q.neq('deleted', true)
+      if (table === 'visites' || table === 'comptes' || table === 'fiches_froides') q = q.neq('deleted', true)
       if (limit != null) q = q.range(offset || 0, (offset || 0) + limit - 1)
       const { data, error, count } = await q
       if (error) throw new Error(error.message)
@@ -580,6 +606,7 @@ const SheetsAPI = {
       notifs:           'id_notif_gas',
       params:           'parametre',
       leads:            'id_prospect_gas',
+      fiches_froides:   'id_fiche_gas',
       objectifs_primes: 'pin_cds',
     }
     const gasKey = gasKeyMap[table]
