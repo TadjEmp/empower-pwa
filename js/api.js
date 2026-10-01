@@ -77,6 +77,7 @@ const SheetsAPI = {
     '📝_ACTIONS': 'actions', '📊_ACTIONS': 'actions', 'ACTIONS': 'actions',
     '👤_UTILISATEURS': 'utilisateurs', 'UTILISATEURS': 'utilisateurs',
     '❄️_FICHES_FROIDES': 'fiches_froides', 'FICHES_FROIDES': 'fiches_froides',
+    '📦_SELLIN_SEMAINES': 'sellin_semaines', 'SELLIN_SEMAINES': 'sellin_semaines',
   },
 
   // Tables volontairement vides (table physique absente — ne jamais interroger).
@@ -120,6 +121,13 @@ const SheetsAPI = {
       // BLOC 04 §1 (09/2026) — date d'onboarding EMPOWER, posée manuellement
       // au moment où Has_EMPOWER passe à Oui (cf. VueFicheCompte.basculerEmpower).
       date_onboarding_empower: 'Date_Onboarding_Empower',
+      // Lot 2 (10/2026) — signal SELL IN « dernière semaine de commande » (cf. sellin-flag.js)
+      sellin_dernier_quarter: 'SellIn_Dernier_Quarter', sellin_derniere_semaine: 'SellIn_Derniere_Semaine',
+      sellin_commercial: 'SellIn_Commercial',
+    },
+    sellin_semaines: {
+      reseller: 'Reseller', reseller_norm: 'Reseller_Norm', quarter: 'Quarter', semaine: 'Semaine',
+      ca_eur: 'CA_EUR', unites: 'Unites', commercial_sellin: 'Commercial_SellIn', compte_id: 'Compte_ID', id: '_uuid',
     },
     sellin_agregats: {
       reseller: 'RESELLER', canal: 'CANAL',

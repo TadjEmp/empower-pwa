@@ -79,12 +79,13 @@ window.VueFicheCompte = {
     this.state.modalRapportPhoning = false;
     this._trackerAjouteDepuisFiche = false;
     this.state.suppressionEnCours = false;
-    const [comptes, rawV17, visites, appels, params] = await Promise.all([
+    const [comptes, rawV17, visites, appels, params, sellinSem] = await Promise.all([
       SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
       SheetsAPI.lire('V17', '📋 COMPTES HISTORIQUES'),
       SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES'),
       SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING'),
       SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS').catch(() => []),
+      SheetsAPI.lire('EMPOWER_MDB', 'SELLIN_SEMAINES').catch(() => []),   // Lot 2 — jamais bloquant
     ]);
     // BLOC 07 §8 — quarter FY27 actif, même pattern que vue-dashboard-manager.js
     const paramMap = Object.fromEntries((params || []).map(p => [p.Parametre, p.Valeur]));
@@ -99,6 +100,7 @@ window.VueFicheCompte = {
 
     const nomNorm = normaliserNom(compte.Nom_Compte);
     this.state.compte  = compte;
+    this.state.sellinSemaines = SellInFlag.dernieres(sellinSem, compte._uuid);
     this.state.v17     = rawV17.find(r => normaliserNom(r.RESELLER) === nomNorm) || null;
     this.state.visites = visites.filter(v => String(v.ID_Cible) === String(idCompte))
       .sort((a, b) => new Date(b.Date) - new Date(a.Date));
@@ -564,6 +566,8 @@ window.VueFicheCompte = {
     return `
       ${this._renderBlocIdentite(c)}
 
+      ${SellInFlag.blocFiche(c, this.state.sellinSemaines)}
+
       <!-- CA HISTORIQUE -->
       <div class="bloc-fiche">
         <div class="bloc-titre">CA Historique</div>
@@ -648,6 +652,7 @@ window.VueFicheCompte = {
       <header class="header-vue">
         <button onclick="Router.retour()" class="btn-retour">←</button>
         <h1 class="header-titre-tronque">${c.Nom_Compte}</h1>
+        ${SellInFlag.badge(c)}
       </header>
 
       <div class="fiche-body avec-nav">

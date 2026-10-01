@@ -21,6 +21,7 @@ window.VueAdmin = {
       syncSellInEnCours: false,
       syncSellInResultat: null,
       syncSellInNonMatcher: [],
+      syncSemainesResultat: null,   // Lot 2 — import SELL IN par semaine
       suivi: { chargement: false, leads: [], filtreStatut: 'TOUS', filtreCDS: 'TOUS' },
       // BLOC 10 — filtre Pickup Date pour exports (manager + channel)
       filtrePickupDe: '',
@@ -793,7 +794,10 @@ window.VueAdmin = {
         (nonMatch.length ? ` · ${nonMatch.length} à valider` : ''),
         'succes', 7000
       );
+      // Lot 2 — signal « dernière semaine de commande » depuis les onglets REVENDEURS AU DETAIL (non bloquant)
+      await this._importerSemaines(wb, file.name);
       await Promise.all([
+        SheetsAPI.viderCache('EMPOWER_MDB', 'SELLIN_SEMAINES'),
         SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES'),
         SheetsAPI.viderCache('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
         SheetsAPI.viderCache('EMPOWER_MDB', '📋 COMPTES HISTORIQUES'),
@@ -805,6 +809,113 @@ window.VueAdmin = {
     }
     this.state.syncSellInEnCours = false;
     this.render();
+  },
+
+  // ── Lot 2 : SELL IN par semaine ──
+  // Lit les onglets « REVENDEURS AU DETAIL Qn » (PAS les onglets BRUT) et les envoie à
+  // l'edge function sync-sellin-semaines. Réimportable à l'identique : un fichier W13
+  // remplace W12 ; un fichier plus ancien est refusé (409) sauf confirmation.
+  async _importerSemaines(wb, nomFichier, force = false) {
+    const onglets = wb.SheetNames.filter(n => /REVENDEURS\s+AU\s+DETAIL\s+Q[1-4]\b/i.test(n));
+    if (!onglets.length) {
+      this.state.syncSemainesResultat = { ok: false, message: 'Aucun onglet « REVENDEURS AU DETAIL Qn » dans ce fichier — signal semaine non mis à jour.' };
+      return;
+    }
+    try {
+      const detail = onglets.map(n => ({ onglet: n, rows: XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: false, defval: '' }) }));
+      this._detailSemainesEnAttente = { wb, nomFichier };
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/sync-sellin-semaines`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+        body: JSON.stringify({ token: Session.token, detail, fichier: nomFichier, force }),
+      });
+      const data = await r.json();
+      if (r.status === 409 && data.code === 'FICHIER_PLUS_ANCIEN') {
+        this.state.syncSemainesResultat = { ok: false, ancien: true, message: data.erreur };
+        return;
+      }
+      if (!r.ok || !data.ok) throw new Error(data.erreur || `HTTP ${r.status}`);
+      this.state.syncSemainesResultat = { ...data, ok: true, ts: new Date().toLocaleString('fr-FR') };
+      this._detailSemainesEnAttente = null;
+      Toast.afficher(`✅ SELL IN par semaine : ${data.comptes_flagues} compte(s) flaggé(s)` + (data.nonMatcher.length ? ` · ${data.nonMatcher.length} à rattacher` : ''), 'succes', 6000);
+    } catch (e) {
+      this.state.syncSemainesResultat = { ok: false, message: e.message || String(e) };
+      Toast.afficher('❌ SELL IN par semaine : ' + (e.message || e), 'erreur');
+    }
+  },
+
+  async forcerImportSemaines() {
+    const att = this._detailSemainesEnAttente;
+    if (!att) return;
+    this.state.syncSellInEnCours = true; this.render();
+    await this._importerSemaines(att.wb, att.nomFichier, true);
+    await SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES');
+    this.state.syncSellInEnCours = false; this.render();
+  },
+
+  // Rattache un nom SELL IN à un compte existant (alias mémorisé pour les prochains imports).
+  async rattacherSellIn(nom, compteId) {
+    if (!compteId) { Toast.afficher('Choisissez un compte', 'warning'); return; }
+    try {
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/sync-sellin-semaines`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+        body: JSON.stringify({ token: Session.token, action: 'alias', nom, compteId }),
+      });
+      const data = await r.json();
+      if (!r.ok || !data.ok) throw new Error(data.erreur || `HTTP ${r.status}`);
+      const res = this.state.syncSemainesResultat;
+      if (res?.nonMatcher) res.nonMatcher = res.nonMatcher.filter(n => n.reseller !== nom);
+      await SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES');
+      Toast.afficher(`✅ « ${nom} » rattaché — alias mémorisé`, 'succes');
+      this.render();
+    } catch (e) { Toast.afficher('❌ ' + (e.message || e), 'erreur'); }
+  },
+
+  // Rattachement depuis la liste de candidats (id d'élément dérivé du nom normalisé).
+  rattacherDepuisListe(idSelect, nom) {
+    const sel = document.getElementById(idSelect);
+    this.rattacherSellIn(nom, sel && sel.value);
+  },
+
+  _renderSellInSemaines() {
+    const r = this.state.syncSemainesResultat;
+    if (!r) return '';
+    const E = s => SellInFlag.esc(s);
+    const eur = n => Number(n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+    if (!r.ok) return `
+      <div class="bloc-fiche" style="border-left:3px solid var(--c-danger)">
+        <div class="bloc-titre">📦 SELL IN par semaine — non importé</div>
+        <p style="font-size:12px;margin:0 0 8px">${E(r.message)}</p>
+        ${r.ancien ? `<button class="btn-secondaire" style="width:auto;padding:8px 14px" onclick="VueAdmin.forcerImportSemaines()">Importer quand même</button>` : ''}
+      </div>`;
+    const lignes = Object.entries(r.trimestres || {}).map(([q, t]) => `
+      <tr><td><strong>${E(q)}</strong></td><td>S${t.semaine_max}</td><td style="text-align:right">${t.revendeurs}</td>
+          <td style="text-align:right;font-weight:700">${eur(t.ca_total)}</td>
+          <td style="text-align:right;color:${t.ca_non_rapproche > 0 ? 'var(--c-warning)' : 'inherit'}">${eur(t.ca_non_rapproche)}</td></tr>`).join('');
+    const idSel = n => 'alias-' + String(n.norm || n.reseller).replace(/[^A-Za-z0-9]/g, '_');
+    return `
+      <div class="bloc-fiche">
+        <div class="bloc-titre">📦 SELL IN par semaine — ${r.comptes_flagues} compte(s) flaggé(s) · ${E(r.ts || '')}</div>
+        <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:8px">
+          <thead><tr style="text-align:left;color:var(--c-text-2)"><th>Trimestre</th><th>Dernière sem.</th><th style="text-align:right">Revendeurs</th><th style="text-align:right">CA importé</th><th style="text-align:right">dont non rattaché</th></tr></thead>
+          <tbody>${lignes}</tbody>
+        </table>
+        <p style="font-size:11px;color:var(--c-text-2);margin:0 0 8px">Contrôle : « CA importé » doit égaler la somme de la colonne <em>Local Value</em> de l'onglet. « Non rattaché » = CA de revendeurs sans compte (à traiter ci-dessous).</p>
+        ${(r.nonMatcher || []).length ? `
+        <div style="font-size:12px;font-weight:700;color:var(--c-warning);margin-bottom:6px">⚠️ À rattacher (${r.nonMatcher.length}) — aucun compte créé automatiquement</div>
+        ${r.nonMatcher.map(n => `
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px;padding:6px 0;border-bottom:1px solid var(--c-border)">
+            <strong style="min-width:140px">${E(n.reseller)}</strong>
+            ${(n.candidats || []).length ? `
+              <select id="${idSel(n)}" style="flex:1;min-width:140px">
+                ${n.candidats.map(c => `<option value="${c.id}">${E(c.nom)}</option>`).join('')}
+              </select>
+              <button class="btn-secondaire" style="width:auto;padding:6px 10px;font-size:12px"
+                      data-nom="${E(n.reseller)}" onclick="VueAdmin.rattacherDepuisListe('${idSel(n)}', this.dataset.nom)">Rattacher</button>`
+            : `<span style="color:var(--c-text-2)">compte introuvable — créer le compte puis réimporter</span>`}
+          </div>`).join('')}` : '<span style="font-size:12px">🎯 Tous les revendeurs sont rattachés</span>'}
+      </div>`;
   },
 
   syncSellIn() {
@@ -1508,6 +1619,8 @@ window.VueAdmin = {
                 <p style="font-size:11px;color:var(--c-text-2);margin-top:4px">Aucune création automatique n'a été faite pour ces revendeurs (risque de doublon) — à traiter à la main dans l'onglet Comptes.</p>
               </div>` : ''}`;
           })() : ''}
+
+          ${this._renderSellInSemaines()}
 
           <!-- BLOC 04 (09/2026) — import direct du fichier Sell-In original
                (.xlsx), lu dans le navigateur : contourne l'API Drive (bloquée

@@ -480,6 +480,7 @@ window.VueComptes = {
               ${this._badgeEmpower(c)}
               ${estDoublon ? `<span style="color:var(--c-warning);font-size:11px;font-weight:700" title="Un autre compte porte le même nom — ouvrir la fiche pour supprimer le doublon">⚠️ Doublon</span>` : ''}
               ${badgeDernier}
+              ${SellInFlag.badge(c)}
               ${badgeDernierAppel}
               ${this._badgePriorite(c.Priorite)}
               <span style="margin-left:auto;font-size:12px;color:var(--c-muted)">FY26 ${caFY26}</span>
