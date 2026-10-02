@@ -454,7 +454,7 @@ window.VuePipeline = {
       }
       if (!silencieux) {
         this.state.modal = null;
-        Toast.afficher(`✅ ${lead.Nom_Compte} → ${this.STATUTS.find(s => s.id === statut).lbl}`, 'succes');
+        Toast.afficher(`✅ ${lead.Nom_Compte} → ${this.STATUTS.find(s => s.id === statut)?.lbl || statut}`, 'succes');
         this.render();
       }
       if (doCreerCompte) this._creerCompteDepuisLead(lead).catch(() => {});
