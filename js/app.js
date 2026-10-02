@@ -68,6 +68,7 @@ function demarrerServicesSession() {
   if (window.NotifCenter) NotifCenter._render();    // cloche visible immédiatement
   _initPollingNotifs();                             // garde interne _demarre
   if (window.DrawerMenu) DrawerMenu.renderToRoot();
+  if (window.PushNotifs) PushNotifs.synchroniser().then(() => NotifCenter && NotifCenter._render());   // Lot 6 — ré-enregistre l'appareil déjà abonné
   if (window.AContacter) AContacter.charger().catch(() => {});   // Lot 5 — compteur « À contacter » (non bloquant)
   if (window.Topbar) Topbar.init();                 // garde interne _observer
   if (window.PaletteCommandes) PaletteCommandes.init(); // Feuille de route Phase 4 — ⌘K

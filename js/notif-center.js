@@ -110,6 +110,7 @@ window.NotifCenter = {
             <strong>Notifications${this.compteur ? ` (${this.compteur})` : ''}</strong>
             ${this.liste.length ? `<button class="nc-tout" onclick="NotifCenter.marquerToutesLues()">Tout marquer lu</button>` : ''}
           </div>
+          ${window.PushNotifs ? PushNotifs.html() : ''}
           <div class="nc-liste">${items}</div>
         </div>
       </div>`;

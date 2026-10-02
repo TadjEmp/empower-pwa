@@ -6,7 +6,7 @@
 //  Le cache ne sert plus que de secours hors-ligne.
 // ═══════════════════════════════════════
 
-const CACHE_NAME  = 'esi-v5-127';
+const CACHE_NAME  = 'esi-v5-128';
 // Assets immuables (jamais modifiés après publication) → cache-first.
 const STATIC_RE = /\.(png|jpe?g|svg|webp|gif|ico|woff2?|ttf)$/i;
 // Chemins relatifs : fonctionne à la racine d'un domaine comme en sous-dossier GitHub Pages
@@ -28,6 +28,7 @@ const ASSETS_CORE = [
   './js/sellin-flag.js',
   './js/non-suivis.js',
   './js/vue-a-contacter.js',
+  './js/push.js',
   './js/groq.js',
   './js/toast.js',
   './js/router.js',
@@ -96,6 +97,37 @@ async function cacheFirst(request) {
   if (cached) return cached;
   return metEnCache(request, await fetch(request));
 }
+
+// ── Lot 6 : notifications push (envoyées par la fonction send-push via le service de push du navigateur) ──
+self.addEventListener('push', e => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (err) { d = { body: e.data ? e.data.text() : '' }; }
+  e.waitUntil(self.registration.showNotification(d.title || 'EMPOWER', {
+    body: d.body || '',
+    icon: './icons/icon-192.png',
+    badge: './icons/icon-192.png',
+    tag: d.tag || 'empower',          // une même famille de notifications se remplace au lieu de s'empiler
+    renotify: true,
+    data: { url: d.url || '#/dashboard' },
+  }));
+});
+
+// Clic : ouvre (ou réutilise) l'app sur la route associée (#/a-contacter, #/compte/…, #/empower-tracker…).
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const hash = (e.notification.data && e.notification.data.url) || '#/dashboard';
+  const cible = new URL('./' + hash, self.registration.scope).href;
+  e.waitUntil((async () => {
+    const fenetres = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const w of fenetres) {
+      if (w.url.startsWith(self.registration.scope)) {
+        try { await w.navigate(cible); } catch (err) { /* navigation refusée : on se contente de focus */ }
+        return w.focus();
+      }
+    }
+    return clients.openWindow(cible);
+  })());
+});
 
 self.addEventListener('fetch', e => {
   // Passer les requêtes vers les API externes (Google, Supabase) sans intercepter
