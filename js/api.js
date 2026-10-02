@@ -76,6 +76,9 @@ const SheetsAPI = {
     '📋_PROSPECTS': 'leads', 'LEADS': 'leads',
     '📝_ACTIONS': 'actions', '📊_ACTIONS': 'actions', 'ACTIONS': 'actions',
     '👤_UTILISATEURS': 'utilisateurs', 'UTILISATEURS': 'utilisateurs',
+    '❄️_FICHES_FROIDES': 'fiches_froides', 'FICHES_FROIDES': 'fiches_froides',
+    '📦_SELLIN_SEMAINES': 'sellin_semaines', 'SELLIN_SEMAINES': 'sellin_semaines',
+    'V_COMPTES_SUIVI': 'v_comptes_suivi', 'ATTRIBUTIONS_HISTORIQUE': 'attributions_historique', 'V_A_CONTACTER': 'v_a_contacter',
   },
 
   // Tables volontairement vides (table physique absente — ne jamais interroger).
@@ -119,6 +122,29 @@ const SheetsAPI = {
       // BLOC 04 §1 (09/2026) — date d'onboarding EMPOWER, posée manuellement
       // au moment où Has_EMPOWER passe à Oui (cf. VueFicheCompte.basculerEmpower).
       date_onboarding_empower: 'Date_Onboarding_Empower',
+      // Lot 2 (10/2026) — signal SELL IN « dernière semaine de commande » (cf. sellin-flag.js)
+      sellin_dernier_quarter: 'SellIn_Dernier_Quarter', sellin_derniere_semaine: 'SellIn_Derniere_Semaine',
+      sellin_commercial: 'SellIn_Commercial', date_attribution: 'Date_Attribution',
+    },
+    v_comptes_suivi: {
+      id: '_uuid', id_compte_gas: 'ID_Compte', nom_compte: 'Nom_Compte', pin_cds_assigne: 'PIN_CDS_Assigne',
+      derniere_visite: 'Derniere_Visite', dernier_appel: 'Dernier_Appel', a_prochaine_action: 'A_Prochaine_Action',
+      raisons: 'Raisons', non_suivi: 'Non_Suivi',
+    },
+    v_a_contacter: {
+      id: '_uuid', id_compte_gas: 'ID_Compte', nom_compte: 'Nom_Compte', ville: 'Ville', pin_cds_assigne: 'PIN_CDS_Assigne',
+      nom_cds: 'Nom_CDS', axe: 'Axe', priorite: 'Priorite', motif: 'Motif', date_ref: 'Date_Ref', jours: 'Jours',
+      date_integration_manquante: 'Date_Integration_Manquante', ca_recent: 'CA_Recent', ca_fy27: 'CA_FY27',
+      statut_tracker: 'Statut_Tracker', dernier_contact: 'Dernier_Contact',
+    },
+    attributions_historique: {
+      id: '_uuid', compte_id: 'Compte_ID', nom_compte: 'Nom_Compte', ancien_pin: 'Ancien_PIN', nouveau_pin: 'Nouveau_PIN',
+      ancien_nom: 'Ancien_Nom', nouveau_nom: 'Nouveau_Nom', acteur_pin: 'Acteur_PIN', mode: 'Mode', motif: 'Motif',
+      date_effet: 'Date_Effet', created_at: 'Cree_Le',
+    },
+    sellin_semaines: {
+      reseller: 'Reseller', reseller_norm: 'Reseller_Norm', quarter: 'Quarter', semaine: 'Semaine',
+      ca_eur: 'CA_EUR', unites: 'Unites', commercial_sellin: 'Commercial_SellIn', compte_id: 'Compte_ID', id: '_uuid',
     },
     sellin_agregats: {
       reseller: 'RESELLER', canal: 'CANAL',
@@ -166,6 +192,8 @@ const SheetsAPI = {
       decideur_rencontre: 'Decideur_Rencontre', decideur_nom: 'Decideur_Nom',
       decideur_fonction: 'Decideur_Fonction', concurrents_json: 'Concurrents_JSON',
       id_action_origine: 'ID_Action_Origine',
+      // Lot 1 (10/2026) — lien visite → fiche magasin à froid (fiches_froides.id_fiche_gas)
+      id_fiche_froide: 'ID_Fiche_Froide',
       // Feuille de route Phase 1 — durée prévue, saisie depuis toujours au
       // formulaire de planification (vue-visites.js#planifier, f.dureeVisite)
       // mais jamais mappée ici : Duree_Prevue n'atteignait donc jamais cette
@@ -202,6 +230,17 @@ const SheetsAPI = {
       id_action_gas: 'ID_Action', date_action: 'Date_Action', type_action: 'Type_Action',
       source: 'Source', pin_cds: 'PIN_CDS', nom_compte: 'Nom_Compte',
       statut_avant: 'Statut_Avant', statut_apres: 'Statut_Apres', resum_ia: 'Resum_IA', id: '_uuid',
+    },
+    fiches_froides: {
+      id_fiche_gas: 'ID_Fiche', nom_magasin: 'Nom_Magasin', nom_norm: 'Nom_Norm',
+      ville: 'Ville', departement: 'Departement', adresse: 'Adresse', tel: 'Tel', email: 'Email',
+      contact_nom: 'Contact_Nom', contact_fonction: 'Contact_Fonction',
+      pin_cds: 'PIN_CDS', nom_cds: 'Nom_CDS',
+      date_premiere_visite: 'Date_Premiere_Visite', date_derniere_visite: 'Date_Derniere_Visite',
+      resultat_derniere: 'Resultat_Derniere', prochaine_action: 'Prochaine_Action',
+      date_relance: 'Date_Relance', commentaire: 'Commentaire', statut: 'Statut',
+      id_compte_lie: 'ID_Compte_Lie', id_lead_lie: 'ID_Lead_Lie', nb_visites: 'Nb_Visites',
+      doublon_a_revoir: 'Doublon_A_Revoir', deleted: 'deleted', id: '_uuid',
     },
     notifs: {
       id_notif_gas: 'ID_Notif', date_envoi: 'Date_Envoi', pin_destinataire: 'PIN_Destinataire',
@@ -316,8 +355,19 @@ const SheetsAPI = {
       'Contact_Nom': 'contact_nom', 'Contact_Fonction': 'contact_fonction',
       'Date_Onboarding_Empower': 'date_onboarding_empower',
     },
+    fiches_froides: {
+      'ID_Fiche': 'id_fiche_gas', 'Nom_Magasin': 'nom_magasin', 'Nom_Norm': 'nom_norm',
+      'Ville': 'ville', 'Departement': 'departement', 'Adresse': 'adresse', 'Tel': 'tel', 'Email': 'email',
+      'Contact_Nom': 'contact_nom', 'Contact_Fonction': 'contact_fonction',
+      'PIN_CDS': 'pin_cds', 'Nom_CDS': 'nom_cds',
+      'Date_Premiere_Visite': 'date_premiere_visite', 'Date_Derniere_Visite': 'date_derniere_visite',
+      'Resultat_Derniere': 'resultat_derniere', 'Prochaine_Action': 'prochaine_action',
+      'Date_Relance': 'date_relance', 'Commentaire': 'commentaire', 'Statut': 'statut',
+      'ID_Compte_Lie': 'id_compte_lie', 'ID_Lead_Lie': 'id_lead_lie', 'Nb_Visites': 'nb_visites',
+      'Doublon_A_Revoir': 'doublon_a_revoir',
+    },
     visites: {
-      'ID_Visite': 'id_visite_gas', 'ID_Cible': 'id_cible_gas',
+      'ID_Visite': 'id_visite_gas', 'ID_Cible': 'id_cible_gas', 'ID_Fiche_Froide': 'id_fiche_froide',
       'Date': 'date_visite', 'Date_Planif': 'date_visite',
       'Heure': 'heure', 'Semaine_ISO': 'semaine_iso',
       'PIN_CDS': 'pin_cds', 'Nom_CDS': 'nom_cds', 'Nom_Compte': 'nom_compte',
@@ -467,6 +517,7 @@ const SheetsAPI = {
       nsb_commandes:    ['montant_eur', 'pin_cds'],
       comptes:          ['pin_cds_assigne', 'slider_receptivite', 'ca_fy25', 'ca_fy26', 'ca_q1fy27'],
       visites:          ['pin_cds', 'slider_receptivite', 'duree_minutes', 'gps_lat', 'gps_lng'],
+      fiches_froides:   ['pin_cds', 'nb_visites'],
       objectifs_primes: ['pin_cds', 'q1_obj_initial','q1_obj_revise','q1_ca_realise',
                          'q2_obj_initial','q2_obj_revise','q2_ca_realise',
                          'q3_obj_initial','q3_obj_revise','q3_ca_realise',
@@ -507,7 +558,7 @@ const SheetsAPI = {
       // comptes : soft-delete (doublons supprimables par le commercial, cf.
       // VueFicheCompte.supprimerCompte / VueComptes.supprimerCompte) — exclu
       // à la source comme visites, pour ne dépendre d'aucun filtre côté vue.
-      if (table === 'visites' || table === 'comptes') q = q.neq('deleted', true)
+      if (table === 'visites' || table === 'comptes' || table === 'fiches_froides') q = q.neq('deleted', true)
       if (limit != null) q = q.range(offset || 0, (offset || 0) + limit - 1)
       const { data, error, count } = await q
       if (error) throw new Error(error.message)
@@ -580,6 +631,7 @@ const SheetsAPI = {
       notifs:           'id_notif_gas',
       params:           'parametre',
       leads:            'id_prospect_gas',
+      fiches_froides:   'id_fiche_gas',
       objectifs_primes: 'pin_cds',
     }
     const gasKey = gasKeyMap[table]
@@ -600,6 +652,21 @@ const SheetsAPI = {
     if (resultat.error) throw new Error(resultat.error.message)
     await this._invalidate(table)
     return { ok: true }
+  },
+
+  // ── Lots 3/4 : reprise / réattribution d'un compte (fonction SQL atomique, historisée, notifiée,
+  //    qui recalcule le CA par commercial). Jamais en file d'attente hors-ligne : la concurrence
+  //    (deux CDS sur le même compte) se règle côté serveur, pas à la resynchronisation.
+  async reattribuerCompte(compteUuid, ancienPin, nouveauPin, mode, motif = null) {
+    if (!this._online) return { ok: false, erreur: 'HORS_LIGNE' }
+    // L'acteur est déduit CÔTÉ SERVEUR du jeton de session (pas d'un PIN envoyé par le navigateur).
+    const token = (typeof Session !== 'undefined' && Session.token) || this.TOKEN || null
+    const { data, error } = await this._sb.rpc('reattribuer_compte', {
+      p_compte: compteUuid, p_ancien: ancienPin, p_nouveau: nouveauPin, p_token: token, p_mode: mode, p_motif: motif,
+    })
+    if (error) return { ok: false, erreur: error.message }
+    await Promise.all(['comptes', 'objectifs_primes', 'notifs', 'attributions_historique'].map(t => this._invalidate(t)))
+    return data
   },
 
   // ── lireCDS ──────────────────────────────────────────

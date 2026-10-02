@@ -1,0 +1,10 @@
+-- Lot 5 — Axe « 📞 À contacter » (liste de travail, sans impact sur les primes). Appliqué en 3 migrations :
+-- a_contacter_1_params_report, a_contacter_2_vue, a_contacter_3_rappel_report (cf. historique Supabase).
+--   P1 : compte onboardé (lead Tracker INTEGRE) sans commande depuis son intégration, après N jours (14).
+--   P2 : compte NON EMPOWER ayant commandé dans les N dernières semaines SELL IN (4).
+--   Sortie : appel réel / visite réalisée / mailing dans les 30 derniers jours, ou « reporté ». P1 prime sur P2.
+--   Rappel : UNE notification récap par commercial après chaque import SELL IN par semaine (dédoublonnée 6 h) ;
+--   comptes sans propriétaire → managers. Seuils dans ⚙️_PARAMS : A_CONTACTER_SEMAINES / _DELAI_ONBOARDING_J / _CONTACT_J.
+-- Voir les définitions complètes dans les migrations appliquées (vue v_a_contacter, notifier_a_contacter(),
+-- reporter_a_contacter() à jeton de session, trg_params_recalc_ca() étendu, table a_contacter_report, fonction norm_nom()).
+-- Rattachement des leads INTEGRE à leur compte (id_compte_gas) : supabase/backfill/20261002_leads_integres_lien_compte.sql

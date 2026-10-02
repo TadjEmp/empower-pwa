@@ -166,6 +166,10 @@ window.VueComptes = {
       this.state.comptes = raw.filter(c =>
         Session.voitTout() || Number(c.PIN_CDS_Assigne) === Session.pin
       );
+      // Lot 3 — le filtre « À reprendre » porte sur TOUS les comptes (un CDS reprend ceux des autres)
+      this.state.tousComptes = raw;
+      await NonSuivis.charger();
+      if (window.AContacter) await AContacter.charger();
       // Bloc 1 §6.2 — dates dernière visite / dernier appel / prochaine visite
       // calculées en direct depuis visites/phoning, pas depuis les champs figés
       // sur comptes (Date_Derniere_Action peut être désynchronisé).
@@ -203,7 +207,9 @@ window.VueComptes = {
   },
 
   get listeFiltree() {
-    let l = [...this.state.comptes];
+    let l = this.state.filtreStatut === 'A_REPRENDRE'
+      ? NonSuivis.aReprendre(this.state.tousComptes || [])
+      : [...this.state.comptes];
 
     // Recherche texte case-insensitive — Nom, Ville, CP, Dept, Canal, Secteur
     const q = normaliserNom(this.state.recherche);
@@ -233,12 +239,15 @@ window.VueComptes = {
     } else if (this.state.filtreStatut === 'SANS_CDS') {
       l = l.filter(c => !c.PIN_CDS_Assigne);
     }
+    // « À reprendre » : on garde l'ordre CA décroissant (les bons comptes d'abord)
+    const garderOrdreCA = this.state.filtreStatut === 'A_REPRENDRE';
 
     // Filtre CDS pour Manager/Admin uniquement
     if (Session.voitTout() && this.state.filtreCDSPin !== 'TOUS') {
       l = l.filter(c => String(c.PIN_CDS_Assigne) === String(this.state.filtreCDSPin));
     }
 
+    if (garderOrdreCA && !this.state.triCol) return l;
     // Tri — colonne cliquable (Bloc 4) prioritaire sur le select existant
     if (this.state.triCol) {
       const col = this.state.triCol, sens = this.state.triSens === 'asc' ? 1 : -1;
@@ -362,6 +371,9 @@ window.VueComptes = {
                   onclick="VueComptes.setFiltre('a_reactiver')">À réactiver</button>
           <button class="btn-filtre ${this.state.filtreStatut === 'silencieux' ? 'actif' : ''}"
                   onclick="VueComptes.setFiltre('silencieux')">Silencieux</button>
+          <button class="btn-filtre ${this.state.filtreStatut === 'A_REPRENDRE' ? 'actif' : ''}"
+                  title="Comptes non suivis : sans propriétaire, SELL IN « non suivi » ou sans activité récente"
+                  onclick="VueComptes.setFiltre('A_REPRENDRE')">🤝 À reprendre (${NonSuivis.nb()})</button>
           ${Session.voitTout() ? `
           <button class="btn-filtre ${this.state.filtreStatut === 'SANS_CDS' ? 'actif' : ''}"
                   onclick="VueComptes.setFiltre('SANS_CDS')">Sans CDS</button>` : ''}
@@ -480,6 +492,9 @@ window.VueComptes = {
               ${this._badgeEmpower(c)}
               ${estDoublon ? `<span style="color:var(--c-warning);font-size:11px;font-weight:700" title="Un autre compte porte le même nom — ouvrir la fiche pour supprimer le doublon">⚠️ Doublon</span>` : ''}
               ${badgeDernier}
+              ${NonSuivis.badge(c)}
+              ${window.AContacter ? AContacter.badge(c) : ''}
+              ${SellInFlag.badge(c)}
               ${badgeDernierAppel}
               ${this._badgePriorite(c.Priorite)}
               <span style="margin-left:auto;font-size:12px;color:var(--c-muted)">FY26 ${caFY26}</span>
@@ -493,6 +508,7 @@ window.VueComptes = {
               ${prochaineVisite ? `
                 <span class="${estDepassee(prochaineVisite) ? 'prochaine-action alerte' : ''}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${dateRelative(prochaineVisite)}</span>` : ''}
             </div>
+            ${NonSuivis.peutReprendre(c) ? `<div class="cc-actions"><button class="btn-visiter" onclick="VueComptes.reprendre('${c.ID_Compte}')">🤝 Je reprends ce compte</button></div>` : ''}
             ${estLectureSeule ? `` : `
             <div class="cc-actions">
               <button class="btn-visiter" onclick="VueQuestionnaire._visitePlanifiee=null;Router.aller('#/questionnaire/${c.ID_Compte}')">Visiter</button>
@@ -579,21 +595,22 @@ window.VueComptes = {
         </div>`}`;
   },
 
+  // Lot 3/4 — réattribution manager via reattribuer_compte() : historisée, notifiée, CA par commercial recalculé.
   async attribuer(idCompte, pin) {
     // Lecture seule pour CHANNEL_MANAGER (Alexandra) — jamais d'écriture
     if (!pin || Session.role === 'CHANNEL_MANAGER') return;
     if (!Session.estManager()) return;
     const nom = window.resolveCDS(pin); // utils.js — retourne '—' si inconnu
     if (nom === '—') { Toast.afficher('CDS inconnu', 'erreur'); return; }
-    try {
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', idCompte, {
-        PIN_CDS_Assigne: Number(pin), Nom_CDS: nom,
-      });
-      const c = this.state.comptes.find(x => String(x.ID_Compte) === String(idCompte));
-      if (c) { c.PIN_CDS_Assigne = Number(pin); c.Nom_CDS = nom; }
-      Toast.afficher(`Compte attribué à ${nom}`, 'succes');
-      this.render();
-    } catch(e) { Toast.afficher('Erreur : ' + (e.message || e), 'erreur'); }
+    const c = this.state.comptes.find(x => String(x.ID_Compte) === String(idCompte));
+    if (!c) return;
+    await NonSuivis.reattribuer(c, Number(pin), () => this.init());
+  },
+
+  // Lot 3 — reprise d'un compte non suivi (CDS).
+  reprendre(idCompte) {
+    const c = (this.state.tousComptes || []).find(x => String(x.ID_Compte) === String(idCompte));
+    if (c) NonSuivis.reprendre(c, () => this.init());
   },
 
   // BLOC 11 — patch ciblé de la zone liste au lieu d'un render() complet (cf.

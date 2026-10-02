@@ -894,6 +894,14 @@ window.VueQuestionnaire = {
         this._visitePlanifiee?.Source_Visite === 'ESI_VISITE_FROID' ||
         this._visitePlanifiee?.ID_Cible === 'HORS_BASE';
       this._isHorsBase = _wasHorsBase;
+      // Lot 1 — fiche magasin à froid : mise à jour (résultat, relance, contact)
+      // ou création si la visite n'avait pas été planifiée. Jamais bloquant.
+      this._derniereFicheFroide = null;
+      if (_wasHorsBase && idCible === 'HORS_BASE' && window.FichesFroides) {
+        FichesFroides.apresVisite(visite, this._visitePlanifiee?.ID_Fiche_Froide)
+          .then(id => { this._derniereFicheFroide = id || null; })
+          .catch(e => console.warn('Fiche à froid non mise à jour :', e));
+      }
       this._modeFroid  = false;
       this._visitePlanifiee = null;
       this._effacerBrouillon();
@@ -922,8 +930,9 @@ window.VueQuestionnaire = {
         Toast.afficher(`"${nom}" est déjà dans votre base`, 'info');
         return;
       }
+      const idProspectNouveau = genId('PROS');
       await SheetsAPI.ecrire('EMPOWER_MDB', '📋_PROSPECTS', {
-        ID_Prospect:     genId('PROS'),
+        ID_Prospect:     idProspectNouveau,
         Nom_Compte:      nom,
         // Bug audit (compte-rendu) — Adresse/Département/Ville/Tel/Email
         // saisis à froid (cf. _etape0/setContactChamp) n'étaient pas repris ici
@@ -942,6 +951,10 @@ window.VueQuestionnaire = {
         Date_Import:     dateISOLocale(),
         Timestamp:       new Date().toISOString(),
       });
+      // Lot 1 — la fiche à froid pointe vers le prospect créé (sort du pipeline froid).
+      if (this._derniereFicheFroide && window.FichesFroides) {
+        FichesFroides.marquerConverti(this._derniereFicheFroide, { idLead: idProspectNouveau }).catch(() => {});
+      }
       Toast.afficher(`✅ "${nom}" ajouté à votre base`, 'succes');
       // Désactiver le bouton pour éviter le double-clic
       document.querySelectorAll('.succes-btns button').forEach(b => {

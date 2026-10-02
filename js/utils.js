@@ -340,6 +340,9 @@ function NavBar(actif) {
     { id: 'reporting_cds', hash: '#/reporting-cds',     mobileNav: false, lbl: 'Reporting',
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="4" height="12" x="2" y="6" rx="1"/><rect width="4" height="16" x="9" y="2" rx="1"/><rect width="4" height="8" x="16" y="10" rx="1"/></svg>' },
     // Activité (sidebar desktop uniquement)
+    // Lot 5 — axe « À contacter » (liste de travail) : même volet que Tracker / Planning / Phoning
+    { id: 'a_contacter', hash: '#/a-contacter',         mobileNav: false, lbl: 'À contacter',
+      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 2 22 6 18 10"/><line x1="14" x2="22" y1="6" y2="6"/><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>' },
     { id: 'visites',     hash: '#/visites',             mobileNav: true,  lbl: 'Mon Planning',
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="8" y1="18" x2="8" y2="18"/><line x1="12" y1="18" x2="12" y2="18"/></svg>' },
     { id: 'phoning',     hash: '#/phoning',             mobileNav: false, lbl: 'Phoning',
@@ -379,7 +382,7 @@ function NavBar(actif) {
   // Les routes fusionnées restent valides (rétro-compat) mais sortent de la nav.
   const SECTIONS = [
     { lbl: null,        ids: ['home', 'tracker', 'comptes'] },
-    { lbl: 'Activité',  ids: ['visites', 'phoning', 'mailing'] },
+    { lbl: 'Activité',  ids: ['a_contacter', 'visites', 'phoning', 'mailing'] },
     { lbl: 'Données',   ids: ['objectifs'] },
     { lbl: 'Admin',     ids: ['admin'] },
   ];
@@ -413,7 +416,8 @@ function NavBar(actif) {
     return `<a class="${cls}" href="${i.hash}" data-id="${i.id}" data-lbl="${i.lbl}">
       <span class="nav-icone">${i.icone}</span>
       <span class="nav-lbl">${i.lbl}</span>
-      <span class="nav-badge" id="nav-badge-${i.id}"></span>
+      ${(() => { const n = (i.id === 'a_contacter' && window.AContacter) ? AContacter.nb() : 0;
+        return `<span class="nav-badge${n > 0 ? ' visible' : ''}" id="nav-badge-${i.id}">${n > 0 ? (n > 99 ? '99+' : n) : ''}</span>`; })()}
     </a>`;
   }
 
@@ -581,6 +585,8 @@ const DrawerMenu = (function () {
 
   // Items de navigation secondaire du drawer
   const ITEMS = [
+    // Lot 5 — axe « À contacter » (liste de travail), en tête du volet : c'est la liste du jour
+    { id: 'a_contacter', hash: '#/a-contacter',          ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 2 22 6 18 10"/><line x1="14" x2="22" y1="6" y2="6"/><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>', lbl: 'À contacter',      roles: ['ADMIN','CDS','CHANNEL_MANAGER'] },
     { id: 'visites',     hash: '#/visites',              ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', lbl: 'Mon Planning',   roles: ['ADMIN','CDS'] },
     { id: 'phoning',     hash: '#/phoning',              ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>', lbl: 'Phoning',          roles: ['ADMIN','CDS','CHANNEL_MANAGER'] },
     // BLOC 11 Partie B (09/2026) — Mailing ajouté au sidebar desktop (NavBar.TOUS)
@@ -624,10 +630,15 @@ const DrawerMenu = (function () {
           <a class="drawer-item" href="${i.hash}" onclick="DrawerMenu.fermer()">
             <div class="drawer-item-ico">${i.ico}</div>
             ${i.lbl}
+            ${(i.id === 'a_contacter' && window.AContacter && AContacter.nb() > 0) ? `<span class="drawer-badge">${AContacter.nb() > 99 ? '99+' : AContacter.nb()}</span>` : ''}
           </a>`).join('')}
 
         <div class="drawer-sep"></div>
         <div class="drawer-footer">
+          <button class="drawer-item" onclick="DrawerMenu.fermer();NotifCenter.basculer()">
+            <div class="drawer-item-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div>
+            Notifications &amp; push
+          </button>
           <button class="drawer-item" onclick="DrawerMenu._synchro()">
             <div class="drawer-item-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></div>
             Synchroniser

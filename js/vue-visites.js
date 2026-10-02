@@ -44,6 +44,8 @@ window.VueVisites = {
   state: {
     sousVue: 'planning',
     visites: [],
+    fiches: [],            // Lot 1 — fiches magasin à froid (FichesFroides)
+    filtreFroid: 'ACTIF',
     chargement: true,
     erreur: null,
     dateVue: null,
@@ -126,10 +128,16 @@ window.VueVisites = {
 
     try {
       // R1 : on ne charge plus 📋_PROSPECTS — uniquement 🏢_COMPTES
-      const [visites, comptes] = await Promise.all([
+      const [visites, comptes, fiches] = await Promise.all([
         SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES'),
         SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
+        FichesFroides.charger().catch(() => []),   // Lot 1 — jamais bloquant
       ]);
+      this.state.fiches = FichesFroides.visibles(fiches);
+      // Migration unique du localStorage (noms seuls) vers la base partagée.
+      FichesFroides.migrerLocalStorage().then(n => {
+        if (n) FichesFroides.charger({ nocache: true }).then(l => { this.state.fiches = FichesFroides.visibles(l); this.render(); }).catch(() => {});
+      });
       this.state.visites = visites
         .filter(v => String(v.deleted || '').toUpperCase() !== 'TRUE')
         .filter(v => Session.voitTout() || Number(v.PIN_CDS) === Session.pin);
@@ -292,6 +300,7 @@ window.VueVisites = {
       typeVisite: 'SUIVI_ACTIF',
       idCible: '', nomCible: '',
       horsBase: false, nomLibre: '',
+      idFicheFroide: '',   // Lot 1 — fiche magasin à froid liée
       // Champs prospect à froid (M1 + M7)
       adresseLibre: '', deptLibre: '', villeLibre: '', telLibre: '', emailLibre: '',
       commentairePrep: '',
@@ -305,6 +314,99 @@ window.VueVisites = {
     };
   },
 
+  // ── Lot 1 : fiches magasin à froid ──
+  choisirFiche(idFiche) {
+    const fiche = this.state.fiches.find(x => x.ID_Fiche === idFiche);
+    if (!fiche) { this.state.formPlanif.idFicheFroide = ''; this.render(); return; }
+    Object.assign(this.state.formPlanif, FichesFroides.prefill(fiche));
+    this.render();
+  },
+
+  // « Revoir ce magasin » : nouvelle visite préremplie depuis la fiche.
+  revoirFiche(idFiche, idVisiteOrigine = '') {
+    const fiche = this.state.fiches.find(x => x.ID_Fiche === idFiche);
+    if (!fiche) return;
+    this._resetFormPlanif();
+    Object.assign(this.state.formPlanif, FichesFroides.prefill(fiche), { idActionOrigine: idVisiteOrigine });
+    this.state.modalPlanif = true;
+    this.render();
+  },
+
+  async classerFiche(idFiche) {
+    try {
+      await FichesFroides.classerHistorique(idFiche);
+      const f = this.state.fiches.find(x => x.ID_Fiche === idFiche);
+      if (f) { f.Statut = 'HISTORIQUE'; f.Date_Relance = ''; }
+      Toast.afficher('🗄️ Magasin classé en historique', 'succes');
+      this.render();
+    } catch (e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+  },
+
+  convertirFiche(idFiche) {
+    const fiche = this.state.fiches.find(x => x.ID_Fiche === idFiche);
+    if (!fiche) return;
+    const derniere = this.state.visites
+      .filter(v => v.ID_Fiche_Froide === idFiche)
+      .sort((a, b) => String(b.Date || '').localeCompare(String(a.Date || '')))[0];
+    this._modalConversion = {
+      idVisite: derniere?.ID_Visite || null, idFiche,
+      nomCompte: fiche.Nom_Magasin || '', departement: fiche.Departement || '', ville: fiche.Ville || '',
+      tel: fiche.Tel || '', email: fiche.Email || '', canal: 'REVENDEUR', note: '',
+      contactNom: fiche.Contact_Nom || '', contactFonction: fiche.Contact_Fonction || '',
+      pinCDS: fiche.PIN_CDS || null, nomCDS: fiche.Nom_CDS || '',
+    };
+    this.render();
+  },
+
+  _renderFichesFroides() {
+    const E = s => FichesFroides.esc(s);
+    const toutes = this.state.fiches;
+    const aujourd = dateISOLocale();
+    const filtres = [
+      ['ACTIF', 'À traiter', x => x.Statut === 'A_REVOIR' || x.Statut === 'A_QUALIFIER'],
+      ['A_REVOIR', 'À revoir', x => x.Statut === 'A_REVOIR'],
+      ['HISTORIQUE', 'Historique', x => x.Statut === 'HISTORIQUE'],
+      ['CONVERTI', 'Converties', x => FichesFroides._estConverti(x)],
+      ['TOUS', 'Toutes', () => true],
+    ];
+    const actif = filtres.find(x => x[0] === this.state.filtreFroid) || filtres[0];
+    const liste = toutes.filter(actif[2]).sort((a, b) =>
+      String(a.Date_Relance || '9999').localeCompare(String(b.Date_Relance || '9999')) ||
+      String(b.Date_Derniere_Visite || '').localeCompare(String(a.Date_Derniere_Visite || '')));
+    const chips = filtres.map(([k, lbl, fn]) => `
+      <button class="btn-filtre ${this.state.filtreFroid === k ? 'actif' : ''}"
+              onclick="VueVisites.state.filtreFroid='${k}';VueVisites.render()">${lbl} (${toutes.filter(fn).length})</button>`).join('');
+    const cartes = liste.map(x => {
+      const retard = x.Date_Relance && String(x.Date_Relance).slice(0, 10) < aujourd && !FichesFroides._estConverti(x);
+      return `
+      <div class="carte-visite" style="padding:12px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
+          <div>
+            <strong>${E(x.Nom_Magasin)}</strong>${x.Ville ? ` <span style="color:var(--c-text-2)">· ${E(x.Ville)}</span>` : ''}
+            ${x.Doublon_A_Revoir ? ' <span title="Même nom qu\'une autre fiche — à vérifier" style="font-size:11px;color:var(--c-warning,#b45309)">⚠️ doublon possible</span>' : ''}
+          </div>
+          <span style="font-size:11px;font-weight:700;white-space:nowrap">${FichesFroides.STATUTS[x.Statut] || E(x.Statut)}</span>
+        </div>
+        <div style="font-size:12px;color:var(--c-text-2);margin-top:4px">
+          ${x.Nb_Visites || 0} visite(s)${x.Date_Derniere_Visite ? ` · dernière le ${String(x.Date_Derniere_Visite).slice(0, 10)}` : ''}
+          ${x.Resultat_Derniere ? ` · ${E(x.Resultat_Derniere)}` : ''}
+          ${Session.voitTout() && x.Nom_CDS ? ` · ${E(x.Nom_CDS)}` : ''}
+        </div>
+        ${x.Prochaine_Action || x.Date_Relance ? `<div style="font-size:12px;margin-top:4px;${retard ? 'color:var(--c-danger);font-weight:700' : ''}">
+          🎯 ${E(x.Prochaine_Action || 'Relance')}${x.Date_Relance ? ` — ${String(x.Date_Relance).slice(0, 10)}${retard ? ' (en retard)' : ''}` : ''}</div>` : ''}
+        ${FichesFroides._estConverti(x) ? '' : `
+        <div class="cv-actions" style="gap:6px;flex-wrap:wrap;margin-top:8px">
+          <button class="btn-primaire" style="padding:8px 14px;font-size:13px;width:auto" onclick="VueVisites.revoirFiche('${x.ID_Fiche}')">🔁 Revoir</button>
+          <button class="btn-primaire" style="padding:8px 14px;font-size:13px;width:auto;background:var(--c-success)" onclick="VueVisites.convertirFiche('${x.ID_Fiche}')">Créer compte</button>
+          ${x.Statut !== 'HISTORIQUE' ? `<button class="btn-secondaire" style="padding:8px 12px;font-size:12px;width:auto" onclick="VueVisites.classerFiche('${x.ID_Fiche}')">🗄️ Historique</button>` : ''}
+        </div>`}
+      </div>`;
+    }).join('');
+    return `
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${chips}</div>
+      ${liste.length ? cartes : `<div style="padding:32px;text-align:center;color:var(--c-text-2)">Aucune fiche à froid dans cette vue.</div>`}`;
+  },
+
   // ── M7 : Conversion visite à froid → compte actif ──
   _modalConversion: null,
 
@@ -312,7 +414,7 @@ window.VueVisites = {
     const v = this.state.visites.find(x => x.ID_Visite === idVisite);
     if (!v) return;
     this._modalConversion = {
-      idVisite,
+      idVisite, idFiche: v.ID_Fiche_Froide || '',
       nomCompte: v.Nom_Compte || '',
       departement: v.Departement || '',
       ville: v.Ville || '',
@@ -375,13 +477,23 @@ window.VueVisites = {
         Date_Import:    aujourd,
         Timestamp:      new Date().toISOString(),
       });
-      // Marquer la visite comme convertie
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '🗺️_VISITES', m.idVisite, {
-        Flag_Converti: 'TRUE',
-        ID_Cible: idCompte,
-      });
-      const vLocal = this.state.visites.find(v => v.ID_Visite === m.idVisite);
-      if (vLocal) { vLocal.Flag_Converti = 'TRUE'; vLocal.ID_Cible = idCompte; }
+      // Marquer la visite comme convertie (absente si la conversion part d'une fiche sans visite)
+      if (m.idVisite) {
+        await SheetsAPI.mettreAJour('EMPOWER_MDB', '🗺️_VISITES', m.idVisite, {
+          Flag_Converti: 'TRUE',
+          ID_Cible: idCompte,
+        });
+        const vLocal = this.state.visites.find(v => v.ID_Visite === m.idVisite);
+        if (vLocal) { vLocal.Flag_Converti = 'TRUE'; vLocal.ID_Cible = idCompte; }
+      }
+      // Lot 1 — la fiche garde son identité et pointe vers le compte créé.
+      const idFicheConv = m.idFiche || this.state.visites.find(v => v.ID_Visite === m.idVisite)?.ID_Fiche_Froide;
+      if (idFicheConv) {
+        FichesFroides.marquerConverti(idFicheConv, { idCompte })
+          .then(() => FichesFroides.charger({ nocache: true }))
+          .then(l => { this.state.fiches = FichesFroides.visibles(l); this.render(); })
+          .catch(() => {});
+      }
       // Notifications PIN 1000 (Tadjidine) + PIN 5000 (Alexandra)
       for (const dest of [1000, 5000]) {
         SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
@@ -789,6 +901,22 @@ window.VueVisites = {
         this._memoriserProspectFroid(nomFinal);
       }
 
+      // Lot 1 — fiche magasin à froid persistante (partagée, relançable).
+      // Jamais bloquant : sans fiche, la visite est quand même planifiée.
+      let idFicheFroide = '';
+      if (f.horsBase && idCibleFinal === 'HORS_BASE') {
+        try {
+          const r = await FichesFroides.apresPlanification({
+            nom: nomFinal, ville: f.villeLibre, departement: f.deptLibre, adresse: f.adresseLibre,
+            tel: f.telLibre, email: f.emailLibre, dateRelance: f.date,
+            prochaineAction: f.prochaineEtape || f.objectifVisite || '',
+          });
+          idFicheFroide = r.idFiche;
+          if (r.autreCDS) Toast.afficher('⚠️ Ce magasin est déjà suivi par un autre commercial — signalé à revoir', 'warning', 6000);
+          this.state.fiches = FichesFroides.visibles(await FichesFroides.charger({ nocache: true }));
+        } catch (e) { console.warn('Fiche à froid non créée :', e); }
+      }
+
       const visite = {
         ID_Visite:              genId('VIS'),
         Date:                   f.date,
@@ -812,12 +940,14 @@ window.VueVisites = {
         Note_Privee:            f.commentairePrep,
         Prochaine_Action_Texte: f.prochaineEtape,
         ID_Action_Origine:      f.idActionOrigine || '',
+        ID_Fiche_Froide:        idFicheFroide || f.idFicheFroide || '',
         Timestamp:              new Date().toISOString(),
       };
       await SheetsAPI.ecrire('EMPOWER_MDB', '🗺️_VISITES', visite);
       this.state.visites.unshift(visite);
       // BUG3 — la cible devient un vrai compte sélectionné (sans perdre la saisie)
       f.horsBase = false;
+      f.idFicheFroide = '';
       f.idCible  = idCibleFinal;
       f.nomCible = nomFinal;
       f.idActionOrigine = '';
@@ -1102,6 +1232,9 @@ window.VueVisites = {
   planifierSuiviVisite(idVisite) {
     const v = this.state.visites.find(x => x.ID_Visite === idVisite);
     if (!v) return;
+    // Lot 1 — visite à froid : repartir de la fiche magasin (pas de ressaisie)
+    const ficheLiee = v.ID_Fiche_Froide && this.state.fiches.find(x => x.ID_Fiche === v.ID_Fiche_Froide);
+    if (ficheLiee && !FichesFroides._estConverti(ficheLiee)) { this.revoirFiche(ficheLiee.ID_Fiche, v.ID_Visite); return; }
     this._resetFormPlanif();
     Object.assign(this.state.formPlanif, {
       idCible:         v.ID_Cible || '',
@@ -1466,7 +1599,9 @@ window.VueVisites = {
     const groupeActif = Session.voitTout() && !this.state.commercialSelectionne;
 
     let contenu = '';
-    if (this.state.modeVue === 'historique') {
+    if (this.state.modeVue === 'froid') {
+      contenu = this._renderFichesFroides();
+    } else if (this.state.modeVue === 'historique') {
       const hist = this.visitesRealisees;
       if (groupeActif) {
         contenu = this._renderCartesCommerciaux(hist);
@@ -1574,7 +1709,8 @@ window.VueVisites = {
         <button class="btn-filtre ${this.state.modeVue === 'jour' ? 'actif' : ''}" onclick="VueVisites.setModeVue('jour')">Jour</button>
         <button class="btn-filtre ${this.state.modeVue === 'semaine' ? 'actif' : ''}" onclick="VueVisites.setModeVue('semaine')">Semaine</button>
         <button class="btn-filtre ${this.state.modeVue === 'historique' ? 'actif' : ''}" onclick="VueVisites.setModeVue('historique')">Historique</button>
-        ${this.state.modeVue !== 'historique' ? `
+        <button class="btn-filtre ${this.state.modeVue === 'froid' ? 'actif' : ''}" onclick="VueVisites.setModeVue('froid')">❄️ À froid${this.state.fiches.filter(x => x.Statut === 'A_REVOIR').length ? ` (${this.state.fiches.filter(x => x.Statut === 'A_REVOIR').length})` : ''}</button>
+        ${this.state.modeVue !== 'historique' && this.state.modeVue !== 'froid' ? `
         <div style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <button class="btn-retour" onclick="VueVisites.jourPrecedent()">‹</button>
           <span style="font-size:13px;font-weight:600;white-space:nowrap">${this.state.modeVue === 'jour' ? dateLbl : 'Semaine en cours'}</span>
@@ -1693,9 +1829,16 @@ window.VueVisites = {
                         list="froid-suggestions" autocomplete="off"
                         oninput="VueVisites.state.formPlanif.nomLibre=this.value"/>
                  <datalist id="froid-suggestions">
-                   ${this._lireProspectsFroid().map(n => `<option value="${n}">`).join('')}
+                   ${FichesFroides.revisitables(this.state.fiches).map(x => `<option value="${FichesFroides.esc(x.Nom_Magasin)}">`).join('')}
                  </datalist>
                </label>
+               ${FichesFroides.revisitables(this.state.fiches).length ? `
+               <label>Magasin déjà visité <span style="font-weight:400;font-size:11px;color:var(--c-text-2)">(préremplit la fiche)</span>
+                 <select onchange="VueVisites.choisirFiche(this.value)">
+                   <option value="">— Nouveau magasin —</option>
+                   ${FichesFroides.revisitables(this.state.fiches).map(x => `<option value="${x.ID_Fiche}" ${x.ID_Fiche === f.idFicheFroide ? 'selected' : ''}>${FichesFroides.esc(x.Nom_Magasin)}${x.Ville ? ' — ' + FichesFroides.esc(x.Ville) : ''}</option>`).join('')}
+                 </select>
+               </label>` : ''}
                <label>Adresse <span style="font-weight:400;font-size:11px;color:var(--c-text-2)">(optionnel)</span>
                  <input placeholder="ex : 12 rue du Commerce" value="${f.adresseLibre || ''}"
                         oninput="VueVisites.state.formPlanif.adresseLibre=this.value"/></label>
@@ -1714,7 +1857,7 @@ window.VueVisites = {
                  <input type="email" placeholder="contact@enseigne.fr" value="${f.emailLibre || ''}"
                         oninput="VueVisites.state.formPlanif.emailLibre=this.value"/></label>
                <div style="font-size:11px;color:var(--c-text-2);margin:-4px 0 10px;padding:6px 10px;background:var(--c-bg);border-radius:var(--radius-sm)">
-                 Hors base : mémorisé sur cet appareil. Après la visite, vous pourrez créer ce compte dans la base.
+                 Hors base : le magasin est mémorisé dans vos fiches à froid (visibles depuis tous vos appareils). Après la visite : revoir, créer un compte ou classer en historique.
                </div>`
             : `<div id="visites-recherche-modal">${this._renderRechercheCompteModal()}</div>`
           }

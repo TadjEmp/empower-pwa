@@ -9,6 +9,7 @@ window.VueDashboardManager = {
   state: null,
 
   async init() {
+    if (window.NonSuivis) NonSuivis.charger();   // Lot 3 — rafraîchit l'alerte « à reprendre » (non bloquant)
     if (!Session.voitTout()) { Router.aller('#/dashboard'); return; }
     // BLOC 4 — Alexandra (CHANNEL_MANAGER) garde sa home onboarding dédiée sur
     // #/dashboard. Sur #/manager, elle accède désormais à la Vue équipe COPIL
@@ -1031,6 +1032,7 @@ window.VueDashboardManager = {
             ${d.comptesRouges.length ? `<div class="alerte-ligne no-print" onclick="Router.aller('#/comptes')"><strong>${d.comptesRouges.length}</strong> compte(s) en retard d'action</div>` : ''}
             ${d.visitesManquees.length ? `<div class="alerte-ligne no-print" onclick="Router.aller('#/visites')">🔴 <strong>${d.visitesManquees.length}</strong> visite(s) planifiée(s) manquée(s)</div>` : ''}
             ${d.comptesNonAttribues.length ? `<div class="alerte-ligne no-print" onclick="VueComptes.state.filtreStatut='SANS_CDS';Router.aller('#/comptes')">🏢 <strong>${d.comptesNonAttribues.length}</strong> compte(s) non attribué(s) — dont Sell-In</div>` : ''}
+            <div id="ns-alerte">${window.NonSuivis ? NonSuivis.htmlAlerte() : ''}</div>
             ${!d.leadsBloques.length && !d.comptesRouges.length && !d.visitesManquees.length && !d.comptesNonAttribues.length && d.equipe.every(e => e.pace === 'ON_TRACK') ? '<div class="pas-de-donnees">Aucune alerte active.</div>' : ''}
           </div>
         </div>

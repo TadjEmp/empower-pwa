@@ -96,7 +96,7 @@ window.VuePipeline = {
     this._ecouterContacts(); // Bloc 6 — Kanban live (abonnement idempotent)
     this.render();
     try {
-      const [raw, params, objectifs, cdsApi, sellin, vuesFiltres, phoning] = await Promise.all([
+      const [raw, params, objectifs, cdsApi, sellin, vuesFiltres, phoning, comptesSI] = await Promise.all([
         // nocache : 📋_PROSPECTS est alimenté en continu par plusieurs profils
         // (CDS, Admin, Channel) sur des appareils différents — le cache IndexedDB
         // partagé (TTL 30 min, api.js) masquait jusqu'à 30 min les leads ajoutés
@@ -118,7 +118,10 @@ window.VuePipeline = {
         // figée sur le lead se serait désynchronisée. Même principe que
         // VuePhoning._dernierAppelCompte.
         SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING').catch(() => []),
+        // Lot 2 — flag SELL IN « Qx · Sy » retrouvé par nom (les leads ne portent pas le flag)
+        SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES').catch(() => []),
       ]);
+      SellInFlag.indexer(comptesSI);
       this.state.vuesFiltres = vuesFiltres;
       this._dernierAppelParLead = new Map();
       phoning
@@ -984,6 +987,7 @@ window.VuePipeline = {
                   : l.Commande_Manuelle ? 'Commande déclarée'
                   : `Commande probable (${l._activationSellInFlou.score}% · "${l._activationSellInFlou.nom}")${this._sellInFraicheur()}`
                 }</div>` : ''}
+                ${SellInFlag.pourNom(l.Nom_Compte) ? `<div class="kanban-carte-note">${SellInFlag.badgePourNom(l.Nom_Compte)}</div>` : ''}
                 ${(l.STATUT_EMPOWER === 'A_VISITER' || l.FLAG_ACTION === 'A_VISITER') ? '<div class="kanban-carte-note" style="color:var(--c-primary);font-weight:700">📍 À visiter (demandé au phoning)</div>' : ''}
                 ${this._retardWelcomePack(l) ? '<div class="kanban-carte-note" style="color:var(--c-danger);font-weight:600">⚠️ Welcome Pack J+14 dépassé</div>' : ''}
                 ${this._alerte45jSansContact(l) ? '<div class="kanban-carte-note" style="color:var(--c-danger);font-weight:600">🔴 Sans contact +45j</div>' : this._alerteSansActivite(l) ? '<div class="kanban-carte-note" style="color:var(--c-warning);font-weight:600">⏳ Sans activité >7j</div>' : ''}
@@ -1134,6 +1138,7 @@ window.VuePipeline = {
                 ${contact45j ? '<span style="color:var(--c-danger);font-weight:700">🔴 +45j</span><br>' : ''}
                 ${activite7j ? '<span style="color:var(--c-warning);font-weight:700">⏳ +7j</span><br>' : ''}
                 ${l._activationSellIn ? '<span style="color:var(--c-success);font-weight:700">💰 Sell-In</span>' : l._activationSellInFlou ? `<span style="color:var(--c-warning);font-weight:700" title="Rapprochement approximatif : ${l._activationSellInFlou.nom} (${l._activationSellInFlou.score}%)">💰 Sell-In ?</span>` : ''}
+                ${SellInFlag.badgePourNom(l.Nom_Compte)}
                 ${l.Commande_Manuelle ? '<span style="color:var(--c-success);font-weight:700">✍️ Déclarée</span>' : ''}
                 ${!wpRetard && !contact45j && !activite7j && !l._activationSellIn && !l._activationSellInFlou && !l.Commande_Manuelle ? '<span style="color:var(--c-text-2)">—</span>' : ''}
               </td>` : ''}
