@@ -324,6 +324,8 @@ window.VuePhoning = {
   },
 
   demarrerAppelDirect() {
+    this.state.idPlanifEnCours = null;   // un appel ad hoc ne doit jamais solder un ancien planning
+    this.state.erreurStatut = false;
     this.state.cible      = null;
     this.state.typeSource = 'EXISTANT';
     this.state.mode       = 'APPEL';
@@ -335,6 +337,8 @@ window.VuePhoning = {
   },
 
   demarrerAppelCompte(idCompte, _depuisFile = false) {
+    this.state.idPlanifEnCours = null;   // un appel ad hoc ne doit jamais solder un ancien planning
+    this.state.erreurStatut = false;
     const c = this.state.comptes.find(x => String(x.ID_Compte) === String(idCompte));
     if (!c) { Toast.afficher('Compte introuvable', 'warning'); return; }
     // Bloc 6 — file d'appels (permet "Appel suivant" depuis l'écran de succès) :
@@ -362,6 +366,8 @@ window.VuePhoning = {
   // Bloc 3 §2 — "Saisie post appel" : renseigner un appel déjà passé (hors app),
   // sans passer par la phase CALL chronométrée. Va directement en phase POST.
   demarrerSaisiePostAppel(idCompte) {
+    this.state.idPlanifEnCours = null;   // un appel ad hoc ne doit jamais solder un ancien planning
+    this.state.erreurStatut = false;
     const c = this.state.comptes.find(x => String(x.ID_Compte) === String(idCompte));
     if (!c) { Toast.afficher('Compte introuvable', 'warning'); return; }
     this.state.cible      = c;
@@ -408,6 +414,7 @@ window.VuePhoning = {
     this.state.recherche = v;
     if (this.state.cible && v !== this.state.cible.Nom_Compte) this.state.cible = null;
     this._renderSuggestions();
+    this._majBoutonDemarrer();
   },
 
   choisirCible(i) {
@@ -572,6 +579,7 @@ window.VuePhoning = {
     if (!p) return;
     this.state.cible = p;
     this.state.typeSource = 'PROSPECT';
+    this.state.idPlanifEnCours = null;
     this.state.mode = 'APPEL';
     this.state.phase = 'PRE';   // planification obligatoire (objectif) avant CALL
     this.render();
@@ -607,7 +615,7 @@ window.VuePhoning = {
   },
 
   set(c, v)  { this.state.d[c] = v; },
-  setR(c, v) { this.state.d[c] = v; this.render(); },
+  setR(c, v) { this.state.d[c] = v; if (c === 'statutAppel') this.state.erreurStatut = false; this.render(); },
 
   _semainesSilence() {
     const c = this.state.cible;
@@ -747,7 +755,13 @@ window.VuePhoning = {
   async valider() {
     if (this.state.envoiEnCours) return;
     const s = this.state, d = s.d, c = s.cible;
-    if (!d.statutAppel) { Toast.afficher('Indiquez le statut de l\'appel', 'warning'); return; }
+    if (!d.statutAppel) {
+      Toast.afficher('Indiquez le statut de l\'appel', 'warning');
+      s.erreurStatut = true;
+      this.render();
+      document.getElementById('ph-champ-statut')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      return;
+    }
 
     // BLOC — coordonnées éditées pendant l'appel (fiche contact, _phaseCALL) :
     // si le compte/lead en avait déjà de différentes, on confirme avant
@@ -935,6 +949,8 @@ window.VuePhoning = {
       }[d.resultatProspect] || '';
 
       this._effacerBrouillon();
+      s.idPlanifEnCours = null;   // planning soldé : ne pas le réappliquer à l'appel suivant
+      s.erreurStatut = false;
       this.sessionAppels++; // Bloc 6 — compteur de session
       const aUnSuivant = s._fileAppels && s._fileAppelsIdx > -1 && s._fileAppelsIdx + 1 < s._fileAppels.length;
       document.getElementById('app').innerHTML = `
@@ -1666,6 +1682,30 @@ window.VuePhoning = {
     if (s.mode === 'APPEL') this._renderSuggestions();
   },
 
+  // Le bouton "Démarrer l'appel" dépend de champs saisis SANS re-render
+  // (oninput sur l'enseigne / la recherche) : il restait donc `disabled`
+  // même une fois le nom renseigné. État centralisé + rafraîchi en place.
+  _peutDemarrer() {
+    const s = this.state;
+    return s.froidsMode ? !!s.froidsFields.nom.trim() : !!s.cible;
+  },
+  _hintDemarrer() {
+    const s = this.state;
+    if (this._peutDemarrer()) return '';
+    return s.froidsMode ? "Renseignez le nom de l'enseigne pour continuer."
+                        : "Sélectionnez un compte pour activer l'appel.";
+  },
+  _majBoutonDemarrer() {
+    const btn = document.getElementById('ph-btn-demarrer');
+    if (!btn) return;
+    const ok = this._peutDemarrer();
+    btn.disabled = !ok;
+    btn.style.opacity = ok ? '' : '.5';
+    btn.style.cursor = ok ? '' : 'not-allowed';
+    const hint = document.getElementById('ph-hint-demarrer');
+    if (hint) hint.textContent = this._hintDemarrer();
+  },
+
   _phasePRE() {
     const s = this.state, d = s.d;
     const silence = this._semainesSilence();
@@ -1686,7 +1726,7 @@ window.VuePhoning = {
       ${s.froidsMode ? `
         <label class="q-label">Nom de l'enseigne *
           <input class="q-input" required placeholder="ex : MICRO PLUS INFORMATIQUE" value="${s.froidsFields.nom}"
-                 oninput="VuePhoning.state.froidsFields.nom=this.value;VuePhoning._sauvegarderBrouillon()"/></label>
+                 oninput="VuePhoning.state.froidsFields.nom=this.value;VuePhoning._sauvegarderBrouillon();VuePhoning._majBoutonDemarrer()"/></label>
         <div style="display:flex;gap:8px">
           <label class="q-label" style="flex:1">Département *
             <input class="q-input" placeholder="75" maxlength="3" required value="${s.froidsFields.dept}"
@@ -1744,15 +1784,9 @@ window.VuePhoning = {
         '<p style="font-size:13px;line-height:1.6;white-space:pre-wrap">' + s.script + '</p></div>' : ''}
       ` : ''}
 
-      ${s.froidsMode && !s.froidsFields.nom.trim()
-        ? `<div style="font-size:11px;color:var(--c-text-2);text-align:center;margin-top:4px">Renseignez le nom de l'enseigne pour continuer.</div>`
-        : (!s.froidsMode && !s.cible
-            ? `<div style="font-size:11px;color:var(--c-text-2);text-align:center;margin-top:4px">Sélectionnez un compte pour activer l'appel.</div>`
-            : '')
-      }
-      <button type="button" class="btn-primaire" onclick="VuePhoning.demarrerAppel()"
-              ${(s.froidsMode ? !s.froidsFields.nom.trim() : !s.cible)
-                ? 'disabled style="opacity:.5;cursor:not-allowed"' : ''}>Démarrer l'appel →</button>
+      <div id="ph-hint-demarrer" style="font-size:11px;color:var(--c-text-2);text-align:center;margin-top:4px">${this._hintDemarrer()}</div>
+      <button type="button" id="ph-btn-demarrer" class="btn-primaire" onclick="VuePhoning.demarrerAppel()"
+              ${this._peutDemarrer() ? '' : 'disabled style="opacity:.5;cursor:not-allowed"'}>Démarrer l'appel →</button>
     </div>`;
   },
 
@@ -2124,7 +2158,9 @@ window.VuePhoning = {
 
       </div>` : ''}
 
-      <label class="q-label">Statut de l'appel ${this._r('statutAppel', statutsAppel)}</label>
+      <label class="q-label" id="ph-champ-statut"${s.erreurStatut && !d.statutAppel ? ' style="border:2px solid var(--c-danger);border-radius:var(--radius-sm);padding:8px"' : ''}>Statut de l'appel *
+        ${s.erreurStatut && !d.statutAppel ? '<span style="display:block;font-size:12px;font-weight:600;color:var(--c-danger);margin:2px 0 4px">Requis pour enregistrer l\'appel</span>' : ''}
+        ${this._r('statutAppel', statutsAppel)}</label>
       <label class="q-label">Intérêt EMPOWER ${this._r('interetEmpower', ['Fort', 'Moyen', 'Faible', 'Aucun', 'Déjà inscrit'])}</label>
 
       ${estProspect ? `
