@@ -50,8 +50,17 @@ window.SellInFlag = {
           <span style="color:var(--c-text-2)">${lib ? 'Dernière commande SELL IN' : 'Aucun signal SELL IN'}</span>
           ${c.SellIn_Commercial ? `<span style="margin-left:auto;font-size:12px;color:var(--c-text-2)">Commercial SELL IN : <strong>${this.esc(c.SellIn_Commercial)}</strong></span>` : ''}
         </div>
+        ${this._ecart(c)}
         ${lignes ? `<table style="width:100%;font-size:12px;margin-top:8px;border-collapse:collapse"><tbody>${lignes}</tbody></table>` : ''}
       </div>`;
+  },
+
+  // Le commercial du fichier SELL IN est un SIGNAL : il n'écrase jamais l'attribution de l'app. Un écart est seulement signalé.
+  _ecart(c) {
+    const s = String(c.SellIn_Commercial || '').trim();
+    if (!s || s === 'NON SUIVI' || !c.Nom_CDS) return '';
+    if (normaliserNom(s) === normaliserNom(c.Nom_CDS)) return '';
+    return `<div style="font-size:12px;color:var(--c-warning);margin-top:6px">⚠️ Écart d'attribution : le SELL IN indique <strong>${this.esc(s)}</strong>, l'app indique <strong>${this.esc(c.Nom_CDS)}</strong>.</div>`;
   },
 
   // 4 dernières semaines (plus récentes d'abord) d'un compte, depuis sellin_semaines.

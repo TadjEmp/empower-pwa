@@ -78,6 +78,7 @@ const SheetsAPI = {
     '👤_UTILISATEURS': 'utilisateurs', 'UTILISATEURS': 'utilisateurs',
     '❄️_FICHES_FROIDES': 'fiches_froides', 'FICHES_FROIDES': 'fiches_froides',
     '📦_SELLIN_SEMAINES': 'sellin_semaines', 'SELLIN_SEMAINES': 'sellin_semaines',
+    'V_COMPTES_SUIVI': 'v_comptes_suivi', 'ATTRIBUTIONS_HISTORIQUE': 'attributions_historique',
   },
 
   // Tables volontairement vides (table physique absente — ne jamais interroger).
@@ -123,7 +124,17 @@ const SheetsAPI = {
       date_onboarding_empower: 'Date_Onboarding_Empower',
       // Lot 2 (10/2026) — signal SELL IN « dernière semaine de commande » (cf. sellin-flag.js)
       sellin_dernier_quarter: 'SellIn_Dernier_Quarter', sellin_derniere_semaine: 'SellIn_Derniere_Semaine',
-      sellin_commercial: 'SellIn_Commercial',
+      sellin_commercial: 'SellIn_Commercial', date_attribution: 'Date_Attribution',
+    },
+    v_comptes_suivi: {
+      id: '_uuid', id_compte_gas: 'ID_Compte', nom_compte: 'Nom_Compte', pin_cds_assigne: 'PIN_CDS_Assigne',
+      derniere_visite: 'Derniere_Visite', dernier_appel: 'Dernier_Appel', a_prochaine_action: 'A_Prochaine_Action',
+      raisons: 'Raisons', non_suivi: 'Non_Suivi',
+    },
+    attributions_historique: {
+      id: '_uuid', compte_id: 'Compte_ID', nom_compte: 'Nom_Compte', ancien_pin: 'Ancien_PIN', nouveau_pin: 'Nouveau_PIN',
+      ancien_nom: 'Ancien_Nom', nouveau_nom: 'Nouveau_Nom', acteur_pin: 'Acteur_PIN', mode: 'Mode', motif: 'Motif',
+      date_effet: 'Date_Effet', created_at: 'Cree_Le',
     },
     sellin_semaines: {
       reseller: 'Reseller', reseller_norm: 'Reseller_Norm', quarter: 'Quarter', semaine: 'Semaine',
@@ -635,6 +646,21 @@ const SheetsAPI = {
     if (resultat.error) throw new Error(resultat.error.message)
     await this._invalidate(table)
     return { ok: true }
+  },
+
+  // ── Lots 3/4 : reprise / réattribution d'un compte (fonction SQL atomique, historisée, notifiée,
+  //    qui recalcule le CA par commercial). Jamais en file d'attente hors-ligne : la concurrence
+  //    (deux CDS sur le même compte) se règle côté serveur, pas à la resynchronisation.
+  async reattribuerCompte(compteUuid, ancienPin, nouveauPin, mode, motif = null) {
+    if (!this._online) return { ok: false, erreur: 'HORS_LIGNE' }
+    // L'acteur est déduit CÔTÉ SERVEUR du jeton de session (pas d'un PIN envoyé par le navigateur).
+    const token = (typeof Session !== 'undefined' && Session.token) || this.TOKEN || null
+    const { data, error } = await this._sb.rpc('reattribuer_compte', {
+      p_compte: compteUuid, p_ancien: ancienPin, p_nouveau: nouveauPin, p_token: token, p_mode: mode, p_motif: motif,
+    })
+    if (error) return { ok: false, erreur: error.message }
+    await Promise.all(['comptes', 'objectifs_primes', 'notifs', 'attributions_historique'].map(t => this._invalidate(t)))
+    return data
   },
 
   // ── lireCDS ──────────────────────────────────────────

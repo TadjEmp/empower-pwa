@@ -79,6 +79,7 @@ window.VueFicheCompte = {
     this.state.modalRapportPhoning = false;
     this._trackerAjouteDepuisFiche = false;
     this.state.suppressionEnCours = false;
+    await NonSuivis.charger();   // Lot 3 — état « non suivi » (vue SQL)
     const [comptes, rawV17, visites, appels, params, sellinSem] = await Promise.all([
       SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
       SheetsAPI.lire('V17', '📋 COMPTES HISTORIQUES'),
@@ -101,6 +102,7 @@ window.VueFicheCompte = {
     const nomNorm = normaliserNom(compte.Nom_Compte);
     this.state.compte  = compte;
     this.state.sellinSemaines = SellInFlag.dernieres(sellinSem, compte._uuid);
+    this.state.historiqueAttrib = await NonSuivis.historique(compte._uuid);
     this.state.v17     = rawV17.find(r => normaliserNom(r.RESELLER) === nomNorm) || null;
     this.state.visites = visites.filter(v => String(v.ID_Cible) === String(idCompte))
       .sort((a, b) => new Date(b.Date) - new Date(a.Date));
@@ -187,19 +189,22 @@ window.VueFicheCompte = {
   // Bloc C4 (07/2026) — attribution/réattribution d'un CDS depuis la fiche
   // compte, notamment pour les comptes créés non attribués par la synchro
   // Sell-In (Bloc C). ADMIN/CHANNEL_MANAGER uniquement (contrôlé au rendu).
+  // Lots 3/4 — passe par reattribuer_compte() : historisé, notifié, CA par commercial recalculé à la date d'effet.
   async changerCDS(idCompte, pin) {
-    try {
-      const champs = {
-        PIN_CDS_Assigne: pin || null,
-        Nom_CDS: pin ? resolveCDS(Number(pin)) : '',
-      };
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', idCompte, champs);
-      Object.assign(this.state.compte, champs);
-      Toast.afficher(pin ? '✅ Compte attribué' : '✅ Compte désattribué', 'succes');
+    const c = this.state.compte;
+    await NonSuivis.reattribuer(c, pin ? Number(pin) : null, async (ok) => {
+      if (ok) { await this._chargerDonnees(c._uuid || idCompte); }
       this._rerender();
-    } catch(e) {
-      Toast.afficher('❌ ' + e.message, 'erreur');
-    }
+    });
+  },
+
+  // Lot 3 — « Je reprends ce compte » (compte non suivi d'un autre ou sans propriétaire).
+  reprendre() {
+    const c = this.state.compte;
+    NonSuivis.reprendre(c, async (ok) => {
+      if (ok) { await this._chargerDonnees(c._uuid || c.ID_Compte); }
+      this._rerender();
+    });
   },
 
   // Bug profils (audit) — jusqu'ici Has_EMPOWER n'était basculé
@@ -567,6 +572,8 @@ window.VueFicheCompte = {
       ${this._renderBlocIdentite(c)}
 
       ${SellInFlag.blocFiche(c, this.state.sellinSemaines)}
+
+      ${NonSuivis.blocFiche(c, this.state.historiqueAttrib)}
 
       <!-- CA HISTORIQUE -->
       <div class="bloc-fiche">
