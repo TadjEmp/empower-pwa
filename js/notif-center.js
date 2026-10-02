@@ -32,6 +32,7 @@ window.NotifCenter = {
   _route(typeNotif, idCible) {
     if (!idCible) return '#/dashboard';
     const t = String(typeNotif || '').toUpperCase();
+    if (t === 'A_CONTACTER') return '#/a-contacter';   // Lot 5 — récap « à contacter » après synchro
     if (['COMPTE_CREE', 'VISITE_REALISEE', 'CONVERSION_FROID', 'COMPTE_REPRIS', 'COMPTE_REATTRIBUE'].includes(t)) return '#/compte/' + idCible;
     if (['LEAD_ASSIGNE', 'NOUVEAU_LEAD', 'STATUT_CHANGE', 'STATUT_ARCHIVE', 'STATUT_EN_COURS', 'STATUT_INTEGRE'].includes(t)) return '#/empower-tracker';
     if (t === 'IMPORT_TRACKER') return '#/empower-tracker';

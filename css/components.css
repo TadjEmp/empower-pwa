@@ -331,3 +331,7 @@
 /* Lot 3 — compte non suivi (à reprendre) */
 .badge-nonsuivi { display:inline-block; font-size:11px; font-weight:700; padding:2px 8px; border-radius:99px;
   background:var(--status-interesse-bg, #FEF3C7); color:#B45309; border:1px solid #F59E0B55; white-space:nowrap; }
+
+/* Lot 5 — axe « À contacter » */
+.badge-acontacter { display:inline-block; font-size:11px; font-weight:700; padding:2px 8px; border-radius:99px; background:#EFF6FF; color:#1D4ED8; border:1px solid #93C5FD; white-space:nowrap; }
+.drawer-badge { margin-left:auto; min-width:20px; padding:1px 7px; border-radius:99px; background:var(--c-primary,#2563EB); color:#fff; font-size:11px; font-weight:700; text-align:center; }

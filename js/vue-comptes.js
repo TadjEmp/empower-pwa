@@ -169,6 +169,7 @@ window.VueComptes = {
       // Lot 3 — le filtre « À reprendre » porte sur TOUS les comptes (un CDS reprend ceux des autres)
       this.state.tousComptes = raw;
       await NonSuivis.charger();
+      if (window.AContacter) await AContacter.charger();
       // Bloc 1 §6.2 — dates dernière visite / dernier appel / prochaine visite
       // calculées en direct depuis visites/phoning, pas depuis les champs figés
       // sur comptes (Date_Derniere_Action peut être désynchronisé).
@@ -492,6 +493,7 @@ window.VueComptes = {
               ${estDoublon ? `<span style="color:var(--c-warning);font-size:11px;font-weight:700" title="Un autre compte porte le même nom — ouvrir la fiche pour supprimer le doublon">⚠️ Doublon</span>` : ''}
               ${badgeDernier}
               ${NonSuivis.badge(c)}
+              ${window.AContacter ? AContacter.badge(c) : ''}
               ${SellInFlag.badge(c)}
               ${badgeDernierAppel}
               ${this._badgePriorite(c.Priorite)}

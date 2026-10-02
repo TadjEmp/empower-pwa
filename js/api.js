@@ -78,7 +78,7 @@ const SheetsAPI = {
     '👤_UTILISATEURS': 'utilisateurs', 'UTILISATEURS': 'utilisateurs',
     '❄️_FICHES_FROIDES': 'fiches_froides', 'FICHES_FROIDES': 'fiches_froides',
     '📦_SELLIN_SEMAINES': 'sellin_semaines', 'SELLIN_SEMAINES': 'sellin_semaines',
-    'V_COMPTES_SUIVI': 'v_comptes_suivi', 'ATTRIBUTIONS_HISTORIQUE': 'attributions_historique',
+    'V_COMPTES_SUIVI': 'v_comptes_suivi', 'ATTRIBUTIONS_HISTORIQUE': 'attributions_historique', 'V_A_CONTACTER': 'v_a_contacter',
   },
 
   // Tables volontairement vides (table physique absente — ne jamais interroger).
@@ -130,6 +130,12 @@ const SheetsAPI = {
       id: '_uuid', id_compte_gas: 'ID_Compte', nom_compte: 'Nom_Compte', pin_cds_assigne: 'PIN_CDS_Assigne',
       derniere_visite: 'Derniere_Visite', dernier_appel: 'Dernier_Appel', a_prochaine_action: 'A_Prochaine_Action',
       raisons: 'Raisons', non_suivi: 'Non_Suivi',
+    },
+    v_a_contacter: {
+      id: '_uuid', id_compte_gas: 'ID_Compte', nom_compte: 'Nom_Compte', ville: 'Ville', pin_cds_assigne: 'PIN_CDS_Assigne',
+      nom_cds: 'Nom_CDS', axe: 'Axe', priorite: 'Priorite', motif: 'Motif', date_ref: 'Date_Ref', jours: 'Jours',
+      date_integration_manquante: 'Date_Integration_Manquante', ca_recent: 'CA_Recent', ca_fy27: 'CA_FY27',
+      statut_tracker: 'Statut_Tracker', dernier_contact: 'Dernier_Contact',
     },
     attributions_historique: {
       id: '_uuid', compte_id: 'Compte_ID', nom_compte: 'Nom_Compte', ancien_pin: 'Ancien_PIN', nouveau_pin: 'Nouveau_PIN',

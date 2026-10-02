@@ -22,3 +22,10 @@ end $$;
 -- 3) Règles de reattribuer_compte (jeton de session) : voir le détail dans la PR — reprise OK d'un compte sans propriétaire,
 --    rejeu = COMPTE_SUIVI, compte suivi refusé, manager ne « reprend » pas, reprise pour autrui refusée, CDS en mode MANAGER refusé,
 --    jeton falsifié = SESSION_INVALIDE, jeton expiré = SESSION_EXPIREE. (Jetons de test posés dans la transaction annulée.)
+
+-- ── Lot 5 : axe « À contacter » ──
+-- 4) Classement attendu sur les données réelles du 02/10/2026 : P1 = 43, P2 = 24 (audit : 49 / 28 avant exclusion des comptes contactés < 30 j).
+select axe, count(*) from v_a_contacter group by 1;
+-- 5) Rappel + reporter (transaction annulée) : le param SELLIN_SEMAINES_DATE déclenche UN récap par commercial (dédoublonné),
+--    managers prévenus pour les comptes sans propriétaire ; reporter : propriétaire OK, autre CDS NON_AUTORISE, jeton faux SESSION_INVALIDE,
+--    durée > 60 j DUREE_INVALIDE, manager OK ; le compte reporté sort de la vue. (Résultat constaté : 8 notifications, dédoublonnage OK.)
