@@ -252,3 +252,9 @@ button, [onclick], .btn-filtre, .tab-btn-premium { touch-action: manipulation; }
 .kanban-col-cartes { gap: 16px; }
 .kanban-col-head { padding: 14px 20px; border-radius: var(--radius-lg); }
 .kanban-carte, .kanban-ligne { padding: 16px 20px; display: flex; flex-direction: column; gap: 8px; }
+
+/* Indicateur de chargement des pages (nav-web.js) */
+#nav-progress { position: fixed; top: 0; left: 0; height: 3px; width: 0; z-index: 10000; background: var(--c-primary); opacity: 0; pointer-events: none; }
+#nav-progress.en-cours { opacity: 1; width: 82%; transition: width 6s cubic-bezier(.1, .7, .2, 1); }
+#nav-progress.termine  { opacity: 0; width: 100%; transition: width 160ms ease-out, opacity 260ms ease-out 120ms; }
+.liste-plus { display: flex; justify-content: center; padding: 24px 0 8px; }
