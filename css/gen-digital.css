@@ -258,3 +258,59 @@ button, [onclick], .btn-filtre, .tab-btn-premium { touch-action: manipulation; }
 #nav-progress.en-cours { opacity: 1; width: 82%; transition: width 6s cubic-bezier(.1, .7, .2, 1); }
 #nav-progress.termine  { opacity: 0; width: 100%; transition: width 160ms ease-out, opacity 260ms ease-out 120ms; }
 .liste-plus { display: flex; justify-content: center; padding: 24px 0 8px; }
+
+/* ═══ Mobile / PWA : mêmes règles de respiration que le desktop ═══
+   Cartes de liste à 16 px les unes des autres, marges latérales alignées sur 16 px,
+   alertes et pastilles aérées. */
+@media (max-width: 899px) {
+  .mobile-card-list-view { gap: 16px; }
+  .liste-comptes { padding: 8px 16px calc(80px + var(--safe-bottom)); gap: 16px; }
+  .q-contenu > .carte-compte-v2 + .carte-compte-v2,
+  .q-contenu > .carte-visite + .carte-visite,
+  .q-contenu > .bloc-fiche + .bloc-fiche { margin-top: 16px; }
+  .carte-compte-v2 { padding: 16px 20px; border-radius: var(--radius-lg); box-shadow: none; gap: 12px; }
+  .cc-pills { gap: 8px; }
+  .cc-infos { gap: 12px; }
+  .cc-actions { gap: 12px; margin-top: 8px; flex-wrap: wrap; }
+  .cc-actions > * { flex: 1 1 auto; min-width: 0; white-space: nowrap; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+  .cc-actions .btn-secondaire, .cc-actions .btn-tel-outline, .cc-actions .btn-primaire { padding: 8px 18px; }
+  .v7-signal .alerte-ligne + .alerte-ligne { margin-top: 8px; }
+  .v7-signal { margin-left: 16px; margin-right: 16px; padding: 16px 20px; }
+  .filtres-flags { gap: 12px 8px !important; }
+  .cc-actions { gap: 12px !important; }
+  .q-chips { gap: 8px 8px; }
+  .dash-grid-2col { display: flex; flex-direction: column; gap: 16px; }
+  .barre-filtres { padding: 16px; }
+  .kpi-grid-layout { gap: 16px; padding: 0 16px; margin-bottom: 24px; }
+  .kpi-card, .stat-tuile { padding: 20px; }
+  .fiche-body { padding: 16px 16px calc(100px + var(--safe-bottom)); gap: 16px; }
+  .bloc-fiche { padding: 20px; }
+  .section-card { margin-left: 16px; margin-right: 16px; }
+}
+
+/* Tuiles KPI : v7.css retirait le padding gauche de la 1re colonne et le haut de la 2e rangée
+   (et ajoutait un filet) ; chaque tuile garde ici les mêmes marges intérieures, sur tous les écrans. */
+.kpi-grid-layout .kpi-card,
+.kpi-grid-layout .kpi-card:first-child,
+.kpi-grid-layout .kpi-card:nth-child(odd),
+.kpi-grid-layout .kpi-card:nth-child(n+3) {
+  padding: 20px 24px; border: 0; border-radius: var(--radius-lg); background: var(--c-surface);
+}
+@media (max-width: 899px) {
+  .kpi-grid-layout .kpi-card, .kpi-grid-layout .kpi-card:first-child,
+  .kpi-grid-layout .kpi-card:nth-child(odd), .kpi-grid-layout .kpi-card:nth-child(n+3) { padding: 20px; }
+}
+
+/* Mobile : en-tête de page, recherche et sélecteurs plus généreux (cible tactile 44 px) */
+@media (max-width: 899px) {
+  .tabs-premium { padding: 16px 16px 8px; }
+  .kpi-grid-layout { margin-top: 12px; }
+  .barre-filtres input[type="search"], .barre-filtres select, .filtres-statut select {
+    min-height: 44px; border: 0 !important; border-radius: var(--radius-md) !important;
+    background: var(--c-bg); padding: 0 16px; font-size: 14px;
+  }
+  /* Les zones de filtres sont blanches : pills et champs au repos prennent la teinte de fond */
+  .btn-filtre:not(.actif), .tab-btn-premium:not(.actif) { background: var(--c-bg); }
+  .barre-filtres { gap: 16px; }
+  .filtres-statut { gap: 12px; }
+}
