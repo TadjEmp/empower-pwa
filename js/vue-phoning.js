@@ -2235,7 +2235,9 @@ window.VuePhoning = {
   // groupée (_renderCartesCommerciauxPlanning), qui n'affichait avant que le
   // nom du commercial + un total sans aucun détail des appels.
   _carteAppelPlanifie(a, now, badges) {
-    const estPasse = (a.Date_Planifiee || '').slice(0, 10) < now;
+    // Saisie post-date : un appel planifié a posteriori n'est pas « en retard »
+    const retro = a.Saisie_Retroactive === true || String(a.Saisie_Retroactive || '').toUpperCase() === 'TRUE';
+    const estPasse = !retro && (a.Date_Planifiee || '').slice(0, 10) < now;
     const badge = badges[String(a.Statut_Appel || '').toLowerCase()] || badges['planifié'];
     const meta = [
       Session.voitTout() ? resolveCDS(a.PIN_CDS || a.Nom_CDS) : null,
@@ -2284,7 +2286,7 @@ window.VuePhoning = {
       return `<div style="padding:32px;text-align:center;color:var(--c-text-2)">Aucun appel planifié pour cette période.</div>`;
     }
     return groupes.map(g => {
-      const enRetard = g.appels.filter(a => (a.Date_Planifiee || '').slice(0, 10) < auj).length;
+      const enRetard = g.appels.filter(a => a.Saisie_Retroactive !== true && (a.Date_Planifiee || '').slice(0, 10) < auj).length;
       const etendu = !!this.state.commerciauxEtendusPlanning[g.pin];
       return `
       <div class="planning-groupe-jour">
@@ -2659,11 +2661,14 @@ window.VuePhoning = {
           Object.assign(c, majCoord);
         }
       }
+      const retro = (f.datePlanifiee || '').slice(0, 10) < dateISOLocale();
       const record = {
         ID_Appel: genId('APPEL'),
         Date_Planifiee: f.datePlanifiee,
-        Date: dateISOLocale(),
-        Semaine_ISO: FiscalWeeks.codeDe(),
+        // Saisie post-date : appel planifié pour une date déjà passée → rattaché à sa semaine réelle
+        Date: retro ? f.datePlanifiee.slice(0, 10) : dateISOLocale(),
+        Semaine_ISO: FiscalWeeks.codeDe(retro ? new Date(f.datePlanifiee) : undefined),
+        Saisie_Retroactive: retro,
         PIN_CDS: Session.pin, Nom_CDS: Session.nom,
         ID_Cible: f.modeFroid ? '' : f.idCompte,
         Reseller: f.modeFroid ? f.froidNom : (c ? c.Nom_Compte : f.nomCompte),

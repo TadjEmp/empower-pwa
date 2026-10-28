@@ -32,9 +32,15 @@ window.VueVisites = {
   // Une visite encore "planifiée" mais dont la date est passée est affichée
   // "manquée" (🔴) au chargement — détection à la volée, SANS écrire en base
   // (réversible : si on replanifie à une date future, elle redevient planifiée).
+  // Saisie post-date : visite créée pour une date déjà passée, à renseigner après
+  // coup. Elle reste « planifiée » (jamais basculée automatiquement en « manquée »).
+  _estRetro(v) {
+    return v.Saisie_Retroactive === true || String(v.Saisie_Retroactive || '').toUpperCase() === 'TRUE';
+  },
+
   _statutEffectif(v) {
     const s = (v.Statut_Visite || 'planifiée').toLowerCase();
-    if (s === 'planifiée') {
+    if (s === 'planifiée' && !this._estRetro(v)) {
       const d = (v.Date || v.Date_Planif || '').slice(0, 10);
       if (d && d < dateISOLocale()) return 'manquée';
     }
@@ -196,6 +202,7 @@ window.VueVisites = {
     const enRetard = this.state.visites.filter(v => {
       const s = (v.Statut_Visite || 'planifiée').toLowerCase();
       if (s !== 'planifiée' && s !== 'planifiee') return false;
+      if (this._estRetro(v)) return false;   // saisie post-date : jamais « manquée » automatiquement
       const d = (v.Date || v.Date_Planif || '').slice(0, 10);
       return d && d < aujourdhui;
     });
@@ -301,6 +308,7 @@ window.VueVisites = {
       idCible: '', nomCible: '',
       horsBase: false, nomLibre: '',
       idFicheFroide: '',   // Lot 1 — fiche magasin à froid liée
+      saisieRetro: false,  // saisie post-date (date passée, CR à saisir après coup)
       // Champs prospect à froid (M1 + M7)
       adresseLibre: '', deptLibre: '', villeLibre: '', telLibre: '', emailLibre: '',
       commentairePrep: '',
@@ -846,6 +854,21 @@ window.VueVisites = {
     });
   },
 
+  // Date du formulaire de planification : une date passée propose la saisie post-date.
+  changerDatePlanif(d) {
+    const f = this.state.formPlanif;
+    f.date = d;
+    f.saisieRetro = !!d && d < dateISOLocale();
+    this.render();
+  },
+
+  // Visite saisie après coup : démarre puis ouvre directement le compte-rendu.
+  async saisirApresCoup(idVisite) {
+    await this.demarrerVisite(idVisite);
+    const v = this.state.visites.find(x => x.ID_Visite === idVisite);
+    if (v && (v.Statut_Visite || '').toLowerCase() === 'en cours') this.ouvrirCR(idVisite);
+  },
+
   async planifier(e) {
     e.preventDefault();
     // BUG2 — anti multi-soumission : verrou de ré-entrée immédiat
@@ -931,6 +954,7 @@ window.VueVisites = {
         Type_Visite:            f.typeVisite,
         Objectif_Visite:        f.objectifVisite || '',
         Statut_Visite:          'planifiée',
+        Saisie_Retroactive:     !!(f.saisieRetro && f.date < dateISOLocale()),
         // Prospect à froid : infos de contact stockées sur la visite
         Adresse:                f.horsBase ? (f.adresseLibre || '') : '',
         Departement:            f.horsBase ? (f.deptLibre || '') : '',
@@ -1499,6 +1523,7 @@ window.VueVisites = {
     const meta = [
       v.Type_Visite ? String(v.Type_Visite).replace(/_/g, ' ') : null,
       cdsNom && cdsNom !== '—' ? cdsNom : null,
+      this._estRetro(v) && statut === 'planifiée' ? '↩ saisie post-date' : null,
     ].filter(Boolean).join(' · ');
 
     return `
@@ -1512,10 +1537,15 @@ window.VueVisites = {
         ${this._detailsCarteVisite(v, statut)}
         <div class="cv-actions" style="gap:6px;flex-wrap:wrap">
           ${isPlanif ? `
+            ${this._estRetro(v) && statut === 'planifiée' ? `
+            <button class="btn-primaire" style="padding:8px 14px;font-size:13px;width:auto"
+                    onclick="VueVisites.saisirApresCoup('${v.ID_Visite}')">
+              Saisir le CR
+            </button>` : `
             <button class="btn-primaire" style="padding:8px 14px;font-size:13px;width:auto${estManquee ? ';background:var(--c-danger)' : ''}"
                     onclick="VueVisites.demarrerVisite('${v.ID_Visite}')">
               ${estManquee ? 'Rattraper' : 'Démarrer'}
-            </button>` : ''}
+            </button>`}` : ''}
           ${isEnCours ? `
             <button class="btn-primaire" style="padding:8px 14px;font-size:13px;width:auto"
                     onclick="VueVisites.ouvrirCR('${v.ID_Visite}')">
@@ -1874,7 +1904,7 @@ window.VueVisites = {
           <div style="display:flex;gap:10px">
             <label style="flex:2">Date *
               <input type="date" required value="${f.date}"
-                     onchange="VueVisites.state.formPlanif.date=this.value"/></label>
+                     onchange="VueVisites.changerDatePlanif(this.value)"/></label>
             <label style="flex:1">Heure
               <input type="time" value="${f.heure}"
                      onchange="VueVisites.state.formPlanif.heure=this.value"/></label>
@@ -1886,6 +1916,12 @@ window.VueVisites = {
               </select>
             </label>
           </div>
+          ${f.date && f.date < dateISOLocale() ? `
+          <label style="display:flex;gap:8px;align-items:flex-start;padding:8px 10px;background:var(--c-bg);border-radius:var(--radius-sm);font-size:12px;margin:2px 0 8px">
+            <input type="checkbox" style="margin-top:2px" ${f.saisieRetro ? 'checked' : ''}
+                   onchange="VueVisites.state.formPlanif.saisieRetro=this.checked"/>
+            <span><strong>Saisie post-date</strong> — la date est passée. La visite reste « planifiée » (jamais marquée « manquée ») jusqu'à la saisie du compte-rendu.</span>
+          </label>` : ''}
           <label>Type de visite
             <select onchange="VueVisites.state.formPlanif.typeVisite=this.value">
               ${[['SUIVI_ACTIF','Suivi actif'],['PROSPECTION_FROIDE','Prospection froide'],['ONBOARDING_EMPOWER','Onboarding EMPOWER'],['REACTIVER','Réactivation']].map(([v,l]) =>
