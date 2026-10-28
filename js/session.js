@@ -11,6 +11,7 @@ const Session = {
   pin:    null,   // identifiant métier interne (filtres comptes/visites)
   nom:    null,
   role:   null,
+  droits: null,   // tabIds propres à l'utilisateur ; null = matrice du rôle
 
   init() {
     const saved = localStorage.getItem('empower_session');
@@ -20,6 +21,7 @@ const Session = {
         Object.assign(this, {
           token: s.token, expiry: s.expiry, email: s.email,
           pin: s.pin, nom: s.nom, role: s.role,
+          droits: Array.isArray(s.droits) ? s.droits : null,
         });
         SheetsAPI.TOKEN = s.token;
         return true;
@@ -39,18 +41,19 @@ const Session = {
     this.pin    = r.utilisateur.pin;
     this.nom    = r.utilisateur.nom;
     this.role   = r.utilisateur.role;
+    this.droits = Array.isArray(r.utilisateur.droits) ? r.utilisateur.droits : null;
     SheetsAPI.TOKEN = r.token;
 
     localStorage.setItem('empower_session', JSON.stringify({
       token: this.token, expiry: this.expiry, email: this.email,
-      pin: this.pin, nom: this.nom, role: this.role,
+      pin: this.pin, nom: this.nom, role: this.role, droits: this.droits,
     }));
     return { ok: true };
   },
 
   deconnecter() {
     this.token = this.expiry = this.email = null;
-    this.pin = this.nom = this.role = null;
+    this.pin = this.nom = this.role = this.droits = null;
     SheetsAPI.TOKEN = null;
     localStorage.removeItem('empower_session');
   },

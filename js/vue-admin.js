@@ -35,7 +35,7 @@ window.VueAdmin = {
       usersState: {
         chargement: false, liste: [],
         modalCreation: false, envoiEnCours: false,
-        formCreation: { nom: '', email: '', pin: '', role: 'CDS', motdepasse: '' },
+        formCreation: null, etapeCreation: 'saisie', mdpCree: '',
         modalReset: false, resetTarget: null, resetMdp: '',
       },
     };
@@ -95,31 +95,88 @@ window.VueAdmin = {
     this.state.usersState.chargement = true;
     this.render();
     try {
-      const { data, error } = await SheetsAPI._sb.from('utilisateurs')
-        .select('pin,nom,email,role,actif').order('pin');
-      if (error) throw new Error(error.message);
-      this.state.usersState.liste = data || [];
-    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+      let liste = null;
+      try {
+        const r = await fetch(`${SUPABASE_URL}/functions/v1/admin-users`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+          body: JSON.stringify({ action: 'list', token: SheetsAPI.TOKEN }),
+        });
+        const d = await r.json();
+        if (d.ok) liste = d.utilisateurs;
+      } catch (_) { /* repli ci-dessous */ }
+      if (!liste) {
+        const { data, error } = await SheetsAPI._sb.from('utilisateurs')
+          .select('pin,nom,email,role,actif').order('pin');
+        if (error) throw new Error(error.message);
+        liste = data;
+      }
+      this.state.usersState.liste = liste || [];
+    } catch(e) { Toast.afficher('Erreur : ' + e.message, 'erreur'); }
     this.state.usersState.chargement = false;
     this.render();
   },
 
   ouvrirModalCreation() {
-    this.state.usersState.modalCreation = true;
-    this.state.usersState.formCreation = { nom: '', email: '', pin: '', role: 'CDS', motdepasse: '' };
+    const us = this.state.usersState;
+    us.modalCreation = true;
+    us.etapeCreation = 'saisie';
+    us.mdpCree = '';
+    us.formCreation = {
+      nom: '', email: '', pin: '', role: 'CDS',
+      motdepasse: this._genererMotDePasse(),
+      droits: new Set(Permissions.MATRICE.CDS),
+    };
     this.render();
   },
   fermerModalCreation() { this.state.usersState.modalCreation = false; this.render(); },
 
-  async creerUtilisateur(e) {
-    e.preventDefault();
-    if (this.state.usersState.envoiEnCours) return;
+  // 16 caractères sans symboles ambigus (0/O, 1/l/I), tirés de crypto.getRandomValues.
+  _genererMotDePasse() {
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    const octets = crypto.getRandomValues(new Uint8Array(16));
+    return Array.from(octets, b => alphabet[b % alphabet.length]).join('');
+  },
+  regenererMdpCreation() {
+    this.state.usersState.formCreation.motdepasse = this._genererMotDePasse();
+    this.render();
+  },
+
+  changerRoleCreation(role) {
     const f = this.state.usersState.formCreation;
+    f.role = role;
+    f.droits = new Set(Permissions.MATRICE[role] || []);   // pré-coche les droits du rôle
+    this.render();
+  },
+  basculerDroitCreation(tab, coche) {
+    const f = this.state.usersState.formCreation;
+    if (coche) f.droits.add(tab); else f.droits.delete(tab);
+  },
+
+  // Étape 1 → 2 : contrôle des champs puis écran de récapitulatif.
+  verifierCreation(e) {
+    e.preventDefault();
+    const us = this.state.usersState;
+    const f = us.formCreation;
     if (!f.nom.trim() || !f.email.trim() || !f.pin || !f.motdepasse) {
       Toast.afficher('Champs requis manquants', 'warning'); return;
     }
     if (f.motdepasse.length < 12) { Toast.afficher('Mot de passe trop court (12 caractères min)', 'warning'); return; }
-    this.state.usersState.envoiEnCours = true;
+    if (f.role !== 'ADMIN' && f.droits.size === 0) { Toast.afficher('Cochez au moins une section', 'warning'); return; }
+    us.etapeCreation = 'recap';
+    this.render();
+  },
+  retourSaisieCreation() { this.state.usersState.etapeCreation = 'saisie'; this.render(); },
+
+  // Étape 2 : validation, c'est ici que l'accès est réellement créé.
+  async creerUtilisateur() {
+    const us = this.state.usersState;
+    if (us.envoiEnCours) return;
+    const f = us.formCreation;
+    // Droits identiques à ceux du rôle : on n'enregistre rien (le rôle fait foi).
+    const defaut = Permissions.MATRICE[f.role] || [];
+    const identique = defaut.length === f.droits.size && defaut.every(t => f.droits.has(t));
+    us.envoiEnCours = true;
     this.render();
     try {
       const r = await fetch(`${SUPABASE_URL}/functions/v1/admin-users`, {
@@ -129,17 +186,19 @@ window.VueAdmin = {
           action: 'create', token: SheetsAPI.TOKEN,
           email: f.email.trim(), motdepasse: f.motdepasse,
           pin: Number(f.pin), nom: f.nom.trim(), role: f.role,
+          droits: (f.role === 'ADMIN' || identique) ? null : [...f.droits],
         }),
       });
       const data = await r.json();
       if (!data.ok) throw new Error(data.erreur || `HTTP ${r.status}`);
-      Toast.afficher(`✅ Utilisateur ${f.nom} créé`, 'succes');
-      this.state.usersState.modalCreation = false;
+      Toast.afficher(`Accès créé pour ${f.nom.trim()}`, 'succes');
+      us.mdpCree = f.motdepasse;
+      us.etapeCreation = 'termine';
       await this._chargerUtilisateurs();
     } catch(err) {
-      Toast.afficher('❌ ' + err.message, 'erreur');
+      Toast.afficher('Erreur : ' + err.message, 'erreur');
     }
-    this.state.usersState.envoiEnCours = false;
+    us.envoiEnCours = false;
     this.render();
   },
 
@@ -215,7 +274,7 @@ window.VueAdmin = {
     return `
       <div class="bloc-fiche">
         <div class="bloc-titre" style="display:flex;align-items:center;gap:8px">👥 Utilisateurs
-          <button class="btn-secondaire" style="margin-left:auto;width:auto;padding:8px 14px" onclick="VueAdmin.ouvrirModalCreation()">➕ Créer un utilisateur</button>
+          <button class="btn-secondaire" style="margin-left:auto;width:auto;padding:8px 14px" onclick="VueAdmin.ouvrirModalCreation()">Créer un accès</button>
         </div>
         <div class="desktop-table-wrap">
           <table class="desktop-table-data-view">
@@ -270,30 +329,79 @@ window.VueAdmin = {
   },
 
   _renderModalCreation() {
-    const f = this.state.usersState.formCreation;
+    const us = this.state.usersState;
+    const f = us.formCreation;
+    const echap = v => String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    const ROLES = Object.keys(Permissions.MATRICE);
+    const sections = Object.keys(Permissions.LIBELLES);
+    const nbDroits = f.role === 'ADMIN' ? sections.length : f.droits.size;
+    let corps;
+
+    if (us.etapeCreation === 'termine') {
+      corps = `
+        <h3>Accès créé</h3>
+        <p>${echap(f.nom)} peut se connecter avec <strong>${echap(f.email)}</strong>.</p>
+        <label>Mot de passe initial (affiché une seule fois)
+          <input class="q-input" readonly value="${echap(us.mdpCree)}" onfocus="this.select()"/></label>
+        <p style="font-size:12px;color:var(--c-text-2)">Transmettez-le par un canal sûr, puis demandez à la personne de le changer.</p>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button type="button" class="btn-secondaire" onclick="navigator.clipboard && navigator.clipboard.writeText(VueAdmin.state.usersState.mdpCree).then(() => Toast.afficher('Mot de passe copié', 'succes'))">Copier</button>
+          <button type="button" class="btn-primaire" onclick="VueAdmin.fermerModalCreation()">Terminer</button>
+        </div>`;
+    } else if (us.etapeCreation === 'recap') {
+      const coches = f.role === 'ADMIN' ? sections : sections.filter(t => f.droits.has(t));
+      corps = `
+        <h3>Valider la création</h3>
+        <dl class="admin-recap">
+          <dt>Nom</dt><dd>${echap(f.nom.trim())}</dd>
+          <dt>Email</dt><dd>${echap(f.email.trim())}</dd>
+          <dt>PIN</dt><dd>${echap(f.pin)}</dd>
+          <dt>Rôle</dt><dd>${f.role}</dd>
+          <dt>Droits (${nbDroits})</dt><dd>${coches.map(t => Permissions.LIBELLES[t]).join(', ')}</dd>
+        </dl>
+        <p style="font-size:12px;color:var(--c-text-2)">L'accès n'est créé qu'au clic sur « Valider et créer ».</p>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button type="button" class="btn-secondaire" onclick="VueAdmin.retourSaisieCreation()">Modifier</button>
+          <button type="button" class="btn-primaire" ${us.envoiEnCours ? 'disabled' : ''} onclick="VueAdmin.creerUtilisateur()">${us.envoiEnCours ? 'Création en cours' : 'Valider et créer'}</button>
+        </div>`;
+    } else {
+      corps = `
+        <h3>Créer un accès</h3>
+        <form onsubmit="VueAdmin.verifierCreation(event)">
+          <label>Nom *
+            <input class="q-input" required value="${echap(f.nom)}" oninput="VueAdmin.state.usersState.formCreation.nom=this.value"/></label>
+          <label>Email *
+            <input type="email" class="q-input" required value="${echap(f.email)}" oninput="VueAdmin.state.usersState.formCreation.email=this.value"/></label>
+          <label>PIN *
+            <input type="number" class="q-input" required value="${echap(f.pin)}" oninput="VueAdmin.state.usersState.formCreation.pin=this.value"/></label>
+          <label>Rôle *
+            <select onchange="VueAdmin.changerRoleCreation(this.value)">
+              ${ROLES.map(r => `<option value="${r}" ${f.role === r ? 'selected' : ''}>${r}</option>`).join('')}
+            </select></label>
+          <fieldset class="admin-droits" ${f.role === 'ADMIN' ? 'disabled' : ''}>
+            <legend>Droits d'accès${f.role === 'ADMIN' ? ' (tous, non modifiables pour un administrateur)' : ''}</legend>
+            ${sections.map(t => `
+              <label class="admin-droit">
+                <input type="checkbox" ${(f.role === 'ADMIN' || f.droits.has(t)) ? 'checked' : ''}
+                  onchange="VueAdmin.basculerDroitCreation('${t}', this.checked)"/>
+                <span>${Permissions.LIBELLES[t]}</span>
+              </label>`).join('')}
+          </fieldset>
+          <label>Mot de passe initial * (12 caractères min)
+            <span style="display:flex;gap:8px">
+              <input type="text" class="q-input" required minlength="12" value="${echap(f.motdepasse)}" oninput="VueAdmin.state.usersState.formCreation.motdepasse=this.value"/>
+              <button type="button" class="btn-secondaire" style="width:auto" onclick="VueAdmin.regenererMdpCreation()">Générer</button>
+            </span></label>
+          <div style="display:flex;gap:8px;margin-top:14px">
+            <button type="button" class="btn-secondaire" onclick="VueAdmin.fermerModalCreation()">Annuler</button>
+            <button type="submit" class="btn-primaire">Continuer</button>
+          </div>
+        </form>`;
+    }
+
     return `
-      <div class="modal-overlay" onclick="if(event.target===this) VueAdmin.fermerModalCreation()">
-        <div class="modal">
-          <h3>➕ Créer un utilisateur</h3>
-          <form onsubmit="VueAdmin.creerUtilisateur(event)">
-            <label>Nom *
-              <input class="q-input" required value="${f.nom}" oninput="VueAdmin.state.usersState.formCreation.nom=this.value"/></label>
-            <label>Email *
-              <input type="email" class="q-input" required value="${f.email}" oninput="VueAdmin.state.usersState.formCreation.email=this.value"/></label>
-            <label>PIN *
-              <input type="number" class="q-input" required value="${f.pin}" oninput="VueAdmin.state.usersState.formCreation.pin=this.value"/></label>
-            <label>Rôle *
-              <select onchange="VueAdmin.state.usersState.formCreation.role=this.value">
-                ${Object.keys(Permissions.MATRICE).map(r => `<option value="${r}" ${f.role === r ? 'selected' : ''}>${r}</option>`).join('')}
-              </select></label>
-            <label>Mot de passe initial * (12 caractères min)
-              <input type="password" class="q-input" required value="${f.motdepasse}" oninput="VueAdmin.state.usersState.formCreation.motdepasse=this.value"/></label>
-            <div style="display:flex;gap:8px;margin-top:14px">
-              <button type="button" class="btn-secondaire" onclick="VueAdmin.fermerModalCreation()">Annuler</button>
-              <button type="submit" class="btn-primaire" ${this.state.usersState.envoiEnCours ? 'disabled' : ''}>${this.state.usersState.envoiEnCours ? '⏳ Création…' : '✅ Créer'}</button>
-            </div>
-          </form>
-        </div>
+      <div class="modal-overlay" onclick="if(event.target===this && VueAdmin.state.usersState.etapeCreation!=='termine') VueAdmin.fermerModalCreation()">
+        <div class="modal">${corps}</div>
       </div>`;
   },
 

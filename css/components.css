@@ -339,3 +339,13 @@
 /* Lot 6 — interrupteur push dans le panneau de notifications */
 .nc-push { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 12px; font-size:12px; background:var(--c-surface-alt); border-bottom:1px solid var(--c-border); }
 .nc-push-info { color:var(--c-text-2); justify-content:flex-start; }
+
+/* Création d'accès : droits cochables et récapitulatif */
+.admin-droits { border:1px solid var(--c-border); border-radius:8px; padding:10px 12px; margin:12px 0;
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:6px 16px; }
+.admin-droits legend { font-size:12px; font-weight:600; padding:0 6px; color:var(--c-text-2); }
+.modal .admin-droit { flex-direction:row; align-items:center; gap:8px; font-size:13px; font-weight:400; margin:0; cursor:pointer; }
+.modal .admin-droit input { width:auto; margin:0; }
+.admin-recap { display:grid; grid-template-columns:110px 1fr; gap:6px 12px; margin:12px 0; font-size:14px; }
+.admin-recap dt { color:var(--c-text-2); }
+.admin-recap dd { margin:0; font-weight:500; }

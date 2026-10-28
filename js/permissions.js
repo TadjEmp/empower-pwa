@@ -92,13 +92,34 @@
     a_contacter:   '#/a-contacter',
   };
 
+  // Libellés des sections cochables à la création d'un accès (vue-admin.js).
+  const LIBELLES = {
+    home: 'Accueil', tracker: 'Tracker', historiques: 'Comptes historiques',
+    phoning: 'Phoning', visites: 'Visites', visites_fdv: 'Visites FDV',
+    objectifs: 'Objectifs', primes: 'Primes', comptes: 'Comptes',
+    manager: 'Vue manager', reporting: 'Reporting équipe',
+    reporting_cds: 'Reporting personnel', admin: 'Administration',
+    questionnaire: 'Questionnaire', photos: 'Photos', mailing: 'Mailing',
+    a_contacter: 'À contacter',
+  };
+
+  // Droits propres à l'utilisateur connecté (colonne utilisateurs.droits).
+  // Ils remplacent la matrice du rôle, sauf pour ADMIN (jamais verrouillé hors de l'app).
+  function accordesPour(role) {
+    const s = (typeof Session !== 'undefined') ? Session : null;
+    if (s && s.role === role && role !== 'ADMIN' && Array.isArray(s.droits)) {
+      return s.droits;
+    }
+    return MATRICE[role] || [];
+  }
+
   function onglets(role) {
-    return (MATRICE[role] || []).slice();
+    return accordesPour(role).slice();
   }
 
   function peut(role, tabId) {
     if (!tabId) return true; // routes publiques (login) — pas de restriction de tab
-    const accordes = MATRICE[role] || [];
+    const accordes = accordesPour(role);
     // tabId peut être un tableau (OR sémantique : un seul suffit).
     if (Array.isArray(tabId)) {
       return tabId.some(t => accordes.indexOf(t) !== -1);
@@ -117,7 +138,7 @@
   // Première route autorisée pour un rôle (cible de redirection).
   // EXTERNE (Flavie) → #/empower-tracker (pas #/dashboard).
   function routeParDefaut(role) {
-    const tabs = MATRICE[role] || [];
+    const tabs = accordesPour(role);
     for (let i = 0; i < tabs.length; i++) {
       const hash = TAB_VERS_HASH[tabs[i]];
       if (hash) return hash;
@@ -132,6 +153,7 @@
     routeParDefaut,
     hashVersTab,
     MATRICE,
+    LIBELLES,
   };
 
 })();
