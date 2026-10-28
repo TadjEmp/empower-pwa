@@ -51,10 +51,7 @@ Deno.serve(async (req) => {
 
   async function verifierAdmin() {
     if (!token) return { ok: false, erreur: 'Token manquant' }
-    const { data, error } = await sb.from('utilisateurs')
-      .select('pin,role,actif,token_expiry')
-      .eq('token', token)
-      .limit(1)
+    const { data, error } = await sb.rpc('esi_session_info', { p_token: token })
     if (error || !data || data.length === 0) return { ok: false, erreur: 'Session invalide' }
     const u = data[0]
     if (!u.actif) return { ok: false, erreur: 'Compte désactivé' }

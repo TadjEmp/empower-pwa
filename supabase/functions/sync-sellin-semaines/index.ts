@@ -7,7 +7,7 @@
 // POST { token, action?: 'import' (défaut) | 'alias',
 //        import : { detail: [{ onglet, rows }], fichier, dry_run?, force? }
 //        alias  : { nom, compteId } }
-// Auth : token de session (utilisateurs.token), rôles ADMIN / CHANNEL_MANAGER.
+// Auth : token de session (table sessions via esi_session_info), rôles ADMIN / CHANNEL_MANAGER.
 // Idempotent : chaque import REMPLACE les lignes des trimestres présents dans le fichier
 // (le fichier est un cumul du trimestre : W13 remplace W12). Upsert puis purge de l'ancien import.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
 
   // ── Auth : même contrôle que admin-users, rôles élargis au channel manager ──
   if (!body.token) return json({ ok: false, erreur: 'Token manquant' }, 403)
-  const { data: us } = await sb.from('utilisateurs').select('pin,role,actif,token_expiry').eq('token', body.token).limit(1)
+  const { data: us } = await sb.rpc('esi_session_info', { p_token: body.token })
   const u = us?.[0]
   if (!u || !u.actif || !u.token_expiry || Number(u.token_expiry) < Date.now()) return json({ ok: false, erreur: 'Session invalide ou expirée' }, 403)
   if (!ROLES.includes(u.role)) return json({ ok: false, erreur: 'Accès réservé aux administrateurs et channel managers' }, 403)
