@@ -158,3 +158,63 @@ input[type="password"], input[type="date"], select, textarea, .q-input {
 @media (max-width: 899px) {
   .modal { border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
 }
+
+/* ═══ Respiration visuelle (direction Apple : épuré, rien ne se touche) ═══
+   Échelle d'espacement : 8 / 16 / 24 / 40. Les éléments d'un même groupe sont à 8-12 px,
+   les groupes entre eux à 16-24 px, les grandes zones à 40 px. */
+.kpi-grid-layout { gap: 16px; }
+.barre-filtres { display: flex; flex-direction: column; gap: 16px; padding: 16px 0 24px; }
+.filtres-flags { flex-wrap: wrap; gap: 8px; overflow: visible; }
+.filtres-statut { gap: 12px; }
+.tabs-premium { gap: 8px; padding: 4px 0; flex-wrap: wrap; }
+.dash-body, .fiche-body, .liste-comptes { gap: 24px; }
+.liste-comptes { padding-top: 8px; }
+.header-vue, .dash-page-header { margin-bottom: 8px; }
+
+/* Pills : cible tactile de 36 px, aucune bordure, la couleur de surface suffit */
+.btn-filtre, .tab-btn-premium {
+  min-height: 36px; padding: 8px 18px; border: 0; border-radius: 9999px;
+  background: var(--c-surface); color: var(--c-text);
+  font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none;
+}
+.tab-btn-premium { font-weight: 600; }
+.btn-filtre.actif, .tab-btn-premium.actif { background: var(--c-primary); color: #fff; box-shadow: none; }
+.pill-soft, .pill-statut-v2 { padding: 4px 12px; }
+
+/* Encarts : respiration interne */
+.kpi-card, .stat-tuile { padding: 24px; }
+.section-card { padding: 24px; margin-bottom: 24px; }
+
+/* Tableaux : lignes aérées, séparées par la surface plutôt que par des filets */
+.desktop-table-data-view { border-collapse: separate; border-spacing: 0 8px; }
+.desktop-table-data-view th { padding: 8px 20px; border: 0; background: transparent; }
+.desktop-table-data-view td { padding: 18px 20px; border: 0; background: var(--c-surface); }
+.desktop-table-data-view td:first-child { border-radius: var(--radius-md) 0 0 var(--radius-md); }
+.desktop-table-data-view td:last-child  { border-radius: 0 var(--radius-md) var(--radius-md) 0; }
+
+/* ═══ Interactivité ═══
+   Mouvement limité à transform, opacité et couleur ; courbe forte, 200 ms ; réponse immédiate à l'appui. */
+.btn-filtre, .tab-btn-premium, .kpi-card, .stat-tuile, .carte-compte, .carte-visite, .section-card,
+.btn-primaire, .btn-secondaire, .fab, .desktop-table-data-view tbody tr td {
+  transition: transform 200ms cubic-bezier(.16, 1, .3, 1), background-color 200ms ease-out, color 200ms ease-out, opacity 200ms ease-out;
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn-filtre:hover:not(.actif), .tab-btn-premium:hover:not(.actif) { background: var(--c-primary-light); color: var(--c-primary); }
+  .kpi-card[onclick]:hover, .stat-tuile[onclick]:hover, .carte-compte:hover, .carte-visite:hover { transform: translateY(-2px); }
+  .desktop-table-data-view tbody tr[onclick]:hover td { background: var(--c-primary-10); }
+  .btn-primaire:hover { background: var(--c-primary-d); }
+  .fab:hover { transform: scale(1.06); }
+}
+.btn-filtre:active, .tab-btn-premium:active, .btn-primaire:active, .btn-secondaire:active { transform: scale(.97); }
+.kpi-card[onclick]:active, .stat-tuile[onclick]:active, .carte-compte:active, .carte-visite:active { transform: scale(.985); }
+.fab:active { transform: scale(.94); }
+html { -webkit-tap-highlight-color: transparent; }
+button, [onclick], .btn-filtre, .tab-btn-premium { touch-action: manipulation; }
+
+/* Apparition douce des vues */
+@keyframes vue-entree { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+#app > * { animation: vue-entree 240ms cubic-bezier(.16, 1, .3, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; transform: none !important; }
+}
