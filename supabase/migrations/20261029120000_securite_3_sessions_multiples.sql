@@ -12,7 +12,8 @@ create table if not exists public.sessions (
   token_hash  text not null unique,
   expire_le   bigint not null,
   user_agent  text,
-  created_at  timestamptz not null default now()
+  created_at  timestamptz not null default now(),
+  ordre       bigint generated always as identity   -- ordre d'arrivée strict (now() est identique dans une même transaction)
 );
 create index if not exists sessions_pin_idx    on public.sessions (pin);
 create index if not exists sessions_expire_idx on public.sessions (expire_le);
@@ -47,7 +48,7 @@ begin
   -- ménage : sessions expirées de cet utilisateur, puis plafond de 10 appareils (les plus anciens sortent)
   delete from public.sessions where pin = p_pin and expire_le < (extract(epoch from clock_timestamp()) * 1000)::bigint;
   delete from public.sessions where id in (
-    select id from public.sessions where pin = p_pin order by created_at desc offset 9
+    select id from public.sessions where pin = p_pin order by ordre desc offset 9
   );
   insert into public.sessions (pin, token_hash, expire_le, user_agent)
   values (p_pin, public.esi_hash_jeton(p_token), p_expire, left(coalesce(p_ua, ''), 200));
@@ -93,6 +94,7 @@ begin
       and pg_get_function_arguments(p.oid) ~* 'p_token'
   loop
     d := pg_get_functiondef(f.oid);
+    if d ~* 'esi_session_info' then continue; end if;   -- déjà migrée : la migration peut être rejouée
     select count(*) into n from regexp_matches(d, motif, 'gi');
     if n <> 1 then
       raise exception 'fonction %: clause de recherche du jeton trouvée % fois (attendu 1)', f.proname, n;
