@@ -237,9 +237,9 @@ window.VueMailing = {
   _renderTabs() {
     const s = this.state;
     return `<div style="display:flex;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:4px;background:var(--c-surface);margin-bottom:14px">
-      <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:${s.mode==='BASE'?'var(--c-title)':'transparent'};color:${s.mode==='BASE'?'#fff':'var(--c-text-2)'}"
+      <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:${s.mode==='BASE'?'var(--c-title)':'transparent'};color:${s.mode==='BASE'?'var(--on-title)':'var(--c-text-2)'}"
               onclick="VueMailing.setMode('BASE')">Nouveau mailing</button>
-      <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:${s.mode==='JOURNAL'?'var(--c-title)':'transparent'};color:${s.mode==='JOURNAL'?'#fff':'var(--c-text-2)'}"
+      <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:${s.mode==='JOURNAL'?'var(--c-title)':'transparent'};color:${s.mode==='JOURNAL'?'var(--on-title)':'var(--c-text-2)'}"
               onclick="VueMailing.setMode('JOURNAL')">Journal (${s.journal.length})</button>
     </div>`;
   },
@@ -256,7 +256,7 @@ window.VueMailing = {
     const s = this.state;
     const nbComptes = this.state.comptes.length;
     const nbLeads = this.state.prospects.length;
-    const _typeBtn = (val, lbl) => `<button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:${s.filtreType===val?'var(--c-title)':'transparent'};color:${s.filtreType===val?'#fff':'var(--c-text-2)'}"
+    const _typeBtn = (val, lbl) => `<button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:${s.filtreType===val?'var(--c-title)':'transparent'};color:${s.filtreType===val?'var(--on-title)':'var(--c-text-2)'}"
         onclick="VueMailing.setFiltreType('${val}')">${lbl}</button>`;
     return `${_typeBtn('TOUS', `Tous (${nbComptes + nbLeads})`)}
       ${_typeBtn('COMPTE', `Comptes (${nbComptes})`)}
@@ -287,7 +287,7 @@ window.VueMailing = {
     return `<div class="phoning-base-grid">` + r.map(x => `
       <div style="background:var(--c-surface);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:11px;margin-bottom:8px;display:flex;align-items:center;gap:10px;cursor:pointer"
            onclick="VueMailing.choisirCible('${x.type}','${x.id}')">
-        <span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;background:${x.type==='compte'?'var(--c-title)':'var(--c-warning)'};color:#fff">${x.type==='compte'?'COMPTE':'LEAD'}</span>
+        <span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;background:${x.type==='compte'?'var(--c-title)':'var(--c-warning)'};color:var(--on-title)">${x.type==='compte'?'COMPTE':'LEAD'}</span>
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${x.nom}</div>
           <div style="font-size:12px;color:var(--c-text-2)">${x.obj.Ville || 'n.c.'}</div>
@@ -302,7 +302,7 @@ window.VueMailing = {
     return `
       <div style="background:var(--c-surface);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:14px;margin-bottom:12px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
-          <span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;background:${s.cible.type==='compte'?'var(--c-title)':'var(--c-warning)'};color:#fff">${s.cible.type==='compte'?'COMPTE':'LEAD'}</span>
+          <span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;background:${s.cible.type==='compte'?'var(--c-title)':'var(--c-warning)'};color:var(--on-title)">${s.cible.type==='compte'?'COMPTE':'LEAD'}</span>
           <strong style="font-size:15px">${s.cible.nom}</strong>
         </div>
         <div style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">${c.Ville || 'n.c.'}${c.Email ? ' · ' + c.Email : ''}</div>

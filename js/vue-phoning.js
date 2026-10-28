@@ -1014,7 +1014,7 @@ window.VuePhoning = {
       <div style="display:flex;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:4px;background:var(--c-surface);margin-bottom:14px">
         <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:transparent;color:var(--c-text-2)"
                 onclick="VuePhoning.setMode('PLANNING')">Planning</button>
-        <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:var(--c-title);color:#fff">
+        <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:var(--c-title);color:var(--on-title)">
           Base (${s.comptes.length})
         </button>
         <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:transparent;color:var(--c-text-2)"
@@ -1279,7 +1279,7 @@ window.VuePhoning = {
                 onclick="VuePhoning.setMode('PLANNING')">Planning</button>
         <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:transparent;color:var(--c-text-2)"
                 onclick="VuePhoning.setMode('BASE')">Base (${s.comptes.length})</button>
-        <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:var(--c-title);color:#fff">
+        <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:var(--c-title);color:var(--on-title)">
           Journal
         </button>
       </div>`;
@@ -1671,7 +1671,7 @@ window.VuePhoning = {
         : s.mode === 'HISTORIQUE'  ? this._renderJournal()
         : this['_phase' + s.phase]()}
       </div>
-      ${(s.mode === 'BASE' || s.mode === 'PLANNING' || s.mode === 'HISTORIQUE') && Session.role !== 'CHANNEL_MANAGER' ? `<button class="fab" onclick="VuePhoning.demarrerAppelDirect()" title="Créer un appel (base ou à froid)" style="bottom:140px">＋</button>` : ''}
+      ${(s.mode === 'BASE' || s.mode === 'PLANNING' || s.mode === 'HISTORIQUE') && Session.role !== 'CHANNEL_MANAGER' ? `<button class="fab" onclick="VuePhoning.demarrerAppelDirect()" title="Créer un appel (base ou à froid)">＋</button>` : ''}
       ${NavBar('phoning')}
       ${this._renderModalEditAppel()}
       ${this._renderConfirmDeleteAppel()}
@@ -1909,7 +1909,7 @@ window.VuePhoning = {
         { q: 'On propose déjà Kaspersky / ESET / Bitdefender', r: 'Empower ne vous demande pas d\'abandonner votre gamme, c\'est une ligne de revenus complémentaire. La différence clé : 25% de revshare sur 3 ans de renouvellements automatiques, sans action de votre part.' },
         { q: 'Nos clients sont trop petits pour ce type de produit', r: 'C\'est exactement le cœur de cible Empower, les TPE avec 1 à 10 postes, souvent non équipés. Norton 360 démarre à moins de 30€/an par poste, s\'installe en 5 minutes, et le client renouvelle en ligne tout seul.' },
       ]},
-      { cat: 'Concurrence & Prix', col: '#b45309', items: [
+      { cat: 'Concurrence & Prix', col: '#9A4408', items: [
         { q: 'D\'autres concurrents sont moins chers à l\'achat', r: 'Le prix d\'achat n\'est que la première ligne. Sur 50 clients à 40€/an, vous touchez 1 500€/an de revenus passifs sans stock ni relance, aucun concurrent low-cost ne propose ça.' },
         { q: 'D\'autres concurrents proposent aussi du revshare', r: 'Le revshare Empower est 100% automatique, Norton traque les renouvellements et vous crédite directement sur le portail, même sur les upgrades. Pas de déclaration manuelle, pas de paperasse, pas de condition cachée.' },
       ]},
@@ -2369,7 +2369,7 @@ window.VuePhoning = {
     return `<div class="q-champs">
       <!-- Tabs navigation -->
       <div style="display:flex;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:4px;background:var(--c-surface);margin-bottom:14px">
-        <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:var(--c-title);color:#fff">
+        <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:var(--c-title);color:var(--on-title)">
           Planning
         </button>
         <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:transparent;color:var(--c-text-2)"

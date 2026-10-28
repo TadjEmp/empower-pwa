@@ -881,8 +881,8 @@ window.VuePipeline = {
 
       <div id="tracker-resultats-zone">${this._renderResultatsZone(leads, voitTous)}</div>
 
-      ${peutSaisir ? '<button class="fab" onclick="VuePipeline.ouvrirSaisie()" title="Nouveau lead" style="bottom:140px">＋</button>' : ''}
-      ${(Session.estManager() || Session.estChannel()) ? `<button class="fab fab-export" onclick="VuePipeline.ouvrirExport()" title="Export Excel" style="bottom:210px;background:var(--c-success);font-size:18px"><span class="material-symbols-outlined" aria-hidden="true">download</span></button>` : ''}
+      ${peutSaisir ? '<button class="fab" onclick="VuePipeline.ouvrirSaisie()" title="Nouveau lead">＋</button>' : ''}
+      ${(Session.estManager() || Session.estChannel()) ? `<button class="fab fab-export" onclick="VuePipeline.ouvrirExport()" title="Export Excel" style="background:var(--c-success);font-size:18px"><span class="material-symbols-outlined" aria-hidden="true">download</span></button>` : ''}
       ${NavBar('tracker')}
       ${this._renderModal()}
       ${this._renderPanneauExport()}

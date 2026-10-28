@@ -979,7 +979,7 @@ window.VueQuestionnaire = {
         <div class="succes-btns">
           <button class="btn-primaire" onclick="Router.aller('#/dashboard')">← Dashboard</button>
           <button class="btn-secondaire" onclick="VueQuestionnaire.init()">Nouvelle visite</button>
-          <button class="btn-secondaire" onclick="VueVisites.state.modeVue='historique';VueVisites.synchroniser();Router.aller('#/visites')" style="background:var(--c-primary);color:#fff">Synchroniser</button>
+          <button class="btn-secondaire" onclick="VueVisites.state.modeVue='historique';VueVisites.synchroniser();Router.aller('#/visites')" style="background:var(--c-primary);color:var(--on-primary)">Synchroniser</button>
           ${this._isHorsBase ? `<button class="btn-secondaire" onclick="VueQuestionnaire._ajouterAMaBase()" style="border-color:var(--c-success);color:var(--c-success)">Ajouter à ma base</button>` : ''}
         </div>
       </div>`;
@@ -1095,7 +1095,7 @@ window.VueQuestionnaire = {
         <div style="display:flex;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:4px;background:var(--c-surface)">
           ${[['EXISTANT','Existant'],['PROSPECT','Prospect'],['FROID','🆕 Visite à froid']].map(([v,l]) => `
             <button type="button" style="flex:1;padding:9px;border:none;border-radius:4px;font-weight:600;font-size:14px;cursor:pointer;
-              ${s.typeSource===v?'background:var(--c-title);color:#fff':'background:transparent;color:var(--c-text-2)'}"
+              ${s.typeSource===v?'background:var(--c-title);color:var(--on-title)':'background:transparent;color:var(--c-text-2)'}"
               onclick="VueQuestionnaire.setSource('${v}')">${l}</button>`).join('')}
         </div>
       </label>` : ''}
@@ -1338,7 +1338,7 @@ window.VueQuestionnaire = {
             <img src="${p}" style="width:64px;height:64px;object-fit:cover;border-radius:var(--radius-sm);flex-shrink:0"/>
             <div style="flex:1;display:flex;flex-wrap:wrap;gap:4px">
               ${this.TAGS_PHOTO.map(t => `
-                <button type="button" class="q-chip" style="font-size:11px;padding:4px 8px${s.photoTags[i] === t ? ';background:var(--c-cta);color:#fff;border-color:var(--c-cta)' : ''}"
+                <button type="button" class="q-chip" style="font-size:11px;padding:4px 8px${s.photoTags[i] === t ? ';background:var(--c-cta);color:var(--on-primary);border-color:var(--c-cta)' : ''}"
                         onclick="VueQuestionnaire.state.photoTags[${i}]='${t}';VueQuestionnaire.render()">${t}</button>`).join('')}
             </div>
             <button class="btn-sup-photo" onclick="VueQuestionnaire.supprimerPhoto(${i})"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
@@ -1362,7 +1362,7 @@ window.VueQuestionnaire = {
       <div class="q-photo-zone" style="margin-top:10px">
         <label class="q-label">Signature du contact <span style="color:var(--c-text-2);font-size:11px">(optionnel)</span></label>
         <canvas id="q-signature-pad" width="300" height="120"
-                style="width:100%;max-width:400px;height:120px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);background:#fff;touch-action:none;display:block"></canvas>
+                style="width:100%;max-width:400px;height:120px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);background:var(--c-surface);touch-action:none;display:block"></canvas>
         <button type="button" class="btn-secondaire" style="margin-top:6px;width:auto;padding:6px 14px;font-size:12px" onclick="VueQuestionnaire.effacerSignature()">Effacer</button>
       </div>
     </div>`;

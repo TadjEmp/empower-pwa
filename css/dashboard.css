@@ -134,7 +134,7 @@
   background: var(--c-bg); color: var(--c-text);
   white-space: nowrap;
 }
-.q-chip.active { background: var(--c-primary); color: #fff; border-color: var(--c-primary); }
+.q-chip.active { background: var(--c-primary); color: var(--on-primary); border-color: var(--c-primary); }
 
 /* Simulateur inputs */
 .q-label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 500; }
@@ -219,7 +219,7 @@
   .dash-ph-pace.pace-watch{ background: rgba(245,158,11,.10); border-color: rgba(245,158,11,.30); color: #92400e; }
   .dash-ph-avatar {
     width: 36px; height: 36px; border-radius: 50%;
-    background: var(--c-primary); color: #fff;
+    background: var(--c-primary); color: var(--on-primary);
     font-size: 13px; font-weight: 700;
     display: flex; align-items: center; justify-content: center;
     cursor: pointer;

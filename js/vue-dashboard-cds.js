@@ -602,7 +602,7 @@ window.VueDashboardCDS = {
       </div>
       <button title="+ Planifier une visite" class="dash-fab"
               onclick="VueVisites.ouvrirModal();Router.aller('#/visites')"
-              style="position:fixed;bottom:calc(var(--safe-bottom, 0px) + 80px);right:16px;width:56px;height:56px;border-radius:50%;background:var(--c-primary);color:#fff;font-size:28px;border:none;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.4);z-index:1000;display:flex;align-items:center;justify-content:center;line-height:1">+</button>
+              style="position:fixed;bottom:calc(var(--safe-bottom, 0px) + 80px);right:16px;width:56px;height:56px;border-radius:50%;background:var(--c-primary);color:var(--on-primary);font-size:28px;border:none;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.4);z-index:1000;display:flex;align-items:center;justify-content:center;line-height:1">+</button>
       ${NavBar('home')}
       ${FusionTabs.accueil()}
     `;

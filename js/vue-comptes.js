@@ -406,7 +406,7 @@ window.VueComptes = {
 
       <div class="liste-comptes avec-nav" id="comptes-liste-zone">${this._renderListeZone(liste, doublons, cdsList)}</div>
 
-      ${Session.role !== 'CHANNEL_MANAGER' ? `<button class="fab" onclick="VueQuestionnaire._visitePlanifiee=null;Router.aller('#/questionnaire')" title="Nouvelle visite" style="bottom:140px">＋</button>` : ''}
+      ${Session.role !== 'CHANNEL_MANAGER' ? `<button class="fab" onclick="VueQuestionnaire._visitePlanifiee=null;Router.aller('#/questionnaire')" title="Nouvelle visite">＋</button>` : ''}
       ${NavBar('comptes')}
       ${this.state.ficheDockee ? this._renderFicheDockee() : ''}
     `;

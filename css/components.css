@@ -9,7 +9,7 @@
   padding: 2px 8px; border-radius: 9999px; white-space: nowrap;
 }
 .badge-rouge  { background: var(--status-inactif-bg);   color: var(--status-inactif); }
-.badge-orange { background: var(--status-interesse-bg); color: #B45309; }
+.badge-orange { background: var(--status-interesse-bg); color: var(--c-warning); }
 .badge-vert   { background: var(--status-converti-bg);  color: var(--status-converti); }
 
 /* ── Badge CRM PHONE OS §4.3 ── */
@@ -28,11 +28,11 @@
 .badge-arappeler   { background: var(--status-arappeler-bg);  color: var(--status-arappeler); }
 .badge-chaud       { background: var(--status-chaud-bg);      color: var(--status-chaud); }
 .badge-inactif     { background: var(--status-inactif-bg);    color: var(--status-inactif); }
-.badge-interesse   { background: var(--status-interesse-bg);  color: #B45309; }
+.badge-interesse   { background: var(--status-interesse-bg);  color: var(--c-warning); }
 .badge-nonappele   { background: rgba(203,213,224,0.4);       color: var(--text-muted); }
 .badge-nrp         { background: rgba(138,155,176,0.15);      color: var(--text-muted); }
 .badge-score-haute   { background: rgba(4,0,245,0.12); color: var(--accent-primary); }
-.badge-score-moyenne { background: rgba(245,158,11,0.10);  color: #B45309; }
+.badge-score-moyenne { background: rgba(245,158,11,0.10);  color: var(--c-warning); }
 .badge-score-basse   { background: rgba(138,155,176,0.15); color: var(--text-muted); }
 
 /* ── Statut pills — Norton ISM Universal ── */
@@ -64,7 +64,7 @@
 .avatar-lg { width: 40px; height: 40px; font-size: 14px; }
 .avatar-johanne   { background: #A884FF; color: #fff; }
 .avatar-lyes      { background: #3B82F6; color: #fff; }
-.avatar-mehdi     { background: #2D9E6B; color: #fff; }
+.avatar-mehdi     { background: var(--c-success); color: #fff; }
 .avatar-tadjidine { background: #0400F5; color: #fff; }
 .avatar-alexandra { background: #ED2567; color: #fff; }
 
@@ -190,7 +190,7 @@
 }
 .btn-filtre:hover { background: var(--c-cream); }
 .btn-filtre.actif {
-  background: var(--c-primary); color: #fff; border-color: var(--c-primary);
+  background: var(--c-primary); color: var(--on-primary); border-color: var(--c-primary);
   box-shadow: 0 4px 12px -2px rgba(4,0,245,.25);
 }
 /* BLOC 09 — audit "débordement Tracker mobile web" : avec 5-6 <select>
@@ -214,7 +214,7 @@
   position: fixed; bottom: 90px; right: 20px;
   width: 56px; height: 56px; border-radius: 50%;
   font-size: 28px; line-height: 1;
-  background: var(--c-primary); color: #fff;
+  background: var(--c-primary); color: var(--on-primary);
   border: none;
   box-shadow: 0 4px 16px rgba(4,0,245,.35);
   cursor: pointer; z-index: 101;
@@ -244,7 +244,7 @@
   font-weight: 600; font-size: 12px; border: none; cursor: pointer;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.btn-visite   { background: var(--c-primary); color: #fff; }
+.btn-visite   { background: var(--c-primary); color: var(--on-primary); }
 .btn-appel    { background: var(--c-success);  color: #fff; }
 .btn-planning { background: var(--c-warning);  color: #fff; }
 
@@ -327,11 +327,11 @@
 
 /* Lot 3 — compte non suivi (à reprendre) */
 .badge-nonsuivi { display:inline-block; font-size:11px; font-weight:700; padding:2px 8px; border-radius:99px;
-  background:var(--status-interesse-bg, #FEF3C7); color:#B45309; border:1px solid #F59E0B55; white-space:nowrap; }
+  background:var(--status-interesse-bg, #FEF3C7); color:var(--c-warning); border:1px solid #F59E0B55; white-space:nowrap; }
 
 /* Lot 5 — axe « À contacter » */
 .badge-acontacter { display:inline-block; font-size:11px; font-weight:700; padding:2px 8px; border-radius:99px; background:#EFF6FF; color:#1D4ED8; border:1px solid #93C5FD; white-space:nowrap; }
-.drawer-badge { margin-left:auto; min-width:20px; padding:1px 7px; border-radius:99px; background:var(--c-primary,#2563EB); color:#fff; font-size:11px; font-weight:700; text-align:center; }
+.drawer-badge { margin-left:auto; min-width:20px; padding:1px 7px; border-radius:99px; background:var(--c-primary,#2563EB); color:var(--on-primary); font-size:11px; font-weight:700; text-align:center; }
 
 /* Lot 6 — interrupteur push dans le panneau de notifications */
 .nc-push { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 12px; font-size:12px; background:var(--c-surface-alt); }

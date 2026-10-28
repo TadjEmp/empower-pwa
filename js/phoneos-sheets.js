@@ -119,7 +119,7 @@ function openDeclareCaModal(codeClient, raisonSociale, fy = 'FY27') {
     <div class="bg-[#FAF8F4] rounded-2xl p-6 w-[380px] shadow-2xl">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-[16px] font-bold text-[#1a1a2e] flex items-center gap-2">
-          <span class="material-symbols-outlined text-[#2D9E6B]">euro</span>
+          <span class="material-symbols-outlined text-[#17794D]">euro</span>
           Déclarer CA Réalisé
         </h3>
         <button onclick="document.getElementById('declare-ca-modal').remove()"
@@ -144,7 +144,7 @@ function openDeclareCaModal(codeClient, raisonSociale, fy = 'FY27') {
           <p class="mono-label mb-1">Montant (€ HT)</p>
           <input type="number" id="ca-montant" placeholder="ex: 12500"
             class="w-full bg-[#F5F0E8] border-0 rounded-lg px-3 py-2 text-[20px] font-bold
-                   font-mono text-[#1a1a2e] outline-none focus:ring-2 focus:ring-[#2D9E6B]/40"/>
+                   font-mono text-[#1a1a2e] outline-none focus:ring-2 focus:ring-[#17794D]/40"/>
         </div>
       </div>
 
@@ -154,13 +154,13 @@ function openDeclareCaModal(codeClient, raisonSociale, fy = 'FY27') {
                  font-semibold text-[#9AABB8] hover:bg-[#F0ECE4] transition">Annuler</button>
         <button id="btn-submit-ca"
           onclick="_submitDeclareCA('${codeClient}','${fy}')"
-          class="flex-1 py-2.5 rounded-lg bg-[#2D9E6B] text-white text-[13px] font-bold
+          class="flex-1 py-2.5 rounded-lg bg-[#17794D] text-white text-[13px] font-bold
                  hover:opacity-90 active:scale-95 transition shadow-sm
                  flex items-center justify-center gap-2">
           <span class="material-symbols-outlined text-sm">save</span> Valider & Sync Sheet
         </button>
       </div>
-      <div id="ca-sync-status" class="hidden mt-3 text-center text-[11px] font-mono text-[#2D9E6B]"></div>
+      <div id="ca-sync-status" class="hidden mt-3 text-center text-[11px] font-mono text-[#17794D]"></div>
     </div>`;
   document.body.appendChild(modal);
 }
@@ -188,7 +188,7 @@ async function _submitDeclareCA(codeClient, fy) {
   const res = await SheetsAPI.declareCA(fy, codeClient, periode, montant);
   if (res.success) {
     status.textContent = `CA ${periode} de ${montant.toLocaleString('fr-FR')}€ synchronisé dans le Sheet`;
-    status.style.color = '#2D9E6B';
+    status.style.color = '#17794D';
     status.classList.remove('hidden');
     btn.innerHTML = '<span class="material-symbols-outlined text-sm">check_circle</span> Validé !';
     setTimeout(() => document.getElementById('declare-ca-modal')?.remove(), 2000);
@@ -312,7 +312,7 @@ async function _submitAddLead(fy) {
   const res = await SheetsAPI.addLead(fy, lead);
   if (res.success) {
     status.textContent = `${raison} ajouté dans le Sheet ${fy}`;
-    status.style.color = '#2D9E6B';
+    status.style.color = '#17794D';
     status.classList.remove('hidden');
     setTimeout(() => document.getElementById('add-lead-modal')?.remove(), 1800);
   } else {
@@ -345,7 +345,7 @@ async function syncCallToSheet(codeClient, fy = 'FY27') {
     toast.textContent = res.success
       ? 'Compte-rendu enregistré & synchronisé dans Google Sheets'
       : `Erreur Sheets : ${res.error}`;
-    toast.style.color = res.success ? '#2D9E6B' : '#ba1a1a';
+    toast.style.color = res.success ? '#17794D' : '#ba1a1a';
     toast.classList.remove('hidden');
     setTimeout(() => toast.classList.add('hidden'), 3500);
   }

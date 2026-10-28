@@ -1675,7 +1675,7 @@ window.VueAdmin = {
               </span>
             </div>` : ''}
           <button class="btn-secondaire"
-                  style="background:var(--c-primary);color:#fff;border-color:var(--c-primary);padding:10px 16px"
+                  style="background:var(--c-primary);color:var(--on-primary);border-color:var(--c-primary);padding:10px 16px"
                   ${this.state.importEnCours ? 'disabled' : ''}
                   onclick="VueAdmin.importerDepuisTracker()">
             ${this.state.importEnCours ? 'Import en cours…' : 'Importer depuis EMPOWER TRACKER Drive'}
