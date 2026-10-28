@@ -722,7 +722,7 @@ window.VueDashboardManager = {
           ${dc.comptesNonAttribues.length ? `
           <div class="bloc-fiche">
             <div class="bloc-titre">Comptes non attribués
-              <span class="badge-compteur" style="background:var(--c-primary);color:#fff">${dc.comptesNonAttribues.length}</span>
+              <span class="badge-compteur" style="background:var(--c-primary);color:var(--on-primary)">${dc.comptesNonAttribues.length}</span>
             </div>
             <div class="dash-alertes">
               ${dc.comptesNonAttribues.slice(0, 8).map(c => `

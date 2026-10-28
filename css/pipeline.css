@@ -136,7 +136,7 @@
   .no-print, .header-vue, .fab, .barre-filtres, .nav-principale, #toast-container { display: none !important; }
   #app { padding-left: 0 !important; }
   .print-only { display: block !important; }
-  body { background: #fff; }
+  body { background:var(--c-surface); }
   .bloc-fiche { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
   .dash-body { max-width: 100%; display: block !important; }
   .print-only h1 { font-size: 22px; color: #0E0D30; }

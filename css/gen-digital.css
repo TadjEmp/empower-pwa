@@ -19,7 +19,7 @@
   /* Textes */
   --text-primary:         #000000;
   --text-secondary:       #242E39;
-  --text-muted:           #666D74;
+  --text-muted:           #5A636C;
   --text-on-anchor:       #FFFFFF;
   --text-on-anchor-muted: #BDC7FF;
   --text-link:            #0400F5;
@@ -84,7 +84,7 @@
   --c-surface-alt:   #F0F5FF;
   --c-text:          #242E39;
   --c-title:         #000000;
-  --c-text-2:        #666D74;
+  --c-text-2:        #5A636C;
   --c-border:        rgba(36,46,57,0.12);
   --c-secondary:     #0400F5;
   --c-norton-red:    #0400F5;
@@ -92,11 +92,26 @@
   --c-cream:         #F0F5FF;
   --c-cream-border:  rgba(36,46,57,0.12);
   --c-on-bg:         #242E39;
-  --c-muted:         #666D74;
+  --c-muted:         #5A636C;
   --c-surface-2:     #F0F5FF;
   --c-outline:       rgba(36,46,57,0.24);
   --c-primary-light: rgba(4,0,245,0.12);
   --c-primary-10:    rgba(4,0,245,0.08);
+
+  /* Contrôles au repos (pills, champs) : teinte visible sur fond blanc comme sur fond teinté */
+  --signal:          #C62828;
+  --on-status:       #FFFFFF;
+  --on-title:        #FFFFFF;
+  --muted:           #5A636C;
+  --label-caption:   #66707C;
+  --c-control:       #E6ECFA;
+  --c-control-hover: #D8E1F7;
+  --on-primary:      #FFFFFF;
+  --c-link:          #0400F5;
+  --c-success:       #17794D;
+  --c-warning:       #9A4408;
+  --c-danger:        #C62828;
+  color-scheme: light;
 
   /* Largeur de contenu desktop (Gen Digital : 1312 px à 1440 px) */
   --page-max-width: 1312px;
@@ -307,10 +322,182 @@ button, [onclick], .btn-filtre, .tab-btn-premium { touch-action: manipulation; }
   .kpi-grid-layout { margin-top: 12px; }
   .barre-filtres input[type="search"], .barre-filtres select, .filtres-statut select {
     min-height: 44px; border: 0 !important; border-radius: var(--radius-md) !important;
-    background: var(--c-bg); padding: 0 16px; font-size: 14px;
+    background: var(--c-control); color: var(--c-text); padding: 0 16px; font-size: 14px;
   }
   /* Les zones de filtres sont blanches : pills et champs au repos prennent la teinte de fond */
-  .btn-filtre:not(.actif), .tab-btn-premium:not(.actif) { background: var(--c-bg); }
+
   .barre-filtres { gap: 16px; }
   .filtres-statut { gap: 12px; }
 }
+
+
+/* ═══════════════════════════════════════════════════════════
+   MODE SOMBRE : jeu de jetons complet, appliqué par <html data-theme="dark">
+   (theme.js résout Auto selon prefers-color-scheme et mémorise le choix).
+   Marine Gen Digital #242E39 approfondi, bleu de marque éclairci pour rester lisible :
+   texte et liens #A5ACFF (contraste 7:1 sur les cartes), aplats #8A93FF avec texte foncé.
+   ═══════════════════════════════════════════════════════════ */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --canvas:          #0F151C;
+  --slide-bg:        #18212B;
+  --track:           #1F2A36;
+  --ink:             #E8EDF3;
+  --muted:           #9AA7B6;
+  --label-caption:   #8896A6;
+  --hairline:        rgba(255,255,255,.10);
+  --hairline-strong: rgba(255,255,255,.16);
+
+  --bg-base:          #0F151C;
+  --bg-surface:       #18212B;
+  --bg-elevated:      #1F2A36;
+  --bg-warm-white:    #18212B;
+  --bg-anchor:        #0A0F15;
+  --bg-anchor-hover:  #141C25;
+  --bg-anchor-active: #0F151C;
+  --text-primary:         #FFFFFF;
+  --text-secondary:       #E8EDF3;
+  --text-muted:           #9AA7B6;
+  --text-on-anchor:       #FFFFFF;
+  --text-on-anchor-muted: #A5ACFF;
+  --text-link:            #A5ACFF;
+  --accent-primary:  #8A93FF;
+  --accent-norton:   #8A93FF;
+  --accent-violet:   #A5ACFF;
+  --accent-blue:     #8A93FF;
+  --border-subtle:  rgba(255,255,255,.06);
+  --border-medium:  rgba(255,255,255,.12);
+  --border-strong:  rgba(255,255,255,.22);
+  --border-accent:  rgba(138,147,255,.55);
+  --border-anchor:  rgba(255,255,255,.08);
+
+  --status-chaud:    #FF8A80;
+  --status-chaud-bg: rgba(255,138,128,.14);
+  --status-interesse-bg: rgba(255,184,77,.14);
+  --st-green-bg:  rgba(74,222,155,.14);  --st-green-fg:  #4ADE9B;
+  --st-blue-bg:   rgba(138,147,255,.16); --st-blue-fg:   #A5ACFF;
+  --st-orange-bg: rgba(255,184,77,.14);  --st-orange-fg: #FBBF77;
+  --st-red-bg:    rgba(255,138,128,.14); --st-red-fg:    #FF8A80;
+  --st-gray-bg:   rgba(154,167,182,.16); --st-gray-fg:   #9AA7B6;
+
+  --c-bg:            #0F151C;
+  --c-surface:       #18212B;
+  --c-surface-alt:   #1F2A36;
+  --c-surface-2:     #1F2A36;
+  --c-control:       #263342;
+  --c-control-hover: #2F3E50;
+  --c-title:         #FFFFFF;
+  --c-text:          #E8EDF3;
+  --c-text-2:        #9AA7B6;
+  --c-muted:         #9AA7B6;
+  --c-on-bg:         #E8EDF3;
+  --c-border:        rgba(255,255,255,.12);
+  --c-outline:       rgba(255,255,255,.24);
+  --c-cream:         #1F2A36;
+  --c-cream-border:  rgba(255,255,255,.12);
+  --c-ism-dark:      #18212B;
+  --c-primary:       #8A93FF;
+  --c-primary-d:     #A5ACFF;
+  --c-cta:           #8A93FF;
+  --c-cta-d:         #A5ACFF;
+  --c-secondary:     #8A93FF;
+  --c-norton-red:    #8A93FF;
+  --c-accent:        #A5ACFF;
+  --c-accent-soft:   #3A4180;
+  --c-primary-light: rgba(138,147,255,.18);
+  --c-primary-10:    rgba(138,147,255,.12);
+  --c-link:          #A5ACFF;
+  --on-primary:      #0B1020;
+  --on-status:       #0B1020;
+  --on-title:        #0F151C;
+  --cobalt:          #A5ACFF;
+  --c-success:       #4ADE9B;
+  --c-warning:       #FBBF77;
+  --c-danger:        #FF8A80;
+  --signal:          #FF8A80;
+  --accent:          #A5ACFF;
+
+  --color-bg:           #0F151C;
+  --color-surface:      #18212B;
+  --color-surface-alt:  #1F2A36;
+  --color-text:         #E8EDF3;
+  --color-text-premium: #FFFFFF;
+  --color-border:       rgba(255,255,255,.12);
+  --color-accent:       #A5ACFF;
+  --color-primary:      #8A93FF;
+  --color-cta:          #8A93FF;
+  --color-nav:          #0A0F15;
+
+  --shadow-toast: 0 8px 32px rgba(0,0,0,.55);
+  --shadow-modal: 0 8px 32px rgba(0,0,0,.55);
+  --shadow-lg:    0 8px 32px rgba(0,0,0,.55);
+}
+
+/* Aplats de marque : texte foncé sur le bleu éclairci (contraste 8:1), blanc en mode clair */
+.btn-primaire, .btn-login, .btn-filtre.actif, .tab-btn-premium.actif, .q-chip.active, .q-chip.actif,
+.fab, .drawer-badge, .badge-primaire { color: var(--on-primary); }
+:root[data-theme="dark"] .btn-primaire, :root[data-theme="dark"] .btn-login { background: var(--c-primary); }
+
+/* Contrôles au repos : même teinte partout (pills, onglets, champs, sélecteurs) */
+.btn-filtre:not(.actif), .tab-btn-premium:not(.actif) { background: var(--c-control); color: var(--c-text); }
+input[type="text"], input[type="search"], input[type="email"], input[type="number"], input[type="password"],
+input[type="date"], input[type="time"], input[type="tel"], select, textarea, .q-input {
+  background: var(--c-control); color: var(--c-text); border-color: transparent;
+}
+input::placeholder, textarea::placeholder { color: var(--c-text-2); opacity: 1; }
+@media (hover: hover) and (pointer: fine) {
+  .btn-filtre:hover:not(.actif), .tab-btn-premium:hover:not(.actif) { background: var(--c-control-hover); color: var(--c-text); }
+}
+.modal, .drawer-panneau, .toast, #confirm-modal-root .modal { background: var(--c-surface); color: var(--c-text); }
+:root[data-theme="dark"] img:not(.keep-brightness) { opacity: .92; }
+
+/* Avatars : initiales blanches sur les aplats de marque (le texte foncé donnait 1,2:1 sur le bleu) */
+.v7-avatar, .v7-avatar.navy, .v7-avatar.cobalt, .v7-avatar.accent, .v7-avatar.magenta { color: #FFFFFF; }
+.v7-avatar.magenta { background: #C41A55; }
+:root[data-theme="dark"] .v7-avatar.accent { background: #4A52E8; }
+
+/* Alertes et pastilles de risque : texte rouge foncé (AA sur fond teinté) */
+.alerte-inactivite, .pace-risk, .pace-badge.pace-risk { color: #A61B1B !important; }
+:root[data-theme="dark"] .alerte-inactivite, :root[data-theme="dark"] .pace-risk,
+:root[data-theme="dark"] .pace-badge.pace-risk { color: var(--c-danger) !important; }
+/* Puces de choix au repos : même teinte de contrôle que les pills */
+.q-chip:not(.active):not(.actif) { background: var(--c-control); color: var(--c-text); }
+.app-brand-sep { opacity: 1; color: var(--text-on-anchor-muted); }
+
+/* ═══ Mobile / PWA : FAB, cloche et fenêtres de saisie stables ═══ */
+@media (max-width: 899px) {
+  /* Bouton + à 16 px au-dessus de la barre de navigation ; la cloche s'empile au-dessus, centrée sur lui */
+  .fab { bottom: calc(var(--nav-h) + var(--safe-bottom) + 16px); right: 16px; }
+  body:has(.nav-principale) .nc-cloche { bottom: calc(var(--nav-h) + var(--safe-bottom) + 16px); right: 20px; }
+  body:has(.nav-principale):has(.fab) .nc-cloche { bottom: calc(var(--nav-h) + var(--safe-bottom) + 16px + 56px + 16px); }
+  .fab.fab-export { bottom: calc(var(--nav-h) + var(--safe-bottom) + 16px + 56px + 16px); }
+  body:has(.nav-principale):has(.fab-export) .nc-cloche { bottom: calc(var(--nav-h) + var(--safe-bottom) + 16px + 72px + 72px); }
+  body:has(.nav-principale):has(.barre-actions-fixe) .nc-cloche { bottom: calc(var(--nav-h) + var(--safe-bottom) + 96px); }
+  body:has(.nav-principale):has(.barre-actions-fixe):has(.fab) .nc-cloche { bottom: calc(var(--nav-h) + var(--safe-bottom) + 96px + 72px); }
+  body:has(.nav-principale):has(.barre-actions-fixe) .fab { bottom: calc(var(--nav-h) + var(--safe-bottom) + 96px); }
+  /* Les fenêtres de saisie ne laissent pas glisser la page et suivent le clavier */
+  .modal-overlay:not(.modal-docked) {
+    inset: auto; left: 0; right: 0; top: var(--vv-top, 0px); height: var(--vvh, 100dvh);
+    overscroll-behavior: contain;
+  }
+  .modal { max-height: calc(var(--vvh, 100dvh) - 16px); overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  /* 16 px minimum : iOS ne zoome pas sur le champ actif (le zoom décale toute la page) */
+  input, select, textarea { font-size: 16px !important; }
+}
+.scroll-lock body { overflow: hidden; }
+
+/* Aplats de statut (vert, orange, gris) : texte blanc en clair, texte foncé en sombre */
+.btn-appel, .btn-planning, .btn-rapport, .btn-action:not(.btn-visite) { color: var(--on-status); }
+.tab-btn-premium.actif .tab-num, .btn-filtre.actif .tab-num { background: rgba(255,255,255,.22); color: var(--on-primary); }
+:root[data-theme="dark"] .tab-btn-premium.actif .tab-num { background: rgba(11,16,32,.18); }
+
+:root[data-theme="dark"] .v7-avatar.cobalt { background: #3A41B8; }
+:root[data-theme="dark"] .v7-avatar.navy   { background: #2A3350; }
+.btn-action:not(.btn-visite) { color: var(--on-status) !important; }
+
+.fab.fab-export { color: var(--on-status); }
+@media (min-width: 900px) {
+  .fab.fab-export { bottom: calc(90px + 72px); }
+}
+@media (min-width: 900px) { .v7-signal { margin: 0 0 24px !important; } }

@@ -100,7 +100,7 @@
 .cc-infos { font-size: 12px; color: var(--c-text-2); display: flex; gap: 10px; flex-wrap: wrap; }
 .cc-actions { display: flex; gap: 8px; margin-top: 4px; }
 .btn-visiter {
-  flex: 1; background: var(--c-cta); color: #fff;
+  flex: 1; background: var(--c-cta); color: var(--on-primary);
   border: none; border-radius: var(--radius-btn);
   padding: 10px; font-size: 13px; font-weight: 700; cursor: pointer;
 }

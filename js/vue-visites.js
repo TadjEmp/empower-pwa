@@ -391,7 +391,7 @@ window.VueVisites = {
         <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
           <div>
             <strong>${E(x.Nom_Magasin)}</strong>${x.Ville ? ` <span style="color:var(--c-text-2)">· ${E(x.Ville)}</span>` : ''}
-            ${x.Doublon_A_Revoir ? ' <span title="Même nom qu\'une autre fiche, à vérifier" style="font-size:11px;color:var(--c-warning,#b45309)">doublon possible</span>' : ''}
+            ${x.Doublon_A_Revoir ? ' <span title="Même nom qu\'une autre fiche, à vérifier" style="font-size:11px;color:var(--c-warning,#9A4408)">doublon possible</span>' : ''}
           </div>
           <span style="font-size:11px;font-weight:700;white-space:nowrap">${FichesFroides.STATUTS[x.Statut] || E(x.Statut)}</span>
         </div>
