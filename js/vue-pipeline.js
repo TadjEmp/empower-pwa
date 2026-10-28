@@ -13,7 +13,7 @@ window.VuePipeline = {
     { id: 'ASSIGNE',     lbl: 'Assigné',      coul: 'var(--c-accent)' },
     { id: 'EN_COURS',    lbl: 'En cours',     coul: 'var(--c-warning)' },
     { id: 'COMPTE_CREE', lbl: 'Compte créé',  coul: '#9333ea' },
-    { id: 'INTEGRE',     lbl: 'Intégré ✅',   coul: 'var(--c-success)' },
+    { id: 'INTEGRE',     lbl: 'Intégré ',   coul: 'var(--c-success)' },
     { id: 'ARCHIVE',     lbl: 'Archivé',      coul: 'var(--c-text-2)' },
   ],
 
@@ -101,15 +101,15 @@ window.VuePipeline = {
         // (CDS, Admin, Channel) sur des appareils différents — le cache IndexedDB
         // partagé (TTL 30 min, api.js) masquait jusqu'à 30 min les leads ajoutés
         // ailleurs. Même pattern déjà utilisé pour 🔔_NOTIFS (app.js).
-        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS', { nocache: true }),
-        SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
-        SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
+        SheetsAPI.lire('EMPOWER_MDB', 'LEADS', { nocache: true }),
+        SheetsAPI.lire('EMPOWER_MDB', 'PARAMS'),
+        SheetsAPI.lire('EMPOWER_MDB', 'OBJECTIFS_PRIMES'),
         SheetsAPI.lireCDS(), // liste CDS dynamique — Alexandra filtrée dans _chargerCDS (Bloc D2)
         // BLOC 09 — Suivi activation Tracker ↔ Sell-In (BLOC 04 §3, jamais
         // branché jusqu'ici) : rapprochement par nom normalisé, même source
         // que _creerCompteDepuisLead. Règle validée : CA > 0 sur n'importe
         // quel trimestre FY27 (pas seulement le trimestre actif).
-        SheetsAPI.lire('EMPOWER_MDB', '📋 COMPTES HISTORIQUES').catch(() => []),
+        SheetsAPI.lire('EMPOWER_MDB', 'COMPTES_HISTORIQUES').catch(() => []),
         VuesFiltres.lister('tracker'),
         // BLOC — dernier appel + note par lead (cf. demande utilisateur : la
         // carte du prospect n'affichait jamais la note d'appel après la
@@ -117,9 +117,9 @@ window.VuePipeline = {
         // un appel peut être édité/supprimé après coup (R5), une copie
         // figée sur le lead se serait désynchronisée. Même principe que
         // VuePhoning._dernierAppelCompte.
-        SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING').catch(() => []),
+        SheetsAPI.lire('EMPOWER_MDB', 'PHONING').catch(() => []),
         // Lot 2 — flag SELL IN « Qx · Sy » retrouvé par nom (les leads ne portent pas le flag)
-        SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES').catch(() => []),
+        SheetsAPI.lire('EMPOWER_MDB', 'COMPTES').catch(() => []),
       ]);
       SellInFlag.indexer(comptesSI);
       this.state.vuesFiltres = vuesFiltres;
@@ -302,17 +302,17 @@ window.VuePipeline = {
   _labelFlag(flag) {
     const MAP = {
       'SAISIE':               '🆕 Nouveau',
-      'A_RELANCER':           '🔔 À relancer',
+      'A_RELANCER':           'À relancer',
       'EN_COURS':             '▶️ En cours',
-      'A_RAPPELER':           '📅 À rappeler',
-      'INTERESSE':            '✅ Intéressé',
-      'WELCOME_PACK_ENVOYE':  '📦 WP envoyé',
-      'COMPTE_CREE':          '🏢 Compte créé',
-      'NON_INTERESSE':        '❌ Non intéressé',
-      'PERDU':                '🗄 Perdu',
-      'A_VISITER':            '📍 À visiter',
+      'A_RAPPELER':           'À rappeler',
+      'INTERESSE':            'Intéressé',
+      'WELCOME_PACK_ENVOYE':  'WP envoyé',
+      'COMPTE_CREE':          'Compte créé',
+      'NON_INTERESSE':        'Non intéressé',
+      'PERDU':                'Perdu',
+      'A_VISITER':            'À visiter',
     };
-    return MAP[String(flag || '').toUpperCase()] || flag || '—';
+    return MAP[String(flag || '').toUpperCase()] || flag || 'n.c.';
   },
 
   // Origines distinctes présentes dans les leads (case-insensitive, libellé d'affichage = 1ère occurrence)
@@ -341,7 +341,7 @@ window.VuePipeline = {
     const coul = j > 30 ? 'var(--c-danger)' : j > 7 ? 'var(--c-warning)' : 'var(--c-success)';
     const titre = p.Date_Derniere_Action
       ? `Dernier contact (${p.Type_Derniere_Action || 'action'}) il y a ${j}j`
-      : `Aucun contact enregistré — ${j}j depuis l'attribution`;
+      : `Aucun contact enregistré, ${j}j depuis l'attribution`;
     // V7 §4 (BLOC 02) — ancienneté = donnée : typo + couleur sémantique,
     // pas de pill cerclée.
     return `<span class="badge-age" title="${titre}" style="font-size:11px;font-weight:700;color:${coul};white-space:nowrap;font-variant-numeric:tabular-nums">${j}j</span>`;
@@ -392,10 +392,10 @@ window.VuePipeline = {
     if (!lead) return;
     const zone = document.getElementById('ia-zone');
     if (!zone) return;
-    const LABELS = { T01: '🔍 Analyse', T02: '📋 Préparation visite', T04: '✉️ Email', T05: '📝 Résumé CR' };
+    const LABELS = { T01: 'Analyse', T02: 'Préparation visite', T04: 'Email', T05: 'Résumé CR' };
     zone.style.display = 'block';
     zone.style.color = 'var(--c-text-2)';
-    zone.textContent = `⏳ ${LABELS[slot] || slot} en cours…`;
+    zone.textContent = `${LABELS[slot] || slot} en cours…`;
     try {
       let texte;
       if (slot === 'T01') texte = await GeminiAPI.t01_analyser(lead);
@@ -406,7 +406,7 @@ window.VuePipeline = {
       zone.textContent = texte || '(réponse vide)';
     } catch (e) {
       zone.style.color = 'var(--c-danger)';
-      zone.textContent = '❌ ' + e.message;
+      zone.textContent = '' + e.message;
     }
   },
 
@@ -431,7 +431,7 @@ window.VuePipeline = {
     const doCreerCompte = statut === 'COMPTE_CREE' || statut === 'INTEGRE';
     const statutAvant = lead._statut;
     try {
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', id, champs);
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', 'LEADS', id, champs);
       Object.assign(lead, champs, { _statut: statut });
       // BLOC 09 — historise chaque transition (📊_ACTIONS) : fondation pour
       // un futur rapport de vélocité pipeline (temps moyen par étape).
@@ -441,7 +441,7 @@ window.VuePipeline = {
       // le rapport ne sera exploitable qu'une fois assez de transitions
       // accumulées (à ne pas construire prématurément sur trop peu de données).
       if (statutAvant && statutAvant !== statut) {
-        SheetsAPI.ecrire('EMPOWER_MDB', '📊_ACTIONS', {
+        SheetsAPI.ecrire('EMPOWER_MDB', 'ACTIONS', {
           ID_Action: genId('ACT'),
           Date_Action: new Date().toISOString(),
           Type_Action: 'CHANGEMENT_STATUT',
@@ -454,7 +454,7 @@ window.VuePipeline = {
       }
       if (!silencieux) {
         this.state.modal = null;
-        Toast.afficher(`✅ ${lead.Nom_Compte} → ${this.STATUTS.find(s => s.id === statut)?.lbl || statut}`, 'succes');
+        Toast.afficher(`${lead.Nom_Compte} → ${this.STATUTS.find(s => s.id === statut)?.lbl || statut}`, 'succes');
         this.render();
       }
       if (doCreerCompte) this._creerCompteDepuisLead(lead).catch(() => {});
@@ -464,20 +464,20 @@ window.VuePipeline = {
       // l'utilisateur : uniquement quand un manager déplace la card d'un
       // CDS (pas d'auto-notif quand le CDS avance lui-même sa propre card).
       this._notifierChangementStatut(lead, statut);
-    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+    } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
   },
 
   _notifierChangementStatut(lead, statut) {
     const pin = Number(lead.PIN_CDS_Assigne);
     if (!pin || !Session.voitTout() || pin === Number(Session.pin)) return;
     const MSGS = {
-      EN_COURS: `🔵 ${lead.Nom_Compte} passé en cours de traitement`,
-      INTEGRE:  `✅ ${lead.Nom_Compte} intégré — bravo !`,
-      ARCHIVE:  `🗄 ${lead.Nom_Compte} archivé`,
+      EN_COURS: `${lead.Nom_Compte} passé en cours de traitement`,
+      INTEGRE:  `${lead.Nom_Compte} intégré, bravo !`,
+      ARCHIVE:  `${lead.Nom_Compte} archivé`,
     };
     const TYPES = { EN_COURS: 'STATUT_EN_COURS', INTEGRE: 'STATUT_INTEGRE', ARCHIVE: 'STATUT_ARCHIVE' };
     if (!MSGS[statut]) return;
-    SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
+    SheetsAPI.ecrire('EMPOWER_MDB', 'NOTIFS', {
       ID_Notif:         genId('NOTIF'),
       PIN_Destinataire: pin,
       Type_Notif:       TYPES[statut],
@@ -492,31 +492,31 @@ window.VuePipeline = {
     const lead = this.state.leads.find(l => String(l.ID_Prospect) === String(id));
     if (!lead || !pin) return;
     try {
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', lead.ID_Prospect, {
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', 'LEADS', lead.ID_Prospect, {
         PIN_CDS_Assigne: Number(pin),
         STATUT_EMPOWER: 'ASSIGNE',
         FLAG_ACTION: 'ASSIGNE',
         Date_Statut_Change: dateISOLocale(),
       });
-      await SheetsAPI.viderCache('EMPOWER_MDB', '📋_PROSPECTS');
+      await SheetsAPI.viderCache('EMPOWER_MDB', 'LEADS');
       Object.assign(lead, { PIN_CDS_Assigne: Number(pin), STATUT_EMPOWER: 'ASSIGNE', _statut: 'ASSIGNE', Date_Statut_Change: dateISOLocale() });
       // Bloc 3 §4 — l'assignation a posteriori notifie le CDS comme la création
       // (même payload que saisirLead) ; avant : écriture silencieuse.
-      SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
+      SheetsAPI.ecrire('EMPOWER_MDB', 'NOTIFS', {
         ID_Notif:         genId('NOTIF'),
         PIN_Destinataire: Number(pin),
         Type_Notif:       'LEAD_ASSIGNE',
-        Message:          `🎯 Lead assigné : ${lead.Nom_Compte}${lead.Ville ? ' — ' + lead.Ville : ''} — Potentiel : ${lead.POTENTIEL || '?'}`,
+        Message:          `Lead assigné : ${lead.Nom_Compte}${lead.Ville ? ', ' + lead.Ville : ''}, Potentiel : ${lead.POTENTIEL || '?'}`,
         ID_Cible:         lead.ID_Prospect,
         Statut_Lu:        false,
         Date_Envoi:       new Date().toISOString(),
       }).catch(() => {}); // non bloquant
       if (!silencieux) {
         this.state.modal = null;
-        Toast.afficher(`🎯 ${lead.Nom_Compte} → ${this._nomCDS(pin)}`, 'succes');
+        Toast.afficher(`${lead.Nom_Compte} → ${this._nomCDS(pin)}`, 'succes');
         this.render();
       }
-    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+    } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
   },
 
   async saisirLead(e) {
@@ -543,14 +543,14 @@ window.VuePipeline = {
       if (res?.doublon_probable && res.score > 70) {
         ConfirmModal.demander({
           titre: 'Doublon probable détecté',
-          message: `Compte similaire existant : "${res.nom_similaire}" — similarité ${res.score}%`,
+          message: `Compte similaire existant : "${res.nom_similaire}", similarité ${res.score}%`,
           detail: res.explication || '',
           labelConfirmer: 'Continuer quand même',
           onConfirm: () => this._creerLeadPipeline(nomSaisi, vals),
         });
         return;
       }
-    } catch { /* GEM-T02 optionnel — on continue si erreur */ }
+    } catch { /* GEM-T02 optionnel, on continue si erreur */ }
 
     await this._creerLeadPipeline(nomSaisi, vals);
   },
@@ -585,22 +585,22 @@ window.VuePipeline = {
     this.render();
 
     try {
-      await SheetsAPI.ecrire('EMPOWER_MDB', '📋_PROSPECTS', lead);
+      await SheetsAPI.ecrire('EMPOWER_MDB', 'LEADS', lead);
       this.state.leads.unshift({ ...lead, _statut: statutInit });
       // BLOC 4.3 — notif in-app au CDS assigné
       if (cdsAssignePin) {
-        SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
+        SheetsAPI.ecrire('EMPOWER_MDB', 'NOTIFS', {
           ID_Notif:         genId('NOTIF'),
           PIN_Destinataire: Number(cdsAssignePin),
           Type_Notif:       'LEAD_ASSIGNE',
-          Message:          `🎯 Lead assigné : ${lead.Nom_Compte}${lead.Ville ? ' — ' + lead.Ville : ''} — Potentiel : ${lead.POTENTIEL || '?'}`,
+          Message:          `Lead assigné : ${lead.Nom_Compte}${lead.Ville ? ', ' + lead.Ville : ''}, Potentiel : ${lead.POTENTIEL || '?'}`,
           ID_Cible:         lead.ID_Prospect,
           Statut_Lu:        false,
           Date_Envoi:       new Date().toISOString(),
         }).catch(() => {}); // non bloquant
       }
       this.state.modal = null;
-      Toast.afficher(`✅ Lead créé${cdsAssignePin ? ' → ' + this._nomCDS(cdsAssignePin) : ''} : ` + lead.Nom_Compte, 'succes');
+      Toast.afficher(`Lead créé${cdsAssignePin ? ' → ' + this._nomCDS(cdsAssignePin) : ''} : ` + lead.Nom_Compte, 'succes');
 
       // GEM-T01 — Enrichissement automatique post-création (asynchrone, non bloquant)
       GeminiAPI.gemT01_enrichirLead(lead).then(raw => {
@@ -612,16 +612,16 @@ window.VuePipeline = {
         if (enrichi.type_revendeur_probable)             maj.Type_Revendeur = enrichi.type_revendeur_probable;
         if (enrichi.angle_approche)                      maj.Note_initiale = (lead.Note_initiale ? lead.Note_initiale + '\n' : '') + '[IA] ' + enrichi.angle_approche;
         if (Object.keys(maj).length) {
-          SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', lead.ID_Prospect, maj).then(() => {
+          SheetsAPI.mettreAJour('EMPOWER_MDB', 'LEADS', lead.ID_Prospect, maj).then(() => {
             Object.assign(lead, maj);
             const local = this.state.leads.find(l => l.ID_Prospect === lead.ID_Prospect);
             if (local) Object.assign(local, maj);
-            Toast.afficher(`✨ Lead enrichi par Gemini (potentiel : ${maj.POTENTIEL||lead.POTENTIEL})`, 'info', 3000);
+            Toast.afficher(`Lead enrichi par Gemini (potentiel : ${maj.POTENTIEL||lead.POTENTIEL})`, 'info', 3000);
             this.render();
           }).catch(() => {});
         }
       }).catch(() => {});
-    } catch(err) { Toast.afficher('❌ ' + err.message, 'erreur'); }
+    } catch(err) { Toast.afficher('' + err.message, 'erreur'); }
     this.state.envoiEnCours = false;
     this.render();
   },
@@ -664,9 +664,9 @@ window.VuePipeline = {
     try {
       await VuesFiltres.sauvegarder('tracker', nom, filtres);
       s.vuesFiltres = await VuesFiltres.lister('tracker');
-      Toast.afficher(`💾 Vue "${nom}" enregistrée`, 'succes');
+      Toast.afficher(`Vue "${nom}" enregistrée`, 'succes');
       this.render();
-    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+    } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
   },
 
   appliquerVueFiltre(id) {
@@ -690,9 +690,9 @@ window.VuePipeline = {
       await VuesFiltres.supprimer(id);
       this.state.vuesFiltres = this.state.vuesFiltres.filter(v => String(v.id) !== String(id));
       this.state.vueFiltreActive = null;
-      Toast.afficher('🗑️ Vue supprimée', 'succes');
+      Toast.afficher('Vue supprimée', 'succes');
       this.render();
-    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+    } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
   },
 
   // ── Datagrid desktop (Bloc 3) : tri de colonnes ──
@@ -769,7 +769,7 @@ window.VuePipeline = {
     const ids = [...this.state.selection];
     this.state.selection.clear();
     for (const id of ids) await this.attribuer(id, pin, { silencieux: true });
-    Toast.afficher(`🎯 ${ids.length} lead(s) attribué(s) à ${this._nomCDS(pin)}`, 'succes');
+    Toast.afficher(`${ids.length} lead(s) attribué(s) à ${this._nomCDS(pin)}`, 'succes');
     this.render();
   },
   archiverSelection() { this.demanderMotifArchiveBulk(); },
@@ -818,27 +818,27 @@ window.VuePipeline = {
       </header>
 
       <!-- Toggle Kanban / Table — tabs premium -->
-      <div style="padding:10px 12px 0;background:var(--c-surface);border-bottom:1px solid var(--c-border)">
+      <div style="padding:10px 12px 0;background:var(--c-surface);">
         <div class="tabs-premium">
           <button class="tab-btn-premium ${this.modeAffichage === 'kanban' ? 'actif' : ''}"
                   onclick="VuePipeline.setMode('kanban')">
-            📋 Kanban <span class="tab-num">${leads.length}</span>
+            Kanban <span class="tab-num">${leads.length}</span>
           </button>
           <button class="tab-btn-premium tab-tableau-desktop ${this.modeAffichage === 'table' ? 'actif' : ''}"
                   onclick="VuePipeline.setMode('table')">
-            ☰ Tableau
+            Tableau
           </button>
         </div>
       </div>
 
       <div class="barre-filtres">
-        <input type="search" placeholder="🔍 Nom, ville, contact, tél, email, notes…" value="${this.state.recherche}"
+        <input type="search" placeholder="Nom, ville, contact, tél, email, notes…" value="${this.state.recherche}"
                style="border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:8px 12px;font-size:14px;width:100%"
                oninput="VuePipeline.setRecherche(this.value)"/>
         <div class="filtres-statut">
           ${voitTous ? `
           <select onchange="VuePipeline.state.filtreCDS=this.value;VuePipeline.render()">
-            <option value="TOUS">👥 Tous CDS</option>
+            <option value="TOUS">Tous CDS</option>
             ${cdsList.map(c => `<option value="${c.pin}" ${String(this.state.filtreCDS) == String(c.pin) ? 'selected' : ''}>${this._nomCDS(c.pin)}</option>`).join('')}
           </select>` : ''}
           <select onchange="VuePipeline.state.filtreStatut=this.value;VuePipeline.render()">
@@ -851,18 +851,18 @@ window.VuePipeline = {
           </select>
           <select onchange="VuePipeline.state.filtreAlerte=this.value;VuePipeline.render()">
             <option value="TOUS">Toutes alertes</option>
-            <option value="WP_RETARD" ${this.state.filtreAlerte==='WP_RETARD'?'selected':''}>⚠️ WP J+14 dépassé</option>
-            <option value="WP_ENVOYE" ${this.state.filtreAlerte==='WP_ENVOYE'?'selected':''}>📦 Welcome Pack envoyé</option>
-            <option value="ACTION_DUE" ${this.state.filtreAlerte==='ACTION_DUE'?'selected':''}>⏰ Action en retard</option>
-            <option value="CONTACT_45J" ${this.state.filtreAlerte==='CONTACT_45J'?'selected':''}>🔴 Sans contact +45j</option>
-            <option value="SELLIN_ACTIF" ${this.state.filtreAlerte==='SELLIN_ACTIF'?'selected':''}>💰 A commandé (Sell-In ou déclaré)</option>
+            <option value="WP_RETARD" ${this.state.filtreAlerte==='WP_RETARD'?'selected':''}>WP J+14 dépassé</option>
+            <option value="WP_ENVOYE" ${this.state.filtreAlerte==='WP_ENVOYE'?'selected':''}>Welcome Pack envoyé</option>
+            <option value="ACTION_DUE" ${this.state.filtreAlerte==='ACTION_DUE'?'selected':''}>Action en retard</option>
+            <option value="CONTACT_45J" ${this.state.filtreAlerte==='CONTACT_45J'?'selected':''}>Sans contact +45j</option>
+            <option value="SELLIN_ACTIF" ${this.state.filtreAlerte==='SELLIN_ACTIF'?'selected':''}>A commandé (Sell-In ou déclaré)</option>
           </select>
           ${voitTous ? `
           <select onchange="VuePipeline.state.filtreOrigine=this.value;VuePipeline.render()">
             <option value="TOUS">Toutes origines</option>
             ${this._originesDistinctes().map(o => `<option value="${o}" ${String(this.state.filtreOrigine).toLowerCase()===String(o).toLowerCase()?'selected':''}>${o}</option>`).join('')}
           </select>` : ''}
-          ${/* BLOC 7 — filtre channel */ this.CHANNELS.length > 1 ? `
+          ${/* BLOC 7, filtre channel */ this.CHANNELS.length > 1 ? `
           <select onchange="VuePipeline.state.filtreChannel=this.value;VuePipeline.render()">
             <option value="TOUS">Tous canaux</option>
             ${this.CHANNELS.map(c => `<option value="${c}" ${this.state.filtreChannel===c?'selected':''}>${c}</option>`).join('')}
@@ -871,18 +871,18 @@ window.VuePipeline = {
         <!-- Feuille de route Phase 2 — vues de filtre sauvegardées -->
         <div class="filtres-statut">
           <select onchange="VuePipeline.appliquerVueFiltre(this.value)">
-            <option value="">💾 Vues sauvegardées…</option>
+            <option value="">Vues sauvegardées…</option>
             ${this.state.vuesFiltres.map(v => `<option value="${v.id}" ${this.state.vueFiltreActive === v.id ? 'selected' : ''}>${v.nom}</option>`).join('')}
           </select>
-          <button class="btn-filtre" title="Enregistrer les filtres actuels" onclick="VuePipeline.demanderSauvegardeVue()">💾</button>
-          ${this.state.vueFiltreActive ? `<button class="btn-filtre" title="Supprimer cette vue" onclick="VuePipeline.supprimerVueFiltre()">🗑️</button>` : ''}
+          <button class="btn-filtre" title="Enregistrer les filtres actuels" onclick="VuePipeline.demanderSauvegardeVue()"><span class="material-symbols-outlined" aria-hidden="true">save</span></button>
+          ${this.state.vueFiltreActive ? `<button class="btn-filtre" title="Supprimer cette vue" onclick="VuePipeline.supprimerVueFiltre()"><span class="material-symbols-outlined" aria-hidden="true">delete</span></button>` : ''}
         </div>
       </div>
 
       <div id="tracker-resultats-zone">${this._renderResultatsZone(leads, voitTous)}</div>
 
       ${peutSaisir ? '<button class="fab" onclick="VuePipeline.ouvrirSaisie()" title="Nouveau lead" style="bottom:140px">＋</button>' : ''}
-      ${(Session.estManager() || Session.estChannel()) ? `<button class="fab fab-export" onclick="VuePipeline.ouvrirExport()" title="Export Excel" style="bottom:210px;background:var(--c-success);font-size:18px">📥</button>` : ''}
+      ${(Session.estManager() || Session.estChannel()) ? `<button class="fab fab-export" onclick="VuePipeline.ouvrirExport()" title="Export Excel" style="bottom:210px;background:var(--c-success);font-size:18px"><span class="material-symbols-outlined" aria-hidden="true">download</span></button>` : ''}
       ${NavBar('tracker')}
       ${this._renderModal()}
       ${this._renderPanneauExport()}
@@ -907,7 +907,7 @@ window.VuePipeline = {
 
       ${this.state.leads.length === 0 ? `
         <div class="vide" style="text-align:center;padding:40px 20px;color:var(--c-text-2)">
-          <div style="font-size:32px;margin-bottom:12px">📭</div>
+          <div style="font-size:32px;margin-bottom:12px"><span class="material-symbols-outlined" aria-hidden="true">inbox</span></div>
           <div style="font-weight:700;color:var(--c-title);margin-bottom:6px">Aucun lead à traiter</div>
           <div style="font-size:13px">Aucun lead assigné à votre compte. Les leads importés apparaissent ici une fois attribués.</div>
         </div>` : ''}
@@ -952,7 +952,7 @@ window.VuePipeline = {
               <div class="kanban-ligne" data-id="${l.ID_Prospect}" onclick="VuePipeline.ouvrirLead('${l.ID_Prospect}')" title="${l.Nom_Compte}">
                 <span class="kanban-ligne-pot" style="background:${potCoul}"></span>
                 <span class="kanban-ligne-nom">${l.Nom_Compte}</span>
-                ${alerte ? '<span class="kanban-ligne-alerte">⚠️</span>' : ''}
+                ${alerte ? '<span class="kanban-ligne-alerte"><span class="material-symbols-outlined" aria-hidden="true">warning</span></span>' : ''}
                 <span class="kanban-ligne-cds">${this._nomCDS(l.PIN_CDS_Assigne).slice(0, 1)}</span>
               </div>`;
             }).join('') : affichees.map(l => `
@@ -967,7 +967,7 @@ window.VuePipeline = {
                   ${l.CANAL ? `<span style="font-size:11px;color:var(--c-text-2);white-space:nowrap">${l.CANAL}</span>` : ''}
                 </div>
                 <div class="kanban-carte-meta" style="margin-top:3px">
-                  <span style="color:var(--c-text-2);font-size:11px">👤 ${this._nomCDS(l.PIN_CDS_Assigne)}</span>
+                  <span style="color:var(--c-text-2);font-size:11px">${this._nomCDS(l.PIN_CDS_Assigne)}</span>
                   ${l.FLAG_ACTION && l.FLAG_ACTION !== 'SAISIE' ? `<span style="font-size:10px;color:var(--c-primary);font-weight:700">${this._labelFlag(l.FLAG_ACTION)}</span>` : ''}
                 </div>
                 ${(() => {
@@ -979,26 +979,26 @@ window.VuePipeline = {
                   // aucun appel n'a encore été loggé pour ce lead.
                   const da = this._dernierAppelLead(l.ID_Prospect);
                   const note = da?.Note || l.Note_initiale;
-                  return note ? `<div class="kanban-carte-note">${da?.Note ? '📞 ' : ''}${String(note).slice(0, 60)}</div>` : '';
+                  return note ? `<div class="kanban-carte-note">${da?.Note ? '' : ''}${String(note).slice(0, 60)}</div>` : '';
                 })()}
-                ${l._activationSellIn || l._activationSellInFlou || l.Commande_Manuelle ? `<div class="kanban-carte-note" style="color:var(--c-success);font-weight:700">💰 ${
+                ${l._activationSellIn || l._activationSellInFlou || l.Commande_Manuelle ? `<div class="kanban-carte-note" style="color:var(--c-success);font-weight:700">${
                   l._activationSellIn && l.Commande_Manuelle ? `Commande (Sell-In + déclarée)${this._sellInFraicheur()}`
                   : l._activationSellIn ? `Commande détectée (Sell-In)${this._sellInFraicheur()}`
                   : l.Commande_Manuelle ? 'Commande déclarée'
                   : `Commande probable (${l._activationSellInFlou.score}% · "${l._activationSellInFlou.nom}")${this._sellInFraicheur()}`
                 }</div>` : ''}
                 ${SellInFlag.pourNom(l.Nom_Compte) ? `<div class="kanban-carte-note">${SellInFlag.badgePourNom(l.Nom_Compte)}</div>` : ''}
-                ${(l.STATUT_EMPOWER === 'A_VISITER' || l.FLAG_ACTION === 'A_VISITER') ? '<div class="kanban-carte-note" style="color:var(--c-primary);font-weight:700">📍 À visiter (demandé au phoning)</div>' : ''}
-                ${this._retardWelcomePack(l) ? '<div class="kanban-carte-note" style="color:var(--c-danger);font-weight:600">⚠️ Welcome Pack J+14 dépassé</div>' : ''}
-                ${this._alerte45jSansContact(l) ? '<div class="kanban-carte-note" style="color:var(--c-danger);font-weight:600">🔴 Sans contact +45j</div>' : this._alerteSansActivite(l) ? '<div class="kanban-carte-note" style="color:var(--c-warning);font-weight:600">⏳ Sans activité >7j</div>' : ''}
+                ${(l.STATUT_EMPOWER === 'A_VISITER' || l.FLAG_ACTION === 'A_VISITER') ? '<div class="kanban-carte-note" style="color:var(--c-primary);font-weight:700">À visiter (demandé au phoning)</div>' : ''}
+                ${this._retardWelcomePack(l) ? '<div class="kanban-carte-note" style="color:var(--c-danger);font-weight:600">Welcome Pack J+14 dépassé</div>' : ''}
+                ${this._alerte45jSansContact(l) ? '<div class="kanban-carte-note" style="color:var(--c-danger);font-weight:600">Sans contact +45j</div>' : this._alerteSansActivite(l) ? '<div class="kanban-carte-note" style="color:var(--c-warning);font-weight:600">Sans activité >7j</div>' : ''}
                 <div class="kanban-carte-pied" style="display:flex;align-items:center;gap:4px">
                   ${l.Date_prochaine_action
-                    ? `<span style="color:${estDepassee(l.Date_prochaine_action) ? 'var(--c-danger)' : 'var(--c-text-2)'}">⏰ ${dateRelative(l.Date_prochaine_action)}</span>`
-                    : `<span>🕐 ${dateRelative(l.Timestamp || l.Date_Import)}</span>`}
+                    ? `<span style="color:${estDepassee(l.Date_prochaine_action) ? 'var(--c-danger)' : 'var(--c-text-2)'}">${dateRelative(l.Date_prochaine_action)}</span>`
+                    : `<span>${dateRelative(l.Timestamp || l.Date_Import)}</span>`}
                   <span class="kanban-voir" style="margin-left:auto">Voir →</span>
                 </div>
               </div>`).join('')}
-            ${col.length === 0 ? '<div class="kanban-vide">—</div>' : ''}
+            ${col.length === 0 ? '<div class="kanban-vide">n.c.</div>' : ''}
             </div>
             ${masques > 0 ? `
               <div class="kanban-voir-plus" onclick="VuePipeline.etendre('${st.id}')">
@@ -1040,7 +1040,7 @@ window.VuePipeline = {
   _renderTableau(leadsEntree, voitTous) {
     if (leadsEntree.length === 0) return `
       <div class="vide" style="text-align:center;padding:40px 20px;color:var(--c-text-2)">
-        <div style="font-size:32px;margin-bottom:12px">📭</div>
+        <div style="font-size:32px;margin-bottom:12px"><span class="material-symbols-outlined" aria-hidden="true">inbox</span></div>
         <div style="font-weight:700;color:var(--c-title);margin-bottom:6px">Aucun résultat</div>
       </div>`;
 
@@ -1077,8 +1077,8 @@ window.VuePipeline = {
       <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin:12px 12px 0;position:relative">
         <span style="font-size:12px;color:var(--c-text-2)">${leads.length} lead(s)</span>
         ${(Session.estManager() || Session.estChannel()) ? `
-        <button class="btn-secondaire tracker-export-inline" style="width:auto;padding:6px 12px;font-size:12px" onclick="VuePipeline.ouvrirExport()">📥 Export Excel</button>` : ''}
-        <button class="btn-secondaire" style="width:auto;padding:6px 12px;font-size:12px" onclick="VuePipeline.ouvrirColonnesMenu()">⚙ Colonnes</button>
+        <button class="btn-secondaire tracker-export-inline" style="width:auto;padding:6px 12px;font-size:12px" onclick="VuePipeline.ouvrirExport()">Export Excel</button>` : ''}
+        <button class="btn-secondaire" style="width:auto;padding:6px 12px;font-size:12px" onclick="VuePipeline.ouvrirColonnesMenu()">Colonnes</button>
         ${this.state.colonnesMenuOuvert ? `
         <div style="position:absolute;top:100%;right:0;z-index:50;margin-top:4px;padding:10px;background:var(--bg-warm-white);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);box-shadow:var(--shadow-modal);min-width:180px">
           ${this._COLS_CONFIGURABLES.map(c => `
@@ -1095,7 +1095,7 @@ window.VuePipeline = {
           <option value="">Attribuer à…</option>
           ${(this.CDS.length ? this.CDS : this.CDS_FALLBACK).map(c => `<option value="${c.pin}">${this._nomCDS(c.pin)}</option>`).join('')}
         </select>
-        <button class="btn-secondaire" style="width:auto;padding:6px 12px;font-size:12px" onclick="VuePipeline.archiverSelection()">🗄 Archiver</button>
+        <button class="btn-secondaire" style="width:auto;padding:6px 12px;font-size:12px" onclick="VuePipeline.archiverSelection()">Archiver</button>
         <button class="btn-secondaire" style="width:auto;padding:6px 12px;font-size:12px" onclick="VuePipeline.viderSelection()">Désélectionner</button>
       </div>` : ''}
       <div class="desktop-table-wrap avec-nav" style="margin:12px">
@@ -1122,27 +1122,27 @@ window.VuePipeline = {
               <td class="compte-nom" onclick="VuePipeline.ouvrirLead('${l.ID_Prospect}')" style="cursor:pointer;font-weight:600">
                 ${l.Nom_Compte}
               </td>
-              ${cc.canal ? `<td style="font-size:12px;color:var(--c-text-2)">${l.CANAL || '—'}</td>` : ''}
+              ${cc.canal ? `<td style="font-size:12px;color:var(--c-text-2)">${l.CANAL || 'n.c.'}</td>` : ''}
               <td>
                 <span class="statut-pill statut-${(l._statut||'').toLowerCase()}" style="font-size:10px">
                   ${statutLabel(l._statut)}
                 </span>
               </td>
-              ${cc.potentiel ? `<td>${l.POTENTIEL ? `<span class="pot-pill pot-${(l.POTENTIEL||'').toLowerCase()}">${l.POTENTIEL}</span>` : '—'}</td>` : ''}
+              ${cc.potentiel ? `<td>${l.POTENTIEL ? `<span class="pot-pill pot-${(l.POTENTIEL||'').toLowerCase()}">${l.POTENTIEL}</span>` : 'n.c.'}</td>` : ''}
               ${showCDS ? `<td style="font-size:12px">${this._nomCDS(l.PIN_CDS_Assigne)}</td>` : ''}
               ${cc.action ? `<td style="font-size:12px;color:${l.Date_prochaine_action && estDepassee(l.Date_prochaine_action) ? 'var(--c-danger)' : 'var(--c-text-2)'}">
-                ${l.Date_prochaine_action ? dateRelative(l.Date_prochaine_action) : '—'}
+                ${l.Date_prochaine_action ? dateRelative(l.Date_prochaine_action) : 'n.c.'}
               </td>` : ''}
               ${cc.alertes ? `<td style="font-size:12px;white-space:nowrap">
-                ${wpRetard   ? '<span style="color:var(--c-danger);font-weight:700">⚠️ WP J+14</span><br>' : ''}
-                ${contact45j ? '<span style="color:var(--c-danger);font-weight:700">🔴 +45j</span><br>' : ''}
-                ${activite7j ? '<span style="color:var(--c-warning);font-weight:700">⏳ +7j</span><br>' : ''}
-                ${l._activationSellIn ? '<span style="color:var(--c-success);font-weight:700">💰 Sell-In</span>' : l._activationSellInFlou ? `<span style="color:var(--c-warning);font-weight:700" title="Rapprochement approximatif : ${l._activationSellInFlou.nom} (${l._activationSellInFlou.score}%)">💰 Sell-In ?</span>` : ''}
+                ${wpRetard   ? '<span style="color:var(--c-danger);font-weight:700">WP J+14</span><br>' : ''}
+                ${contact45j ? '<span style="color:var(--c-danger);font-weight:700">+45j</span><br>' : ''}
+                ${activite7j ? '<span style="color:var(--c-warning);font-weight:700">+7j</span><br>' : ''}
+                ${l._activationSellIn ? '<span style="color:var(--c-success);font-weight:700">Sell-In</span>' : l._activationSellInFlou ? `<span style="color:var(--c-warning);font-weight:700" title="Rapprochement approximatif : ${l._activationSellInFlou.nom} (${l._activationSellInFlou.score}%)">Sell-In ?</span>` : ''}
                 ${SellInFlag.badgePourNom(l.Nom_Compte)}
-                ${l.Commande_Manuelle ? '<span style="color:var(--c-success);font-weight:700">✍️ Déclarée</span>' : ''}
-                ${!wpRetard && !contact45j && !activite7j && !l._activationSellIn && !l._activationSellInFlou && !l.Commande_Manuelle ? '<span style="color:var(--c-text-2)">—</span>' : ''}
+                ${l.Commande_Manuelle ? '<span style="color:var(--c-success);font-weight:700">Déclarée</span>' : ''}
+                ${!wpRetard && !contact45j && !activite7j && !l._activationSellIn && !l._activationSellInFlou && !l.Commande_Manuelle ? '<span style="color:var(--c-text-2)">n.c.</span>' : ''}
               </td>` : ''}
-              ${cc.source ? `<td style="font-size:11px;color:var(--c-text-2)">${(l.ORIGINE||'—').replace('Import_','').replace(/_/g,' ')}</td>` : ''}
+              ${cc.source ? `<td style="font-size:11px;color:var(--c-text-2)">${(l.ORIGINE||'n.c.').replace('Import_','').replace(/_/g,' ')}</td>` : ''}
               <td>
                 <button class="btn-visiter" style="padding:4px 10px;font-size:12px"
                         onclick="VuePipeline.ouvrirLead('${l.ID_Prospect}')">Voir →</button>
@@ -1163,14 +1163,14 @@ window.VuePipeline = {
   // (levier sales ops : sans motif, impossible d'identifier un pattern de
   // perte récurrent — concurrent, prix, timing — sur l'ensemble du pipeline).
   MOTIFS_ARCHIVE: [
-    { id: 'PRIX',        lbl: '💰 Prix trop élevé' },
-    { id: 'CONCURRENT',  lbl: '⚔️ Parti chez un concurrent' },
-    { id: 'BUDGET',      lbl: '🚫 Pas de budget' },
-    { id: 'PAS_BESOIN',  lbl: '🤷 Pas de besoin / pas intéressé' },
-    { id: 'TIMING',      lbl: '⏳ Mauvais moment' },
-    { id: 'INJOIGNABLE', lbl: '📵 Injoignable / sans retour' },
-    { id: 'DOUBLON',     lbl: '🔁 Doublon / erreur de saisie' },
-    { id: 'AUTRE',       lbl: '❔ Autre' },
+    { id: 'PRIX',        lbl: 'Prix trop élevé' },
+    { id: 'CONCURRENT',  lbl: 'Parti chez un concurrent' },
+    { id: 'BUDGET',      lbl: 'Pas de budget' },
+    { id: 'PAS_BESOIN',  lbl: 'Pas de besoin / pas intéressé' },
+    { id: 'TIMING',      lbl: 'Mauvais moment' },
+    { id: 'INJOIGNABLE', lbl: 'Injoignable / sans retour' },
+    { id: 'DOUBLON',     lbl: 'Doublon / erreur de saisie' },
+    { id: 'AUTRE',       lbl: 'Autre' },
   ],
   demanderMotifArchive(id) {
     const lead = this.state.leads.find(l => String(l.ID_Prospect) === String(id));
@@ -1194,7 +1194,7 @@ window.VuePipeline = {
     this.state.selection.clear();
     this.state.modal = null;
     for (const id of ids) await this.deplacer(id, 'ARCHIVE', { silencieux: true, motifArchive: motif, motifArchiveDetail: detail });
-    Toast.afficher(`🗄 ${ids.length > 1 ? ids.length + ' lead(s) archivé(s)' : 'Lead archivé'}`, 'succes');
+    Toast.afficher(`${ids.length > 1 ? ids.length + ' lead(s) archivé(s)' : 'Lead archivé'}`, 'succes');
     this.render();
   },
 
@@ -1205,14 +1205,14 @@ window.VuePipeline = {
       return `
       <div class="modal-overlay" onclick="if(event.target===this)VuePipeline.fermerModal()">
         <div class="modal" style="max-width:420px">
-          <h3>🗄 Motif d'archivage</h3>
+          <h3>Motif d'archivage</h3>
           <p style="font-size:12px;color:var(--c-text-2);margin:-4px 0 12px">
             ${m.bulk ? `${m.ids.length} lead(s) sélectionné(s)` : m.nom}
           </p>
           <form onsubmit="VuePipeline.confirmerArchive(event)">
             <label>Motif *
               <select id="archive-motif" required>
-                <option value="">— choisir —</option>
+                <option value="">choisir</option>
                 ${this.MOTIFS_ARCHIVE.map(mo => `<option value="${mo.id}">${mo.lbl}</option>`).join('')}
               </select>
             </label>
@@ -1231,13 +1231,13 @@ window.VuePipeline = {
       return `
       <div class="modal-overlay" onclick="if(event.target===this)VuePipeline.fermerModal()">
         <div class="modal">
-          <h3>➕ Nouveau lead EMPOWER</h3>
-          <p style="font-size:12px;color:var(--c-text-2);margin:-4px 0 12px">Renseigne le prospect identifié — plus tu donnes d'infos, plus l'IA enrichira la fiche automatiquement (potentiel, canal, angle d'approche).</p>
+          <h3>Nouveau lead EMPOWER</h3>
+          <p style="font-size:12px;color:var(--c-text-2);margin:-4px 0 12px">Renseigne le prospect identifié, plus tu donnes d'infos, plus l'IA enrichira la fiche automatiquement (potentiel, canal, angle d'approche).</p>
           <form onsubmit="VuePipeline.saisirLead(event)">
 
             <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.05em;margin-bottom:6px">IDENTIFICATION</div>
             <label>Enseigne / Raison sociale *
-              <input id="nl-nom" required placeholder="ex : MICRO PLUS INFORMATIQUE — en majuscules"/></label>
+              <input id="nl-nom" required placeholder="ex : MICRO PLUS INFORMATIQUE, en majuscules"/></label>
             <label>Adresse postale
               <input id="nl-adresse" placeholder="ex : 12 rue du Général de Gaulle"/></label>
             <div style="display:flex;gap:10px">
@@ -1274,9 +1274,9 @@ window.VuePipeline = {
             <div style="display:flex;gap:10px">
               <label style="flex:1">Potentiel estimé
                 <select id="nl-potentiel">
-                  <option value="Fort">🔴 Fort — > 30 000 €/an</option>
-                  <option value="Moyen" selected>🟡 Moyen — 10-30 k€/an</option>
-                  <option value="Faible">⚪ Faible — < 10 000 €/an</option>
+                  <option value="Fort">Fort, > 30 000 €/an</option>
+                  <option value="Moyen" selected>Moyen, 10-30 k€/an</option>
+                  <option value="Faible">Faible, < 10 000 €/an</option>
                 </select>
               </label>
               <label style="flex:1">Prochaine action
@@ -1284,36 +1284,36 @@ window.VuePipeline = {
             </div>
             <label>Source du lead
               <select id="nl-origine">
-                <option value="Alexandra">Alexandra — saisie directe</option>
-                <option value="FDV">FDV — force de vente terrain</option>
-                <option value="Web">Web — site / formulaire</option>
+                <option value="Alexandra">Alexandra, saisie directe</option>
+                <option value="FDV">FDV, force de vente terrain</option>
+                <option value="Web">Web, site / formulaire</option>
                 <option value="Recommandation">Recommandation client</option>
                 <option value="Salon">Salon / Événement</option>
                 <option value="Autre">Autre</option>
               </select>
             </label>
-            ${/* BLOC 4.1 — attribution directe à la création */ this._peutAssigner() ? `
+            ${/* BLOC 4.1, attribution directe à la création */ this._peutAssigner() ? `
             <label>Attribuer à un CDS (optionnel)
               <select id="nl-cds-assigne">
-                <option value="">— Non attribué pour l'instant —</option>
+                <option value="">Non attribué pour l'instant</option>
                 ${(this.CDS.length ? this.CDS : this.CDS_FALLBACK).map(c => `<option value="${c.pin}">${this._nomCDS(c.pin)}</option>`).join('')}
               </select>
             </label>
             <label>Statut initial du lead
               <select id="nl-statut">
-                <option value="SAISIE">📥 À traiter — sans CDS assigné</option>
-                <option value="ASSIGNE">🎯 Assigné — CDS désigné</option>
+                <option value="SAISIE">À traiter, sans CDS assigné</option>
+                <option value="ASSIGNE">Assigné, CDS désigné</option>
               </select>
             </label>` : ''}
             <label>Notes de qualification
               <textarea id="nl-note" rows="4"
-                        placeholder="Exemple : revendeur IT 5 boutiques — déjà utilisateur Norton Home / rencontré au salon IT Partners en nov. 2024 — intérêt confirmé pour EMPOWER pack revendeur — demande démo avant signature — bloquer sur le prix à date. Contact : Jean Martin (gérant), disponible le matin."></textarea>
+                        placeholder="Exemple : revendeur IT 5 boutiques, déjà utilisateur Norton Home / rencontré au salon IT Partners en nov. 2024, intérêt confirmé pour EMPOWER pack revendeur, demande démo avant signature, bloquer sur le prix à date. Contact : Jean Martin (gérant), disponible le matin."></textarea>
             </label>
 
             <div class="modal-btns">
               <button type="button" onclick="VuePipeline.fermerModal()">Annuler</button>
               <button type="submit" class="btn-primaire" ${this.state.envoiEnCours ? 'disabled' : ''}>
-                ${this.state.envoiEnCours ? '⏳ Création en cours…' : '✅ Créer le lead'}</button>
+                ${this.state.envoiEnCours ? 'Création en cours…' : 'Créer le lead'}</button>
             </div>
           </form>
         </div>
@@ -1336,10 +1336,10 @@ window.VuePipeline = {
              panneau occupe la quasi-totalité de l'écran (max-height:90dvh) et
              le seul autre moyen de fermer était le bouton "Fermer" tout en bas
              du formulaire (après édition + IA), ou un tap hors-panneau non
-             évident. Corrigé : ✕ toujours visible, même pattern que les autres
+             évident. Corrigé : toujours visible, même pattern que les autres
              modaux de l'app (ex. VueDashboardManager.fermerExportDir). -->
         <div style="position:sticky;top:-24px;margin:-24px -24px 12px;padding:14px 24px 10px;
-                    background:var(--bg-warm-white);z-index:2;border-bottom:1px solid var(--c-border);
+                    background:var(--bg-warm-white);z-index:2;
                     display:flex;align-items:flex-start;gap:10px">
           <div style="flex:1;min-width:0">
             <h3 style="margin:0 0 4px">${l.Nom_Compte}</h3>
@@ -1349,41 +1349,41 @@ window.VuePipeline = {
               ${l.CANAL ? `<span style="font-size:11px;color:var(--c-text-2);white-space:nowrap">${l.CANAL}</span>` : ''}
             </div>
           </div>
-          <button class="btn-retour" title="Fermer" onclick="VuePipeline.fermerModal()" style="flex-shrink:0">✕</button>
+          <button class="btn-retour" title="Fermer" onclick="VuePipeline.fermerModal()" style="flex-shrink:0"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
         </div>
 
         <!-- Infos lead complètes -->
         <div class="q-recap" style="margin-bottom:12px">
           <div class="q-recap-ligne"><span>CDS assigné</span><strong>${this._nomCDS(l.PIN_CDS_Assigne)}</strong></div>
-          ${l._activationSellIn ? `<div class="q-recap-ligne"><span>Sell-In</span><strong style="color:var(--c-success)">💰 Commande détectée (FY27)${this._sellInFraicheur()}</strong></div>`
-            : l._activationSellInFlou ? `<div class="q-recap-ligne"><span>Sell-In</span><strong style="color:var(--c-warning)" title="Rapprochement approximatif, à confirmer">💰 Probable — "${l._activationSellInFlou.nom}" (${l._activationSellInFlou.score}%)${this._sellInFraicheur()}</strong></div>` : ''}
-          ${l.Commande_Manuelle ? `<div class="q-recap-ligne"><span>Déclaration</span><strong style="color:var(--c-success)">✍️ Commande déclarée${l.Date_Commande_Manuelle ? ' le ' + new Date(l.Date_Commande_Manuelle).toLocaleDateString('fr-FR') : ''}</strong></div>` : ''}
+          ${l._activationSellIn ? `<div class="q-recap-ligne"><span>Sell-In</span><strong style="color:var(--c-success)">Commande détectée (FY27)${this._sellInFraicheur()}</strong></div>`
+            : l._activationSellInFlou ? `<div class="q-recap-ligne"><span>Sell-In</span><strong style="color:var(--c-warning)" title="Rapprochement approximatif, à confirmer">Probable, "${l._activationSellInFlou.nom}" (${l._activationSellInFlou.score}%)${this._sellInFraicheur()}</strong></div>` : ''}
+          ${l.Commande_Manuelle ? `<div class="q-recap-ligne"><span>Déclaration</span><strong style="color:var(--c-success)">Commande déclarée${l.Date_Commande_Manuelle ? ' le ' + new Date(l.Date_Commande_Manuelle).toLocaleDateString('fr-FR') : ''}</strong></div>` : ''}
           ${l.Adresse ? `<div class="q-recap-ligne"><span>Adresse</span><strong>${l.Adresse}</strong></div>` : ''}
-          ${l.Ville || l.Code_Postal ? `<div class="q-recap-ligne"><span>Localisation</span><strong>${l.Ville || '—'} ${l.Code_Postal||''}</strong></div>` : ''}
+          ${l.Ville || l.Code_Postal ? `<div class="q-recap-ligne"><span>Localisation</span><strong>${l.Ville || 'n.c.'} ${l.Code_Postal||''}</strong></div>` : ''}
           ${l.Tel ? `<div class="q-recap-ligne"><span>Téléphone</span><strong><a class="lien-tel" href="tel:${String(l.Tel).replace(/\s/g, '')}">${l.Tel}</a></strong></div>` : ''}
           ${l.Email ? `<div class="q-recap-ligne"><span>Email</span><strong>${l.Email}</strong></div>` : ''}
           ${l.CONTACT_NOM ? `<div class="q-recap-ligne"><span>Contact</span><strong>${l.CONTACT_NOM}${l.CONTACT_FONCTION ? ' · ' + l.CONTACT_FONCTION : ''}</strong></div>` : ''}
-          <div class="q-recap-ligne"><span>Dernière relance</span><strong>${l.Date_prochaine_action ? dateRelative(l.Date_prochaine_action) : (l.Date_Import ? dateRelative(l.Date_Import) : '—')}</strong></div>
+          <div class="q-recap-ligne"><span>Dernière relance</span><strong>${l.Date_prochaine_action ? dateRelative(l.Date_prochaine_action) : (l.Date_Import ? dateRelative(l.Date_Import) : 'n.c.')}</strong></div>
           <div class="q-recap-ligne"><span>Action en cours</span><strong>${this._labelFlag(l.FLAG_ACTION)}</strong></div>
           ${l.ORIGINE ? `<div class="q-recap-ligne"><span>Source</span><strong style="font-size:11px">${l.ORIGINE.replace('Import_','').replace(/_/g,' ')}</strong></div>` : ''}
           ${l.Welcome_Pack_Date ? `<div class="q-recap-ligne"><span>Welcome Pack</span><strong>${l.Welcome_Pack_Date}</strong></div>` : ''}
           ${l.Date_Integration ? `<div class="q-recap-ligne"><span>Intégré le</span><strong>${l.Date_Integration}</strong></div>` : ''}
-          ${l.Motif_Archive ? `<div class="q-recap-ligne"><span>Motif de perte</span><strong style="color:var(--c-danger)">${(this.MOTIFS_ARCHIVE.find(m => m.id === l.Motif_Archive)?.lbl || l.Motif_Archive)}${l.Motif_Archive_Detail ? ' — ' + l.Motif_Archive_Detail : ''}</strong></div>` : ''}
-          <div class="q-recap-ligne"><span>Créé le</span><strong>${l.Date_Import ? dateRelative(l.Date_Import) : '—'}</strong></div>
+          ${l.Motif_Archive ? `<div class="q-recap-ligne"><span>Motif de perte</span><strong style="color:var(--c-danger)">${(this.MOTIFS_ARCHIVE.find(m => m.id === l.Motif_Archive)?.lbl || l.Motif_Archive)}${l.Motif_Archive_Detail ? ', ' + l.Motif_Archive_Detail : ''}</strong></div>` : ''}
+          <div class="q-recap-ligne"><span>Créé le</span><strong>${l.Date_Import ? dateRelative(l.Date_Import) : 'n.c.'}</strong></div>
         </div>
 
         <!-- Mise à jour suivi (édition réservée : ADMIN ou CDS propriétaire) -->
         ${peutEditer ? `
         <div style="margin-bottom:12px;padding:12px;background:var(--c-bg);border-radius:var(--radius-sm);border:1px solid var(--c-border)">
-          <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.04em;margin-bottom:8px">📝 MISE À JOUR SUIVI</div>
+          <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.04em;margin-bottom:8px">MISE À JOUR SUIVI</div>
 
           ${l._statut === 'COMPTE_CREE' && !l.Welcome_Pack_Date ? `
           <button class="btn-primaire" style="width:100%;margin-bottom:10px;font-size:12px;background:var(--c-success)"
                   onclick="VuePipeline.marquerWPEnvoye('${l.ID_Prospect}')">
-            📦 Marquer Welcome Pack envoyé
+            Marquer Welcome Pack envoyé
           </button>` : l.Welcome_Pack_Date ? `
           <div style="font-size:12px;color:var(--c-success);margin-bottom:8px;padding:6px 10px;background:var(--c-success-10,#e6f9f0);border-radius:var(--radius-sm)">
-            ✅ Welcome Pack envoyé le ${String(l.Welcome_Pack_Date).slice(0,10)}
+            Welcome Pack envoyé le ${String(l.Welcome_Pack_Date).slice(0,10)}
           </div>` : ''}
 
           <!-- BLOC 09 — déclaration manuelle "a commandé", complémentaire au
@@ -1391,11 +1391,11 @@ window.VuePipeline = {
           ${l.Commande_Manuelle ? `
           <button class="btn-secondaire" style="width:100%;margin-bottom:10px;font-size:12px;color:var(--c-success);border-color:var(--c-success)"
                   onclick="VuePipeline.declarerCommande('${l.ID_Prospect}', false)">
-            ✍️ Commande déclarée${l.Date_Commande_Manuelle ? ' le ' + new Date(l.Date_Commande_Manuelle).toLocaleDateString('fr-FR') : ''} — annuler
+            Commande déclarée${l.Date_Commande_Manuelle ? ' le ' + new Date(l.Date_Commande_Manuelle).toLocaleDateString('fr-FR') : ''}, annuler
           </button>` : `
           <button class="btn-secondaire" style="width:100%;margin-bottom:10px;font-size:12px"
                   onclick="VuePipeline.declarerCommande('${l.ID_Prospect}', true)">
-            🛒 Indiquer que ce compte a commandé
+            Indiquer que ce compte a commandé
           </button>`}
 
           <label style="font-size:12px;color:var(--c-text-2);margin-bottom:8px;display:block">Adresse postale
@@ -1427,11 +1427,11 @@ window.VuePipeline = {
           <!-- BLOC — "aucune possibilité depuis le tracker d'ajouter le
                prospect au compte une fois onboarding effectué" : le
                mécanisme existe déjà (_creerCompteDepuisLead, déclenché au
-               changement de Statut ci-dessus) mais rien ne le disait — un
+               changement de Statut ci-dessus) mais rien ne le disait, un
                simple select "Statut" ne laisse pas deviner qu'il crée
                réellement la fiche compte. Rendu explicite. -->
           <div style="font-size:11px;color:var(--c-primary);background:color-mix(in srgb,var(--c-primary) 8%,transparent);border:1px solid color-mix(in srgb,var(--c-primary) 25%,transparent);border-radius:var(--radius-sm);padding:7px 9px;margin:-2px 0 8px;line-height:1.4">
-            💡 Onboarding terminé ? Passe le Statut ci-dessus à <strong>"Compte créé"</strong> ou <strong>"Intégré"</strong> puis enregistre — la fiche compte EMPOWER correspondante est créée automatiquement.
+            Onboarding terminé ? Passe le Statut ci-dessus à <strong>"Compte créé"</strong> ou <strong>"Intégré"</strong> puis enregistre, la fiche compte EMPOWER correspondante est créée automatiquement.
           </div>` : ''}
 
           <label style="font-size:12px;color:var(--c-text-2)">Prochaine action
@@ -1445,7 +1445,7 @@ window.VuePipeline = {
           </label>
 
           <button class="btn-primaire" style="width:100%;margin-top:8px;font-size:13px"
-                  onclick="VuePipeline.mettreAJourLead('${l.ID_Prospect}')">✅ Enregistrer la mise à jour</button>
+                  onclick="VuePipeline.mettreAJourLead('${l.ID_Prospect}')">Enregistrer la mise à jour</button>
         </div>` : ''}
 
         <!-- Dernier appel réel (Journal, live) — cf. demande utilisateur : la
@@ -1456,7 +1456,7 @@ window.VuePipeline = {
           if (!da?.Note) return '';
           return `
         <div style="margin-bottom:12px;padding:10px 12px;background:var(--c-bg);border-radius:var(--radius-sm);border:1px solid var(--c-border)">
-          <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.03em;text-transform:uppercase;margin-bottom:4px">📞 Note du dernier appel · ${dateRelative(da.Date)}</div>
+          <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.03em;text-transform:uppercase;margin-bottom:4px">Note du dernier appel · ${dateRelative(da.Date)}</div>
           <div style="font-size:12.5px;color:var(--c-text);line-height:1.5;white-space:pre-line">${String(da.Note).replace(/</g,'&lt;').slice(0, 300)}</div>
         </div>`;
         })()}
@@ -1464,14 +1464,14 @@ window.VuePipeline = {
         <!-- Historique complet -->
         ${l.Note_initiale ? `
         <details style="margin-bottom:12px">
-          <summary style="font-size:12px;font-weight:600;color:var(--c-text-2);cursor:pointer;padding:4px 0">📋 Historique complet</summary>
+          <summary style="font-size:12px;font-weight:600;color:var(--c-text-2);cursor:pointer;padding:4px 0">Historique complet</summary>
           <div style="margin-top:6px;font-size:12px;line-height:1.6;white-space:pre-wrap;color:var(--c-text-2);padding:8px;background:var(--c-bg);border-radius:var(--radius-sm);border:1px solid var(--c-border)">${String(l.Note_initiale).replace(/</g,'&lt;')}</div>
         </details>` : ''}
 
         ${peutAssigner ? `
         <label style="margin-bottom:8px">Attribuer à un CDS
           <select id="attr-cds" onchange="VuePipeline.attribuer('${l.ID_Prospect}', this.value)">
-            <option value="">— choisir —</option>
+            <option value="">choisir</option>
             ${cdsList.map(c => `<option value="${c.pin}" ${Number(l.PIN_CDS_Assigne) === c.pin ? 'selected' : ''}>${this._nomCDS(c.pin)}</option>`).join('')}
           </select>
         </label>` : ''}
@@ -1481,21 +1481,21 @@ window.VuePipeline = {
         <div class="q-chips" style="flex-wrap:wrap">
           ${this.STATUTS.filter(s => s.id !== l._statut && s.id !== 'ARCHIVE').map(s => `
             <button type="button" class="q-chip" onclick="VuePipeline.deplacer('${l.ID_Prospect}','${s.id}')">${s.lbl}</button>`).join('')}
-          <button type="button" class="q-chip" style="background:var(--c-text-2)" onclick="VuePipeline.demanderMotifArchive('${l.ID_Prospect}')">🗄 Archiver</button>
+          <button type="button" class="q-chip" style="background:var(--c-text-2)" onclick="VuePipeline.demanderMotifArchive('${l.ID_Prospect}')">Archiver</button>
         </div>` : ''}
 
         <!-- IA Gemini — slots T01/T02/T04/T05 -->
-        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--c-border)">
-          <div style="font-size:11px;color:var(--c-text-2);margin-bottom:6px;font-weight:700;letter-spacing:.04em">✨ ASSISTANT IA GEMINI</div>
+        <div style="margin-top:12px;padding-top:12px;">
+          <div style="font-size:11px;color:var(--c-text-2);margin-bottom:6px;font-weight:700;letter-spacing:.04em">ASSISTANT IA GEMINI</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
             <button class="btn-secondaire" style="font-size:12px;padding:8px;text-align:left"
-                    onclick="VuePipeline.iaAppeler('T01','${l.ID_Prospect}')">🔍 Analyser</button>
+                    onclick="VuePipeline.iaAppeler('T01','${l.ID_Prospect}')">Analyser</button>
             <button class="btn-secondaire" style="font-size:12px;padding:8px;text-align:left"
-                    onclick="VuePipeline.iaAppeler('T02','${l.ID_Prospect}')">📋 Préparer visite</button>
+                    onclick="VuePipeline.iaAppeler('T02','${l.ID_Prospect}')">Préparer visite</button>
             <button class="btn-secondaire" style="font-size:12px;padding:8px;text-align:left"
-                    onclick="VuePipeline.iaAppeler('T04','${l.ID_Prospect}')">✉️ Email prospect</button>
+                    onclick="VuePipeline.iaAppeler('T04','${l.ID_Prospect}')">Email prospect</button>
             <button class="btn-secondaire" style="font-size:12px;padding:8px;text-align:left"
-                    onclick="VuePipeline.iaAppeler('T05','${l.ID_Prospect}')">📝 Résumé CR</button>
+                    onclick="VuePipeline.iaAppeler('T05','${l.ID_Prospect}')">Résumé CR</button>
           </div>
           <div id="ia-zone"
                style="display:none;margin-top:10px;font-size:12px;line-height:1.6;
@@ -1505,14 +1505,14 @@ window.VuePipeline = {
 
         <div class="modal-btns" style="flex-wrap:wrap;gap:8px">
           <button type="button" onclick="VuePipeline.fermerModal()">Fermer</button>
-          ${/* BLOC 4.2 — bouton suppression avec contrôle d'accès */
+          ${/* BLOC 4.2, bouton suppression avec contrôle d'accès */
             (Session.estManager() || Session.estChannel() || Number(l.PIN_CDS_Assigne) === Session.pin)
             ? `<button type="button"
                 style="background:var(--c-danger,#e53935);color:#fff;border:none;border-radius:var(--radius-sm);padding:10px 18px;cursor:pointer;font-size:13px"
-                onclick="VuePipeline.supprimerLead('${l.ID_Prospect}')">🗑 Supprimer</button>`
+                onclick="VuePipeline.supprimerLead('${l.ID_Prospect}')">Supprimer</button>`
             : ''}
-          <button type="button" class="btn-primaire" onclick="Router.aller('#/phoning/${l.ID_Prospect}')">📞 Planifier appel</button>
-          <button type="button" class="btn-secondaire" onclick="VuePipeline.planifierVisiteDepuisLead('${l.ID_Prospect}')">🗺️ Planifier visite</button>
+          <button type="button" class="btn-primaire" onclick="Router.aller('#/phoning/${l.ID_Prospect}')">Planifier appel</button>
+          <button type="button" class="btn-secondaire" onclick="VuePipeline.planifierVisiteDepuisLead('${l.ID_Prospect}')">Planifier visite</button>
         </div>
       </div>
     </div>`;
@@ -1531,7 +1531,7 @@ window.VuePipeline = {
 
     // Construire l'entrée de log datée
     const jourStr = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'2-digit' });
-    const entreeLog = `[${jourStr} — ${Session.nom}] ${this._labelFlag(flag)}${noteTexte ? ' : ' + noteTexte : ''}`;
+    const entreeLog = `[${jourStr}, ${Session.nom}] ${this._labelFlag(flag)}${noteTexte ? ' : ' + noteTexte : ''}`;
     const noteFinale = entreeLog + (lead.Note_initiale ? '\n---\n' + lead.Note_initiale : '');
 
     const champs = {
@@ -1559,14 +1559,14 @@ window.VuePipeline = {
     }
 
     try {
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', id, champs);
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', 'LEADS', id, champs);
       Object.assign(lead, champs);
       if (nouveauStatut) lead._statut = nouveauStatut;
       this.state.modal = null;
-      Toast.afficher(`✅ ${lead.Nom_Compte} mis à jour`, 'succes');
+      Toast.afficher(`${lead.Nom_Compte} mis à jour`, 'succes');
       this.render();
       if (doCreerCompte) this._creerCompteDepuisLead(lead).catch(() => {});
-    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+    } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
   },
 
   // ── BLOC 4.2 — Suppression douce d'un lead ──────────────────
@@ -1578,7 +1578,7 @@ window.VuePipeline = {
     // Contrôle accès côté front (le backend re-vérifie aussi)
     const peutSuppr = Session.estManager() || Session.estChannel()
                    || Number(lead.PIN_CDS_Assigne) === Session.pin;
-    if (!peutSuppr) { Toast.afficher('❌ Droits insuffisants', 'erreur'); return; }
+    if (!peutSuppr) { Toast.afficher('Droits insuffisants', 'erreur'); return; }
 
     ConfirmModal.demander({
       titre: 'Supprimer ce lead ?',
@@ -1599,17 +1599,17 @@ window.VuePipeline = {
       // Retirer du state local immédiatement
       this.state.leads = this.state.leads.filter(l => String(l.ID_Prospect) !== String(id));
       this.state.modal = null;
-      await SheetsAPI.viderCache('EMPOWER_MDB', '📋_PROSPECTS');
-      Toast.afficher(`🗑 ${lead.Nom_Compte} supprimé`, 'succes');
+      await SheetsAPI.viderCache('EMPOWER_MDB', 'LEADS');
+      Toast.afficher(`${lead.Nom_Compte} supprimé`, 'succes');
       this.render();
-    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+    } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
   },
   // ── Module 7 : Création compte depuis pipeline ──────────────────────
   async _creerCompteDepuisLead(lead) {
     // Anti-doublon : si le compte existe déjà, on rebascule juste son flag Empower
     // (BUG-01 fix : avant, on s'arrêtait ici sans jamais corriger Has_EMPOWER)
     try {
-      const comptes = await SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES');
+      const comptes = await SheetsAPI.lire('EMPOWER_MDB', 'COMPTES');
       const nomNorm = normaliserNom(lead.Nom_Compte || '');
       const existant = (comptes || []).find(c => normaliserNom(c.Nom_Compte || '') === nomNorm);
       if (existant) {
@@ -1630,8 +1630,8 @@ window.VuePipeline = {
         if (!existant.Contact_Nom && lead.CONTACT_NOM)   maj.Contact_Nom = lead.CONTACT_NOM;
         if (!existant.Contact_Fonction && lead.CONTACT_FONCTION) maj.Contact_Fonction = lead.CONTACT_FONCTION;
         if (Object.keys(maj).length) {
-          await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', existant._uuid, maj);
-          await SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES');
+          await SheetsAPI.mettreAJour('EMPOWER_MDB', 'COMPTES', existant._uuid, maj);
+          await SheetsAPI.viderCache('EMPOWER_MDB', 'COMPTES');
         }
         return;
       }
@@ -1648,12 +1648,12 @@ window.VuePipeline = {
     // aujourd'hui, cf. cadrage BLOC 04 — option A acceptée avec cette marge).
     let caSellIn = null;
     try {
-      const agregats = await SheetsAPI.lire('EMPOWER_MDB', '📋 COMPTES HISTORIQUES');
+      const agregats = await SheetsAPI.lire('EMPOWER_MDB', 'COMPTES_HISTORIQUES');
       const nomNormLead = normaliserNom(lead.Nom_Compte || '');
       caSellIn = (agregats || []).find(a => normaliserNom(a.RESELLER || '') === nomNormLead) || null;
     } catch { /* si la lecture échoue, on crée quand même le compte sans CA */ }
 
-    await SheetsAPI.ecrire('EMPOWER_MDB', '🏢_COMPTES', {
+    await SheetsAPI.ecrire('EMPOWER_MDB', 'COMPTES', {
       ID_Compte:       idCompte,
       Nom_Compte:      lead.Nom_Compte || '',
       Ville:           lead.Ville || '',
@@ -1683,12 +1683,12 @@ window.VuePipeline = {
       } : {}),
     });
 
-    await SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES');
+    await SheetsAPI.viderCache('EMPOWER_MDB', 'COMPTES');
 
     // Notifs pour Tadjidine (1000) et Alexandra (5000)
-    const msg = `🏢 Nouveau compte pipeline : ${lead.Nom_Compte}${lead.Ville ? ' — ' + lead.Ville : ''} (CDS : ${this._nomCDS(lead.PIN_CDS_Assigne)})`;
+    const msg = `Nouveau compte pipeline : ${lead.Nom_Compte}${lead.Ville ? ', ' + lead.Ville : ''} (CDS : ${this._nomCDS(lead.PIN_CDS_Assigne)})`;
     for (const pin of [1000, 5000]) {
-      SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
+      SheetsAPI.ecrire('EMPOWER_MDB', 'NOTIFS', {
         ID_Notif:         genId('NOTIF'),
         PIN_Destinataire: pin,
         Type_Notif:       'COMPTE_CREE',
@@ -1699,7 +1699,7 @@ window.VuePipeline = {
       }).catch(() => {});
     }
 
-    Toast.afficher(`🏢 ${lead.Nom_Compte} ajouté à la base comptes`, 'succes');
+    Toast.afficher(`${lead.Nom_Compte} ajouté à la base comptes`, 'succes');
   },
 
   // ── Module 8 : Alerte sans activité >7 jours ──
@@ -1737,11 +1737,11 @@ window.VuePipeline = {
     if (!lead) return;
     try {
       const champs = { Welcome_Pack_Date: dateISOLocale(), Welcome_Pack_Envoye: 'OUI' };
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', id, champs);
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', 'LEADS', id, champs);
       Object.assign(lead, champs);
-      Toast.afficher('✅ Welcome Pack marqué envoyé', 'succes');
+      Toast.afficher('Welcome Pack marqué envoyé', 'succes');
       this.render();
-    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+    } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
   },
 
   // BLOC 09 — déclaration manuelle "ce compte a commandé" par le commercial
@@ -1752,11 +1752,11 @@ window.VuePipeline = {
     if (!lead) return;
     try {
       const champs = { Commande_Manuelle: valeur, Date_Commande_Manuelle: valeur ? dateISOLocale() : null };
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', id, champs);
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', 'LEADS', id, champs);
       Object.assign(lead, champs);
-      Toast.afficher(valeur ? '🛒 Commande déclarée' : 'Déclaration annulée', 'succes');
+      Toast.afficher(valeur ? 'Commande déclarée' : 'Déclaration annulée', 'succes');
       this.render();
-    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+    } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
   },
 
   // ── Module 9 : Export Excel ADMIN + CHANNEL_MANAGER ──
@@ -1783,7 +1783,7 @@ window.VuePipeline = {
 
   exporterExcel() {
     if (typeof XLSX === 'undefined') {
-      Toast.afficher('❌ Bibliothèque Excel non chargée (SheetJS)', 'erreur');
+      Toast.afficher('Bibliothèque Excel non chargée (SheetJS)', 'erreur');
       return;
     }
     const f = this.state.exportFiltres;
@@ -1819,7 +1819,7 @@ window.VuePipeline = {
     const today = new Date().toISOString().slice(0,10);
     XLSX.writeFile(wb, `EMPOWER_Leads_${today}.xlsx`);
     this.fermerExport();
-    Toast.afficher('✅ Export Excel téléchargé', 'succes');
+    Toast.afficher('Export Excel téléchargé', 'succes');
   },
 
   _renderPanneauExport() {
@@ -1830,7 +1830,7 @@ window.VuePipeline = {
     return `
     <div class="modal-overlay" onclick="if(event.target===this)VuePipeline.fermerExport()">
       <div class="modal" style="max-width:440px">
-        <h3>📥 Export Excel — EMPOWER Leads</h3>
+        <h3>Export Excel, EMPOWER Leads</h3>
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
           ${[
             ['Cette semaine', () => {
@@ -1873,7 +1873,7 @@ window.VuePipeline = {
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn-secondaire" style="flex:1" onclick="VuePipeline.fermerExport()">Annuler</button>
-          <button class="btn-primaire" style="flex:2;background:var(--c-success)" onclick="VuePipeline.exporterExcel()">📥 Télécharger .xlsx</button>
+          <button class="btn-primaire" style="flex:2;background:var(--c-success)" onclick="VuePipeline.exporterExcel()">Télécharger .xlsx</button>
         </div>
         <p style="font-size:11px;color:var(--c-text-2);margin-top:8px;text-align:center">Export côté client · aucune donnée envoyée au serveur</p>
       </div>

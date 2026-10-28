@@ -35,24 +35,34 @@ window.SellInFlag = {
   badgePourNom(nom) { const c = this.pourNom(nom); return c ? this.badge(c) : ''; },
 
   // Fiche compte : flag + commercial SELL IN (signal) + 4 dernières semaines avec montants.
+  // Mise en page desktop : synthèse à gauche, tableau daté à droite (une colonne sur mobile).
   blocFiche(c, semaines) {
     const lib = this.libelle(c);
+    const fmt = n => Number(n).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const lignes = (semaines || []).map(s => {
       const q = this._q(s.Quarter);
-      return `<tr><td>${q ? q.q : '—'} · S${Number(s.Semaine)}</td><td style="text-align:right">${Number(s.Unites) || 0} u.</td>` +
-             `<td style="text-align:right;font-weight:600">${Number(s.CA_EUR).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</td></tr>`;
+      return `<tr><td>${q ? q.q : 'n.c.'} · S${Number(s.Semaine)}</td><td class="num">${Number(s.Unites) || 0}</td>` +
+             `<td class="num fort">${fmt(s.CA_EUR)} €</td></tr>`;
     }).join('');
+    const tableau = lignes
+      ? `<table class="sellin-table">
+           <thead><tr><th>Semaine</th><th class="num">Unités</th><th class="num">CA net</th></tr></thead>
+           <tbody>${lignes}</tbody>
+         </table>`
+      : '<p class="sellin-vide-txt">Aucune commande récente rapprochée.</p>';
     return `
-      <div class="bloc-fiche">
-        <div class="bloc-titre">📦 SELL IN</div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px">
-          ${lib ? this.badge(c) : '<span class="badge-sellin badge-sellin-vide" title="Aucune commande SELL IN rapprochée pour ce compte">—</span>'}
-          <span style="color:var(--c-text-2)">${lib ? 'Dernière commande SELL IN' : 'Aucun signal SELL IN'}</span>
-          ${c.SellIn_Commercial ? `<span style="margin-left:auto;font-size:12px;color:var(--c-text-2)">Commercial SELL IN : <strong>${this.esc(c.SellIn_Commercial)}</strong></span>` : ''}
+      <section class="bloc-fiche sellin-bloc">
+        <div class="bloc-titre">SELL IN</div>
+        <div class="sellin-grille">
+          <div class="sellin-synthese">
+            <div class="sellin-etiquette">Dernière commande</div>
+            <div class="sellin-valeur">${lib ? this.badge(c) : '<span class="badge-sellin badge-sellin-vide" title="Aucune commande SELL IN rapprochée pour ce compte">Aucun signal</span>'}</div>
+            ${c.SellIn_Commercial ? `<div class="sellin-etiquette">Commercial SELL IN</div><div class="sellin-valeur"><strong>${this.esc(c.SellIn_Commercial)}</strong></div>` : ''}
+            ${this._ecart(c)}
+          </div>
+          <div class="sellin-detail">${tableau}</div>
         </div>
-        ${this._ecart(c)}
-        ${lignes ? `<table style="width:100%;font-size:12px;margin-top:8px;border-collapse:collapse"><tbody>${lignes}</tbody></table>` : ''}
-      </div>`;
+      </section>`;
   },
 
   // Le commercial du fichier SELL IN est un SIGNAL : il n'écrase jamais l'attribution de l'app. Un écart est seulement signalé.
@@ -60,7 +70,7 @@ window.SellInFlag = {
     const s = String(c.SellIn_Commercial || '').trim();
     if (!s || s === 'NON SUIVI' || !c.Nom_CDS) return '';
     if (normaliserNom(s) === normaliserNom(c.Nom_CDS)) return '';
-    return `<div style="font-size:12px;color:var(--c-warning);margin-top:6px">⚠️ Écart d'attribution : le SELL IN indique <strong>${this.esc(s)}</strong>, l'app indique <strong>${this.esc(c.Nom_CDS)}</strong>.</div>`;
+    return `<div class="sellin-ecart">Écart d'attribution : le SELL IN indique <strong>${this.esc(s)}</strong>, l'app indique <strong>${this.esc(c.Nom_CDS)}</strong>.</div>`;
   },
 
   // 4 dernières semaines (plus récentes d'abord) d'un compte, depuis sellin_semaines.

@@ -8,9 +8,9 @@
 window._CDS_REGISTRY = {};
 
 function resolveCDS(pin) {
-  if (!pin && pin !== 0) return '—';
+  if (!pin && pin !== 0) return 'n.c.';
   const key = String(pin).trim();
-  if (!key || key === '0') return '—';
+  if (!key || key === '0') return 'n.c.';
   if (window._CDS_REGISTRY[key]) return window._CDS_REGISTRY[key];
   if (window._CDS_REGISTRY[String(Number(key))]) return window._CDS_REGISTRY[String(Number(key))];
   const FALLBACK = {
@@ -22,7 +22,7 @@ function resolveCDS(pin) {
   // Tentative via la version utils.js (ALIAS map complète) avant le fallback hardcodé
   if (window._resolveCDSBase && window._resolveCDSBase !== resolveCDS) {
     const fromBase = window._resolveCDSBase(pin);
-    if (fromBase && fromBase !== '—') return fromBase;
+    if (fromBase && fromBase !== 'n.c.') return fromBase;
   }
   return FALLBACK[key] || FALLBACK[key.toLowerCase()] || `[${key}]`;
 }
@@ -66,9 +66,9 @@ function getStatutCompte(c) {
 function badgeStatutCompte(c) {
   const s = getStatutCompte(c);
   const map = {
-    actif:       { lbl: '🟢 Actif',       cls: 'badge-actif' },
-    a_reactiver: { lbl: '🟡 À réactiver', cls: 'badge-reactiver' },
-    silencieux:  { lbl: '🔴 Silencieux',  cls: 'badge-silencieux' },
+    actif:       { lbl: 'Actif',       cls: 'badge-actif' },
+    a_reactiver: { lbl: 'À réactiver', cls: 'badge-reactiver' },
+    silencieux:  { lbl: 'Silencieux',  cls: 'badge-silencieux' },
   };
   const { lbl, cls } = map[s];
   return `<span class="badge-statut-compte ${cls}">${lbl}</span>`;
@@ -79,7 +79,7 @@ function afficherCA(val, maxExpected = 500000) {
   const n = parseAmount(val);
   if (n > maxExpected) {
     console.warn('[MONTANT ABERRANT]', val, '→', n);
-    return '<span title="Valeur incohérente — vérifier la source" style="color:var(--c-text-2)">N/A</span>';
+    return '<span title="Valeur incohérente, vérifier la source" style="color:var(--c-text-2)">N/A</span>';
   }
   return formatEuro(n);
 }

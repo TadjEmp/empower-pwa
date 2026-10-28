@@ -33,7 +33,7 @@ function calculerCamembertsActivite(raw) {
   // Vue consolidée (aucun commercial choisi, rôle Admin/Channel) → répartition
   // par commercial. Vue personnelle (CDS, ou commercial choisi) → par statut.
   const consolide = Session.voitTout() && !filtres.pinCommercial;
-  const COULEURS = ['#0050FF', '#FF6D68', '#00b27e', '#f59e0b', '#9333ea', '#626264'];
+  const COULEURS = ['#0050FF', '#0400F5', '#00b27e', '#f59e0b', '#9333ea', '#626264'];
 
   const parCommercial = (lignes, ns) => {
     const parPin = new Map();
@@ -177,7 +177,7 @@ function renderBlocCamemberts(f, raw, ns) {
   const { camembertVisites, camembertAppels } = segmentsCamembertsActivite(f, ns);
   return `
   <div class="bloc-fiche">
-    <div class="bloc-titre">Répartition activité — ${f.quarter}${f.semaineSeule ? ' · ' + f.semaineSeule.split('-')[1] : ''}</div>
+    <div class="bloc-titre">Répartition activité, ${f.quarter}${f.semaineSeule ? ' · ' + f.semaineSeule.split('-')[1] : ''}</div>
     <div class="dash-filtres-camembert">
       ${['Q1','Q2','Q3','Q4'].map(q => `<button class="btn-filtre ${f.quarter === q ? 'actif' : ''}" onclick="${ns}.setQuarterCamembert('${q}')">${q}</button>`).join('')}
       <button class="btn-filtre ${f.semaineSeule ? 'actif' : ''}" onclick="${ns}.toggleSemaineCamembert()">Semaine en cours</button>
@@ -187,7 +187,7 @@ function renderBlocCamemberts(f, raw, ns) {
         ${(raw.objectifs || []).map(o => `<option value="${o.PIN_CDS}" ${Number(f.filtres.pinCommercial) === Number(o.PIN_CDS) ? 'selected' : ''}>${window.resolveCDS(o.PIN_CDS)}</option>`).join('')}
       </select>` : ''}
     </div>
-    ${f.filtres.pinCommercial ? `<div class="dash-camembert-actif-pin">👤 ${window.resolveCDS(f.filtres.pinCommercial)}<button onclick="${ns}.setCommercialCamembert('')">✕ retirer</button></div>` : ''}
+    ${f.filtres.pinCommercial ? `<div class="dash-camembert-actif-pin">${window.resolveCDS(f.filtres.pinCommercial)}<button onclick="${ns}.setCommercialCamembert('')">retirer</button></div>` : ''}
     <div class="dash-camemberts-grid">
       <div class="dash-camembert-bloc">
         ${window.svgDonut(camembertVisites, { centreValeur: camembertVisites.reduce((s,x)=>s+x.value,0), centreLabel: 'Visites' })}

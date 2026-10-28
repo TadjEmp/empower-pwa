@@ -50,7 +50,7 @@ window.NotifCenter = {
     if (!id) return;
     this.liste = this.liste.filter(n => n.ID_Notif !== id);
     this._render();
-    try { await SheetsAPI.mettreAJour('EMPOWER_MDB', '🔔_NOTIFS', id, { Statut_Lu: true }); }
+    try { await SheetsAPI.mettreAJour('EMPOWER_MDB', 'NOTIFS', id, { Statut_Lu: true }); }
     catch (e) { /* silencieux : non bloquant */ }
   },
 
@@ -69,7 +69,7 @@ window.NotifCenter = {
     this._ouvert = false;
     this._render();
     for (const id of ids) {
-      try { await SheetsAPI.mettreAJour('EMPOWER_MDB', '🔔_NOTIFS', id, { Statut_Lu: true }); }
+      try { await SheetsAPI.mettreAJour('EMPOWER_MDB', 'NOTIFS', id, { Statut_Lu: true }); }
       catch (e) {}
     }
   },
@@ -93,7 +93,7 @@ window.NotifCenter = {
 
   _panneau() {
     const items = this.liste.length === 0
-      ? `<div class="nc-vide">Aucune notification non lue 🎉</div>`
+      ? `<div class="nc-vide">Aucune notification non lue </div>`
       : this.liste.map(n => {
           const id = String(n.ID_Notif || '').replace(/'/g, "\\'");
           return `

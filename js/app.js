@@ -86,7 +86,7 @@ function _initPollingNotifs() {
   async function _poll() {
     if (!Session || !Session.pin) return;
     try {
-      const rows = await SheetsAPI.lire('EMPOWER_MDB', '🔔_NOTIFS', { nocache: true });
+      const rows = await SheetsAPI.lire('EMPOWER_MDB', 'NOTIFS', { nocache: true });
       if (!Array.isArray(rows)) return;
       // N3-2/N3-3 — alimente le centre notifs (badge compteur + panneau)
       if (window.NotifCenter) NotifCenter.majDepuisRows(rows);
@@ -100,10 +100,10 @@ function _initPollingNotifs() {
       if (nouvelles.length === 0) return;
       // Anti-flood : un seul toast résumé si plusieurs notifs d'un coup
       if (nouvelles.length > 3) {
-        Toast.afficher('🔔 ' + nouvelles.length + ' nouvelles notifications', 'info', 5000);
+        Toast.afficher('' + nouvelles.length + ' nouvelles notifications', 'info', 5000);
       } else {
         nouvelles.forEach(function(n) {
-          Toast.afficher('🔔 ' + (n.Message || 'Nouvelle notification'), 'info', 5000);
+          Toast.afficher('' + (n.Message || 'Nouvelle notification'), 'info', 5000);
         });
       }
     } catch(e) {}

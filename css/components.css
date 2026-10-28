@@ -31,7 +31,7 @@
 .badge-interesse   { background: var(--status-interesse-bg);  color: #B45309; }
 .badge-nonappele   { background: rgba(203,213,224,0.4);       color: var(--text-muted); }
 .badge-nrp         { background: rgba(138,155,176,0.15);      color: var(--text-muted); }
-.badge-score-haute   { background: rgba(255,109,104,0.12); color: var(--accent-primary); }
+.badge-score-haute   { background: rgba(4,0,245,0.12); color: var(--accent-primary); }
 .badge-score-moyenne { background: rgba(245,158,11,0.10);  color: #B45309; }
 .badge-score-basse   { background: rgba(138,155,176,0.15); color: var(--text-muted); }
 
@@ -65,7 +65,7 @@
 .avatar-johanne   { background: #A884FF; color: #fff; }
 .avatar-lyes      { background: #3B82F6; color: #fff; }
 .avatar-mehdi     { background: #2D9E6B; color: #fff; }
-.avatar-tadjidine { background: #FF6D68; color: #fff; }
+.avatar-tadjidine { background: #0400F5; color: #fff; }
 .avatar-alexandra { background: #ED2567; color: #fff; }
 
 /* ── SyncIndicator PHONE OS §4.8 ── */
@@ -76,7 +76,7 @@
   padding: 4px 10px;
   border-radius: 999px;
   font: 500 12px/1 var(--font-mono);
-  transition: all 200ms ease;
+  transition: transform 200ms, background-color 200ms, color 200ms, opacity 200ms, border-color 200ms;
   white-space: nowrap;
   cursor: default;
 }
@@ -92,7 +92,6 @@
 /* ── Offline banner PHONE OS §4.8 ── */
 .offline-banner {
   background: var(--sync-offline-bg);
-  border-bottom: 1px solid rgba(138,155,176,0.20);
   padding: 8px var(--space-4);
   font: 500 13px/1 var(--font-ui);
   color: var(--text-secondary);
@@ -179,7 +178,6 @@
 /* ── Barre filtres ── */
 .barre-filtres {
   padding: 10px 12px; background: var(--c-surface);
-  border-bottom: 1px solid var(--c-border);
   display: flex; flex-direction: column; gap: 8px;
 }
 .filtres-flags { display: flex; gap: 6px; overflow-x: auto; }
@@ -188,12 +186,12 @@
   border: 1.5px solid var(--c-border);
   font-size: 13px; font-weight: 600; white-space: nowrap;
   background: var(--c-surface); cursor: pointer;
-  transition: all .15s;
+  transition: transform .15s, background-color .15s, color .15s, opacity .15s, border-color .15s;
 }
 .btn-filtre:hover { background: var(--c-cream); }
 .btn-filtre.actif {
   background: var(--c-primary); color: #fff; border-color: var(--c-primary);
-  box-shadow: 0 4px 12px -2px rgba(255,109,104,.25);
+  box-shadow: 0 4px 12px -2px rgba(4,0,245,.25);
 }
 /* BLOC 09 — audit "débordement Tracker mobile web" : avec 5-6 <select>
    flex:1 et aucun flex-wrap/min-width, chaque select refusait de rétrécir
@@ -218,7 +216,7 @@
   font-size: 28px; line-height: 1;
   background: var(--c-primary); color: #fff;
   border: none;
-  box-shadow: 0 4px 16px rgba(255,109,104,.35);
+  box-shadow: 0 4px 16px rgba(4,0,245,.35);
   cursor: pointer; z-index: 101;
   display: flex; align-items: center; justify-content: center;
   transition: transform 150ms ease, box-shadow 150ms ease;
@@ -239,7 +237,6 @@
   display: flex; gap: 8px; padding: 12px 16px;
   padding-bottom: calc(12px + var(--safe-bottom));
   background: var(--c-surface);
-  border-top: 1px solid var(--c-border);
   box-shadow: 0 -2px 12px rgba(26,26,46,.08); z-index: 100;
 }
 .btn-action {
@@ -281,7 +278,7 @@
 @keyframes nc-slide { from { transform: translateY(12px); opacity: .6; } to { transform: none; opacity: 1; } }
 .nc-head {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 14px; border-bottom: 1px solid var(--c-border); font-size: 15px;
+  padding: 12px 14px; font-size: 15px;
   color: var(--c-title);
 }
 .nc-tout {
@@ -291,7 +288,7 @@
 .nc-liste { overflow-y: auto; }
 .nc-vide  { padding: 28px 16px; text-align: center; color: var(--c-text-2); font-size: 14px; }
 .nc-item  {
-  padding: 11px 14px; border-bottom: 1px solid var(--c-border); cursor: pointer;
+  padding: 11px 14px; cursor: pointer;
   transition: background .1s ease;
 }
 .nc-item:hover { background: var(--bg-surface); }
@@ -337,7 +334,7 @@
 .drawer-badge { margin-left:auto; min-width:20px; padding:1px 7px; border-radius:99px; background:var(--c-primary,#2563EB); color:#fff; font-size:11px; font-weight:700; text-align:center; }
 
 /* Lot 6 — interrupteur push dans le panneau de notifications */
-.nc-push { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 12px; font-size:12px; background:var(--c-surface-alt); border-bottom:1px solid var(--c-border); }
+.nc-push { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 12px; font-size:12px; background:var(--c-surface-alt); }
 .nc-push-info { color:var(--c-text-2); justify-content:flex-start; }
 
 /* Création d'accès : droits cochables et récapitulatif */

@@ -28,12 +28,12 @@ window.GeminiAPI = {
     const ctx = `Tu es un assistant commercial B2B expert en distribution informatique / cybersécurité (marque Norton).
 Tu aides une équipe de commerciaux terrain (CDS) en France.`;
     const prompt = `Analyse ce prospect et donne un bref profil commercial (3-5 lignes) :
-Nom : ${lead.Nom_Compte || '—'}
-Ville : ${lead.Ville || '—'}
-Canal : ${lead.CANAL || '—'}
-Potentiel : ${lead.POTENTIEL || '—'}
+Nom : ${lead.Nom_Compte || 'n.c.'}
+Ville : ${lead.Ville || 'n.c.'}
+Canal : ${lead.CANAL || 'n.c.'}
+Potentiel : ${lead.POTENTIEL || 'n.c.'}
 Note initiale : ${lead.Note_initiale || 'aucune'}
-Statut pipeline : ${lead._statut || '—'}
+Statut pipeline : ${lead._statut || 'n.c.'}
 
 Inclus : profil probable du revendeur, opportunité clé Norton, angle d'approche recommandé.
 Réponds en français, ton professionnel, format structuré court.`;
@@ -44,11 +44,11 @@ Réponds en français, ton professionnel, format structuré court.`;
   t02_preparerVisite(lead) {
     const ctx = `Tu es un coach commercial spécialisé en vente indirecte (distribution IT / cybersécurité Norton).`;
     const prompt = `Prépare un plan de visite terrain pour ce prospect :
-Nom : ${lead.Nom_Compte || '—'}
-Ville : ${lead.Ville || '—'}
-Canal : ${lead.CANAL || '—'}
-Potentiel : ${lead.POTENTIEL || '—'}
-Statut : ${lead._statut || '—'}
+Nom : ${lead.Nom_Compte || 'n.c.'}
+Ville : ${lead.Ville || 'n.c.'}
+Canal : ${lead.CANAL || 'n.c.'}
+Potentiel : ${lead.POTENTIEL || 'n.c.'}
+Statut : ${lead._statut || 'n.c.'}
 Note : ${lead.Note_initiale || 'aucune'}
 
 Fournis :
@@ -65,8 +65,8 @@ Format court, bullet points, français professionnel.`;
   t04_email(lead) {
     const ctx = `Tu rédiges des emails de prospection B2B pour des commerciaux Norton France (distribution informatique, cybersécurité grand public et PME).`;
     const prompt = `Rédige un email de prospection percutant pour ce prospect revendeur :
-Destinataire : ${lead.Nom_Compte || '—'} (${lead.Ville || '—'})
-Canal de distribution : ${lead.CANAL || '—'}
+Destinataire : ${lead.Nom_Compte || 'n.c.'} (${lead.Ville || 'n.c.'})
+Canal de distribution : ${lead.CANAL || 'n.c.'}
 Contexte : ${lead.Note_initiale || 'Premier contact'}
 
 Contraintes :
@@ -89,7 +89,7 @@ CORPS:
     const notesText = notes || lead.Prochaine_Action_Texte || lead.Note_Privee || 'Pas de notes disponibles';
     const prompt = `Génère un compte-rendu de visite structuré à partir de ces notes :
 
-Compte : ${lead.Nom_Compte || '—'} (${lead.Ville || '—'})
+Compte : ${lead.Nom_Compte || 'n.c.'} (${lead.Ville || 'n.c.'})
 Notes brutes : ${notesText}
 
 Structure de sortie :
@@ -108,14 +108,14 @@ Français professionnel, concis.`;
     const lignes = (data.equipe || []).map(e =>
       `${e.nom} : CA ${e.ca}€ / Obj ${e.obj}€ → ${e.pct}% | ${e.visitesSem} visites | ${e.appelsSem} appels | ${e.leadsEnCours} leads`
     ).join('\n');
-    const prompt = `Semaine ${data.semaine} — ${data.quarter} FY27\n\n${lignes}\n\nTotal : CA ${data.caTotal}€ / Obj ${data.objTotal}€ (${data.pctTotal}%)\nLeads bloqués >7j : ${(data.leadsBloques||[]).length} | Taux intégration EMPOWER : ${data.tauxIntegration}%\n\nGénère une synthèse hebdo structurée :\n1. BILAN SEMAINE (top performer, points positifs — 2 phrases)\n2. ALERTES (2-3 points critiques à adresser)\n3. TENDANCES (dynamique de l'équipe — 1-2 observations)\n4. RECOMMANDATIONS (2-3 actions concrètes pour la semaine suivante)\n\nTon : professionnel, direct, orienté action. Français. 200 mots max.`;
+    const prompt = `Semaine ${data.semaine}, ${data.quarter} FY27\n\n${lignes}\n\nTotal : CA ${data.caTotal}€ / Obj ${data.objTotal}€ (${data.pctTotal}%)\nLeads bloqués >7j : ${(data.leadsBloques||[]).length} | Taux intégration EMPOWER : ${data.tauxIntegration}%\n\nGénère une synthèse hebdo structurée :\n1. BILAN SEMAINE (top performer, points positifs, 2 phrases)\n2. ALERTES (2-3 points critiques à adresser)\n3. TENDANCES (dynamique de l'équipe, 1-2 observations)\n4. RECOMMANDATIONS (2-3 actions concrètes pour la semaine suivante)\n\nTon : professionnel, direct, orienté action. Français. 200 mots max.`;
     return this._appeler(prompt, ctx);
   },
 
   // GEM-T01 — Enrichissement automatique lead à la saisie
   gemT01_enrichirLead(lead) {
     const ctx = `Tu es expert en distribution informatique B2B France. Tu identifies le profil commercial des revendeurs IT.`;
-    const prompt = `Enrichis ce lead entrant :\nNom : ${lead.Nom_Compte||'—'}\nVille : ${lead.Ville||'—'} ${lead.Code_Postal||''}\nCanal saisi : ${lead.CANAL||'non renseigné'}\nNote : ${lead.Note_initiale||'aucune'}\n\nRéponds UNIQUEMENT avec ce JSON :\n{"type_revendeur_probable":"MSP|VAR|Boutique IT|Généraliste|Intégrateur|Cybersécurité","canal_probable":"IT|Retail|Cloud","potentiel":"Fort|Moyen|Faible","produits_pertinents":["NSB","360 Standard"],"angle_approche":"1 phrase d'accroche personnalisée"}`;
+    const prompt = `Enrichis ce lead entrant :\nNom : ${lead.Nom_Compte||'n.c.'}\nVille : ${lead.Ville||'n.c.'} ${lead.Code_Postal||''}\nCanal saisi : ${lead.CANAL||'non renseigné'}\nNote : ${lead.Note_initiale||'aucune'}\n\nRéponds UNIQUEMENT avec ce JSON :\n{"type_revendeur_probable":"MSP|VAR|Boutique IT|Généraliste|Intégrateur|Cybersécurité","canal_probable":"IT|Retail|Cloud","potentiel":"Fort|Moyen|Faible","produits_pertinents":["NSB","360 Standard"],"angle_approche":"1 phrase d'accroche personnalisée"}`;
     return this._appeler(prompt, ctx);
   },
 

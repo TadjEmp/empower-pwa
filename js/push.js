@@ -57,14 +57,14 @@ window.PushNotifs = {
     this._enCours = true; this._rendre();
     try {
       const perm = await Notification.requestPermission();
-      if (perm !== 'granted') { Toast.afficher('Notifications refusées — autorisez-les dans les réglages du navigateur', 'warning', 6000); return; }
+      if (perm !== 'granted') { Toast.afficher('Notifications refusées, autorisez-les dans les réglages du navigateur', 'warning', 6000); return; }
       const reg = await navigator.serviceWorker.ready;
       const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: this._cle(this.VAPID_PUBLIC) });
       await this._enregistrer(sub);
       this._abonne = true;
-      Toast.afficher('🔔 Notifications push activées sur cet appareil', 'succes');
+      Toast.afficher('Notifications push activées sur cet appareil', 'succes');
     } catch (e) {
-      Toast.afficher('❌ Activation impossible : ' + (e.message || e), 'erreur', 6000);
+      Toast.afficher('Activation impossible : ' + (e.message || e), 'erreur', 6000);
     } finally { this._enCours = false; this._rendre(); }
   },
 
@@ -80,7 +80,7 @@ window.PushNotifs = {
       }
       this._abonne = false;
       Toast.afficher('Notifications push désactivées sur cet appareil', 'info');
-    } catch (e) { Toast.afficher('❌ ' + (e.message || e), 'erreur'); }
+    } catch (e) { Toast.afficher('' + (e.message || e), 'erreur'); }
     finally { this._enCours = false; this._rendre(); }
   },
 
@@ -89,11 +89,11 @@ window.PushNotifs = {
   // Bloc affiché dans le panneau de notifications.
   html() {
     if (!this.supporte()) return `<div class="nc-push nc-push-info">Notifications push non disponibles sur ce navigateur.</div>`;
-    if (this.estIOS() && !this.estInstallee()) return `<div class="nc-push nc-push-info">📱 Pour recevoir les push sur iPhone/iPad : ajoutez l'app à l'écran d'accueil (Partager → Sur l'écran d'accueil), puis ouvrez-la depuis l'icône.</div>`;
-    if (Notification.permission === 'denied') return `<div class="nc-push nc-push-info">🔕 Notifications bloquées dans les réglages du navigateur pour ce site.</div>`;
-    if (this._enCours) return `<div class="nc-push nc-push-info">⏳ …</div>`;
+    if (this.estIOS() && !this.estInstallee()) return `<div class="nc-push nc-push-info">Pour recevoir les push sur iPhone/iPad : ajoutez l'app à l'écran d'accueil (Partager → Sur l'écran d'accueil), puis ouvrez-la depuis l'icône.</div>`;
+    if (Notification.permission === 'denied') return `<div class="nc-push nc-push-info">Notifications bloquées dans les réglages du navigateur pour ce site.</div>`;
+    if (this._enCours) return `<div class="nc-push nc-push-info">…</div>`;
     return this._abonne
-      ? `<div class="nc-push"><span>🔔 Push activé sur cet appareil</span><button class="nc-tout" onclick="PushNotifs.desactiver()">Désactiver</button></div>`
-      : `<div class="nc-push"><span>Recevez vos rappels même app fermée</span><button class="nc-tout" onclick="PushNotifs.activer()">🔔 Activer</button></div>`;
+      ? `<div class="nc-push"><span>Push activé sur cet appareil</span><button class="nc-tout" onclick="PushNotifs.desactiver()">Désactiver</button></div>`
+      : `<div class="nc-push"><span>Recevez vos rappels même app fermée</span><button class="nc-tout" onclick="PushNotifs.activer()">Activer</button></div>`;
   },
 };

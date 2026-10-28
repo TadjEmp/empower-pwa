@@ -11,7 +11,7 @@
 :root {
   /* Tokens V7 canoniques */
   --ink:             #343F48;
-  --accent:          #FF6D68;
+  --accent:          #0400F5;
   --signal:          #FF1209;
   --navy:            #0E0D30;
   --cobalt:          #2B2D92;
@@ -24,7 +24,7 @@
   --canvas:          #EDEAE3;
   --slide-bg:        #FFFFFF;
   --sellin:          #343F48;
-  --sellout:         #FF6D68;
+  --sellout:         #0400F5;
 
   /* Rythme vertical V7 (§3) */
   --gap-xs: 6px;  --gap-s: 10px;  --gap-m: 15px;  --gap-l: 20px;  --gap-xl: 27px;
@@ -128,7 +128,7 @@
 /* Mobile : la grille 2×2 garde un filet horizontal entre les 2 rangées */
 @media (max-width: 899px) {
   .kpi-card:nth-child(odd)  { border-left: none; padding-left: 0; }
-  .kpi-card:nth-child(n+3)  { border-top: 1px solid var(--hairline); padding-top: 12px; }
+  .kpi-card:nth-child(n+3)  { padding-top: 12px; }
 }
 
 /* ── 5. TABLEAUX V7 (§4) — hairline, jamais de bordure de cadre ── */
@@ -144,15 +144,13 @@
   font-size: 10.5px;
   font-weight: 700;
   color: var(--label-caption);
-  border-bottom: 1px solid var(--hairline-strong);
 }
-.desktop-table-data-view td { border-bottom: 1px solid var(--hairline); }
+.desktop-table-data-view td { }
 .desktop-table-data-view tbody tr:hover { background: var(--track); }
-.tableau-equipe .te-ligne { border-bottom: 1px solid var(--hairline); }
+.tableau-equipe .te-ligne { }
 .tableau-equipe .te-ligne.te-head {
   text-transform: uppercase; letter-spacing: .08em;
   font-size: 10.5px; font-weight: 700; color: var(--label-caption);
-  border-bottom: 1px solid var(--hairline-strong);
 }
 
 /* ── 6. CARTES CONTENEURS — hairline discret (slide V7), sans ombre ──
@@ -177,7 +175,7 @@
 
 /* ── 7. COMPOSANTS V7 RÉUTILISABLES (pour les refontes par vue) ── */
 /* Header de section : badge cerclé + eyebrow + titre + filet */
-.v7-header { padding-bottom: var(--gap-l); border-bottom: 1px solid var(--hairline-strong); margin-bottom: var(--gap-xl); }
+.v7-header { padding-bottom: var(--gap-l); margin-bottom: var(--gap-xl); }
 .v7-header .v7-badge {
   display: inline-flex; align-items: center; justify-content: center;
   width: 26px; height: 26px; border-radius: 50%;
@@ -296,7 +294,6 @@
   /* Topbar : typo V7 (le titre de page desktop) */
   .topbar-desktop {
     background: var(--slide-bg);
-    border-bottom: 1px solid var(--hairline-strong);
   }
   .topbar-titre {
     font-size: 15px; font-weight: 800; color: var(--ink);

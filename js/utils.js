@@ -152,9 +152,9 @@ function similariteNoms(a, b) {
 // ne pas dupliquer cette logique dans les deux modules.
 function condenserVisite(v) {
   if (!v) return '';
-  const dateStr = v.Date ? new Date(v.Date).toLocaleDateString('fr-FR') : '—';
+  const dateStr = v.Date ? new Date(v.Date).toLocaleDateString('fr-FR') : 'n.c.';
   const parts = [`↳ Suite de la visite du ${dateStr}`];
-  if (v.Resultat_Visite) parts.push(`Résultat : ${v.Resultat_Visite}`);
+  if (v.Resultat_Visite) parts.push(`Résultat : ${sansEmoji(v.Resultat_Visite)}`);
   let freins = '';
   if (v.Freins_JSON) {
     try {
@@ -223,7 +223,7 @@ function formatEuro(val) {
 }
 
 function dateRelative(isoStr) {
-  if (!isoStr) return '—';
+  if (!isoStr) return 'n.c.';
   const d = new Date(isoStr);
   const now = new Date();
   const diff = Math.round((d - now) / 86400000);
@@ -288,7 +288,7 @@ function generateCSV(data, filename) {
   const a    = document.createElement('a');
   a.href = url; a.download = filename; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 3000);
-  if (typeof Toast !== 'undefined') Toast.afficher(`📥 Export : ${filename}`, 'succes');
+  if (typeof Toast !== 'undefined') Toast.afficher(`Export : ${filename}`, 'succes');
 }
 
 // ── SidebarToggle — collapse/expand du volet desktop ──
@@ -512,7 +512,7 @@ function FusionTabs(defs) {
     <!-- Bug remonté (retour mobile) — ce padding inline gagnait TOUJOURS sur la
          règle #app > .fusion-tabs { padding-top:14px } de v7.css (un style inline
          prime sur une feuille externe quelle que soit sa spécificité) : l'écart
-         réel entre la barre de marque et ces onglets était 0px, pas 14px — d'où
+         réel entre la barre de marque et ces onglets était 0px, pas 14px, d'où
          "collé". Top mis directement ici plutôt que de compter sur une règle
          externe qui ne s'applique que si .fusion-tabs est un enfant direct de #app. -->
     <div class="fusion-tabs" style="display:flex;gap:8px;flex-wrap:wrap;padding:14px 16px 12px">
@@ -547,9 +547,17 @@ FusionTabs.performance = () => FusionTabs([
 //  Couleur STABLE par commercial (jamais re-calculée par position) ;
 //  contraste V7 : blanc sur navy/cobalt, ink sur accent/magenta (cf. v7.css).
 // ═══════════════════════════════════════
+// Retire les emojis (valeurs historiques stockées avec emoji : « ✅ Positif », objectifs de visite).
+// Les nouvelles saisies sont enregistrées sans emoji ; cette fonction rend les deux formes équivalentes.
+window.sansEmoji = function (v) {
+  return String(v == null ? '' : v)
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{2612}\u{2614}-\u{27BF}\u{2B50}\u{2B55}\u{FE0F}\u{200D}]\s?/gu, '')
+    .trim();
+};
+
 function avatarCDS(pinOuNom, taille) {
-  const nom = (typeof resolveCDS === 'function' ? resolveCDS(pinOuNom) : String(pinOuNom || '')) || '—';
-  if (nom === '—') return '';
+  const nom = (typeof resolveCDS === 'function' ? resolveCDS(pinOuNom) : String(pinOuNom || '')) || 'n.c.';
+  if (nom === 'n.c.') return '';
   const CLASSES = {
     TADJIDINE: 'navy', LYES: 'cobalt', MEHDI: 'magenta',
     JOHANNE: 'accent', ALEXANDRA: 'cobalt', SABINE: 'magenta', SOPHIE: 'navy',
@@ -694,7 +702,7 @@ const DrawerMenu = (function () {
     if (typeof SheetsAPI !== 'undefined' && typeof SheetsAPI.viderCache === 'function') {
       SheetsAPI.viderCache()
         .then(() => {
-          if (typeof Toast !== 'undefined') Toast.afficher('✅ Cache vidé — rechargement…', 'succes', 2000);
+          if (typeof Toast !== 'undefined') Toast.afficher('Cache vidé, rechargement…', 'succes', 2000);
           setTimeout(() => location.reload(), 1800);
         })
         .catch(() => location.reload());
@@ -1077,7 +1085,7 @@ window.Topbar = Topbar;
   };
 
   function resolveCDS(pinOuLibelle) {
-    if (pinOuLibelle === null || pinOuLibelle === undefined) return '—';
+    if (pinOuLibelle === null || pinOuLibelle === undefined) return 'n.c.';
 
     // 1) PIN numérique direct (number ou string purement numérique)
     const asNum = Number(pinOuLibelle);
@@ -1087,7 +1095,7 @@ window.Topbar = Topbar;
 
     // 2) Libellé texte
     const brut = String(pinOuLibelle).trim();
-    if (!brut) return '—';
+    if (!brut) return 'n.c.';
 
     const norm = brut
       .toUpperCase()
@@ -1104,7 +1112,7 @@ window.Topbar = Topbar;
       }
     }
 
-    return '—';
+    return 'n.c.';
   }
 
   window.resolveCDS = resolveCDS;
@@ -1153,7 +1161,7 @@ window.Topbar = Topbar;
 
   function fmtCA(v) {
     const n = parseCA(v);
-    if (n === null || !isFinite(n)) return '—';
+    if (n === null || !isFinite(n)) return 'n.c.';
     return new Intl.NumberFormat('fr-FR', {
       minimumFractionDigits: 0, maximumFractionDigits: 0,
     }).format(n);
@@ -1233,7 +1241,7 @@ function svgDonut(segments, opts = {}) {
   if (!total) {
     return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
       <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--c-border)" stroke-width="${ep}"/>
-      <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" font-size="11" fill="var(--c-text-2)">—</text>
+      <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" font-size="11" fill="var(--c-text-2)">n.c.</text>
     </svg>`;
   }
 
@@ -1283,7 +1291,7 @@ function legendeDonut(segments) {
 // Badge statut pipeline avec classe CSS v5.0
 function statusBadge(statut, label) {
   const s = (statut || '').toLowerCase().replace(/_/g, '_');
-  return `<span class="status-badge status-${s}">${label || statut || '—'}</span>`;
+  return `<span class="status-badge status-${s}">${label || statut || 'n.c.'}</span>`;
 }
 
 // ── v5.0 — KPI Card façon DASHBOARD_W09 (barre d'accent + chiffre font-black) ──

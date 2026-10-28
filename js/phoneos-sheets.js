@@ -75,7 +75,7 @@ const SheetsAPI = {
 };
 
 /* ============================================================
-  UI COMPONENTS — SÉLECTEUR COMMERCIAL
+  UI COMPONENTS, SÉLECTEUR COMMERCIAL
 ============================================================ */
 async function renderCommercialSelector(containerId, onChange) {
   const container = document.getElementById(containerId);
@@ -99,12 +99,12 @@ async function renderCommercialSelector(containerId, onChange) {
     document.getElementById('commercial-select')
       .addEventListener('change', e => onChange && onChange(e.target.value));
   } catch(err) {
-    container.innerHTML = `<div class="mono-label text-[#ba1a1a]">⚠ Sheets non connecté</div>`;
+    container.innerHTML = `<div class="mono-label text-[#ba1a1a]">Sheets non connecté</div>`;
   }
 }
 
 /* ============================================================
-  UI COMPONENTS — MODAL DÉCLARER CA
+  UI COMPONENTS, MODAL DÉCLARER CA
 ============================================================ */
 function openDeclareCaModal(codeClient, raisonSociale, fy = 'FY27') {
   const existing = document.getElementById('declare-ca-modal');
@@ -187,13 +187,13 @@ async function _submitDeclareCA(codeClient, fy) {
 
   const res = await SheetsAPI.declareCA(fy, codeClient, periode, montant);
   if (res.success) {
-    status.textContent = `✓ CA ${periode} de ${montant.toLocaleString('fr-FR')}€ synchronisé dans le Sheet`;
+    status.textContent = `CA ${periode} de ${montant.toLocaleString('fr-FR')}€ synchronisé dans le Sheet`;
     status.style.color = '#2D9E6B';
     status.classList.remove('hidden');
     btn.innerHTML = '<span class="material-symbols-outlined text-sm">check_circle</span> Validé !';
     setTimeout(() => document.getElementById('declare-ca-modal')?.remove(), 2000);
   } else {
-    status.textContent = `✗ Erreur : ${res.error}`;
+    status.textContent = `Erreur : ${res.error}`;
     status.style.color = '#ba1a1a';
     status.classList.remove('hidden');
     btn.innerHTML = 'Réessayer';
@@ -202,7 +202,7 @@ async function _submitDeclareCA(codeClient, fy) {
 }
 
 /* ============================================================
-  UI COMPONENTS — MODAL AJOUT LEAD
+  UI COMPONENTS, MODAL AJOUT LEAD
 ============================================================ */
 function openAddLeadModal(fy = 'FY27') {
   const existing = document.getElementById('add-lead-modal');
@@ -216,7 +216,7 @@ function openAddLeadModal(fy = 'FY27') {
     <div class="bg-[#FAF8F4] rounded-2xl p-6 w-[500px] shadow-2xl">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-[16px] font-bold text-[#1a1a2e] flex items-center gap-2">
-          <span class="material-symbols-outlined text-[#FF6D68]">person_add</span>
+          <span class="material-symbols-outlined text-[#0400F5]">person_add</span>
           Nouveau Lead → ${fy}
         </h3>
         <button onclick="document.getElementById('add-lead-modal').remove()"
@@ -229,17 +229,17 @@ function openAddLeadModal(fy = 'FY27') {
         <div>
           <p class="mono-label mb-1">Raison Sociale *</p>
           <input id="nl-raison" type="text" placeholder="ex: Micromania Lyon"
-            class="w-full bg-[#F5F0E8] rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[#FF6D68]/40"/>
+            class="w-full bg-[#F5F0E8] rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[#0400F5]/40"/>
         </div>
         <div>
           <p class="mono-label mb-1">Code Client</p>
           <input id="nl-code" type="text" placeholder="ex: CLI-00142"
-            class="w-full bg-[#F5F0E8] rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[#FF6D68]/40"/>
+            class="w-full bg-[#F5F0E8] rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[#0400F5]/40"/>
         </div>
         <div>
           <p class="mono-label mb-1">Commercial *</p>
           <input id="nl-commercial" type="text" placeholder="ex: JOHANNE"
-            class="w-full bg-[#F5F0E8] rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[#FF6D68]/40"/>
+            class="w-full bg-[#F5F0E8] rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[#0400F5]/40"/>
         </div>
         <div>
           <p class="mono-label mb-1">Distributeur</p>
@@ -255,17 +255,17 @@ function openAddLeadModal(fy = 'FY27') {
         <div>
           <p class="mono-label mb-1">Téléphone</p>
           <input id="nl-tel" type="tel" placeholder="+33 4 XX XX XX XX"
-            class="w-full bg-[#F5F0E8] rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[#FF6D68]/40"/>
+            class="w-full bg-[#F5F0E8] rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[#0400F5]/40"/>
         </div>
         <div>
           <p class="mono-label mb-1">Email</p>
           <input id="nl-email" type="email" placeholder="contact@enseigne.fr"
-            class="w-full bg-[#F5F0E8] rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[#FF6D68]/40"/>
+            class="w-full bg-[#F5F0E8] rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[#0400F5]/40"/>
         </div>
         <div class="col-span-2">
           <p class="mono-label mb-1">Notes initiales</p>
           <textarea id="nl-notes" rows="2" placeholder="Contexte, source du lead..."
-            class="w-full bg-[#F5F0E8] rounded-lg px-3 py-2 text-[13px] resize-none outline-none focus:ring-1 focus:ring-[#FF6D68]/40"></textarea>
+            class="w-full bg-[#F5F0E8] rounded-lg px-3 py-2 text-[13px] resize-none outline-none focus:ring-1 focus:ring-[#0400F5]/40"></textarea>
         </div>
       </div>
 
@@ -274,7 +274,7 @@ function openAddLeadModal(fy = 'FY27') {
           class="flex-1 py-2.5 rounded-lg border border-[rgba(26,26,46,0.12)] text-[13px]
                  font-semibold text-[#9AABB8] hover:bg-[#F0ECE4] transition">Annuler</button>
         <button id="btn-submit-lead" onclick="_submitAddLead('${fy}')"
-          class="flex-1 py-2.5 rounded-lg bg-[#FF6D68] text-white text-[13px] font-bold
+          class="flex-1 py-2.5 rounded-lg bg-[#0400F5] text-white text-[13px] font-bold
                  hover:opacity-90 active:scale-95 transition shadow-sm
                  flex items-center justify-center gap-2">
           <span class="material-symbols-outlined text-sm">add_circle</span> Ajouter dans le Sheet
@@ -311,12 +311,12 @@ async function _submitAddLead(fy) {
 
   const res = await SheetsAPI.addLead(fy, lead);
   if (res.success) {
-    status.textContent = `✓ ${raison} ajouté dans le Sheet ${fy}`;
+    status.textContent = `${raison} ajouté dans le Sheet ${fy}`;
     status.style.color = '#2D9E6B';
     status.classList.remove('hidden');
     setTimeout(() => document.getElementById('add-lead-modal')?.remove(), 1800);
   } else {
-    status.textContent = `✗ Erreur : ${res.error}`;
+    status.textContent = `Erreur : ${res.error}`;
     status.style.color = '#ba1a1a';
     status.classList.remove('hidden');
     btn.innerHTML = 'Réessayer';
@@ -325,7 +325,7 @@ async function _submitAddLead(fy) {
 }
 
 /* ============================================================
-  PATCH VUE PHONING — appeler dans saveCall()
+  PATCH VUE PHONING, appeler dans saveCall()
   Usage : await syncCallToSheet('CODE_CLIENT', 'FY27');
 ============================================================ */
 async function syncCallToSheet(codeClient, fy = 'FY27') {
@@ -343,8 +343,8 @@ async function syncCallToSheet(codeClient, fy = 'FY27') {
   const toast = document.getElementById('save-toast');
   if (toast) {
     toast.textContent = res.success
-      ? '✓ Compte-rendu enregistré & synchronisé dans Google Sheets'
-      : `✗ Erreur Sheets : ${res.error}`;
+      ? 'Compte-rendu enregistré & synchronisé dans Google Sheets'
+      : `Erreur Sheets : ${res.error}`;
     toast.style.color = res.success ? '#2D9E6B' : '#ba1a1a';
     toast.classList.remove('hidden');
     setTimeout(() => toast.classList.add('hidden'), 3500);
@@ -353,7 +353,7 @@ async function syncCallToSheet(codeClient, fy = 'FY27') {
 }
 
 /* ============================================================
-  PATCH DASHBOARD — charger les KPIs au démarrage
+  PATCH DASHBOARD, charger les KPIs au démarrage
   Usage : initDashboardKPIs();
 ============================================================ */
 async function initDashboardKPIs() {

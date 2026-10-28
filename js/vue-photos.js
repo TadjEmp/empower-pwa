@@ -26,7 +26,7 @@ window.VuePhotos = {
     this.render();
     try {
       const [visites, cdsListe, marketing] = await Promise.all([
-        SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES'),
+        SheetsAPI.lire('EMPOWER_MDB', 'VISITES'),
         SheetsAPI.lireCDS(),
         // Feuille de route Phase 3 — tags par photo (vitrine/rayon/PLV/concurrent),
         // écrits par vue-questionnaire.js depuis cette version ; les photos
@@ -91,7 +91,7 @@ window.VuePhotos = {
   _grouper(flat) {
     const groupes = {};
     for (const item of flat) {
-      const d = (item.visite.Date || item.visite.Date_Planif || '').slice(0, 10) || '—';
+      const d = (item.visite.Date || item.visite.Date_Planif || '').slice(0, 10) || 'n.c.';
       if (!groupes[d]) groupes[d] = [];
       groupes[d].push(item);
     }
@@ -156,7 +156,7 @@ window.VuePhotos = {
       document.body.removeChild(a);
       URL.revokeObjectURL(blobUrl);
     } catch(e) {
-      Toast.afficher('❌ Échec du téléchargement : ' + e.message, 'erreur');
+      Toast.afficher('Échec du téléchargement : ' + e.message, 'erreur');
     }
   },
 
@@ -175,11 +175,11 @@ window.VuePhotos = {
       app.innerHTML = `
         <div class="photo-zoom-layer">
           <div class="photo-zoom-bar">
-            <button class="photo-zoom-btn" onclick="VuePhotos.fermerZoom()">✕ Fermer</button>
+            <button class="photo-zoom-btn" onclick="VuePhotos.fermerZoom()">Fermer</button>
             <button class="photo-zoom-btn" onclick="VuePhotos.telecharger(${this.state.zoomIdx})">⬇ Enregistrer</button>
           </div>
           <div style="padding:0 14px 6px;flex-shrink:0">
-            <div style="color:#fff;font-size:14px;font-weight:700">${visite.Nom_Compte || '—'}</div>
+            <div style="color:#fff;font-size:14px;font-weight:700">${visite.Nom_Compte || 'n.c.'}</div>
             <div style="color:rgba(255,255,255,.6);font-size:12px">${dateStr} · ${window.resolveCDS(visite.PIN_CDS || visite.Nom_CDS)}</div>
           </div>
           <div class="photo-zoom-img-wrap">
@@ -235,7 +235,7 @@ window.VuePhotos = {
       </header>
 
       <div style="padding:10px 12px 0 12px">
-        <input type="search" id="photos-filtre-q" placeholder="🔍 Filtrer par compte…"
+        <input type="search" id="photos-filtre-q" placeholder="Filtrer par compte…"
                value="${this.state.filtreQ}"
                style="width:100%;box-sizing:border-box;padding:11px 14px;border:1.5px solid var(--c-border);border-radius:var(--radius);font-size:14px;background:var(--c-surface);color:var(--c-text)"
                oninput="VuePhotos.setFiltreQ(this.value)"/>
@@ -245,7 +245,7 @@ window.VuePhotos = {
       <div style="padding:10px 12px 0 12px">
         <select style="width:100%;box-sizing:border-box;padding:11px 14px;border:1.5px solid var(--c-border);border-radius:var(--radius);font-size:14px;background:var(--c-surface);color:var(--c-text)"
                 onchange="VuePhotos.state.filtrePinCds=this.value;VuePhotos.render()">
-          <option value="TOUS" ${this.state.filtrePinCds === 'TOUS' ? 'selected' : ''}>Filtrer par commercial — Tous</option>
+          <option value="TOUS" ${this.state.filtrePinCds === 'TOUS' ? 'selected' : ''}>Filtrer par commercial, Tous</option>
           ${this._listeCommerciaux().map(c => `
             <option value="${c.pin}" ${String(this.state.filtrePinCds) === String(c.pin) ? 'selected' : ''}>${c.nom}</option>
           `).join('')}
@@ -265,15 +265,15 @@ window.VuePhotos = {
     groupes = groupes || this._grouper(flat);
     return `${flat.length === 0
           ? `<div style="text-align:center;padding:48px 20px;color:var(--c-text-2)">
-               <div style="font-size:40px;margin-bottom:12px">📷</div>
+               <div style="font-size:40px;margin-bottom:12px"><span class="material-symbols-outlined" aria-hidden="true">photo_camera</span></div>
                <div style="font-size:15px;font-weight:700;margin-bottom:6px">Aucune photo</div>
                <div style="font-size:13px">Les photos prises lors des visites terrain apparaissent ici.</div>
              </div>`
           : groupes.map(groupe => {
               const dateISO = groupe.date;
-              const dateLbl = dateISO !== '—'
+              const dateLbl = dateISO !== 'n.c.'
                 ? new Date(dateISO + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-                : '—';
+                : 'n.c.';
               // offset global dans _flat pour cet index
               const offsetGloupe = flat.indexOf(groupe.items[0]);
               return `
@@ -288,7 +288,7 @@ window.VuePhotos = {
                          onerror="this.style.display='none';this.parentElement.style.background='var(--c-surface-alt)'"/>
                     ${item.tag ? `<span style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,.65);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px">${item.tag}</span>` : ''}
                     <div class="photo-tile-caption">
-                      <div class="photo-tile-nom">${item.visite.Nom_Compte || '—'}</div>
+                      <div class="photo-tile-nom">${item.visite.Nom_Compte || 'n.c.'}</div>
                       <div style="color:rgba(255,255,255,.75);font-size:10px">${window.resolveCDS(item.visite.PIN_CDS || item.visite.Nom_CDS)}</div>
                     </div>
                     <button class="photo-tile-dl"

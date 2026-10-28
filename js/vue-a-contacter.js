@@ -26,7 +26,7 @@ window.AContacter = {
   etat(c) { return this._rows.find(r => String(r._uuid) === String(c && c._uuid)) || null; },
   badge(c) {
     const e = this.etat(c);
-    return e ? `<span class="badge-acontacter" title="${e.Axe === 'P1' ? 'Onboardé sans commande' : 'A commandé, pas encore EMPOWER'}">📞 À contacter</span>` : '';
+    return e ? `<span class="badge-acontacter" title="${e.Axe === 'P1' ? 'Onboardé sans commande' : 'A commandé, pas encore EMPOWER'}">À contacter</span>` : '';
   },
 
   // Compteur dans la barre latérale desktop ET le volet mobile (re-rendu : NavBar relit nb()).
@@ -41,9 +41,9 @@ window.AContacter = {
     const { data, error } = await SheetsAPI._sb.rpc('reporter_a_contacter', { p_compte: compteUuid, p_jours: jours, p_token: token });
     if (error || !data || !data.ok) {
       const msg = { NON_AUTORISE: 'Seul le propriétaire ou un manager peut reporter ce compte.', SESSION_INVALIDE: 'Session invalide : reconnectez-vous.', SESSION_EXPIREE: 'Session expirée : reconnectez-vous.' }[data && data.erreur] || (error && error.message) || (data && data.erreur) || 'Échec';
-      Toast.afficher('❌ ' + msg, 'erreur'); return false;
+      Toast.afficher('' + msg, 'erreur'); return false;
     }
-    Toast.afficher(`🕒 Reporté de ${jours} jours`, 'succes');
+    Toast.afficher(`Reporté de ${jours} jours`, 'succes');
     return true;
   },
 };
@@ -63,7 +63,7 @@ window.VueAContacter = {
     this.render();
   },
 
-  _fmt(d) { const s = String(d || '').slice(0, 10); return s ? `${s.slice(8, 10)}/${s.slice(5, 7)}` : '—'; },
+  _fmt(d) { const s = String(d || '').slice(0, 10); return s ? `${s.slice(8, 10)}/${s.slice(5, 7)}` : 'n.c.'; },
   _eur(n) { return Number(n || 0).toLocaleString('fr-FR', { maximumFractionDigits: 0 }) + ' €'; },
 
   get liste() {
@@ -100,10 +100,10 @@ window.VueAContacter = {
         <div class="cc-infos"><span>${ligne}</span></div>
         <div class="cc-actions" style="gap:6px;flex-wrap:wrap">
           ${sansProprio
-            ? `<button class="btn-visiter" onclick="VueComptes.state.filtreStatut='A_REPRENDRE';Router.aller('#/comptes')">🤝 Voir « À reprendre »</button>`
+            ? `<button class="btn-visiter" onclick="VueComptes.state.filtreStatut='A_REPRENDRE';Router.aller('#/comptes')">Voir « À reprendre »</button>`
             : `<button class="btn-visiter" onclick="VueQuestionnaire._visitePlanifiee=null;Router.aller('#/questionnaire/${E(r.ID_Compte)}')">Visiter</button>
-               <button class="btn-tel-outline" onclick="Router.aller('#/phoning/${E(r.ID_Compte)}')" title="Appeler">📞 Appeler</button>`}
-          <button class="btn-secondaire" style="width:auto;padding:6px 12px;font-size:12px" onclick="VueAContacter.reporter('${E(r._uuid)}')" title="Masquer ce compte 7 jours">🕒 Reporter 7 j</button>
+               <button class="btn-tel-outline" onclick="Router.aller('#/phoning/${E(r.ID_Compte)}')" title="Appeler">Appeler</button>`}
+          <button class="btn-secondaire" style="width:auto;padding:6px 12px;font-size:12px" onclick="VueAContacter.reporter('${E(r._uuid)}')" title="Masquer ce compte 7 jours">Reporter 7 j</button>
         </div>
       </div>`;
   },
@@ -126,7 +126,7 @@ window.VueAContacter = {
         ${chip('TOUS', `Tous (${tout.length})`)}${chip('P1', `P1 · Onboardés sans commande (${n('P1')})`)}${chip('P2', `P2 · Ont commandé, non EMPOWER (${n('P2')})`)}${selCds}
       </div>
       <p style="font-size:12px;color:var(--c-text-2);margin:0 0 10px">Un compte sort de cette liste dès qu'un appel, une visite ou un mailing est enregistré (30 derniers jours), ou si vous le reportez.</p>
-      ${l.length ? l.map(r => this._carte(r)).join('') : `<div style="padding:32px;text-align:center;color:var(--c-text-2)">Rien à contacter pour l'instant 🎉</div>`}`;
+      ${l.length ? l.map(r => this._carte(r)).join('') : `<div style="padding:32px;text-align:center;color:var(--c-text-2)">Rien à contacter pour l'instant </div>`}`;
   },
 
   render() {
@@ -134,7 +134,7 @@ window.VueAContacter = {
     document.getElementById('app').innerHTML = `
       <header class="header-vue">
         <button onclick="Router.retour()" class="btn-retour">←</button>
-        <h1>📞 À contacter</h1>
+        <h1>À contacter</h1>
       </header>
       <div class="q-contenu avec-nav q-contenu-large">
         ${s.chargement ? '<div style="padding:32px;text-align:center;color:var(--c-text-2)">Chargement…</div>' : this._corps()}

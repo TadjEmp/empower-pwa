@@ -35,12 +35,12 @@ window.VueLogin = {
 
           <form class="login-form" onsubmit="VueLogin.soumettre(event)">
             <div class="login-champ">
-              <span class="champ-icone">✉️</span>
+              <span class="champ-icone"><span class="material-symbols-outlined" aria-hidden="true">mail</span></span>
               <input type="email" id="login-email" name="email" placeholder="Adresse e-mail"
                      autocomplete="username" autofocus required/>
             </div>
             <div class="login-champ">
-              <span class="champ-icone">🔒</span>
+              <span class="champ-icone"><span class="material-symbols-outlined" aria-hidden="true">lock</span></span>
               <input type="password" id="login-mdp" name="password" placeholder="Mot de passe"
                      autocomplete="current-password" required/>
               <button type="button" class="btn-oeil" id="btn-oeil"
@@ -63,7 +63,7 @@ window.VueLogin = {
 
           <img src="img/logo-marvesting-sm.png" alt="Marvesting" class="login-marvesting"/>
         </div>
-        <div class="login-aide">Accès réservé — Impact Sales Marketing</div>
+        <div class="login-aide">Accès réservé, Impact Sales Marketing</div>
       </div>`;
   },
 
@@ -72,10 +72,10 @@ window.VueLogin = {
       <div class="login-page">
         <div class="login-carte">
           <h1 class="login-titre" style="font-size:20px">Mot de passe oublié</h1>
-          <p class="login-sous">Saisissez votre email — vous recevrez un lien valable 30 minutes.</p>
+          <p class="login-sous">Saisissez votre email, vous recevrez un lien valable 30 minutes.</p>
           <form class="login-form" onsubmit="VueLogin.envoyerReset(event)">
             <div class="login-champ">
-              <span class="champ-icone">✉️</span>
+              <span class="champ-icone"><span class="material-symbols-outlined" aria-hidden="true">mail</span></span>
               <input type="email" id="reset-email" placeholder="Votre adresse e-mail" required
                      value="${this.state.resetEmail}" oninput="VueLogin.state.resetEmail=this.value"/>
             </div>
@@ -97,7 +97,7 @@ window.VueLogin = {
           <h1 class="login-titre" style="font-size:20px">Nouveau mot de passe</h1>
           <form class="login-form" onsubmit="VueLogin.changerMdp(event)">
             <div class="login-champ">
-              <span class="champ-icone">🔒</span>
+              <span class="champ-icone"><span class="material-symbols-outlined" aria-hidden="true">lock</span></span>
               <input type="password" id="nouveau-mdp" placeholder="Nouveau mot de passe (6 car. min.)" required
                      oninput="VueLogin.state.nouveauMdp=this.value"/>
             </div>

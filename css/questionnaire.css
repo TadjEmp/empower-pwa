@@ -11,7 +11,7 @@
 /* Barre de progression */
 .q-progress-bar {
   display: flex; align-items: center; padding: 10px 16px;
-  background: var(--c-surface); border-bottom: 1px solid var(--c-border);
+  background: var(--c-surface);
 }
 .q-step { display: flex; align-items: center; }
 .q-step-dot {
@@ -19,7 +19,7 @@
   background: var(--c-border); color: var(--c-text-2);
   font-size: 11px; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
-  transition: all .25s;
+  transition: transform .25s, background-color .25s, color .25s, opacity .25s, border-color .25s;
 }
 .q-step.active  .q-step-dot { background: var(--c-primary); color: #fff; transform: scale(1.15); }
 .q-step.done    .q-step-dot { background: var(--c-success); color: #fff; }
@@ -73,7 +73,7 @@
 }
 .q-input:focus, .q-select:focus, .q-textarea:focus {
   border-color: var(--border-accent);
-  box-shadow: 0 0 0 3px rgba(255,109,104,0.15);
+  box-shadow: 0 0 0 3px rgba(4,0,245,0.15);
 }
 
 /* Chips */
@@ -81,7 +81,7 @@
 .q-chip {
   padding: 7px 14px; border-radius: 99px;
   border: 1.5px solid var(--c-border); background: var(--c-bg);
-  font-size: 13px; font-weight: 500; cursor: pointer; transition: all .15s;
+  font-size: 13px; font-weight: 500; cursor: pointer; transition: transform .15s, background-color .15s, color .15s, opacity .15s, border-color .15s;
 }
 .q-chip.active { background: var(--c-primary); color: #fff; border-color: var(--c-primary); }
 
@@ -113,7 +113,7 @@
 /* Récap */
 .q-recap { background: var(--c-bg); border-radius: var(--radius); padding: 14px; margin-top: 8px; }
 .q-recap h3 { font-size: 14px; font-weight: 700; margin-bottom: 10px; }
-.q-recap-ligne { display: flex; justify-content: space-between; font-size: 13px; padding: 5px 0; border-bottom: 1px solid var(--c-border); }
+.q-recap-ligne { display: flex; justify-content: space-between; font-size: 13px; padding: 5px 0; }
 .q-recap-ligne:last-child { border-bottom: none; }
 .q-recap-ligne span  { color: var(--c-text-2); }
 .q-recap-ligne strong{ color: var(--c-text); }

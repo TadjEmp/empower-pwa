@@ -68,8 +68,8 @@ console.log('\n─── N3-4 : marquage lu ───');
 (async () => {
   _majCalls = [];
   await NotifCenter.marquerLue('N1');
-  ok('marquerLue(N1) → SheetsAPI.mettreAJour(🔔_NOTIFS, N1, {Statut_Lu:true})',
-     _majCalls.length === 1 && _majCalls[0].o === '🔔_NOTIFS' &&
+  ok('marquerLue(N1) → SheetsAPI.mettreAJour(NOTIFS, N1, {Statut_Lu:true})',
+     _majCalls.length === 1 && _majCalls[0].o === 'NOTIFS' &&
      _majCalls[0].id === 'N1' && _majCalls[0].c.Statut_Lu === true,
      JSON.stringify(_majCalls));
   ok('Compteur décrémenté à 1 après marquage', NotifCenter.compteur === 1,

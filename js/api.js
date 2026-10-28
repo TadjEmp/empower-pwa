@@ -50,7 +50,7 @@ const SheetsAPI = {
   _gererAuthExpiree(data) {
     if (data?.erreur === 'AUTH') {
       Session.deconnecter()
-      Toast.afficher('🔒 Session expirée — reconnectez-vous', 'warning', 4000)
+      Toast.afficher('Session expirée, reconnectez-vous', 'warning', 4000)
       Router.aller('#/login')
       throw new Error('Session expirée')
     }
@@ -65,7 +65,7 @@ const SheetsAPI = {
   // ── TABLE MAPPING : onglet GAS → table Supabase ──────
   _tableMap: {
     '🏢_COMPTES': 'comptes', 'COMPTES': 'comptes',
-    '📋 COMPTES HISTORIQUES': 'sellin_agregats', 'COMPTES HISTORIQUES': 'sellin_agregats', 'COMPTES_HISTORIQUES': 'sellin_agregats',
+    'COMPTES HISTORIQUES': 'sellin_agregats', 'COMPTES HISTORIQUES': 'sellin_agregats', 'COMPTES_HISTORIQUES': 'sellin_agregats',
     '📉_SELL_IN_HISTORIQUE': 'sellin_agregats', 'SELL_IN_HISTORIQUE': 'sellin_agregats',
     '🎯_OBJECTIFS_PRIMES': 'objectifs_primes', 'OBJECTIFS_PRIMES': 'objectifs_primes',
     '📊_PARAMS': 'params', '⚙️_PARAMS': 'params', 'PARAMS': 'params',
@@ -553,7 +553,7 @@ const SheetsAPI = {
     const cached = await this._getCached(cacheKey)
     if (!this._online) {
       if (cached) return cached
-      throw new Error(`Offline — aucun cache pour ${table}`)
+      throw new Error(`Offline, aucun cache pour ${table}`)
     }
     const frais = !nocache && cached && !(await this._estExpire(cacheKey))
     if (frais) return cached
@@ -570,7 +570,7 @@ const SheetsAPI = {
       if (!limit) await this._setCached(cacheKey, rows)
       return limit != null ? { data: rows, total: count, count: rows.length } : rows
     } catch(e) {
-      if (cached) { Toast.afficher('📶 Mode hors-ligne — données en cache', 'warning', 4000); return cached }
+      if (cached) { Toast.afficher('Mode hors-ligne, données en cache', 'warning', 4000); return cached }
       throw e
     }
   },
@@ -600,7 +600,7 @@ const SheetsAPI = {
     if (!this._online) {
       await this._queueAdd({ op: 'insert', table, row: dbRow })
       await this._invalidate(table)
-      Toast.afficher('📥 Sauvegardé hors-ligne', 'info')
+      Toast.afficher('Sauvegardé hors-ligne', 'info')
       return { ok: true, offline: true }
     }
     let resultat
@@ -613,7 +613,7 @@ const SheetsAPI = {
       // avec un message technique brut ("TypeError: Failed to fetch").
       await this._queueAdd({ op: 'insert', table, row: dbRow })
       await this._invalidate(table)
-      Toast.afficher('📥 Réseau instable — sauvegardé, sera synchronisé', 'warning', 5000)
+      Toast.afficher('Réseau instable, sauvegardé, sera synchronisé', 'warning', 5000)
       return { ok: true, offline: true }
     }
     if (resultat.error) throw new Error(resultat.error.message)
@@ -642,7 +642,7 @@ const SheetsAPI = {
     const idColonne = (gasKey && typeof id === 'string' && !id.match(/^[0-9a-f-]{36}$/i)) ? gasKey : 'id'
     if (!this._online) {
       await this._queueAdd({ op: 'update', table, id, idColonne, champs: dbChamps })
-      Toast.afficher('📥 Modification en attente', 'info')
+      Toast.afficher('Modification en attente', 'info')
       return { ok: true, offline: true }
     }
     let resultat
@@ -650,7 +650,7 @@ const SheetsAPI = {
       resultat = await this._avecRetry(() => this._sb.from(table).update(dbChamps).eq(idColonne, id))
     } catch(e) {
       await this._queueAdd({ op: 'update', table, id, idColonne, champs: dbChamps })
-      Toast.afficher('📥 Réseau instable — modification en attente', 'warning', 5000)
+      Toast.afficher('Réseau instable, modification en attente', 'warning', 5000)
       return { ok: true, offline: true }
     }
     if (resultat.error) throw new Error(resultat.error.message)
@@ -840,7 +840,7 @@ const SheetsAPI = {
       r.onerror   = () => res([])
     })
     if (!all.length) return
-    Toast.afficher(`🔄 Sync ${all.length} action(s)…`, 'info', 3000)
+    Toast.afficher(`Sync ${all.length} action(s)…`, 'info', 3000)
     let ok = 0
     for (const item of all) {
       try {
@@ -858,6 +858,6 @@ const SheetsAPI = {
         }
       } catch {}
     }
-    Toast.afficher(`✅ ${ok}/${all.length} sync`, ok === all.length ? 'succes' : 'warning', 3000)
+    Toast.afficher(`${ok}/${all.length} sync`, ok === all.length ? 'succes' : 'warning', 3000)
   },
 }

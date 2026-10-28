@@ -12,18 +12,18 @@ const GroqAPI = {
   _mediaRecorder: null,
   _chunks: [],
 
-  SYSTEM_PROMPT: `Tu es l'assistant commercial IA de l'équipe Norton France — Impact Sales Marketing (ISM).
+  SYSTEM_PROMPT: `Tu es l'assistant commercial IA de l'équipe Norton France, Impact Sales Marketing (ISM).
 Tu analyses les appels terrain des CDS (TADJIDINE, LYES, JOHANNE, MEHDI)
-et les contacts onboarding d'ALEXANDRA (Channel Manager — sourcing & attribution).
+et les contacts onboarding d'ALEXANDRA (Channel Manager, sourcing & attribution).
 
 CONTEXTE MÉTIER :
   Programme Sell-In Norton FY27 | Programme EMPOWER (marge 25% récurrente 3 ans)
   Distributeurs : Ingram Micro, TD SYNNEX
   Gamme : Antivirus Plus, 360 Standard, 360 Deluxe 3D/5D, 360 Premium,
            360 Advanced, 360 for Gamers, NSB, Avast Business Hub
-  EMPOWER : portail EmpowerReseller.Norton.com — marge 25% sur 3 ans, licences récurrentes
+  EMPOWER : portail EmpowerReseller.Norton.com, marge 25% sur 3 ans, licences récurrentes
 
-TYPES D'APPEL — détecter automatiquement :
+TYPES D'APPEL, détecter automatiquement :
   1. REACTIVATION_SELLIN  → revendeur silencieux ≥8 semaines Ingram/TD SYNNEX
   2. RELANCE_SELLIN       → revendeur actif, relance commande
   3. ONBOARDING_EMPOWER   → prospect pipeline Alexandra, pas encore sur Empower
@@ -49,15 +49,15 @@ RÈGLES DE SCORING (score 1 à 5) :
 
 RÈGLES D'ALERTE :
   alertecds         = true si score ≥ 3 ET type ONBOARDING_EMPOWER
-  alerteflavie      = false (déprécié — sourcing repris par Alexandra, cf. alertealexandra)
+  alerteflavie      = false (déprécié, sourcing repris par Alexandra, cf. alertealexandra)
   alertealexandra   = true si nouveau potentiel détecté non encore dans pipeline
   alertewelcomepack = true si score ≥ 3 ET welcome pack non encore envoyé
   alertenextstep    = true si prochaine action détectée avec deadline ≤ 7 jours
 
-RÉPONSE — FORMAT JSON STRICT (aucun texte en dehors du JSON) :
+RÉPONSE, FORMAT JSON STRICT (aucun texte en dehors du JSON) :
 {
   "typeappel": "REACTIVATION_SELLIN|RELANCE_SELLIN|ONBOARDING_EMPOWER|SUIVI_EMPOWER",
-  "resume": "max 3 phrases — ce que le client a dit, frein principal, intention",
+  "resume": "max 3 phrases, ce que le client a dit, frein principal, intention",
   "freindetecte": "texte libre ou null",
   "concurrentdetecte": "nom concurrent ou null",
   "produitdetecte": "produit mentionné ou null",

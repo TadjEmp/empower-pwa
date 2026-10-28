@@ -49,10 +49,10 @@ window.VuePrimes = {
     this.render();
     try {
       const [objectifs, nsb, prospects, params, cdsApi] = await Promise.all([
-        SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
-        SheetsAPI.lire('EMPOWER_MDB', '🛒_NSB_COMMANDES'),
-        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS'),
-        SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
+        SheetsAPI.lire('EMPOWER_MDB', 'OBJECTIFS_PRIMES'),
+        SheetsAPI.lire('EMPOWER_MDB', 'NSB_COMMANDES'),
+        SheetsAPI.lire('EMPOWER_MDB', 'LEADS'),
+        SheetsAPI.lire('EMPOWER_MDB', 'PARAMS'),
         SheetsAPI.lireCDS(),
       ]);
       const paramMap = Object.fromEntries((params || []).map(p => [p.Parametre, p.Valeur]));
@@ -250,13 +250,13 @@ window.VuePrimes = {
           Date_Validation: '',
           Notes: v('nsb-note'),
         };
-        promises.push(SheetsAPI.ecrire('EMPOWER_MDB', '🛒_NSB_COMMANDES', ligne));
+        promises.push(SheetsAPI.ecrire('EMPOWER_MDB', 'NSB_COMMANDES', ligne));
       }
       await Promise.all(promises);
       // Recharger depuis DB pour avoir les _uuid Supabase réels
-      this.state.nsb = await SheetsAPI.lire('EMPOWER_MDB', '🛒_NSB_COMMANDES');
+      this.state.nsb = await SheetsAPI.lire('EMPOWER_MDB', 'NSB_COMMANDES');
       this.state.modalNSB = false;
-      Toast.afficher(`${qte} commande(s) NSB déclarée(s) — en attente de validation`, 'succes');
+      Toast.afficher(`${qte} commande(s) NSB déclarée(s), en attente de validation`, 'succes');
     } catch(err) { Toast.afficher('Erreur : ' + (err.message || err), 'erreur'); }
     this.state.envoiEnCours = false;
     this.render();
@@ -265,7 +265,7 @@ window.VuePrimes = {
   // ── Validation NSB ou Onboarding (manager) ──
   async validerDeclaration(id) {
     try {
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '🛒_NSB_COMMANDES', id, {
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', 'NSB_COMMANDES', id, {
         Valid_Manager: 'OUI',
         Statut: 'VALIDE',
         Date_Validation: dateISOLocale(),
@@ -376,20 +376,20 @@ window.VuePrimes = {
 
       <!-- AXE 1 -->
       <div class="bloc-fiche">
-        <div class="bloc-titre">Axe 1 — CA vs Objectif
+        <div class="bloc-titre">Axe 1, CA vs Objectif
           <span class="pace-badge ${c.pct >= 100 ? 'pace-ok' : c.pct >= 80 ? 'pace-watch' : 'pace-risk'}">${c.pct}% · ${c.palier1}</span>
         </div>
         <div class="pace-chiffres"><strong>${fmtCA(c.ca)} €</strong><span>/ ${fmtCA(c.obj)} € → <b>${c.axe1 + c.p3} €</b></span></div>
         ${barre(c.pct, 100)}
         ${moyEquipe !== null ? `
         <p style="font-size:11px;color:var(--c-text-2);margin-top:6px">
-          Équipe : <strong style="color:var(--c-title)">${moyEquipe}%</strong> en moyenne —
+          Équipe : <strong style="color:var(--c-title)">${moyEquipe}%</strong> en moyenne
           <span style="color:${ecartEquipe >= 0 ? 'var(--c-success)' : 'var(--c-danger)'};font-weight:600">${ecartEquipe > 0 ? '+' : ''}${ecartEquipe} pt${Math.abs(ecartEquipe) > 1 ? 's' : ''} ${ecartEquipe >= 0 ? 'au-dessus' : 'en-dessous'}</span>
         </p>` : ''}
         ${this._jaugePaliers(c.pct)}
         <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">&lt;80% : 0 € · 80-99% : 200 € · 100-119% : 400 € · ≥120% : 400 € + 100 € bonus P3</p>
         <div style="margin-top:10px">
-          <label class="q-label">Simulateur — si mon CA ${q} atteint :
+          <label class="q-label">Simulateur, si mon CA ${q} atteint :
             <input type="number" class="q-input" placeholder="ex : ${c.obj}" oninput="VuePrimes.simuler(this.value)"/>
           </label>
           <p id="simu-resultat" style="font-size:13px;margin-top:6px;color:var(--c-text-2)"></p>
@@ -399,7 +399,7 @@ window.VuePrimes = {
 
       <!-- AXE 2 -->
       <div class="bloc-fiche">
-        <div class="bloc-titre">Axe 2 — Norton Small Business
+        <div class="bloc-titre">Axe 2, Norton Small Business
           <span class="pace-badge ${c.axe2 ? 'pace-ok' : 'pace-watch'}">${c.palier2} → ${c.axe2} €</span>
         </div>
         <div class="pace-chiffres">
@@ -413,10 +413,10 @@ window.VuePrimes = {
         <details style="margin-top:10px">
           <summary style="font-size:12px;color:var(--c-text-2);cursor:pointer">Mes déclarations NSB ${q} (${mesNSBQ.length})</summary>
           ${mesNSBQ.map(n => `
-          <div class="relance-ligne" style="align-items:center;padding:6px 0;border-bottom:1px solid var(--c-border,#eee)">
+          <div class="relance-ligne" style="align-items:center;padding:6px 0;">
             <div style="flex:1">
-              <div style="font-size:13px;font-weight:600">${n.Nom_Compte || '—'}</div>
-              <div style="font-size:11px;color:var(--c-text-2)">${n.Date || '—'} · ${n.Produit || '—'} · ${n.Montant_EUR ? fmtCA(n.Montant_EUR) + ' €' : '—'}${n.Notes ? ' · ' + n.Notes : ''}</div>
+              <div style="font-size:13px;font-weight:600">${n.Nom_Compte || 'n.c.'}</div>
+              <div style="font-size:11px;color:var(--c-text-2)">${n.Date || 'n.c.'} · ${n.Produit || 'n.c.'} · ${n.Montant_EUR ? fmtCA(n.Montant_EUR) + ' €' : 'n.c.'}${n.Notes ? ' · ' + n.Notes : ''}</div>
             </div>
             ${badgeStatut(n)}
           </div>`).join('')}
@@ -429,7 +429,7 @@ window.VuePrimes = {
 
       <!-- AXE 3 -->
       <div class="bloc-fiche">
-        <div class="bloc-titre">Axe 3 — Onboarding EMPOWER
+        <div class="bloc-titre">Axe 3, Onboarding EMPOWER
           <span class="pace-badge ${c.axe3 ? 'pace-ok' : 'pace-watch'}">${c.palier3} → ${c.axe3} €</span>
         </div>
         <div class="pace-chiffres">
@@ -442,7 +442,7 @@ window.VuePrimes = {
           <span>Via Alexandra (validés) : ${c.integresFlavie}</span>
           <span>Terrain (validés) : ${c.integresTerrain}</span>
         </div>
-        <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">≥3 comptes/Q : 50 € · ≥6 comptes/Q : 75 € — Seuls les onboardings validés par Tadjidine comptent.</p>
+        <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">≥3 comptes/Q : 50 € · ≥6 comptes/Q : 75 €, Seuls les onboardings validés par Tadjidine comptent.</p>
 
         ${mesEmpowerQ.length > 0 ? `
         <details style="margin-top:10px">
@@ -450,10 +450,10 @@ window.VuePrimes = {
           ${mesEmpowerQ.map(n => {
             const typeLabel = String(n.Produit || '').toUpperCase().startsWith('EMPOWER_FLAVIE') ? 'Via Alexandra' : 'Terrain';
             return `
-          <div class="relance-ligne" style="align-items:center;padding:6px 0;border-bottom:1px solid var(--c-border,#eee)">
+          <div class="relance-ligne" style="align-items:center;padding:6px 0;">
             <div style="flex:1">
-              <div style="font-size:13px;font-weight:600">${n.Nom_Compte || '—'} <span style="font-size:11px;color:var(--c-text-2)">(${typeLabel})</span></div>
-              <div style="font-size:11px;color:var(--c-text-2)">${n.Date || '—'}${n.Notes ? ' · ' + n.Notes : ''}</div>
+              <div style="font-size:13px;font-weight:600">${n.Nom_Compte || 'n.c.'} <span style="font-size:11px;color:var(--c-text-2)">(${typeLabel})</span></div>
+              <div style="font-size:11px;color:var(--c-text-2)">${n.Date || 'n.c.'}${n.Notes ? ' · ' + n.Notes : ''}</div>
             </div>
             ${badgeStatut(n)}
           </div>`;
@@ -493,11 +493,11 @@ window.VuePrimes = {
       return `
       <div class="relance-ligne">
         <div style="flex:1">
-          <div class="relance-nom">${n.Nom_Compte || '—'}
+          <div class="relance-nom">${n.Nom_Compte || 'n.c.'}
             <span style="font-size:11px;color:var(--c-text-2);font-weight:400"> · ${typeLabel}</span>
           </div>
           <div style="font-size:12px;color:var(--c-text-2)">
-            ${n.Date || '—'} · CDS : ${resolveCDS(n.PIN_CDS)}${!isEmpower && n.Montant_EUR ? ' · ' + fmtCA(n.Montant_EUR) + ' €' : ''}${n.Notes ? ' · ' + n.Notes : ''}
+            ${n.Date || 'n.c.'} · CDS : ${resolveCDS(n.PIN_CDS)}${!isEmpower && n.Montant_EUR ? ' · ' + fmtCA(n.Montant_EUR) + ' €' : ''}${n.Notes ? ' · ' + n.Notes : ''}
           </div>
         </div>
         <button class="q-chip active" onclick="VuePrimes.validerDeclaration('${n._uuid || n.ID_NSB}')">Valider</button>
@@ -510,12 +510,12 @@ window.VuePrimes = {
         <div class="bloc-titre">Bonus manager ${q}
           <span class="pace-badge ${bonus.atteint ? 'pace-ok' : 'pace-risk'}">${bonus.atteint ? '+300 €' : 'Non atteint'}</span>
         </div>
-        <div class="pace-chiffres"><strong>${fmtCA(bonus.ca)} €</strong><span>/ ${fmtCA(bonus.obj)} € équipe — +300 €/Q si collectif atteint (max 1 200 €/an)</span></div>
+        <div class="pace-chiffres"><strong>${fmtCA(bonus.ca)} €</strong><span>/ ${fmtCA(bonus.obj)} € équipe, +300 €/Q si collectif atteint (max 1 200 €/an)</span></div>
       </div>
 
       <!-- TABLE PRIMES CDS -->
       <div class="bloc-fiche">
-        <div class="bloc-titre">Primes par CDS — ${q}</div>
+        <div class="bloc-titre">Primes par CDS, ${q}</div>
         <div class="tableau-equipe">
           <div class="te-ligne te-head"><span>CDS</span><span>Axe 1</span><span>Axe 2</span><span>Axe 3</span><span>P3</span><span>Total</span></div>
           ${CDS.map(([p, nom]) => {
@@ -585,12 +585,12 @@ window.VuePrimes = {
           Date_Validation: '',
           Notes: v('ob-note'),
         };
-        promises.push(SheetsAPI.ecrire('EMPOWER_MDB', '🛒_NSB_COMMANDES', ligne)
+        promises.push(SheetsAPI.ecrire('EMPOWER_MDB', 'NSB_COMMANDES', ligne)
           .then(() => this.state.nsb.push(ligne)));
       }
       await Promise.all(promises);
       this.state.modalOnboarding = false;
-      Toast.afficher(`${qte} onboarding(s) ${type === 'EMPOWER_FLAVIE' ? 'via Alexandra' : 'terrain'} déclaré(s) — en attente de validation`, 'succes');
+      Toast.afficher(`${qte} onboarding(s) ${type === 'EMPOWER_FLAVIE' ? 'via Alexandra' : 'terrain'} déclaré(s), en attente de validation`, 'succes');
     } catch(err) { Toast.afficher('Erreur : ' + (err.message || err), 'erreur'); }
     this.state.envoiEnCours = false;
     this.render();

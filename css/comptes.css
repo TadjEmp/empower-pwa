@@ -63,7 +63,7 @@
 }
 .bloc-titre { font-size: 14px; font-weight: 700; margin-bottom: 12px; color: var(--c-text); }
 .grille-identite { display: flex; flex-direction: column; gap: 8px; }
-.id-ligne { display: flex; justify-content: space-between; align-items: center; font-size: 14px; border-bottom: 1px solid var(--c-border); padding-bottom: 8px; }
+.id-ligne { display: flex; justify-content: space-between; align-items: center; font-size: 14px; padding-bottom: 8px; }
 .id-ligne:last-child { border-bottom: none; padding-bottom: 0; }
 .id-ligne span  { color: var(--c-text-2); }
 .id-ligne strong{ color: var(--c-text); text-align: right; max-width: 200px; }
@@ -79,7 +79,7 @@
 .pa-note  { font-size: 13px; color: var(--c-text-2); margin-top: 4px; }
 
 .carte-visite, .carte-appel {
-  padding: 10px 0; border-bottom: 1px solid var(--c-border); font-size: 13px;
+  padding: 10px 0; font-size: 13px;
 }
 .carte-visite:last-child, .carte-appel:last-child { border-bottom: none; }
 .visite-date, .appel-date { font-weight: 600; color: var(--c-text-2); }
@@ -126,6 +126,5 @@
 /* D3 — Séparateurs de section dans les modals (Marvin-style) */
 .modal-section-sep {
   font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
-  color: var(--c-text-2); padding: 10px 0 4px;
-  border-top: 1px solid var(--c-border); margin-top: 6px;
+  color: var(--c-text-2); padding: 10px 0 4px; margin-top: 6px;
 }

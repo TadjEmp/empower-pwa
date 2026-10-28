@@ -34,8 +34,8 @@ window.VueMailing = {
     this.render();
     try {
       const [comptes, prospects, cdsApi] = await Promise.all([
-        SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
-        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS'),
+        SheetsAPI.lire('EMPOWER_MDB', 'COMPTES'),
+        SheetsAPI.lire('EMPOWER_MDB', 'LEADS'),
         SheetsAPI.lireCDS(),
       ]);
       this.state.comptes = comptes.filter(c => Session.voitTout() || Number(c.PIN_CDS_Assigne) === Session.pin);
@@ -137,10 +137,10 @@ window.VueMailing = {
     s.envoiEnCours = true;
     this.render();
     const c = s.cible.obj;
-    const resum = s.motifs.join(', ') + (s.note.trim() ? ' — ' + s.note.trim() : '');
+    const resum = s.motifs.join(', ') + (s.note.trim() ? ', ' + s.note.trim() : '');
     try {
       // 1. Log 📊_ACTIONS — même convention que valider() de vue-phoning.js
-      await SheetsAPI.ecrire('EMPOWER_MDB', '📊_ACTIONS', {
+      await SheetsAPI.ecrire('EMPOWER_MDB', 'ACTIONS', {
         ID_Action: genId('ACT'), Date_Action: new Date().toISOString(),
         Type_Action: 'Mailing', Source: 'ESI', PIN_CDS: Session.pin,
         Nom_Compte: s.cible.nom,
@@ -153,16 +153,16 @@ window.VueMailing = {
       // 2. Mise à jour dernière action sur la cible (comptes OU leads)
       const maj = { Date_Derniere_Action: dateISOLocale(), Type_Derniere_Action: 'Mailing' };
       if (s.cible.type === 'compte') {
-        await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', s.cible.id, maj);
+        await SheetsAPI.mettreAJour('EMPOWER_MDB', 'COMPTES', s.cible.id, maj);
         const local = s.comptes.find(x => String(x.ID_Compte) === String(s.cible.id));
         if (local) Object.assign(local, maj);
       } else {
-        await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', s.cible.id, maj);
+        await SheetsAPI.mettreAJour('EMPOWER_MDB', 'LEADS', s.cible.id, maj);
         const local = s.prospects.find(x => String(x.ID_Prospect) === String(s.cible.id));
         if (local) Object.assign(local, maj);
       }
 
-      Toast.afficher(`✅ Mailing loggué : ${s.cible.nom}`, 'succes', 4000);
+      Toast.afficher(`Mailing loggué : ${s.cible.nom}`, 'succes', 4000);
       s.cible = null; s.motifs = []; s.note = ''; s.recherche = '';
       s.envoiEnCours = false;
       await this._chargerJournal();
@@ -170,7 +170,7 @@ window.VueMailing = {
     } catch(e) {
       s.envoiEnCours = false;
       this.render();
-      Toast.afficher('❌ ' + e.message, 'erreur');
+      Toast.afficher('' + e.message, 'erreur');
     }
   },
 
@@ -182,12 +182,12 @@ window.VueMailing = {
     this.state.journalChargement = true;
     this.render();
     try {
-      const data = await SheetsAPI.lire('EMPOWER_MDB', '📊_ACTIONS');
+      const data = await SheetsAPI.lire('EMPOWER_MDB', 'ACTIONS');
       this.state.journal = data
         .filter(a => a.Type_Action === 'Mailing')
         .filter(a => Session.voitTout() || Number(a.PIN_CDS) === Session.pin)
         .sort((a, b) => (b.Date_Action || '').localeCompare(a.Date_Action || ''));
-    } catch(e) { Toast.afficher('❌ Chargement journal : ' + e.message, 'erreur'); }
+    } catch(e) { Toast.afficher('Chargement journal : ' + e.message, 'erreur'); }
     this.state.journalChargement = false;
     this.render();
   },
@@ -226,7 +226,7 @@ window.VueMailing = {
     app.innerHTML = `
       <header class="header-vue">
         <button onclick="${backAction}" class="btn-retour">←</button>
-        <h1>📧 Mailing</h1>
+        <h1>Mailing</h1>
       </header>
       <div class="q-contenu avec-nav q-contenu-large">
         ${s.chargement ? '<div class="q-champs"><div style="padding:32px;text-align:center;color:var(--c-text-2)">Chargement…</div></div>' : this._renderCorps()}
@@ -270,7 +270,7 @@ window.VueMailing = {
         ${this._renderPastillesType()}
       </div>
       <div style="display:flex;gap:8px;margin-bottom:12px">
-        <input class="q-input" placeholder="🔍 Rechercher un compte ou un lead…" value="${s.recherche || ''}"
+        <input class="q-input" placeholder="Rechercher un compte ou un lead…" value="${s.recherche || ''}"
                oninput="VueMailing.setRecherche(this.value)" style="flex:2"/>
         ${Session.voitTout() ? `
         <select class="q-input" style="flex:1" onchange="VueMailing.setFiltreCDS(this.value)">
@@ -290,7 +290,7 @@ window.VueMailing = {
         <span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;background:${x.type==='compte'?'var(--c-title)':'var(--c-warning)'};color:#fff">${x.type==='compte'?'COMPTE':'LEAD'}</span>
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${x.nom}</div>
-          <div style="font-size:12px;color:var(--c-text-2)">${x.obj.Ville || '—'}</div>
+          <div style="font-size:12px;color:var(--c-text-2)">${x.obj.Ville || 'n.c.'}</div>
         </div>
         <span style="color:var(--c-text-2)">→</span>
       </div>`).join('') + `</div>`;
@@ -305,7 +305,7 @@ window.VueMailing = {
           <span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;background:${s.cible.type==='compte'?'var(--c-title)':'var(--c-warning)'};color:#fff">${s.cible.type==='compte'?'COMPTE':'LEAD'}</span>
           <strong style="font-size:15px">${s.cible.nom}</strong>
         </div>
-        <div style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">${c.Ville || '—'}${c.Email ? ' · ' + c.Email : ''}</div>
+        <div style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">${c.Ville || 'n.c.'}${c.Email ? ' · ' + c.Email : ''}</div>
 
         <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px">Motif(s) du mailing *</label>
         ${QuestionnaireBranching.chipsMultiSelect({ champ: 'motif', options: this.MOTIFS, valeurs: s.motifs, onToggle: 'VueMailing.toggleMotif' })}
@@ -316,7 +316,7 @@ window.VueMailing = {
         <div style="display:flex;gap:8px;margin-top:14px">
           <button type="button" class="btn-secondaire" style="flex:1" onclick="VueMailing.fermerCible()">Annuler</button>
           <button type="button" class="btn-primaire" style="flex:2" onclick="VueMailing.valider()" ${s.envoiEnCours ? 'disabled' : ''}>
-            ${s.envoiEnCours ? 'Envoi…' : '✅ Enregistrer le mailing'}
+            ${s.envoiEnCours ? 'Envoi…' : 'Enregistrer le mailing'}
           </button>
         </div>
       </div>`;
@@ -327,7 +327,7 @@ window.VueMailing = {
     if (s.journalChargement) return '<div style="padding:32px;text-align:center;color:var(--c-text-2)">Chargement du journal…</div>';
     return `
       <div style="display:flex;gap:8px;margin-bottom:12px">
-        <input class="q-input" placeholder="🔍 Filtrer par compte…" value="${s.journalRecherche || ''}"
+        <input class="q-input" placeholder="Filtrer par compte…" value="${s.journalRecherche || ''}"
                oninput="VueMailing.setJournalRecherche(this.value)" style="flex:2"/>
         ${Session.voitTout() ? `
         <select class="q-input" style="flex:1" onchange="VueMailing.setJournalFiltreCDS(this.value)">
@@ -344,7 +344,7 @@ window.VueMailing = {
     return `<div class="phoning-base-grid">` + l.map(a => `
       <div style="background:var(--c-surface);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:11px;margin-bottom:8px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <strong style="font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.Nom_Compte || '—'}</strong>
+          <strong style="font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.Nom_Compte || 'n.c.'}</strong>
           <span style="font-size:11px;color:var(--c-text-2)">${(a.Date_Action || '').slice(0, 10)}</span>
         </div>
         <div style="font-size:12px;color:var(--c-text-2)">${resolveCDS(a.PIN_CDS) || ''}</div>

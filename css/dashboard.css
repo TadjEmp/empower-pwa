@@ -75,7 +75,7 @@
 .stat-tuiles { display: flex; gap: 10px; overflow-x: auto; }
 .stat-tuile {
   flex: 1; min-width: 100px; background: var(--c-surface);
-  border: 1px solid var(--c-border); border-top: 3px solid var(--c-title);
+  border: 1px solid var(--c-border);
   border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow);
 }
 .stat-tuile.bleu  { border-top-color: var(--c-primary); }
@@ -103,7 +103,7 @@
 /* Relances */
 .relance-ligne {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 10px 0; border-bottom: 1px solid var(--c-border);
+  padding: 10px 0;
   cursor: pointer; gap: 8px;
 }
 .relance-ligne:last-child { border-bottom: none; }
