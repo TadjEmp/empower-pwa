@@ -65,6 +65,7 @@
 //  Idempotent : chaque service a sa propre garde anti double-init.
 // ═══════════════════════════════════════
 function demarrerServicesSession() {
+  if (typeof SheetsAPI !== 'undefined' && SheetsAPI.surveillerSession) SheetsAPI.surveillerSession();
   if (window.NotifCenter) NotifCenter._render();    // cloche visible immédiatement
   _initPollingNotifs();                             // garde interne _demarre
   if (window.DrawerMenu) DrawerMenu.renderToRoot();

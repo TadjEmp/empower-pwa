@@ -21,7 +21,19 @@ const SheetsAPI = {
   _sb:         null,
 
   async init() {
-    this._sb     = supabase.createClient(SUPABASE_URL, SUPABASE_ANON)
+    // Le jeton de session part dans l'en-tête x-esi-token à chaque requête (REST, RPC, stockage) :
+    // les politiques RLS (esi_session_valide) refusent tout accès sans session valide.
+    // Le jeton est lu à chaque appel : connexion, restauration et déconnexion n'exigent pas de nouveau client.
+    this._sb     = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+      global: {
+        fetch: (url, opts = {}) => {
+          const h = new Headers(opts.headers || {})
+          const t = this.TOKEN || (typeof Session !== 'undefined' && Session.token) || null
+          if (t) h.set('x-esi-token', t)
+          return fetch(url, { ...opts, headers: h })
+        },
+      },
+    })
     this._db     = await this._ouvrirIDB()
     this._online = navigator.onLine
     window.addEventListener('online',  () => { this._online = true;  this._syncQueue() })
@@ -45,6 +57,43 @@ const SheetsAPI = {
     } catch(e) {
       return { ok: false, erreur: this._online ? e.message : 'Connexion impossible hors-ligne' }
     }
+  },
+
+  // Session côté serveur : false si le jeton est expiré, désactivé ou remplacé par une connexion sur un
+  // autre appareil. Une erreur réseau, ou une fonction pas encore déployée, ne déconnecte jamais.
+  async verifierSession() {
+    if (!this._sb || !this._online || typeof Session === 'undefined' || !Session.estConnecte()) return true
+    try {
+      const { data, error } = await this._sb.rpc('esi_session_valide')
+      if (error || typeof data !== 'boolean') return true
+      if (data === false) {
+        Session.deconnecter()
+        if (typeof Toast !== 'undefined') Toast.afficher('Session expirée ou ouverte sur un autre appareil. Reconnectez-vous.', 'warning', 6000)
+        if (typeof Router !== 'undefined') Router.aller('#/login')
+        return false
+      }
+    } catch (e) { /* réseau : on réessaiera */ }
+    return true
+  },
+
+  // Surveille la session tant que l'application est ouverte (retour sur l'onglet, toutes les 2 minutes).
+  surveillerSession() {
+    if (this._veille) return
+    this._veille = true
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') this.verifierSession()
+    })
+    setInterval(() => { if (document.visibilityState === 'visible') this.verifierSession() }, 120000)
+    this.verifierSession()
+  },
+
+  // Une lecture qui revient vide peut signaler une session refusée par RLS (aucune erreur n'est renvoyée) :
+  // on vérifie, au plus une fois par 15 s.
+  _verifierPlusTard() {
+    const now = Date.now()
+    if (this._derniereVerif && now - this._derniereVerif < 15000) return
+    this._derniereVerif = now
+    setTimeout(() => this.verifierSession(), 300)
   },
 
   _gererAuthExpiree(data) {
@@ -567,6 +616,7 @@ const SheetsAPI = {
       const { data, error, count } = await q
       if (error) throw new Error(error.message)
       const rows = (data || []).map(r => this._transformRow(table, r))
+      if (!rows.length && table !== 'notifs') this._verifierPlusTard()
       if (!limit) await this._setCached(cacheKey, rows)
       return limit != null ? { data: rows, total: count, count: rows.length } : rows
     } catch(e) {
