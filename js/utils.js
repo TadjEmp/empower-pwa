@@ -288,7 +288,7 @@ function generateCSV(data, filename) {
   const a    = document.createElement('a');
   a.href = url; a.download = filename; a.click();
   setTimeout(() => URL.revokeObjectURL(url), 3000);
-  if (typeof Toast !== 'undefined') Toast.afficher(`📥 Export : ${filename}`, 'succes');
+  if (typeof Toast !== 'undefined') Toast.afficher(`Export : ${filename}`, 'succes');
 }
 
 // ── SidebarToggle — collapse/expand du volet desktop ──
@@ -694,7 +694,7 @@ const DrawerMenu = (function () {
     if (typeof SheetsAPI !== 'undefined' && typeof SheetsAPI.viderCache === 'function') {
       SheetsAPI.viderCache()
         .then(() => {
-          if (typeof Toast !== 'undefined') Toast.afficher('✅ Cache vidé — rechargement…', 'succes', 2000);
+          if (typeof Toast !== 'undefined') Toast.afficher('Cache vidé — rechargement…', 'succes', 2000);
           setTimeout(() => location.reload(), 1800);
         })
         .catch(() => location.reload());

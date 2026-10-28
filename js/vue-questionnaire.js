@@ -303,7 +303,7 @@ window.VueQuestionnaire = {
       // visite précise (jamais une autre, cf. _cleBrouillon) : reprend
       // l'étape, les réponses ET les photos déjà prises avant l'interruption.
       if (this._restaurerBrouillon(this._cleBrouillonCourante)) {
-        Toast.afficher('📥 Reprise après interruption — vos réponses ont été restaurées', 'info', 5000);
+        Toast.afficher('Reprise après interruption — vos réponses ont été restaurées', 'info', 5000);
       }
       this.state.chargement = false;
       this.render();
@@ -432,10 +432,10 @@ window.VueQuestionnaire = {
       }
       this._modalAjoutTracker = null;
       this._trackerAjoute = true;
-      Toast.afficher(`✅ Ajouté au Tracker : ${m.nomCompte}`, 'succes', 5000);
+      Toast.afficher(`Ajouté au Tracker : ${m.nomCompte}`, 'succes', 5000);
       this.render();
     } catch(e) {
-      Toast.afficher('❌ ' + e.message, 'erreur');
+      Toast.afficher('' + e.message, 'erreur');
     } finally {
       this._ajoutTrackerEnCours = false;
     }
@@ -566,7 +566,7 @@ window.VueQuestionnaire = {
       this.state.photoTags.push('');
       this.render();
     } catch(e) {
-      Toast.afficher('❌ Photo illisible : ' + e.message, 'erreur', 5000);
+      Toast.afficher('Photo illisible : ' + e.message, 'erreur', 5000);
     }
   },
 
@@ -596,7 +596,7 @@ window.VueQuestionnaire = {
       if (btn) btn.textContent = '⏹ Arrêter (30s max)';
       await GroqAPI.demarrerEnregistrement(async blob => {
         this._enregistre = false;
-        Toast.afficher('🤖 Transcription en cours…', 'info');
+        Toast.afficher('Transcription en cours…', 'info');
         try {
           const txt = await GroqAPI.transcrire(blob);
           this.state.d.note = (this.state.d.note ? this.state.d.note + '\n' : '') + txt;
@@ -608,13 +608,13 @@ window.VueQuestionnaire = {
           if (q.score)  this.state.d.score = q.score;
           if (q.actionrecommandee && !this.state.d.prochaineActionTexte)
             this.state.d.prochaineActionTexte = q.actionrecommandee;
-          Toast.afficher('✅ Résumé IA généré', 'succes');
-        } catch(e) { Toast.afficher('❌ IA : ' + e.message, 'erreur'); }
+          Toast.afficher('Résumé IA généré', 'succes');
+        } catch(e) { Toast.afficher('IA : ' + e.message, 'erreur'); }
         this.render();
       });
     } catch(e) {
       this._enregistre = false;
-      Toast.afficher('🎙️ Micro inaccessible : ' + e.message, 'erreur');
+      Toast.afficher('Micro inaccessible : ' + e.message, 'erreur');
     }
   },
 
@@ -683,7 +683,7 @@ window.VueQuestionnaire = {
           else photosEchouees++;
         } catch { photosEchouees++; }
       }
-      if (photosEchouees > 0) Toast.afficher(`⚠️ ${photosEchouees} photo(s) non uploadée(s) — vérifiez la connexion`, 'warning', 5000);
+      if (photosEchouees > 0) Toast.afficher(`${photosEchouees} photo(s) non uploadée(s) — vérifiez la connexion`, 'warning', 5000);
 
       // Feuille de route Phase 3 — signature, facultative : un échec d'upload
       // ne doit jamais bloquer l'enregistrement de la visite.
@@ -885,7 +885,7 @@ window.VueQuestionnaire = {
             ID_Cible: idCible !== 'HORS_BASE' ? idCible : null, Statut_Lu: false, Timestamp: new Date().toISOString(),
           }).catch(() => {});
         }
-        Toast.afficher('🔔 Alerte EMPOWER envoyée à Alexandra', 'info', 4000);
+        Toast.afficher('Alerte EMPOWER envoyée à Alexandra', 'info', 4000);
       }
 
       // FIX-B (bug secondaire) : _isHorsBase portait une vérification incorrecte
@@ -909,7 +909,7 @@ window.VueQuestionnaire = {
     } catch(e) {
       this.state.envoiEnCours = false;
       this.render();
-      Toast.afficher('❌ Erreur enregistrement : ' + e.message, 'erreur', 5000);
+      Toast.afficher('Erreur enregistrement : ' + e.message, 'erreur', 5000);
     }
   },
 
@@ -955,12 +955,12 @@ window.VueQuestionnaire = {
       if (this._derniereFicheFroide && window.FichesFroides) {
         FichesFroides.marquerConverti(this._derniereFicheFroide, { idLead: idProspectNouveau }).catch(() => {});
       }
-      Toast.afficher(`✅ "${nom}" ajouté à votre base`, 'succes');
+      Toast.afficher(`"${nom}" ajouté à votre base`, 'succes');
       // Désactiver le bouton pour éviter le double-clic
       document.querySelectorAll('.succes-btns button').forEach(b => {
         if (b.textContent.includes('Ajouter')) { b.disabled = true; b.textContent = '✅ Ajouté'; }
       });
-    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+    } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
   },
 
   _renderSucces(dureeMin, empowerAlerte) {
@@ -973,14 +973,14 @@ window.VueQuestionnaire = {
         <div class="succes-recap">
           <div>${d.resultatVisite || '—'} · Réceptivité : ${d.score}/5</div>
           ${d.prochaineAction ? `<div>🎯 ${d.prochaineAction}${d.prochaineActionDate?' — '+dateRelative(d.prochaineActionDate):''}</div>` : ''}
-          ${empowerAlerte ? '<div>🔔 Alerte EMPOWER envoyée à Alexandra</div>' : ''}
+          ${empowerAlerte ? '<div>Alerte EMPOWER envoyée à Alexandra</div>' : ''}
           ${d.resumeIA ? `<div>🤖 ${d.resumeIA}</div>` : ''}
         </div>
         <div class="succes-btns">
           <button class="btn-primaire" onclick="Router.aller('#/dashboard')">← Dashboard</button>
-          <button class="btn-secondaire" onclick="VueQuestionnaire.init()">📋 Nouvelle visite</button>
-          <button class="btn-secondaire" onclick="VueVisites.state.modeVue='historique';VueVisites.synchroniser();Router.aller('#/visites')" style="background:var(--c-primary);color:#fff">🔄 Synchroniser</button>
-          ${this._isHorsBase ? `<button class="btn-secondaire" onclick="VueQuestionnaire._ajouterAMaBase()" style="border-color:var(--c-success);color:var(--c-success)">➕ Ajouter à ma base</button>` : ''}
+          <button class="btn-secondaire" onclick="VueQuestionnaire.init()">Nouvelle visite</button>
+          <button class="btn-secondaire" onclick="VueVisites.state.modeVue='historique';VueVisites.synchroniser();Router.aller('#/visites')" style="background:var(--c-primary);color:#fff">Synchroniser</button>
+          ${this._isHorsBase ? `<button class="btn-secondaire" onclick="VueQuestionnaire._ajouterAMaBase()" style="border-color:var(--c-success);color:var(--c-success)">Ajouter à ma base</button>` : ''}
         </div>
       </div>`;
   },
@@ -1129,7 +1129,7 @@ window.VueQuestionnaire = {
       </div>` : ''}
       ${s.cible && s.dernieresVisites?.length ? `
       <div class="q-recap" style="margin-top:8px">
-        <div style="font-size:12px;font-weight:700;color:var(--c-text-2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">📋 Dernières visites</div>
+        <div style="font-size:12px;font-weight:700;color:var(--c-text-2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Dernières visites</div>
         ${s.dernieresVisites.map(v => `
         <div style="border-bottom:1px solid var(--c-border);padding:6px 0;font-size:13px">
           <div style="display:flex;justify-content:space-between">
@@ -1186,14 +1186,14 @@ window.VueQuestionnaire = {
     const d = this.state.d;
     return `<div class="q-champs">
 
-      <div class="q-section-head">📦 Référencement Norton</div>
+      <div class="q-section-head">Référencement Norton</div>
       <label class="q-label">Norton référencé en rayon ?
         ${this._radios('nortonReference', ['OUI', 'NON'])}</label>
       ${d.nortonReference === 'OUI' ? `
       <label class="q-label">Format disponible
         ${this._chips('nortonFormat', this.NORTON_FORMATS)}</label>` : ''}
 
-      <div class="q-section-head" style="margin-top:14px">🤝 Partenariat EMPOWER</div>
+      <div class="q-section-head" style="margin-top:14px">Partenariat EMPOWER</div>
       <label class="q-label">Revendeur partenaire EMPOWER ?
         ${this._radios('empowerPartenaire', ['OUI', 'NON'])}</label>
       ${d.empowerPartenaire === 'NON' ? `
@@ -1207,13 +1207,13 @@ window.VueQuestionnaire = {
         <div style="font-size:12px;color:var(--c-text-2);margin-top:6px">Compte archivé "Non intéressé" EMPOWER.</div>` : ''}
       </div>` : ''}
 
-      <div class="q-section-head" style="margin-top:14px">🎨 Marketing Norton</div>
+      <div class="q-section-head" style="margin-top:14px">Marketing Norton</div>
       <label class="q-label">Marketing Norton présent en point de vente ?
         ${this._radios('marketingPresent', ['OUI', 'NON'])}</label>
       ${d.marketingPresent === 'OUI' ? `
       <label class="q-label">Supports présents ${this._chips('marketingSupports', this.MARKETING_SUPPORTS)}</label>` : ''}
 
-      <div class="q-section-head" style="margin-top:14px">👤 Décideur</div>
+      <div class="q-section-head" style="margin-top:14px">Décideur</div>
       <label class="q-label">Décideur rencontré ?
         ${this._radios('decideurRencontre', ['OUI', 'NON'])}</label>
       ${d.decideurRencontre === 'OUI' ? `
@@ -1300,7 +1300,7 @@ window.VueQuestionnaire = {
       <button type="button" id="btn-dictee" class="btn-secondaire" onclick="VueQuestionnaire.dicter()">
         🎙️ Dictée vocale 30s → Résumé IA Groq
       </button>
-      ${d.resumeIA ? `<div class="q-recap"><h3>🤖 Résumé IA</h3><p style="font-size:13px">${d.resumeIA}</p></div>` : ''}
+      ${d.resumeIA ? `<div class="q-recap"><h3>Résumé IA</h3><p style="font-size:13px">${d.resumeIA}</p></div>` : ''}
     </div>`;
   },
 
@@ -1321,7 +1321,7 @@ window.VueQuestionnaire = {
         <div class="q-recap-ligne"><span>Résultat</span><strong>${d.resultatVisite||'—'}</strong></div>
         <div class="q-recap-ligne"><span>Score</span><strong>${d.score}/5</strong></div>
         <div class="q-recap-ligne"><span>Prochaine action</span><strong>${d.prochaineAction||'—'}${d.prochaineActionDate?' — '+dateRelative(d.prochaineActionDate):''}</strong></div>
-        ${empowerAlerte ? '<div style="font-size:12px;color:var(--c-primary);font-weight:600;padding:6px 0">🔔 Alerte EMPOWER → Alexandra sera envoyée</div>' : ''}
+        ${empowerAlerte ? '<div style="font-size:12px;color:var(--c-primary);font-weight:600;padding:6px 0">Alerte EMPOWER → Alexandra sera envoyée</div>' : ''}
         <div class="q-recap-ligne"><span>GPS</span><strong>${s.gps.lat?'📍 capturé':'—'}</strong></div>
       </div>
 
@@ -1332,7 +1332,7 @@ window.VueQuestionnaire = {
         </button>` : ''}
 
       <div class="q-photo-zone">
-        <label class="q-label">📷 Photos terrain (${s.photos.length}/4)</label>
+        <label class="q-label">Photos terrain (${s.photos.length}/4)</label>
         ${s.photos.map((p, i) => `
           <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
             <img src="${p}" style="width:64px;height:64px;object-fit:cover;border-radius:var(--radius-sm);flex-shrink:0"/>
@@ -1345,11 +1345,11 @@ window.VueQuestionnaire = {
           </div>`).join('')}
         ${s.photos.length < 4 ? `
         <div style="display:flex;gap:8px;margin-top:8px">
-          <label class="btn-q-photo" style="flex:1">📷 Caméra
+          <label class="btn-q-photo" style="flex:1">Caméra
             <input type="file" accept="image/*" capture="environment" hidden
                    onchange="VueQuestionnaire.ajouterPhoto(this)"/>
           </label>
-          <label class="btn-q-photo" style="flex:1">🖼️ Bibliothèque
+          <label class="btn-q-photo" style="flex:1">Bibliothèque
             <input type="file" accept="image/*" hidden
                    onchange="VueQuestionnaire.ajouterPhoto(this)"/>
           </label>
@@ -1360,7 +1360,7 @@ window.VueQuestionnaire = {
            de passage que photo/GPS, inspirée du module fieldservice_sign
            (OCA/field-service, cf. Repères CRM) : facultative, jamais bloquante. -->
       <div class="q-photo-zone" style="margin-top:10px">
-        <label class="q-label">✍️ Signature du contact <span style="color:var(--c-text-2);font-size:11px">(optionnel)</span></label>
+        <label class="q-label">Signature du contact <span style="color:var(--c-text-2);font-size:11px">(optionnel)</span></label>
         <canvas id="q-signature-pad" width="300" height="120"
                 style="width:100%;max-width:400px;height:120px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);background:#fff;touch-action:none;display:block"></canvas>
         <button type="button" class="btn-secondaire" style="margin-top:6px;width:auto;padding:6px 14px;font-size:12px" onclick="VueQuestionnaire.effacerSignature()">Effacer</button>

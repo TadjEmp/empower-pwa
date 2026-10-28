@@ -178,9 +178,9 @@ window.VueFicheCompte = {
       // Update local state
       Object.assign(this.state.compte, champs);
       this.state.editCoord = false;
-      Toast.afficher('✅ Coordonnées mises à jour', 'succes');
+      Toast.afficher('Coordonnées mises à jour', 'succes');
     } catch(e) {
-      Toast.afficher('❌ ' + e.message, 'erreur');
+      Toast.afficher('' + e.message, 'erreur');
     }
     this.state.sauvegardeEnCours = false;
     this._rerender();
@@ -229,7 +229,7 @@ window.VueFicheCompte = {
       Object.assign(this.state.compte, champs);
       Toast.afficher(devenirEmpower ? '⭐ Compte marqué EMPOWER' : '⚡ Compte repassé Grossiste', 'succes');
     } catch(e) {
-      Toast.afficher('❌ ' + e.message, 'erreur');
+      Toast.afficher('' + e.message, 'erreur');
     }
     this.state.empowerEnCours = false;
     this._rerender();
@@ -268,7 +268,7 @@ window.VueFicheCompte = {
       const dejaLead = (prospects || []).find(p => normaliserNom(p.Nom_Compte || '') === nomNorm
         && !['ARCHIVE'].includes(String(p.STATUT_EMPOWER || '').toUpperCase()));
       if (dejaLead) {
-        Toast.afficher(`⚠️ ${c.Nom_Compte} est déjà dans le Tracker`, 'warning');
+        Toast.afficher(`${c.Nom_Compte} est déjà dans le Tracker`, 'warning');
         this.state.ajoutTrackerEnCours = false;
         this._rerender();
         return;
@@ -306,9 +306,9 @@ window.VueFicheCompte = {
         }).catch(() => {});
       }
       this._trackerAjouteDepuisFiche = true;
-      Toast.afficher(`✅ ${c.Nom_Compte} ajouté au Tracker`, 'succes', 5000);
+      Toast.afficher(`${c.Nom_Compte} ajouté au Tracker`, 'succes', 5000);
     } catch(e) {
-      Toast.afficher('❌ ' + e.message, 'erreur');
+      Toast.afficher('' + e.message, 'erreur');
     }
     this.state.ajoutTrackerEnCours = false;
     this._rerender();
@@ -343,7 +343,7 @@ window.VueFicheCompte = {
         deleted: 'TRUE', deleted_at: dateISOLocale(), deleted_by: Session.nom,
       });
       await SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES');
-      Toast.afficher('🗑 Compte supprimé', 'succes');
+      Toast.afficher('Compte supprimé', 'succes');
       if (window.VueComptes && VueComptes.state.ficheDockee) {
         VueComptes.fermerFicheDockee();
         VueComptes.init();
@@ -351,7 +351,7 @@ window.VueFicheCompte = {
         Router.aller('#/comptes');
       }
     } catch(e) {
-      Toast.afficher('❌ ' + e.message, 'erreur');
+      Toast.afficher('' + e.message, 'erreur');
       this.state.suppressionEnCours = false;
       this._rerender();
     }
@@ -372,7 +372,7 @@ window.VueFicheCompte = {
     return `
       <div class="modal-overlay" onclick="if(event.target===this)VueFicheCompte.fermerRapportPhoning()">
         <div class="modal" style="max-width:520px;margin:0 auto">
-          <h3>📊 Rapport Phoning — ${this.state.compte.Nom_Compte}</h3>
+          <h3>Rapport Phoning — ${this.state.compte.Nom_Compte}</h3>
           ${appels.length === 0 ? '<div class="vide-liste">Aucun appel enregistré pour ce compte</div>' : `
             <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">${appels.length} appel${appels.length > 1 ? 's' : ''} au total</p>
             ${appels.map(a => `
@@ -417,7 +417,7 @@ window.VueFicheCompte = {
           <div class="bloc-titre">
             Identité
             <button class="btn-lien" style="margin-left:auto;font-size:12px;color:var(--c-text-2)"
-                    onclick="VueFicheCompte.annulerEditionCoordonnees()">✕ Annuler</button>
+                    onclick="VueFicheCompte.annulerEditionCoordonnees()">Annuler</button>
           </div>
           <div style="display:flex;flex-direction:column;gap:10px">
             <label style="font-size:13px;font-weight:600">Adresse
@@ -482,7 +482,7 @@ window.VueFicheCompte = {
           Identité
           <button class="btn-lien" title="Modifier les coordonnées"
                   style="margin-left:auto;font-size:12px"
-                  onclick="VueFicheCompte.ouvrirEditionCoordonnees()">✏️ Modifier</button>
+                  onclick="VueFicheCompte.ouvrirEditionCoordonnees()">Modifier</button>
         </div>
         ${coordManquantes ? `
         <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:10px;border-radius:var(--radius-sm);background:color-mix(in srgb,var(--c-warning) 10%,transparent);border:1px solid color-mix(in srgb,var(--c-warning) 30%,transparent);font-size:12px;color:var(--c-warning)">
@@ -538,7 +538,7 @@ window.VueFicheCompte = {
         </div>
         ${this.state.appels[0]?.Note ? `
         <div style="margin-top:10px;padding:10px 12px;background:var(--c-bg);border-radius:var(--radius-sm);border:1px solid var(--c-border)">
-          <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.03em;text-transform:uppercase;margin-bottom:4px">📞 Note du dernier appel · ${this._dateLigne(this.state.appels[0].Date)}</div>
+          <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.03em;text-transform:uppercase;margin-bottom:4px">Note du dernier appel · ${this._dateLigne(this.state.appels[0].Date)}</div>
           <div style="font-size:12.5px;color:var(--c-text);line-height:1.5;white-space:pre-line">${String(this.state.appels[0].Note).slice(0, 240)}${String(this.state.appels[0].Note).length > 240 ? '…' : ''}</div>
         </div>` : ''}
         ${c.Source_Import === 'VISITE_FROID_CONVERTI' ? `
@@ -578,7 +578,7 @@ window.VueFicheCompte = {
       <!-- CA HISTORIQUE -->
       <div class="bloc-fiche">
         <div class="bloc-titre">CA Historique</div>
-        ${!v17 ? '<div class="pas-de-v17">⚠️ Pas de correspondance V17 — données MDB</div>' : ''}
+        ${!v17 ? '<div class="pas-de-v17">Pas de correspondance V17 — données MDB</div>' : ''}
         <div class="graphique-ca">
           ${this._barreCA('FY25', fy25, maxCA)}
           ${this._barreCA('FY26', fy26, maxCA)}
@@ -668,10 +668,10 @@ window.VueFicheCompte = {
 
       <!-- ACTIONS -->
       <div class="barre-actions-fixe">
-        <button class="btn-action btn-visite" onclick="VueQuestionnaire._visitePlanifiee=null;Router.aller('#/questionnaire/${c.ID_Compte}')">📋 Visite</button>
-        <button class="btn-action btn-appel" onclick="Router.aller('#/phoning/${c.ID_Compte}')">📞 Appeler</button>
-        <button class="btn-action" style="background:var(--c-text-2);color:#fff" onclick="VueFicheCompte.ouvrirRapportPhoning()">📊 Rapport</button>
-        <button class="btn-action btn-planning" onclick="VueVisites.state.formPlanif=VueVisites.state.formPlanif||{};VueVisites.ouvrirModal();Router.aller('#/visites')">🗓️ Planifier</button>
+        <button class="btn-action btn-visite" onclick="VueQuestionnaire._visitePlanifiee=null;Router.aller('#/questionnaire/${c.ID_Compte}')">Visite</button>
+        <button class="btn-action btn-appel" onclick="Router.aller('#/phoning/${c.ID_Compte}')">Appeler</button>
+        <button class="btn-action" style="background:var(--c-text-2);color:#fff" onclick="VueFicheCompte.ouvrirRapportPhoning()">Rapport</button>
+        <button class="btn-action btn-planning" onclick="VueVisites.state.formPlanif=VueVisites.state.formPlanif||{};VueVisites.ouvrirModal();Router.aller('#/visites')">Planifier</button>
       </div>
 
       ${this.state.modalRapportPhoning ? this._renderModalRapportPhoning() : ''}

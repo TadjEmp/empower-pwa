@@ -87,7 +87,7 @@ window.VueVisites = {
       .then(() => { this.state.ficheDockeeChargement = false; this.render(); })
       .catch(e => {
         this.state.ficheDockeeChargement = false;
-        Toast.afficher('❌ ' + e.message, 'erreur');
+        Toast.afficher('' + e.message, 'erreur');
         this.state.ficheDockee = null;
         this.render();
       });
@@ -111,13 +111,13 @@ window.VueVisites = {
         <div class="modal modal-docked-panel" style="overflow-y:auto">
           <div class="bloc-titre" style="position:sticky;top:0;background:var(--c-surface);z-index:1;padding-bottom:8px">
             ${c.Nom_Compte}
-            <button class="btn-lien" style="margin-left:auto;font-size:13px" onclick="VueVisites.fermerFicheDockee()">✕ Fermer</button>
+            <button class="btn-lien" style="margin-left:auto;font-size:13px" onclick="VueVisites.fermerFicheDockee()">Fermer</button>
           </div>
           ${VueFicheCompte.renderContenuFiche()}
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-            <button class="btn-action btn-visite" style="width:auto;flex:1" onclick="VueQuestionnaire._visitePlanifiee=null;Router.aller('#/questionnaire/${c.ID_Compte}')">📋 Visite</button>
-            <button class="btn-action btn-appel" style="width:auto;flex:1" onclick="Router.aller('#/phoning/${c.ID_Compte}')">📞 Appeler</button>
-            <button class="btn-action" style="width:auto;flex:1;background:var(--c-text-2);color:#fff" onclick="VueFicheCompte.ouvrirRapportPhoning()">📊 Rapport</button>
+            <button class="btn-action btn-visite" style="width:auto;flex:1" onclick="VueQuestionnaire._visitePlanifiee=null;Router.aller('#/questionnaire/${c.ID_Compte}')">Visite</button>
+            <button class="btn-action btn-appel" style="width:auto;flex:1" onclick="Router.aller('#/phoning/${c.ID_Compte}')">Appeler</button>
+            <button class="btn-action" style="width:auto;flex:1;background:var(--c-text-2);color:#fff" onclick="VueFicheCompte.ouvrirRapportPhoning()">Rapport</button>
           </div>
           ${VueFicheCompte.state.modalRapportPhoning ? VueFicheCompte._renderModalRapportPhoning() : ''}
         </div>
@@ -345,9 +345,9 @@ window.VueVisites = {
       await FichesFroides.classerHistorique(idFiche);
       const f = this.state.fiches.find(x => x.ID_Fiche === idFiche);
       if (f) { f.Statut = 'HISTORIQUE'; f.Date_Relance = ''; }
-      Toast.afficher('🗄️ Magasin classé en historique', 'succes');
+      Toast.afficher('Magasin classé en historique', 'succes');
       this.render();
-    } catch (e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+    } catch (e) { Toast.afficher('' + e.message, 'erreur'); }
   },
 
   convertirFiche(idFiche) {
@@ -391,7 +391,7 @@ window.VueVisites = {
         <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
           <div>
             <strong>${E(x.Nom_Magasin)}</strong>${x.Ville ? ` <span style="color:var(--c-text-2)">· ${E(x.Ville)}</span>` : ''}
-            ${x.Doublon_A_Revoir ? ' <span title="Même nom qu\'une autre fiche — à vérifier" style="font-size:11px;color:var(--c-warning,#b45309)">⚠️ doublon possible</span>' : ''}
+            ${x.Doublon_A_Revoir ? ' <span title="Même nom qu\'une autre fiche — à vérifier" style="font-size:11px;color:var(--c-warning,#b45309)">doublon possible</span>' : ''}
           </div>
           <span style="font-size:11px;font-weight:700;white-space:nowrap">${FichesFroides.STATUTS[x.Statut] || E(x.Statut)}</span>
         </div>
@@ -404,9 +404,9 @@ window.VueVisites = {
           🎯 ${E(x.Prochaine_Action || 'Relance')}${x.Date_Relance ? ` — ${String(x.Date_Relance).slice(0, 10)}${retard ? ' (en retard)' : ''}` : ''}</div>` : ''}
         ${FichesFroides._estConverti(x) ? '' : `
         <div class="cv-actions" style="gap:6px;flex-wrap:wrap;margin-top:8px">
-          <button class="btn-primaire" style="padding:8px 14px;font-size:13px;width:auto" onclick="VueVisites.revoirFiche('${x.ID_Fiche}')">🔁 Revoir</button>
+          <button class="btn-primaire" style="padding:8px 14px;font-size:13px;width:auto" onclick="VueVisites.revoirFiche('${x.ID_Fiche}')">Revoir</button>
           <button class="btn-primaire" style="padding:8px 14px;font-size:13px;width:auto;background:var(--c-success)" onclick="VueVisites.convertirFiche('${x.ID_Fiche}')">Créer compte</button>
-          ${x.Statut !== 'HISTORIQUE' ? `<button class="btn-secondaire" style="padding:8px 12px;font-size:12px;width:auto" onclick="VueVisites.classerFiche('${x.ID_Fiche}')">🗄️ Historique</button>` : ''}
+          ${x.Statut !== 'HISTORIQUE' ? `<button class="btn-secondaire" style="padding:8px 12px;font-size:12px;width:auto" onclick="VueVisites.classerFiche('${x.ID_Fiche}')">Historique</button>` : ''}
         </div>`}
       </div>`;
     }).join('');
@@ -512,10 +512,10 @@ window.VueVisites = {
         }).catch(() => {});
       }
       this._modalConversion = null;
-      Toast.afficher(`✅ Compte actif créé : ${m.nomCompte}`, 'succes', 5000);
+      Toast.afficher(`Compte actif créé : ${m.nomCompte}`, 'succes', 5000);
       this.render();
     } catch(e) {
-      Toast.afficher('❌ ' + e.message, 'erreur');
+      Toast.afficher('' + e.message, 'erreur');
     } finally {
       this._conversionEnCours = false;
     }
@@ -797,7 +797,7 @@ window.VueVisites = {
       v.Statut_Visite = 'en cours';
       Toast.afficher('▶️ Visite en cours — questionnaire déverrouillé', 'succes');
       this.render();
-    } catch(err) { Toast.afficher('❌ ' + err.message, 'erreur'); }
+    } catch(err) { Toast.afficher('' + err.message, 'erreur'); }
   },
 
   // ── Compte-rendu (Bloc 3 : accessible SEULEMENT si Statut_Visite = "En cours") ──
@@ -889,7 +889,7 @@ window.VueVisites = {
       v.Type_Visite === f.typeVisite
     );
     if (doublon) {
-      Toast.afficher(`⚠️ Visite déjà planifiée pour "${nomFinal}" le ${f.date} (${this._labelStatut(doublon.Statut_Visite)}) — doublon bloqué`, 'warning');
+      Toast.afficher(`Visite déjà planifiée pour "${nomFinal}" le ${f.date} (${this._labelStatut(doublon.Statut_Visite)}) — doublon bloqué`, 'warning');
       return;
     }
 
@@ -901,7 +901,7 @@ window.VueVisites = {
     // l'avaient jamais eue).
     const chevauchement = this._trouverChevauchement(f.date, f.heure, Number(f.dureeVisite) || 60);
     if (chevauchement) {
-      Toast.afficher(`⚠️ Chevauche "${chevauchement.Nom_Compte}" à ${chevauchement.Heure} le ${f.date} — créneau en conflit`, 'warning');
+      Toast.afficher(`Chevauche "${chevauchement.Nom_Compte}" à ${chevauchement.Heure} le ${f.date} — créneau en conflit`, 'warning');
       return;
     }
 
@@ -935,7 +935,7 @@ window.VueVisites = {
             prochaineAction: f.prochaineEtape || f.objectifVisite || '',
           });
           idFicheFroide = r.idFiche;
-          if (r.autreCDS) Toast.afficher('⚠️ Ce magasin est déjà suivi par un autre commercial — signalé à revoir', 'warning', 6000);
+          if (r.autreCDS) Toast.afficher('Ce magasin est déjà suivi par un autre commercial — signalé à revoir', 'warning', 6000);
           this.state.fiches = FichesFroides.visibles(await FichesFroides.charger({ nocache: true }));
         } catch (e) { console.warn('Fiche à froid non créée :', e); }
       }
@@ -985,7 +985,7 @@ window.VueVisites = {
       );
       this.render();
     } catch(err) {
-      Toast.afficher('❌ ' + err.message, 'erreur');
+      Toast.afficher('' + err.message, 'erreur');
       // réactive le bouton pour permettre une nouvelle tentative
       if (btn) { btn.disabled = false; btn.textContent = btn.dataset._lbl || 'Planifier'; }
     } finally {
@@ -1085,7 +1085,7 @@ window.VueVisites = {
       m.photosEnAttente.push(dataUrl);
       this.render();
     } catch(e) {
-      Toast.afficher('❌ Photo illisible : ' + e.message, 'erreur', 5000);
+      Toast.afficher('Photo illisible : ' + e.message, 'erreur', 5000);
     }
   },
 
@@ -1123,7 +1123,7 @@ window.VueVisites = {
             if (r?.url) nouvellesURLs.push(r.url); else echouees++;
           } catch { echouees++; }
         }
-        if (echouees > 0) Toast.afficher(`⚠️ ${echouees} photo(s) non uploadée(s) — vérifiez la connexion`, 'warning', 5000);
+        if (echouees > 0) Toast.afficher(`${echouees} photo(s) non uploadée(s) — vérifiez la connexion`, 'warning', 5000);
       }
       const maj = {
         Date:                   m.date,
@@ -1161,11 +1161,11 @@ window.VueVisites = {
       if (local) Object.assign(local, maj);
       this.state.modalEdition = null;
       this.state.dateVue = m.date;
-      Toast.afficher('✅ Visite modifiée', 'succes');
+      Toast.afficher('Visite modifiée', 'succes');
       this.render();
     } catch(err) {
       if (this.state.modalEdition) this.state.modalEdition.photoEnCours = false;
-      Toast.afficher('❌ ' + err.message, 'erreur');
+      Toast.afficher('' + err.message, 'erreur');
       this.render();
     }
   },
@@ -1192,9 +1192,9 @@ window.VueVisites = {
       });
       this.state.visites = this.state.visites.filter(v => v.ID_Visite !== id);
       this.state.confirmDeleteId = null;
-      Toast.afficher('🗑️ Visite supprimée', 'succes');
+      Toast.afficher('Visite supprimée', 'succes');
       this.render();
-    } catch(err) { Toast.afficher('❌ ' + err.message, 'erreur'); }
+    } catch(err) { Toast.afficher('' + err.message, 'erreur'); }
   },
 
   annulerSuppression() { this.state.confirmDeleteId = null; this.render(); },
@@ -1215,7 +1215,7 @@ window.VueVisites = {
       String(x.PIN_CDS) === String(Session.pin)
     );
     if (doublonDup) {
-      Toast.afficher(`⚠️ Une visite pour "${v.Nom_Compte}" le ${dateDup} existe déjà — duplication annulée`, 'warning');
+      Toast.afficher(`Une visite pour "${v.Nom_Compte}" le ${dateDup} existe déjà — duplication annulée`, 'warning');
       return;
     }
 
@@ -1239,9 +1239,9 @@ window.VueVisites = {
       await SheetsAPI.ecrire('EMPOWER_MDB', '🗺️_VISITES', dup);
       this.state.visites.unshift(dup);
       this.state.dateVue = dateDup;
-      Toast.afficher(`📋 Visite dupliquée → ${dateDup}`, 'succes');
+      Toast.afficher(`Visite dupliquée → ${dateDup}`, 'succes');
       this.render();
-    } catch(err) { Toast.afficher('❌ ' + err.message, 'erreur'); }
+    } catch(err) { Toast.afficher('' + err.message, 'erreur'); }
   },
 
   // ── Bloc replanification (07/2026) — remplace le "+1" (J+7 imposé, sans
@@ -1301,12 +1301,12 @@ window.VueVisites = {
 
   // ── Synchroniser ──
   async synchroniser() {
-    Toast.afficher('🔄 Synchronisation…', 'info', 3000);
+    Toast.afficher('Synchronisation…', 'info', 3000);
     try {
       await SheetsAPI.viderCache('EMPOWER_MDB', '🗺️_VISITES');
       await this.init(this.state.sousVue);
-      Toast.afficher('✅ Visites synchronisées', 'succes');
-    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+      Toast.afficher('Visites synchronisées', 'succes');
+    } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
   },
 
   // ── EX-1 : Extraction CSV (Manager + Alexandra) ──
@@ -1566,12 +1566,12 @@ window.VueVisites = {
             </button>` : ''}
           ${peutModif ? `
             <button class="btn-secondaire" title="Modifier le compte-rendu déjà enregistré" style="padding:10px 14px;font-size:15px;width:auto"
-                    onclick="VueVisites.ouvrirEdition('${v.ID_Visite}')">✏ Modifier</button>
+                    onclick="VueVisites.ouvrirEdition('${v.ID_Visite}')">Modifier</button>
             ${statut === 'réalisée' ? `
             <button class="btn-secondaire" title="Planifier une NOUVELLE visite de suivi (ne modifie pas celle-ci)" style="padding:10px 14px;font-size:13px;width:auto"
-                    onclick="VueVisites.planifierSuiviVisite('${v.ID_Visite}')">🗓️ Planifier suivi</button>
+                    onclick="VueVisites.planifierSuiviVisite('${v.ID_Visite}')">Planifier suivi</button>
             <button class="btn-secondaire" title="Planifier un appel de suivi" style="padding:10px 14px;font-size:13px;width:auto"
-                    onclick="VueVisites.planifierSuiviAppel('${v.ID_Visite}')">📞 Appel</button>
+                    onclick="VueVisites.planifierSuiviAppel('${v.ID_Visite}')">Appel</button>
             ` : `
             <button class="btn-secondaire" title="Dupliquer (J+7)" style="padding:10px 14px;font-size:13px;width:auto"
                     onclick="VueVisites.dupliquerVisite('${v.ID_Visite}')">+1</button>
@@ -1643,7 +1643,7 @@ window.VueVisites = {
           ? `<div style="padding:32px;text-align:center;color:var(--c-text-2)">Aucune visite réalisée pour l'instant.</div>`
           : `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
                <span style="font-size:13px;color:var(--c-text-2)">${histFiltre.length} visite(s) réalisée(s)</span>
-               <button class="btn-secondaire" style="width:auto;padding:6px 12px;font-size:12px" onclick="VueVisites.ouvrirExtraction()">📤 Export CSV</button>
+               <button class="btn-secondaire" style="width:auto;padding:6px 12px;font-size:12px" onclick="VueVisites.ouvrirExtraction()">Export CSV</button>
              </div>
              ${histFiltre.map(v => this._carteVisite(v)).join('')}`;
         if (this.state.commercialSelectionne) contenu = this._boutonRetourCommerciaux() + contenu;
@@ -1739,7 +1739,7 @@ window.VueVisites = {
         <button class="btn-filtre ${this.state.modeVue === 'jour' ? 'actif' : ''}" onclick="VueVisites.setModeVue('jour')">Jour</button>
         <button class="btn-filtre ${this.state.modeVue === 'semaine' ? 'actif' : ''}" onclick="VueVisites.setModeVue('semaine')">Semaine</button>
         <button class="btn-filtre ${this.state.modeVue === 'historique' ? 'actif' : ''}" onclick="VueVisites.setModeVue('historique')">Historique</button>
-        <button class="btn-filtre ${this.state.modeVue === 'froid' ? 'actif' : ''}" onclick="VueVisites.setModeVue('froid')">❄️ À froid${this.state.fiches.filter(x => x.Statut === 'A_REVOIR').length ? ` (${this.state.fiches.filter(x => x.Statut === 'A_REVOIR').length})` : ''}</button>
+        <button class="btn-filtre ${this.state.modeVue === 'froid' ? 'actif' : ''}" onclick="VueVisites.setModeVue('froid')">À froid${this.state.fiches.filter(x => x.Statut === 'A_REVOIR').length ? ` (${this.state.fiches.filter(x => x.Statut === 'A_REVOIR').length})` : ''}</button>
         ${this.state.modeVue !== 'historique' && this.state.modeVue !== 'froid' ? `
         <div style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <button class="btn-retour" onclick="VueVisites.jourPrecedent()">‹</button>
@@ -1790,7 +1790,7 @@ window.VueVisites = {
     const aucunDept = qDept.length >= 1 && comptesFiltres.length === 0;
     return `
      <div style="display:flex;gap:6px;margin-bottom:6px">
-       <label style="flex:1;margin-bottom:0">🔍 Nom / Ville
+       <label style="flex:1;margin-bottom:0">Nom / Ville
          <input placeholder="Nom ou ville…" value="${f.rechercheCompte || ''}"
                 oninput="VueVisites.setRechercheCompteModal(this.value)"/>
        </label>
@@ -2046,7 +2046,7 @@ window.VueVisites = {
                    oninput="VueVisites.state.modalEdition.prochaineEtape=this.value"/></label>
 
           <div class="q-photo-zone">
-            <label class="q-label">📷 Photos terrain (${m.photos.length + m.photosEnAttente.length}/4)</label>
+            <label class="q-label">Photos terrain (${m.photos.length + m.photosEnAttente.length}/4)</label>
             ${m.photos.map(url => `
               <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
                 <img src="${url}" style="width:64px;height:64px;object-fit:cover;border-radius:var(--radius-sm)"/>
@@ -2060,11 +2060,11 @@ window.VueVisites = {
               </div>`).join('')}
             ${(m.photos.length + m.photosEnAttente.length) < 4 ? `
             <div style="display:flex;gap:8px;margin-top:8px">
-              <label class="btn-q-photo" style="flex:1">📷 Caméra
+              <label class="btn-q-photo" style="flex:1">Caméra
                 <input type="file" accept="image/*" capture="environment" hidden
                        onchange="VueVisites.ajouterPhotoEdition(this)"/>
               </label>
-              <label class="btn-q-photo" style="flex:1">🖼️ Bibliothèque
+              <label class="btn-q-photo" style="flex:1">Bibliothèque
                 <input type="file" accept="image/*" hidden
                        onchange="VueVisites.ajouterPhotoEdition(this)"/>
               </label>
@@ -2113,7 +2113,7 @@ window.VueVisites = {
           <div style="font-size:13px;margin-bottom:10px"><strong>${m.doublonExistant.Nom_Compte}</strong> — ${m.doublonExistant.STATUT_COMPTE || '—'} · ${m.doublonExistant.CANAL || '—'}</div>
           <div style="display:flex;gap:8px">
             <button class="btn-secondaire" style="flex:1;font-size:12px"
-                    onclick="VueVisites.fermerConversion();VueVisites.ouvrirFiche('${m.doublonExistant.ID_Compte}')">👁️ Voir la fiche</button>
+                    onclick="VueVisites.fermerConversion();VueVisites.ouvrirFiche('${m.doublonExistant.ID_Compte}')">Voir la fiche</button>
             <button class="btn-primaire" style="flex:1;font-size:12px"
                     onclick="VueVisites.forcerConversion()">Créer quand même</button>
           </div>

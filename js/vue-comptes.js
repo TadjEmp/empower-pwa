@@ -82,7 +82,7 @@ window.VueComptes = {
       .then(() => { this.state.ficheDockeeChargement = false; this.render(); })
       .catch(e => {
         this.state.ficheDockeeChargement = false;
-        Toast.afficher('❌ ' + e.message, 'erreur');
+        Toast.afficher('' + e.message, 'erreur');
         this.state.ficheDockee = null;
         this.render();
       });
@@ -106,13 +106,13 @@ window.VueComptes = {
         <div class="modal modal-docked-panel" style="overflow-y:auto">
           <div class="bloc-titre" style="position:sticky;top:0;background:var(--c-surface);z-index:1;padding-bottom:8px">
             ${c.Nom_Compte}
-            <button class="btn-lien" style="margin-left:auto;font-size:13px" onclick="VueComptes.fermerFicheDockee()">✕ Fermer</button>
+            <button class="btn-lien" style="margin-left:auto;font-size:13px" onclick="VueComptes.fermerFicheDockee()">Fermer</button>
           </div>
           ${VueFicheCompte.renderContenuFiche()}
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-            <button class="btn-action btn-visite" style="width:auto;flex:1" onclick="VueQuestionnaire._visitePlanifiee=null;Router.aller('#/questionnaire/${c.ID_Compte}')">📋 Visite</button>
-            <button class="btn-action btn-appel" style="width:auto;flex:1" onclick="Router.aller('#/phoning/${c.ID_Compte}')">📞 Appeler</button>
-            <button class="btn-action" style="width:auto;flex:1;background:var(--c-text-2);color:#fff" onclick="VueFicheCompte.ouvrirRapportPhoning()">📊 Rapport</button>
+            <button class="btn-action btn-visite" style="width:auto;flex:1" onclick="VueQuestionnaire._visitePlanifiee=null;Router.aller('#/questionnaire/${c.ID_Compte}')">Visite</button>
+            <button class="btn-action btn-appel" style="width:auto;flex:1" onclick="Router.aller('#/phoning/${c.ID_Compte}')">Appeler</button>
+            <button class="btn-action" style="width:auto;flex:1;background:var(--c-text-2);color:#fff" onclick="VueFicheCompte.ouvrirRapportPhoning()">Rapport</button>
           </div>
           ${VueFicheCompte.state.modalRapportPhoning ? VueFicheCompte._renderModalRapportPhoning() : ''}
         </div>
@@ -293,8 +293,8 @@ window.VueComptes = {
   // Le flag "éclair" sur un compte GROSSISTE signale un potentiel onboarding.
   _badgeEmpower(c) {
     return window.estEmpower(c)
-      ? `<span class="badge-empower badge-empower-oui" title="Compte Empower">⭐ Empower</span>`
-      : `<span class="badge-empower badge-empower-non" title="Grossiste — potentiel onboarding Empower">⚡ Grossiste</span>`;
+      ? `<span class="badge-empower badge-empower-oui" title="Compte Empower">Empower</span>`
+      : `<span class="badge-empower badge-empower-non" title="Grossiste — potentiel onboarding Empower">Grossiste</span>`;
   },
 
   render() {
@@ -354,7 +354,7 @@ window.VueComptes = {
         <!-- Feuille de route Phase 2 — vues de filtre sauvegardées -->
         <div class="filtres-flags" style="align-items:center">
           <select style="flex:1;min-width:140px" onchange="VueComptes.appliquerVueFiltre(this.value)">
-            <option value="">💾 Vues sauvegardées…</option>
+            <option value="">Vues sauvegardées…</option>
             ${this.state.vuesFiltres.map(v => `<option value="${v.id}" ${this.state.vueFiltreActive === v.id ? 'selected' : ''}>${v.nom}</option>`).join('')}
           </select>
           <button class="btn-filtre" title="Enregistrer les filtres actuels" onclick="VueComptes.demanderSauvegardeVue()">💾</button>
@@ -373,7 +373,7 @@ window.VueComptes = {
                   onclick="VueComptes.setFiltre('silencieux')">Silencieux</button>
           <button class="btn-filtre ${this.state.filtreStatut === 'A_REPRENDRE' ? 'actif' : ''}"
                   title="Comptes non suivis : sans propriétaire, SELL IN « non suivi » ou sans activité récente"
-                  onclick="VueComptes.setFiltre('A_REPRENDRE')">🤝 À reprendre (${NonSuivis.nb()})</button>
+                  onclick="VueComptes.setFiltre('A_REPRENDRE')">À reprendre (${NonSuivis.nb()})</button>
           ${Session.voitTout() ? `
           <button class="btn-filtre ${this.state.filtreStatut === 'SANS_CDS' ? 'actif' : ''}"
                   onclick="VueComptes.setFiltre('SANS_CDS')">Sans CDS</button>` : ''}
@@ -384,9 +384,9 @@ window.VueComptes = {
           <button class="btn-filtre ${this.state.filtreEmpower === 'TOUS' ? 'actif' : ''}"
                   onclick="VueComptes.setFiltreEmpower('TOUS')">Tous</button>
           <button class="btn-filtre ${this.state.filtreEmpower === 'EMPOWER' ? 'actif' : ''}"
-                  onclick="VueComptes.setFiltreEmpower('EMPOWER')">⭐ Empower</button>
+                  onclick="VueComptes.setFiltreEmpower('EMPOWER')">Empower</button>
           <button class="btn-filtre ${this.state.filtreEmpower === 'GROSSISTE' ? 'actif' : ''}"
-                  onclick="VueComptes.setFiltreEmpower('GROSSISTE')">⚡ Grossiste</button>
+                  onclick="VueComptes.setFiltreEmpower('GROSSISTE')">Grossiste</button>
         </div>
 
         <div class="filtres-statut" style="display:flex;gap:8px;flex-wrap:wrap">
@@ -490,7 +490,7 @@ window.VueComptes = {
             <div class="cc-pills" onclick="VueComptes.ouvrirFiche('${c.ID_Compte}')">
               ${badgeStatutCompte(c)}
               ${this._badgeEmpower(c)}
-              ${estDoublon ? `<span style="color:var(--c-warning);font-size:11px;font-weight:700" title="Un autre compte porte le même nom — ouvrir la fiche pour supprimer le doublon">⚠️ Doublon</span>` : ''}
+              ${estDoublon ? `<span style="color:var(--c-warning);font-size:11px;font-weight:700" title="Un autre compte porte le même nom — ouvrir la fiche pour supprimer le doublon">Doublon</span>` : ''}
               ${badgeDernier}
               ${NonSuivis.badge(c)}
               ${window.AContacter ? AContacter.badge(c) : ''}
@@ -508,7 +508,7 @@ window.VueComptes = {
               ${prochaineVisite ? `
                 <span class="${estDepassee(prochaineVisite) ? 'prochaine-action alerte' : ''}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${dateRelative(prochaineVisite)}</span>` : ''}
             </div>
-            ${NonSuivis.peutReprendre(c) ? `<div class="cc-actions"><button class="btn-visiter" onclick="VueComptes.reprendre('${c.ID_Compte}')">🤝 Je reprends ce compte</button></div>` : ''}
+            ${NonSuivis.peutReprendre(c) ? `<div class="cc-actions"><button class="btn-visiter" onclick="VueComptes.reprendre('${c.ID_Compte}')">Je reprends ce compte</button></div>` : ''}
             ${estLectureSeule ? `` : `
             <div class="cc-actions">
               <button class="btn-visiter" onclick="VueQuestionnaire._visitePlanifiee=null;Router.aller('#/questionnaire/${c.ID_Compte}')">Visiter</button>
@@ -571,7 +571,7 @@ window.VueComptes = {
                 }
                 const estDoublonRow = doublons.has(normaliserNom(c.Nom_Compte || ''));
                 return `<tr style="${rowStyle}">
-                  <td>${badgeStatutCompte(c)} ${this._badgeEmpower(c)}${estDoublonRow ? `<br><span style="font-size:10px;font-weight:700;color:var(--c-warning)" title="Un autre compte porte le même nom">⚠️ Doublon</span>` : ''}${joursDA !== null && joursDA > 45 ? `<br><span style="font-size:10px;font-weight:700;color:var(--c-danger)">⚠ ${joursDA}j</span>` : ''}</td>
+                  <td>${badgeStatutCompte(c)} ${this._badgeEmpower(c)}${estDoublonRow ? `<br><span style="font-size:10px;font-weight:700;color:var(--c-warning)" title="Un autre compte porte le même nom">Doublon</span>` : ''}${joursDA !== null && joursDA > 45 ? `<br><span style="font-size:10px;font-weight:700;color:var(--c-danger)">⚠ ${joursDA}j</span>` : ''}</td>
                   <td class="compte-nom" onclick="VueComptes.ouvrirFiche('${c.ID_Compte}')">${c.Nom_Compte || '—'}</td>
                   <td>${c.Ville || '—'}</td>
                   <td>${c.CANAL || '—'}</td>
@@ -650,9 +650,9 @@ window.VueComptes = {
     try {
       await VuesFiltres.sauvegarder('comptes', nom, filtres);
       s.vuesFiltres = await VuesFiltres.lister('comptes');
-      Toast.afficher(`💾 Vue "${nom}" enregistrée`, 'succes');
+      Toast.afficher(`Vue "${nom}" enregistrée`, 'succes');
       this.render();
-    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+    } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
   },
 
   appliquerVueFiltre(id) {
@@ -675,8 +675,8 @@ window.VueComptes = {
       await VuesFiltres.supprimer(id);
       this.state.vuesFiltres = this.state.vuesFiltres.filter(v => String(v.id) !== String(id));
       this.state.vueFiltreActive = null;
-      Toast.afficher('🗑️ Vue supprimée', 'succes');
+      Toast.afficher('Vue supprimée', 'succes');
       this.render();
-    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+    } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
   },
 };

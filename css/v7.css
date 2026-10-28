@@ -11,7 +11,7 @@
 :root {
   /* Tokens V7 canoniques */
   --ink:             #343F48;
-  --accent:          #FF6D68;
+  --accent:          #0400F5;
   --signal:          #FF1209;
   --navy:            #0E0D30;
   --cobalt:          #2B2D92;
@@ -24,7 +24,7 @@
   --canvas:          #EDEAE3;
   --slide-bg:        #FFFFFF;
   --sellin:          #343F48;
-  --sellout:         #FF6D68;
+  --sellout:         #0400F5;
 
   /* Rythme vertical V7 (§3) */
   --gap-xs: 6px;  --gap-s: 10px;  --gap-m: 15px;  --gap-l: 20px;  --gap-xl: 27px;

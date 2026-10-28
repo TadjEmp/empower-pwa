@@ -211,9 +211,9 @@ window.VueAdmin = {
       });
       const data = await r.json();
       if (!data.ok) throw new Error(data.erreur);
-      Toast.afficher('✅ Rôle mis à jour', 'succes');
+      Toast.afficher('Rôle mis à jour', 'succes');
       await this._chargerUtilisateurs();
-    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); await this._chargerUtilisateurs(); }
+    } catch(e) { Toast.afficher('' + e.message, 'erreur'); await this._chargerUtilisateurs(); }
   },
 
   toggleActifUtilisateur(pin, actifActuel) {
@@ -237,7 +237,7 @@ window.VueAdmin = {
       if (!data.ok) throw new Error(data.erreur);
       Toast.afficher(nouvelEtat ? '✅ Compte réactivé' : '✅ Compte désactivé', 'succes');
       await this._chargerUtilisateurs();
-    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+    } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
   },
 
   ouvrirModalReset(pin, nom) {
@@ -259,10 +259,10 @@ window.VueAdmin = {
       });
       const data = await r.json();
       if (!data.ok) throw new Error(data.erreur);
-      Toast.afficher(`✅ Mot de passe réinitialisé pour ${us.resetTarget.nom}`, 'succes');
+      Toast.afficher(`Mot de passe réinitialisé pour ${us.resetTarget.nom}`, 'succes');
       this.state.usersState.modalReset = false;
       this.render();
-    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+    } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
   },
 
   _TOUS_TABS() { return [...new Set(Object.values(Permissions.MATRICE).flat())]; },
@@ -273,7 +273,7 @@ window.VueAdmin = {
     const ROLES = Object.keys(Permissions.MATRICE);
     return `
       <div class="bloc-fiche">
-        <div class="bloc-titre" style="display:flex;align-items:center;gap:8px">👥 Utilisateurs
+        <div class="bloc-titre" style="display:flex;align-items:center;gap:8px">Utilisateurs
           <button class="btn-secondaire" style="margin-left:auto;width:auto;padding:8px 14px" onclick="VueAdmin.ouvrirModalCreation()">Créer un accès</button>
         </div>
         <div class="desktop-table-wrap">
@@ -294,7 +294,7 @@ window.VueAdmin = {
                     <span class="v7-statut" style="font-size:12px;color:${u.actif ? 'var(--c-success,#1a9e5c)' : 'var(--c-danger)'}">${u.actif ? 'Actif' : 'Désactivé'}</span>
                   </td>
                   <td style="white-space:nowrap">
-                    <button class="btn-lien" style="font-size:12px" onclick="VueAdmin.ouvrirModalReset(${u.pin}, '${(u.nom || '').replace(/'/g, "\\'")}')">🔑 Reset mdp</button>
+                    <button class="btn-lien" style="font-size:12px" onclick="VueAdmin.ouvrirModalReset(${u.pin}, '${(u.nom || '').replace(/'/g, "\\'")}')">Reset mdp</button>
                     <button class="btn-lien" style="font-size:12px;color:${u.actif ? 'var(--c-danger)' : 'var(--c-success,#1a9e5c)'}"
                             ${u.pin === Session.pin ? 'disabled title="Impossible de modifier son propre compte"' : ''}
                             onclick="VueAdmin.toggleActifUtilisateur(${u.pin}, ${u.actif})">${u.actif ? '🚫 Désactiver' : '✅ Réactiver'}</button>
@@ -307,7 +307,7 @@ window.VueAdmin = {
       </div>
 
       <div class="bloc-fiche">
-        <div class="bloc-titre">🔐 Matrice des permissions (lecture seule)</div>
+        <div class="bloc-titre">Matrice des permissions (lecture seule)</div>
         <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">Définie dans <code>js/permissions.js</code> — accès par rôle aux sections de l'app.</p>
         <div class="desktop-table-wrap">
           <table class="desktop-table-data-view">
@@ -410,12 +410,12 @@ window.VueAdmin = {
     return `
       <div class="modal-overlay" onclick="if(event.target===this) VueAdmin.fermerModalReset()">
         <div class="modal">
-          <h3>🔑 Réinitialiser le mot de passe — ${us.resetTarget.nom}</h3>
+          <h3>Réinitialiser le mot de passe — ${us.resetTarget.nom}</h3>
           <label>Nouveau mot de passe (12 caractères min)
             <input type="password" class="q-input" value="${us.resetMdp}" oninput="VueAdmin.state.usersState.resetMdp=this.value"/></label>
           <div style="display:flex;gap:8px;margin-top:14px">
             <button type="button" class="btn-secondaire" onclick="VueAdmin.fermerModalReset()">Annuler</button>
-            <button type="button" class="btn-primaire" onclick="VueAdmin.confirmerReset()">✅ Réinitialiser</button>
+            <button type="button" class="btn-primaire" onclick="VueAdmin.confirmerReset()">Réinitialiser</button>
           </div>
         </div>
       </div>`;
@@ -430,7 +430,7 @@ window.VueAdmin = {
         .sort((a, b) => new Date(b.Date_Action || b.Timestamp || 0) - new Date(a.Date_Action || a.Timestamp || 0))
         .slice(0, 200);
     } catch(e) {
-      Toast.afficher('❌ Erreur chargement journal : ' + e.message, 'erreur');
+      Toast.afficher('Erreur chargement journal : ' + e.message, 'erreur');
     }
     this.state.journalChargement = false;
     this.render();
@@ -454,7 +454,7 @@ window.VueAdmin = {
         doublonsComptes: this._detecterDoublons(comptes || [], 'ID_Compte', 'Nom_Compte'),
       };
     } catch(e) {
-      Toast.afficher('❌ Erreur analyse qualité : ' + e.message, 'erreur');
+      Toast.afficher('Erreur analyse qualité : ' + e.message, 'erreur');
       this.state.qualite = { erreur: e.message };
     }
     this.state.qualiteChargement = false;
@@ -487,7 +487,7 @@ window.VueAdmin = {
         String(p.deleted || '').toUpperCase() !== 'TRUE' &&
         String(p.Source_Import || '') === 'ESI_PIPELINE'
       );
-    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+    } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
     this.state.suivi.chargement = false;
     this.render();
   },
@@ -532,7 +532,7 @@ window.VueAdmin = {
 
     return `
       <div class="bloc-fiche">
-        <div class="bloc-titre">📊 Suivi Pipeline EMPOWER</div>
+        <div class="bloc-titre">Suivi Pipeline EMPOWER</div>
         <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">
           ${total} leads · Mise à jour en temps réel par les CDS terrain.
         </p>
@@ -596,8 +596,8 @@ window.VueAdmin = {
                   ${dateP ? `<div style="font-size:11px;font-weight:${retard?'700':'400'};color:${retard?'var(--c-danger)':'var(--c-text-2)'}">
                     ${retard ? '⚠️ ' : '⏰ '}${dateRelative(dateP)}
                   </div>` : ''}
-                  ${packOk ? `<div style="font-size:10px;color:var(--c-success,#1a9e5c)">📦 Pack ✅</div>`
-                           : packAttend ? `<div style="font-size:10px;color:var(--c-warning,#f59e0b)">📦 Pack ⏳</div>` : ''}
+                  ${packOk ? `<div style="font-size:10px;color:var(--c-success,#1a9e5c)">Pack ✅</div>`
+                           : packAttend ? `<div style="font-size:10px;color:var(--c-warning,#f59e0b)">Pack ⏳</div>` : ''}
                 </div>
               </div>
             </div>`;
@@ -606,7 +606,7 @@ window.VueAdmin = {
         ${leads.length === 0 ? `<div style="text-align:center;padding:28px;color:var(--c-text-2)">Aucun lead pour ces filtres</div>` : ''}
 
         <button class="btn-secondaire" style="width:100%;margin-top:14px"
-                onclick="VueAdmin.state.suivi.leads=[];VueAdmin._chargerSuivi()">🔄 Actualiser</button>
+                onclick="VueAdmin.state.suivi.leads=[];VueAdmin._chargerSuivi()">Actualiser</button>
       </div>`;
   },
 
@@ -650,7 +650,7 @@ window.VueAdmin = {
 
       await this._creerLeadDepuisForm(f);
     } catch(err) {
-      Toast.afficher('❌ ' + err.message, 'erreur');
+      Toast.afficher('' + err.message, 'erreur');
       this.state.leadEnvoi = false;
       this.render();
     }
@@ -699,10 +699,10 @@ window.VueAdmin = {
       }
       await this._logExport(`LEAD_CREE:${f.nom}`, 1);
       const _cdsLbl = window.resolveCDS ? resolveCDS(f.cdsAssigne) : f.cdsAssigne;
-      Toast.afficher(`✅ Lead créé — ${f.nom}${f.cdsAssigne ? ` → assigné à ${_cdsLbl}` : ' (à traiter)'}`, 'succes', 5000);
+      Toast.afficher(`Lead créé — ${f.nom}${f.cdsAssigne ? ` → assigné à ${_cdsLbl}` : ' (à traiter)'}`, 'succes', 5000);
       this.state.formLead = this._initFormLead();
     } catch(err) {
-      Toast.afficher('❌ ' + err.message, 'erreur');
+      Toast.afficher('' + err.message, 'erreur');
     }
     this.state.leadEnvoi = false;
     this.render();
@@ -719,7 +719,7 @@ window.VueAdmin = {
 
     return `
       <div class="bloc-fiche">
-        <div class="bloc-titre">➕ Créer un lead EMPOWER</div>
+        <div class="bloc-titre">Créer un lead EMPOWER</div>
         <p style="font-size:12px;color:var(--c-text-2);margin-bottom:14px">
           Les leads créés ici apparaissent immédiatement dans l'EMPOWER TRACKER du CDS assigné.
         </p>
@@ -848,13 +848,13 @@ window.VueAdmin = {
         throw new Error(data?.error || `HTTP ${_r2.status}`);
       }
       this.state.importResultat = { ok: true, message: data.message };
-      Toast.afficher(`✅ ${data.upserted} lead(s) importés depuis l'onglet '${data.tab}'`, 'succes', 6000);
+      Toast.afficher(`${data.upserted} lead(s) importés depuis l'onglet '${data.tab}'`, 'succes', 6000);
       await SheetsAPI.viderCache('EMPOWER_MDB', '📋_PROSPECTS');
       this.state.suivi.leads = [];
       await this._chargerSuivi();
     } catch(e) {
       this.state.importResultat = { ok: false, message: e.message };
-      Toast.afficher('❌ Import : ' + e.message, 'erreur', 8000);
+      Toast.afficher('Import : ' + e.message, 'erreur', 8000);
     }
     this.state.importEnCours = false;
     this.render();
@@ -897,7 +897,7 @@ window.VueAdmin = {
       this.state.syncSellInResultat   = { ok: true, matched, crees, nonMatch: nonMatch.length, ts };
       this.state.syncSellInNonMatcher = nonMatch;
       Toast.afficher(
-        `✅ "${file.name}" importé — ${data.revendeurs} revendeur(s) · ${matched} compte(s) mis à jour` +
+        `"${file.name}" importé — ${data.revendeurs} revendeur(s) · ${matched} compte(s) mis à jour` +
         (crees ? ` · ${crees} créé(s) (non attribués)` : '') +
         (nonMatch.length ? ` · ${nonMatch.length} à valider` : ''),
         'succes', 7000
@@ -913,7 +913,7 @@ window.VueAdmin = {
       ]);
     } catch(e) {
       this.state.syncSellInResultat = { ok: false, message: e.message || String(e) };
-      Toast.afficher('❌ Import Sell-In : ' + (e.message || e), 'erreur');
+      Toast.afficher('Import Sell-In : ' + (e.message || e), 'erreur');
     }
     this.state.syncSellInEnCours = false;
     this.render();
@@ -945,10 +945,10 @@ window.VueAdmin = {
       if (!r.ok || !data.ok) throw new Error(data.erreur || `HTTP ${r.status}`);
       this.state.syncSemainesResultat = { ...data, ok: true, ts: new Date().toLocaleString('fr-FR') };
       this._detailSemainesEnAttente = null;
-      Toast.afficher(`✅ SELL IN par semaine : ${data.comptes_flagues} compte(s) flaggé(s)` + (data.nonMatcher.length ? ` · ${data.nonMatcher.length} à rattacher` : ''), 'succes', 6000);
+      Toast.afficher(`SELL IN par semaine : ${data.comptes_flagues} compte(s) flaggé(s)` + (data.nonMatcher.length ? ` · ${data.nonMatcher.length} à rattacher` : ''), 'succes', 6000);
     } catch (e) {
       this.state.syncSemainesResultat = { ok: false, message: e.message || String(e) };
-      Toast.afficher('❌ SELL IN par semaine : ' + (e.message || e), 'erreur');
+      Toast.afficher('SELL IN par semaine : ' + (e.message || e), 'erreur');
     }
   },
 
@@ -975,9 +975,9 @@ window.VueAdmin = {
       const res = this.state.syncSemainesResultat;
       if (res?.nonMatcher) res.nonMatcher = res.nonMatcher.filter(n => n.reseller !== nom);
       await SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES');
-      Toast.afficher(`✅ « ${nom} » rattaché — alias mémorisé`, 'succes');
+      Toast.afficher(`« ${nom} » rattaché — alias mémorisé`, 'succes');
       this.render();
-    } catch (e) { Toast.afficher('❌ ' + (e.message || e), 'erreur'); }
+    } catch (e) { Toast.afficher('' + (e.message || e), 'erreur'); }
   },
 
   // Rattachement depuis la liste de candidats (id d'élément dérivé du nom normalisé).
@@ -993,7 +993,7 @@ window.VueAdmin = {
     const eur = n => Number(n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
     if (!r.ok) return `
       <div class="bloc-fiche" style="border-left:3px solid var(--c-danger)">
-        <div class="bloc-titre">📦 SELL IN par semaine — non importé</div>
+        <div class="bloc-titre">SELL IN par semaine — non importé</div>
         <p style="font-size:12px;margin:0 0 8px">${E(r.message)}</p>
         ${r.ancien ? `<button class="btn-secondaire" style="width:auto;padding:8px 14px" onclick="VueAdmin.forcerImportSemaines()">Importer quand même</button>` : ''}
       </div>`;
@@ -1004,14 +1004,14 @@ window.VueAdmin = {
     const idSel = n => 'alias-' + String(n.norm || n.reseller).replace(/[^A-Za-z0-9]/g, '_');
     return `
       <div class="bloc-fiche">
-        <div class="bloc-titre">📦 SELL IN par semaine — ${r.comptes_flagues} compte(s) flaggé(s) · ${E(r.ts || '')}</div>
+        <div class="bloc-titre">SELL IN par semaine — ${r.comptes_flagues} compte(s) flaggé(s) · ${E(r.ts || '')}</div>
         <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:8px">
           <thead><tr style="text-align:left;color:var(--c-text-2)"><th>Trimestre</th><th>Dernière sem.</th><th style="text-align:right">Revendeurs</th><th style="text-align:right">CA importé</th><th style="text-align:right">dont non rattaché</th></tr></thead>
           <tbody>${lignes}</tbody>
         </table>
         <p style="font-size:11px;color:var(--c-text-2);margin:0 0 8px">Contrôle : « CA importé » doit égaler la somme de la colonne <em>Local Value</em> de l'onglet. « Non rattaché » = CA de revendeurs sans compte (à traiter ci-dessous).</p>
         ${(r.nonMatcher || []).length ? `
-        <div style="font-size:12px;font-weight:700;color:var(--c-warning);margin-bottom:6px">⚠️ À rattacher (${r.nonMatcher.length}) — aucun compte créé automatiquement</div>
+        <div style="font-size:12px;font-weight:700;color:var(--c-warning);margin-bottom:6px">À rattacher (${r.nonMatcher.length}) — aucun compte créé automatiquement</div>
         ${r.nonMatcher.map(n => `
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px;padding:6px 0;border-bottom:1px solid var(--c-border)">
             <strong style="min-width:140px">${E(n.reseller)}</strong>
@@ -1022,7 +1022,7 @@ window.VueAdmin = {
               <button class="btn-secondaire" style="width:auto;padding:6px 10px;font-size:12px"
                       data-nom="${E(n.reseller)}" onclick="VueAdmin.rattacherDepuisListe('${idSel(n)}', this.dataset.nom)">Rattacher</button>`
             : `<span style="color:var(--c-text-2)">compte introuvable — créer le compte puis réimporter</span>`}
-          </div>`).join('')}` : '<span style="font-size:12px">🎯 Tous les revendeurs sont rattachés</span>'}
+          </div>`).join('')}` : '<span style="font-size:12px">Tous les revendeurs sont rattachés</span>'}
       </div>`;
   },
 
@@ -1060,7 +1060,7 @@ window.VueAdmin = {
       this.state.syncSellInResultat   = { ok: true, matched, crees, nonMatch: nonMatch.length, ts };
       this.state.syncSellInNonMatcher = nonMatch;
       Toast.afficher(
-        `✅ Sell-In synchronisé — ${matched} compte(s) mis à jour` +
+        `Sell-In synchronisé — ${matched} compte(s) mis à jour` +
         (crees ? ` · ${crees} créé(s) (non attribués)` : '') +
         (nonMatch.length ? ` · ${nonMatch.length} à valider` : ''),
         'succes', 7000
@@ -1078,7 +1078,7 @@ window.VueAdmin = {
       ]);
     } catch(e) {
       this.state.syncSellInResultat = { ok: false, message: e.message || String(e) };
-      Toast.afficher('❌ Sync sell-in : ' + (e.message || e), 'erreur');
+      Toast.afficher('Sync sell-in : ' + (e.message || e), 'erreur');
     }
     this.state.syncSellInEnCours = false;
     this.render();
@@ -1094,10 +1094,10 @@ window.VueAdmin = {
     });
     try {
       await SheetsAPI.mettreAJour('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES', idObjectif, champs);
-      Toast.afficher('✅ Objectifs révisés enregistrés', 'succes');
+      Toast.afficher('Objectifs révisés enregistrés', 'succes');
       const o = this.state.objectifs.find(x => String(x.PIN_CDS) === String(idObjectif));
       if (o) Object.assign(o, champs);
-    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+    } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
     this.state.envoiEnCours = false;
   },
 
@@ -1128,7 +1128,7 @@ window.VueAdmin = {
       Toast.afficher('Clé enregistrée avec succès', 'succes');
     } catch(e) {
       // Message EXACT renvoyé par le backend (pas "failed")
-      Toast.afficher('❌ ' + (e && e.message ? e.message : 'Erreur inconnue'), 'erreur');
+      Toast.afficher('' + (e && e.message ? e.message : 'Erreur inconnue'), 'erreur');
     }
     finally { if (btn) { btn.disabled = false; btn.textContent = '💾 Enregistrer la clé Groq'; } }
   },
@@ -1150,7 +1150,7 @@ window.VueAdmin = {
       Toast.afficher('Clé enregistrée avec succès', 'succes');
     } catch(e) {
       // Message EXACT renvoyé par le backend (pas "failed")
-      Toast.afficher('❌ ' + (e && e.message ? e.message : 'Erreur inconnue'), 'erreur');
+      Toast.afficher('' + (e && e.message ? e.message : 'Erreur inconnue'), 'erreur');
     }
     finally { if (btn) { btn.disabled = false; btn.textContent = '💾 Enregistrer la clé Gemini'; } }
   },
@@ -1168,10 +1168,10 @@ window.VueAdmin = {
       );
       const ms = Date.now() - t0;
       if (out) { out.style.color = 'var(--c-success, #1a9e5c)'; out.textContent = `✅ Groq répond (${ms} ms) — « ${String(rep).slice(0, 40)} »`; }
-      Toast.afficher('✅ Clé Groq fonctionnelle', 'succes');
+      Toast.afficher('Clé Groq fonctionnelle', 'succes');
     } catch(e) {
-      if (out) { out.style.color = 'var(--c-cta, #FF6D68)'; out.textContent = '❌ ' + e.message; }
-      Toast.afficher('❌ Groq : ' + e.message, 'erreur');
+      if (out) { out.style.color = 'var(--c-cta, #0400F5)'; out.textContent = '❌ ' + e.message; }
+      Toast.afficher('Groq : ' + e.message, 'erreur');
     } finally { if (btn) { btn.disabled = false; btn.textContent = '🧪 Tester la clé Groq'; } }
   },
 
@@ -1185,16 +1185,16 @@ window.VueAdmin = {
       const rep = await GeminiAPI._appeler('Réponds exactement: OK', '');
       const ms = Date.now() - t0;
       if (out) { out.style.color = 'var(--c-success, #1a9e5c)'; out.textContent = `✅ Gemini répond (${ms} ms) — « ${String(rep).trim().slice(0, 40)} »`; }
-      Toast.afficher('✅ Clé Gemini fonctionnelle', 'succes');
+      Toast.afficher('Clé Gemini fonctionnelle', 'succes');
     } catch(e) {
-      if (out) { out.style.color = 'var(--c-cta, #FF6D68)'; out.textContent = '❌ ' + e.message; }
-      Toast.afficher('❌ Gemini : ' + e.message, 'erreur');
+      if (out) { out.style.color = 'var(--c-cta, #0400F5)'; out.textContent = '❌ ' + e.message; }
+      Toast.afficher('Gemini : ' + e.message, 'erreur');
     } finally { if (btn) { btn.disabled = false; btn.textContent = '🧪 Tester la clé Gemini'; } }
   },
 
   async viderCache() {
     await SheetsAPI.viderCache();
-    Toast.afficher('🗑️ Cache local vidé — données rechargées au prochain écran', 'succes');
+    Toast.afficher('Cache local vidé — données rechargées au prochain écran', 'succes');
   },
 
   confirmerPurgeCDS(pinCDS, nomCDS) {
@@ -1221,10 +1221,10 @@ window.VueAdmin = {
       });
       const data = await r.json();
       if (!data.ok) throw new Error(data.erreur);
-      Toast.afficher(`✅ ${data.lignesSupprimees} ligne(s) supprimée(s) pour ${nomCDS}`, 'succes');
+      Toast.afficher(`${data.lignesSupprimees} ligne(s) supprimée(s) pour ${nomCDS}`, 'succes');
       await SheetsAPI.viderCache('EMPOWER_MDB', '📞_PHONING');
       await SheetsAPI.viderCache('EMPOWER_MDB', '🗺️_VISITES');
-    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+    } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
     finally { if (btn) { btn.disabled = false; btn.textContent = '🗑️ Purger'; } }
   },
 
@@ -1325,9 +1325,9 @@ window.VueAdmin = {
       const date = dateISOLocale();
       this._telechargerCSV(csv, `ESI_${exp.id}_${date}.csv`);
       await this._logExport(exp.label, rows.length);
-      Toast.afficher(`✅ Export ${exp.label} — ${rows.length} lignes`, 'succes');
+      Toast.afficher(`Export ${exp.label} — ${rows.length} lignes`, 'succes');
     } catch(e) {
-      Toast.afficher('❌ Export échoué : ' + e.message, 'erreur');
+      Toast.afficher('Export échoué : ' + e.message, 'erreur');
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = `📥 Exporter`; }
     }
@@ -1440,9 +1440,9 @@ window.VueAdmin = {
       const date = dateISOLocale();
       this._telechargerCSV(csv, `ESI_TRACKER_EMPOWER_${date}.csv`);
       await this._logExport('TRACKER_EMPOWER', rows.length);
-      Toast.afficher(`✅ Tracker EMPOWER — ${rows.length} lead(s) exportés`, 'succes');
+      Toast.afficher(`Tracker EMPOWER — ${rows.length} lead(s) exportés`, 'succes');
     } catch(e) {
-      Toast.afficher('❌ Export Tracker : ' + e.message, 'erreur');
+      Toast.afficher('Export Tracker : ' + e.message, 'erreur');
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = '📥 CSV'; }
     }
@@ -1453,7 +1453,7 @@ window.VueAdmin = {
     const au = this.state.filtrePickupA  || '';
     const filtrePickupHtml = `
       <div style="margin-bottom:16px;padding:10px 12px;background:var(--c-bg);border-radius:var(--radius-sm);border:1px solid var(--c-border)">
-        <div style="font-size:12px;font-weight:700;color:var(--c-text-2);margin-bottom:8px">📅 Filtre Pickup Date</div>
+        <div style="font-size:12px;font-weight:700;color:var(--c-text-2);margin-bottom:8px">Filtre Pickup Date</div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
           <label style="font-size:12px;flex:1;min-width:120px">Du
             <input type="date" class="q-input" style="margin-top:3px;padding:6px" value="${de}"
@@ -1464,7 +1464,7 @@ window.VueAdmin = {
                    onchange="VueAdmin.state.filtrePickupA=this.value"/>
           </label>
           <button class="btn-secondaire" style="padding:7px 12px;width:auto;align-self:flex-end"
-                  onclick="VueAdmin.state.filtrePickupDe='';VueAdmin.state.filtrePickupA='';VueAdmin.render()">✕ Reset</button>
+                  onclick="VueAdmin.state.filtrePickupDe='';VueAdmin.state.filtrePickupA='';VueAdmin.render()">Reset</button>
         </div>
         <div style="font-size:11px;color:var(--c-text-2);margin-top:6px">
           Appliqué sur Tracker EMPOWER, Pipeline complet, Visites, Phoning et Journal des actions.
@@ -1474,14 +1474,14 @@ window.VueAdmin = {
     `;
     const trackerExportHtml = `
       <div style="margin-bottom:18px">
-        <div style="font-size:12px;font-weight:700;color:var(--c-title);letter-spacing:.04em;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--c-border)">📊 Tracker EMPOWER</div>
+        <div style="font-size:12px;font-weight:700;color:var(--c-title);letter-spacing:.04em;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--c-border)">Tracker EMPOWER</div>
         <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:8px 0;gap:12px">
           <div style="flex:1;min-width:0">
             <div style="font-size:13px;font-weight:600">Export Tracker EMPOWER (pipeline)</div>
             <div style="font-size:11px;color:var(--c-text-2);margin-top:1px">Leads ESI_PIPELINE — colonnes métier : Statut, CDS, Welcome Pack, Prochaine action, POTENTIEL, ORIGINE</div>
           </div>
           <button id="btn-export-tracker" class="btn-secondaire" style="padding:8px 14px;width:auto;flex-shrink:0"
-                  onclick="VueAdmin.exporterTracker()">📥 CSV</button>
+                  onclick="VueAdmin.exporterTracker()">CSV</button>
         </div>
       </div>`;
     return filtrePickupHtml + trackerExportHtml + this.EXPORT_GROUPES.map(groupe => `
@@ -1494,7 +1494,7 @@ window.VueAdmin = {
               <div style="font-size:11px;color:var(--c-text-2);margin-top:1px">${e.desc}</div>
             </div>
             <button id="btn-export-${e.id}" class="btn-secondaire" style="padding:8px 14px;width:auto;flex-shrink:0"
-                    onclick="VueAdmin.exporterDonnees('${e.id}')">📥 CSV</button>
+                    onclick="VueAdmin.exporterDonnees('${e.id}')">CSV</button>
           </div>`).join('')}
       </div>`).join('');
   },
@@ -1512,7 +1512,7 @@ window.VueAdmin = {
       app.innerHTML = `
         <header class="header-vue">
           <button onclick="Router.retour()" class="btn-retour">←</button>
-          <h1>📥 Espace Alexandra</h1>
+          <h1>Espace Alexandra</h1>
         </header>
         <!-- Onglets -->
         <div style="display:flex;border-bottom:2px solid var(--c-border);background:var(--c-surface)">
@@ -1527,7 +1527,7 @@ window.VueAdmin = {
           ${tab === 'suivi' ? this._renderSuivi()
           : tab === 'exports' ? `
             <div class="bloc-fiche">
-              <div class="bloc-titre">📥 Exports CSV — Reporting thématique</div>
+              <div class="bloc-titre">Exports CSV — Reporting thématique</div>
               <p style="font-size:12px;color:var(--c-text-2);margin-bottom:14px">
                 Données en temps réel. Chaque export est tracé dans 📊_ACTIONS.
               </p>
@@ -1560,7 +1560,7 @@ window.VueAdmin = {
     app.innerHTML = `
       <header class="header-vue">
         <button onclick="Router.retour()" class="btn-retour">←</button>
-        <h1>⚙️ Administration</h1>
+        <h1>Administration</h1>
         <span class="js-tab-label" hidden>${adminTabLabel}</span>
       </header>
 
@@ -1590,7 +1590,7 @@ window.VueAdmin = {
                   </label>`).join('')}
               </div>
               <button class="btn-secondaire" style="margin-top:8px;padding:8px"
-                      onclick="VueAdmin.sauverObjectif('${o.PIN_CDS}')">💾 Enregistrer ${o.Nom_CDS}</button>
+                      onclick="VueAdmin.sauverObjectif('${o.PIN_CDS}')">Enregistrer ${o.Nom_CDS}</button>
             </div>`).join('')}
           <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">Vide = objectif initial conservé. Les % pace utilisent le révisé s'il existe.</p>
         </div>` : ''}
@@ -1602,13 +1602,13 @@ window.VueAdmin = {
           <div style="display:flex;gap:8px;align-items:stretch">
             <input id="admin-groq-key" type="password" class="q-input" style="flex:1" placeholder="gsk_…" autocomplete="new-password"/>
             <button id="btn-groq-toggle" type="button" class="btn-secondaire" style="width:auto;flex-shrink:0;white-space:nowrap"
-                    onclick="VueAdmin.toggleCleVisible('admin-groq-key','btn-groq-toggle')">👁️ Afficher</button>
+                    onclick="VueAdmin.toggleCleVisible('admin-groq-key','btn-groq-toggle')">Afficher</button>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
             <button id="btn-groq-save" class="btn-secondaire"
-                    onclick="VueAdmin.sauverCleGroq()">💾 Enregistrer la clé Groq</button>
+                    onclick="VueAdmin.sauverCleGroq()">Enregistrer la clé Groq</button>
             <button id="btn-groq-test" class="btn-secondaire"
-                    onclick="VueAdmin.testerCleGroq()">🧪 Tester la clé Groq</button>
+                    onclick="VueAdmin.testerCleGroq()">Tester la clé Groq</button>
           </div>
           <div id="groq-test-res" style="font-size:12px;margin-top:8px;min-height:16px"></div>
           <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">
@@ -1621,13 +1621,13 @@ window.VueAdmin = {
           <div style="display:flex;gap:8px;align-items:stretch">
             <input id="admin-gemini-key" type="password" class="q-input" style="flex:1" placeholder="AIza…" autocomplete="new-password"/>
             <button id="btn-gemini-toggle" type="button" class="btn-secondaire" style="width:auto;flex-shrink:0;white-space:nowrap"
-                    onclick="VueAdmin.toggleCleVisible('admin-gemini-key','btn-gemini-toggle')">👁️ Afficher</button>
+                    onclick="VueAdmin.toggleCleVisible('admin-gemini-key','btn-gemini-toggle')">Afficher</button>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
             <button id="btn-gemini-save" class="btn-secondaire"
-                    onclick="VueAdmin.sauverCleGemini()">💾 Enregistrer la clé Gemini</button>
+                    onclick="VueAdmin.sauverCleGemini()">Enregistrer la clé Gemini</button>
             <button id="btn-gemini-test" class="btn-secondaire"
-                    onclick="VueAdmin.testerCleGemini()">🧪 Tester la clé Gemini</button>
+                    onclick="VueAdmin.testerCleGemini()">Tester la clé Gemini</button>
           </div>
           <div id="gemini-test-res" style="font-size:12px;margin-top:8px;min-height:16px"></div>
           <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">
@@ -1648,7 +1648,7 @@ window.VueAdmin = {
         ${adminTab === 'exports' ? `
         <!-- EXPORTS CSV — REPORTING THÉMATIQUE -->
         <div class="bloc-fiche">
-          <div class="bloc-titre">📥 Exports CSV — Reporting thématique</div>
+          <div class="bloc-titre">Exports CSV — Reporting thématique</div>
           <p style="font-size:12px;color:var(--c-text-2);margin-bottom:14px">
             7 exports organisés par thème. Données en temps réel depuis Google Sheets.
             Chaque export est tracé dans 📊_ACTIONS avec l'identité de l'exporteur.
@@ -1659,7 +1659,7 @@ window.VueAdmin = {
         ${adminTab === 'sync' ? `
         <!-- IMPORT EMPOWER TRACKER -->
         <div class="bloc-fiche">
-          <div class="bloc-titre">🔄 Synchroniser EMPOWER TRACKER</div>
+          <div class="bloc-titre">Synchroniser EMPOWER TRACKER</div>
           <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">
             Importe les revendeurs de l'onglet <strong>1 - Saisie</strong> du fichier EMPOWER TRACKER (Google Drive)
             dans la base <code>📋_PROSPECTS</code> avec <code>Source_Import=ESI_PIPELINE</code>.<br>
@@ -1668,8 +1668,8 @@ window.VueAdmin = {
           </p>
           ${this.state.importResultat ? `
             <div style="padding:10px;border-radius:6px;margin-bottom:12px;
-              background:${this.state.importResultat.ok ? 'rgba(26,158,92,.1)' : 'rgba(255,109,104,.1)'};
-              border:1px solid ${this.state.importResultat.ok ? 'var(--c-success,#1a9e5c)' : 'var(--c-cta,#FF6D68)'}">
+              background:${this.state.importResultat.ok ? 'rgba(26,158,92,.1)' : 'rgba(4,0,245,.1)'};
+              border:1px solid ${this.state.importResultat.ok ? 'var(--c-success,#1a9e5c)' : 'var(--c-cta,#0400F5)'}">
               <span style="font-size:13px;font-weight:600">
                 ${this.state.importResultat.ok ? '✅' : '❌'} ${this.state.importResultat.message}
               </span>
@@ -1687,7 +1687,7 @@ window.VueAdmin = {
 
         <!-- SYNC SELL-IN -->
         <div class="bloc-fiche">
-          <div class="bloc-titre">📊 Synchronisation Sell-In</div>
+          <div class="bloc-titre">Synchronisation Sell-In</div>
           <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">
             Met à jour les CA (FY25, FY26, Q1FY27) et les statuts ACTIF/CHURN/INACTIF dans <strong>Comptes</strong>
             à partir du Google Drive Sell-In. Sync automatique chaque <strong>lundi à 8h00</strong>.
@@ -1697,17 +1697,17 @@ window.VueAdmin = {
             const r = this.state.syncSellInResultat;
             if (!r.ok) return `
               <div style="padding:10px 14px;border-radius:8px;margin-bottom:12px;font-size:13px;
-                background:rgba(255,109,104,.1);border:1px solid var(--c-danger,#ef4444)">
+                background:rgba(4,0,245,.1);border:1px solid var(--c-danger,#ef4444)">
                 ❌ ${r.message}
               </div>`;
             return `
               <div style="padding:10px 14px;border-radius:8px;margin-bottom:12px;font-size:13px;
                 background:rgba(16,185,129,.1);border:1px solid var(--c-success,#10b981)">
-                <div style="font-weight:700;margin-bottom:4px">✅ Synchronisation réussie · ${r.ts}</div>
+                <div style="font-weight:700;margin-bottom:4px">Synchronisation réussie · ${r.ts}</div>
                 <div style="display:flex;gap:16px;font-size:12px;flex-wrap:wrap">
                   <span>✅ <strong>${r.matched}</strong> comptes mis à jour</span>
                   ${r.crees > 0 ? `<span style="color:var(--c-primary)">🏢 <strong>${r.crees}</strong> créé(s), non attribués</span>` : ''}
-                  ${r.nonMatch > 0 ? `<span style="color:var(--c-warning)">⚠️ <strong>${r.nonMatch}</strong> à valider manuellement</span>` : '<span>🎯 Aucun cas à valider</span>'}
+                  ${r.nonMatch > 0 ? `<span style="color:var(--c-warning)">⚠️ <strong>${r.nonMatch}</strong> à valider manuellement</span>` : '<span>Aucun cas à valider</span>'}
                 </div>
               </div>
               ${this.state.syncSellInNonMatcher.length > 0 ? `
@@ -1745,7 +1745,7 @@ window.VueAdmin = {
             ${this.state.syncSellInEnCours ? '⏳ Import en cours…' : '📂 Importer un fichier Sell-In (.xlsx)'}
           </button>
           <p style="font-size:11px;color:var(--c-text-2);margin-bottom:12px">
-            Choisis le fichier "SELL IN Qx FYxx DASHBOARD.xlsx" le plus récent — l'onglet <code>📥 DATA FY25-FY26-FY27</code> est lu automatiquement, tous les quarters présents sont pris en compte. Peut être refait chaque semaine avec le fichier mis à jour (aucun doublon : les lignes existantes sont remplacées).
+            Choisis le fichier "SELL IN Qx FYxx DASHBOARD.xlsx" le plus récent — l'onglet <code>DATA FY25-FY26-FY27</code> est lu automatiquement, tous les quarters présents sont pris en compte. Peut être refait chaque semaine avec le fichier mis à jour (aucun doublon : les lignes existantes sont remplacées).
           </p>
           <button class="btn-secondaire"
                   style="padding:8px 16px;width:100%"
@@ -1761,7 +1761,7 @@ window.VueAdmin = {
         ${adminTab === 'rgpd' ? `
         <!-- RGPD -->
         <div class="bloc-fiche">
-          <div class="bloc-titre">🔒 RGPD — Purge des données personnelles</div>
+          <div class="bloc-titre">RGPD — Purge des données personnelles</div>
           <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">
             Supprime définitivement les appels (📞_PHONING) et visites (🗺️_VISITES) d'un CDS.
             Les comptes et prospects ne sont pas affectés.<br>
@@ -1771,7 +1771,7 @@ window.VueAdmin = {
             <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--c-border)">
               <div>
                 <div style="font-size:14px;font-weight:600">${o.Nom_CDS}</div>
-                <div style="font-size:11px;color:var(--c-text-2)">📞 appels + 🗺️ visites</div>
+                <div style="font-size:11px;color:var(--c-text-2)">appels + 🗺️ visites</div>
               </div>
               <button id="btn-purge-${o.PIN_CDS}" class="btn-secondaire"
                       style="padding:8px 14px;width:auto;color:var(--c-danger);border-color:var(--c-danger)"
@@ -1789,7 +1789,7 @@ window.VueAdmin = {
         <!-- MAINTENANCE -->
         <div class="bloc-fiche">
           <div class="bloc-titre">Maintenance</div>
-          <button class="btn-secondaire" onclick="VueAdmin.viderCache()">🗑️ Vider le cache local (IndexedDB)</button>
+          <button class="btn-secondaire" onclick="VueAdmin.viderCache()">Vider le cache local (IndexedDB)</button>
         </div>
         ${this._renderQualiteDonnees()}` : ''}
 
@@ -1856,7 +1856,7 @@ window.VueAdmin = {
     const rows = this.state.journal || [];
     return `
       <div class="bloc-fiche">
-        <div class="bloc-titre">📊 Journal des actions
+        <div class="bloc-titre">Journal des actions
           <span class="badge-compteur">${rows.length}${rows.length >= 200 ? ' (200 dernières)' : ''}</span>
           <button class="btn-lien" style="margin-left:auto;font-size:12px" onclick="VueAdmin.state.journal=[];VueAdmin._chargerJournal()">↻ Actualiser</button>
         </div>

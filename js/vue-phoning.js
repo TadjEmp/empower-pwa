@@ -506,10 +506,10 @@ window.VuePhoning = {
       }
       this._modalAjoutTracker = null;
       this._trackerAjoute = true;
-      Toast.afficher(`✅ Ajouté au Tracker : ${m.nomCompte}`, 'succes', 5000);
+      Toast.afficher(`Ajouté au Tracker : ${m.nomCompte}`, 'succes', 5000);
       this._rafraichirZoneTracker();
     } catch(e) {
-      Toast.afficher('❌ ' + e.message, 'erreur');
+      Toast.afficher('' + e.message, 'erreur');
     } finally {
       this._ajoutTrackerEnCours = false;
     }
@@ -596,7 +596,7 @@ window.VuePhoning = {
         <div style="padding:10px;font-size:13px;color:var(--c-text-2);text-align:center">
           Aucun prospect trouvé<br>
           <button class="btn-secondaire" style="margin-top:8px;font-size:12px"
-            onclick="Router.aller('#/empower-tracker')">➕ Créer "${this.state.recherche}" dans le Tracker →</button>
+            onclick="Router.aller('#/empower-tracker')">Créer "${this.state.recherche}" dans le Tracker →</button>
         </div>`;
       return;
     }
@@ -646,7 +646,7 @@ window.VuePhoning = {
         canal: c.CANAL, semaines_silence: this._semainesSilence(),
         ca_fy25: c.CA_FY25, objectif_appel: this.state.d.objectif,
       });
-    } catch(e) { Toast.afficher('❌ IA : ' + e.message, 'erreur'); }
+    } catch(e) { Toast.afficher('IA : ' + e.message, 'erreur'); }
     this.state.scriptEnCours = false;
     this.render();
   },
@@ -704,7 +704,7 @@ window.VuePhoning = {
       await GroqAPI.demarrerEnregistrement(async blob => {
         this.state.enregistre = false;
         this.render();
-        Toast.afficher('🤖 Transcription + qualification…', 'info', 4000);
+        Toast.afficher('Transcription + qualification…', 'info', 4000);
         try {
           const txt = await GroqAPI.transcrire(blob);
           this.state.transcription = txt;
@@ -727,8 +727,8 @@ window.VuePhoning = {
             else if (q.score <= 1) d.resultatProspect = 'NON_INTERESSE';
             else                   d.resultatProspect = 'RAPPELER';
           }
-          Toast.afficher(`✅ Qualifié : ${q.typeappel || '—'} · score ${q.score ?? '—'}/5`, 'succes', 4000);
-        } catch(e) { Toast.afficher('❌ IA : ' + e.message, 'erreur'); }
+          Toast.afficher(`Qualifié : ${q.typeappel || '—'} · score ${q.score ?? '—'}/5`, 'succes', 4000);
+        } catch(e) { Toast.afficher('IA : ' + e.message, 'erreur'); }
         const _d = this.state.d;
         if (_d.statutCallPills && !_d.statutAppel) _d.statutAppel = _d.statutCallPills;
         this._arreterTimerAppel();
@@ -738,7 +738,7 @@ window.VuePhoning = {
     } catch(e) {
       this.state.enregistre = false;
       this.render();
-      Toast.afficher('🎙️ Micro inaccessible : ' + e.message, 'erreur');
+      Toast.afficher('Micro inaccessible : ' + e.message, 'erreur');
     }
   },
 
@@ -970,7 +970,7 @@ window.VuePhoning = {
           </div>
           <div id="ph-zone-tracker">${this._renderZoneTracker()}</div>
           <div class="succes-btns">
-            ${aUnSuivant ? `<button class="btn-primaire" style="background:var(--c-success)" onclick="VuePhoning.appelSuivant()">☎ Appel suivant →</button>` : ''}
+            ${aUnSuivant ? `<button class="btn-primaire" style="background:var(--c-success)" onclick="VuePhoning.appelSuivant()">Appel suivant →</button>` : ''}
             <button class="btn-primaire" onclick="Router.aller('#/dashboard')">← Dashboard</button>
             <button class="btn-secondaire" onclick="VuePhoning.init()">Retour au planning</button>
           </div>
@@ -978,7 +978,7 @@ window.VuePhoning = {
     } catch(e) {
       s.envoiEnCours = false;
       this.render();
-      Toast.afficher('❌ Erreur : ' + e.message, 'erreur', 5000);
+      Toast.afficher('Erreur : ' + e.message, 'erreur', 5000);
     }
   },
 
@@ -1100,7 +1100,7 @@ window.VuePhoning = {
         <button class="btn-primaire" style="flex:2;font-size:12px;padding:8px"
                 onclick="VuePhoning.demarrerAppelCompte('${c.ID_Compte}')">▶ Démarrer l'appel</button>
         <button class="btn-secondaire" style="flex:2;font-size:12px;padding:8px"
-                onclick="VuePhoning.demarrerSaisiePostAppel('${c.ID_Compte}')" title="Renseigner un appel déjà passé">📝 Saisie post appel</button>
+                onclick="VuePhoning.demarrerSaisiePostAppel('${c.ID_Compte}')" title="Renseigner un appel déjà passé">Saisie post appel</button>
         <button class="btn-secondaire" style="flex:1;font-size:12px;padding:8px"
                 onclick="VuePhoning.ouvrirFormPlanif('${c.ID_Compte}')" title="Planifier un appel pour ce compte (apparaît dans Planning)">📅</button>
       </div>
@@ -1123,7 +1123,7 @@ window.VuePhoning = {
         // Feuille de route Phase 0 — plafond de 100 lignes levé (tronquait
         // silencieusement l'historique sans pagination ni "charger plus").
         .sort((a, b) => (b.Date || '').localeCompare(a.Date || ''));
-    } catch(e) { Toast.afficher('❌ Chargement journal : ' + e.message, 'erreur'); }
+    } catch(e) { Toast.afficher('Chargement journal : ' + e.message, 'erreur'); }
     this.state.journalChargement = false;
     this.render();
   },
@@ -1167,9 +1167,9 @@ window.VuePhoning = {
       const local = this.state.journal.find(a => a.ID_Appel === m.id);
       if (local) Object.assign(local, maj);
       this.state.modalEditAppel = null;
-      Toast.afficher('✅ Appel modifié', 'succes');
+      Toast.afficher('Appel modifié', 'succes');
       this.render();
-    } catch(err) { Toast.afficher('❌ ' + err.message, 'erreur'); }
+    } catch(err) { Toast.afficher('' + err.message, 'erreur'); }
   },
 
   // ── R5 : Suppression appel (soft delete) ──
@@ -1194,9 +1194,9 @@ window.VuePhoning = {
       });
       this.state.journal = this.state.journal.filter(a => a.ID_Appel !== id);
       this.state.confirmDeleteAppelId = null;
-      Toast.afficher('🗑️ Appel supprimé (soft delete)', 'succes');
+      Toast.afficher('Appel supprimé (soft delete)', 'succes');
       this.render();
-    } catch(err) { Toast.afficher('❌ ' + err.message, 'erreur'); }
+    } catch(err) { Toast.afficher('' + err.message, 'erreur'); }
   },
 
   annulerSuppressionAppel() { this.state.confirmDeleteAppelId = null; this.render(); },
@@ -1548,13 +1548,13 @@ window.VuePhoning = {
     return `
     <div class="modal-overlay" onclick="if(event.target===this)VuePhoning.annulerSuppressionAppel()">
       <div class="modal" style="max-width:360px">
-        <h3 style="color:var(--c-danger)">🗑️ Supprimer cet appel ?</h3>
+        <h3 style="color:var(--c-danger)">Supprimer cet appel ?</h3>
         <p style="font-size:14px;margin:12px 0"><strong>${a ? a.Reseller : ''}</strong> — ${a ? (a.Date || '').slice(0, 10) : ''}</p>
         <p style="font-size:12px;color:var(--c-text-2)">Suppression logique uniquement — la ligne est conservée en base.</p>
         <div class="modal-btns">
           <button onclick="VuePhoning.annulerSuppressionAppel()">Annuler</button>
           <button class="btn-primaire" style="background:var(--c-danger)"
-                  onclick="VuePhoning.confirmerSuppressionAppel()">🗑️ Confirmer</button>
+                  onclick="VuePhoning.confirmerSuppressionAppel()">Confirmer</button>
         </div>
       </div>
     </div>`;
@@ -1584,7 +1584,7 @@ window.VuePhoning = {
     return `
     <div class="modal-overlay" onclick="if(event.target===this)VuePhoning.fermerExtraction()">
       <div class="modal" style="max-width:420px">
-        <h3>📤 Extraction — Suivi phoning</h3>
+        <h3>Extraction — Suivi phoning</h3>
         <div style="display:flex;gap:10px;margin-bottom:10px">
           <label style="flex:1">Date début
             <input type="date" value="${f.debut}"
@@ -1721,7 +1721,7 @@ window.VuePhoning = {
         <button type="button" class="btn-filtre ${!s.froidsMode ? 'actif' : ''}"
                 onclick="VuePhoning.state.froidsMode=false;VuePhoning.render()">Compte existant</button>
         <button type="button" class="btn-filtre ${s.froidsMode ? 'actif' : ''}"
-                onclick="VuePhoning.state.froidsMode=true;VuePhoning.render()">❄️ Appel à froid</button>
+                onclick="VuePhoning.state.froidsMode=true;VuePhoning.render()">Appel à froid</button>
       </div>
       ${s.froidsMode ? `
         <label class="q-label">Nom de l'enseigne *
@@ -1780,7 +1780,7 @@ window.VuePhoning = {
               ${s.scriptEnCours ? 'disabled' : ''}>
         ${s.scriptEnCours ? '🤖 Génération…' : '🤖 Générer un script d\'accroche IA'}
       </button>
-      ${s.script ? '<div class="q-recap"><h3>📜 Script suggéré</h3>' +
+      ${s.script ? '<div class="q-recap"><h3>Script suggéré</h3>' +
         '<p style="font-size:13px;line-height:1.6;white-space:pre-wrap">' + s.script + '</p></div>' : ''}
       ` : ''}
 
@@ -1856,7 +1856,7 @@ window.VuePhoning = {
       }
 
       <button class="btn-secondaire" style="width:100%;margin-top:8px"
-              onclick="Router.aller('#/empower-tracker')">➕ Ajouter un prospect dans le Tracker</button>
+              onclick="Router.aller('#/empower-tracker')">Ajouter un prospect dans le Tracker</button>
     </div>`;
   },
 
@@ -2111,7 +2111,7 @@ window.VuePhoning = {
 
     return `<div class="q-champs">
       ${s.qualif ? `<div class="q-recap">
-        <h3>🤖 Qualification IA</h3>
+        <h3>Qualification IA</h3>
         <div class="q-recap-ligne"><span>Type</span><strong>${s.qualif.typeappel || '—'}</strong></div>
         <div class="q-recap-ligne"><span>Score</span><strong>${s.qualif.score ?? '—'}/5</strong></div>
         ${s.qualif.freindetecte ? `<div class="q-recap-ligne"><span>Frein</span><strong>${s.qualif.freindetecte}</strong></div>` : ''}
@@ -2133,7 +2133,7 @@ window.VuePhoning = {
       <!-- F1 — Questionnaire Appel Froid (conditionnel) -->
       ${estFroid ? `
       <div style="background:var(--c-surface);border:2px solid var(--c-primary);border-radius:var(--radius-sm);padding:14px;margin-bottom:4px">
-        <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.05em;margin-bottom:12px">❄️ QUESTIONNAIRE APPEL À FROID</div>
+        <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.05em;margin-bottom:12px">QUESTIONNAIRE APPEL À FROID</div>
 
         <label class="q-label" style="margin-top:0">Score d'intérêt EMPOWER (1-5)
           <div style="display:flex;align-items:center;gap:4px;margin-top:4px">
@@ -2415,9 +2415,9 @@ window.VuePhoning = {
         <!-- Toggle mode -->
         <div class="q-chips" style="margin-bottom:12px">
           <button type="button" class="q-chip ${!f.modeFroid ? 'active' : ''}"
-                  onclick="VuePhoning.state.formPlanif.modeFroid=false;VuePhoning.render()">🏢 Compte existant</button>
+                  onclick="VuePhoning.state.formPlanif.modeFroid=false;VuePhoning.render()">Compte existant</button>
           <button type="button" class="q-chip ${f.modeFroid ? 'active' : ''}"
-                  onclick="VuePhoning.state.formPlanif.modeFroid=true;VuePhoning.render()">❄️ Appel à froid</button>
+                  onclick="VuePhoning.state.formPlanif.modeFroid=true;VuePhoning.render()">Appel à froid</button>
         </div>
 
         ${!f.modeFroid ? `
@@ -2596,7 +2596,7 @@ window.VuePhoning = {
         return !isNaN(t) && Math.abs(t - tCible) < FENETRE_MIN;
       });
       if (conflit) {
-        Toast.afficher(`⚠️ Appel déjà planifié à ${new Date(conflit.Date_Planifiee).toLocaleString('fr-FR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} (${conflit.Reseller}) — créneau trop proche`, 'warning');
+        Toast.afficher(`Appel déjà planifié à ${new Date(conflit.Date_Planifiee).toLocaleString('fr-FR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})} (${conflit.Reseller}) — créneau trop proche`, 'warning');
         return;
       }
     }
@@ -2689,8 +2689,8 @@ window.VuePhoning = {
       this.state.planning.push(record);
       this.state.planning.sort((a, b) => (a.Date_Planifiee || '').localeCompare(b.Date_Planifiee || ''));
       this.state.formPlanif = null;
-      Toast.afficher('✅ Appel planifié', 'succes');
-    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+      Toast.afficher('Appel planifié', 'succes');
+    } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
     this.state.envoiEnCours = false;
     this.render();
   },
@@ -2749,9 +2749,9 @@ window.VuePhoning = {
         deleted: 'TRUE', deleted_at: dateISOLocale(), deleted_by: Session.nom,
       });
       this.state.planning = this.state.planning.filter(a => a.ID_Appel !== id);
-      Toast.afficher('🗑 Appel supprimé', 'succes');
+      Toast.afficher('Appel supprimé', 'succes');
       this.render();
-    } catch(e) { Toast.afficher('❌ ' + e.message, 'erreur'); }
+    } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
   },
 
   setFiltrePlanning(f) { this.state.filtrePlanning = f; this.render(); },

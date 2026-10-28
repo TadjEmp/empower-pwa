@@ -500,7 +500,7 @@ window.VueDashboardManager = {
       });
       await SheetsAPI.viderCache('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES');
       if (fb) { fb.style.color = 'var(--c-success)'; fb.textContent = `✅ CA ${quarter} de ${resolveCDS(pin)} mis à jour : ${formatEuro(val)}`; }
-      Toast.afficher(`✅ CA ${quarter} — ${resolveCDS(pin)} : ${formatEuro(val)}`, 'succes');
+      Toast.afficher(`CA ${quarter} — ${resolveCDS(pin)} : ${formatEuro(val)}`, 'succes');
       // Rafraîchit le dashboard après 1.5s
       setTimeout(() => this.init(), 1500);
     } catch(e) {
@@ -519,7 +519,7 @@ window.VueDashboardManager = {
       const texte = await GeminiAPI.gem07_syntheseHebdo(this.state.d);
       zone.style.color = 'var(--c-text)';
       zone.textContent = texte || '(réponse vide)';
-      Toast.afficher('✅ Synthèse hebdo générée', 'succes');
+      Toast.afficher('Synthèse hebdo générée', 'succes');
     } catch(e) {
       zone.style.color = 'var(--c-danger)';
       zone.textContent = '❌ ' + e.message;
@@ -692,7 +692,7 @@ window.VueDashboardManager = {
 
           <div class="dash-col-side">
           <div class="bloc-fiche">
-            <div class="bloc-titre">⚠️ Welcome Pack non envoyé (≥ J14)
+            <div class="bloc-titre">Welcome Pack non envoyé (≥ J14)
               ${dc.alerteWelcome.length ? `<span class="badge-compteur" style="background:var(--c-danger);color:#fff">${dc.alerteWelcome.length}</span>` : ''}
             </div>
             ${dc.alerteWelcome.length ? `
@@ -705,7 +705,7 @@ window.VueDashboardManager = {
           </div>
 
           <div class="bloc-fiche">
-            <div class="bloc-titre">🔴 Sans contact +45 jours
+            <div class="bloc-titre">Sans contact +45 jours
               ${dc.alerte45j && dc.alerte45j.length ? `<span class="badge-compteur" style="background:var(--c-danger);color:#fff">${dc.alerte45j.length}</span>` : ''}
             </div>
             ${dc.alerte45j && dc.alerte45j.length ? `
@@ -721,7 +721,7 @@ window.VueDashboardManager = {
 
           ${dc.comptesNonAttribues.length ? `
           <div class="bloc-fiche">
-            <div class="bloc-titre">🏢 Comptes non attribués
+            <div class="bloc-titre">Comptes non attribués
               <span class="badge-compteur" style="background:var(--c-primary);color:#fff">${dc.comptesNonAttribues.length}</span>
             </div>
             <div class="dash-alertes">

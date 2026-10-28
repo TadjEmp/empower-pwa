@@ -156,7 +156,7 @@ window.VuePhotos = {
       document.body.removeChild(a);
       URL.revokeObjectURL(blobUrl);
     } catch(e) {
-      Toast.afficher('❌ Échec du téléchargement : ' + e.message, 'erreur');
+      Toast.afficher('Échec du téléchargement : ' + e.message, 'erreur');
     }
   },
 
@@ -175,7 +175,7 @@ window.VuePhotos = {
       app.innerHTML = `
         <div class="photo-zoom-layer">
           <div class="photo-zoom-bar">
-            <button class="photo-zoom-btn" onclick="VuePhotos.fermerZoom()">✕ Fermer</button>
+            <button class="photo-zoom-btn" onclick="VuePhotos.fermerZoom()">Fermer</button>
             <button class="photo-zoom-btn" onclick="VuePhotos.telecharger(${this.state.zoomIdx})">⬇ Enregistrer</button>
           </div>
           <div style="padding:0 14px 6px;flex-shrink:0">

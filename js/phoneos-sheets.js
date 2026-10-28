@@ -99,7 +99,7 @@ async function renderCommercialSelector(containerId, onChange) {
     document.getElementById('commercial-select')
       .addEventListener('change', e => onChange && onChange(e.target.value));
   } catch(err) {
-    container.innerHTML = `<div class="mono-label text-[#ba1a1a]">⚠ Sheets non connecté</div>`;
+    container.innerHTML = `<div class="mono-label text-[#ba1a1a]">Sheets non connecté</div>`;
   }
 }
 
@@ -216,7 +216,7 @@ function openAddLeadModal(fy = 'FY27') {
     <div class="bg-[#FAF8F4] rounded-2xl p-6 w-[500px] shadow-2xl">
       <div class="flex items-center justify-between mb-4">
         <h3 class="text-[16px] font-bold text-[#1a1a2e] flex items-center gap-2">
-          <span class="material-symbols-outlined text-[#FF6D68]">person_add</span>
+          <span class="material-symbols-outlined text-[#0400F5]">person_add</span>
           Nouveau Lead → ${fy}
         </h3>
         <button onclick="document.getElementById('add-lead-modal').remove()"
@@ -229,17 +229,17 @@ function openAddLeadModal(fy = 'FY27') {
         <div>
           <p class="mono-label mb-1">Raison Sociale *</p>
           <input id="nl-raison" type="text" placeholder="ex: Micromania Lyon"
-            class="w-full bg-[#F5F0E8] rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[#FF6D68]/40"/>
+            class="w-full bg-[#F5F0E8] rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[#0400F5]/40"/>
         </div>
         <div>
           <p class="mono-label mb-1">Code Client</p>
           <input id="nl-code" type="text" placeholder="ex: CLI-00142"
-            class="w-full bg-[#F5F0E8] rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[#FF6D68]/40"/>
+            class="w-full bg-[#F5F0E8] rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[#0400F5]/40"/>
         </div>
         <div>
           <p class="mono-label mb-1">Commercial *</p>
           <input id="nl-commercial" type="text" placeholder="ex: JOHANNE"
-            class="w-full bg-[#F5F0E8] rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[#FF6D68]/40"/>
+            class="w-full bg-[#F5F0E8] rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[#0400F5]/40"/>
         </div>
         <div>
           <p class="mono-label mb-1">Distributeur</p>
@@ -255,17 +255,17 @@ function openAddLeadModal(fy = 'FY27') {
         <div>
           <p class="mono-label mb-1">Téléphone</p>
           <input id="nl-tel" type="tel" placeholder="+33 4 XX XX XX XX"
-            class="w-full bg-[#F5F0E8] rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[#FF6D68]/40"/>
+            class="w-full bg-[#F5F0E8] rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[#0400F5]/40"/>
         </div>
         <div>
           <p class="mono-label mb-1">Email</p>
           <input id="nl-email" type="email" placeholder="contact@enseigne.fr"
-            class="w-full bg-[#F5F0E8] rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[#FF6D68]/40"/>
+            class="w-full bg-[#F5F0E8] rounded-lg px-3 py-2 text-[13px] outline-none focus:ring-1 focus:ring-[#0400F5]/40"/>
         </div>
         <div class="col-span-2">
           <p class="mono-label mb-1">Notes initiales</p>
           <textarea id="nl-notes" rows="2" placeholder="Contexte, source du lead..."
-            class="w-full bg-[#F5F0E8] rounded-lg px-3 py-2 text-[13px] resize-none outline-none focus:ring-1 focus:ring-[#FF6D68]/40"></textarea>
+            class="w-full bg-[#F5F0E8] rounded-lg px-3 py-2 text-[13px] resize-none outline-none focus:ring-1 focus:ring-[#0400F5]/40"></textarea>
         </div>
       </div>
 
@@ -274,7 +274,7 @@ function openAddLeadModal(fy = 'FY27') {
           class="flex-1 py-2.5 rounded-lg border border-[rgba(26,26,46,0.12)] text-[13px]
                  font-semibold text-[#9AABB8] hover:bg-[#F0ECE4] transition">Annuler</button>
         <button id="btn-submit-lead" onclick="_submitAddLead('${fy}')"
-          class="flex-1 py-2.5 rounded-lg bg-[#FF6D68] text-white text-[13px] font-bold
+          class="flex-1 py-2.5 rounded-lg bg-[#0400F5] text-white text-[13px] font-bold
                  hover:opacity-90 active:scale-95 transition shadow-sm
                  flex items-center justify-center gap-2">
           <span class="material-symbols-outlined text-sm">add_circle</span> Ajouter dans le Sheet

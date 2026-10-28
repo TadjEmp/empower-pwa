@@ -19,10 +19,10 @@
   --text-muted:           #8A9BB0;
   --text-on-anchor:       #E5E1D3;
   --text-on-anchor-muted: #9AABB8;
-  --text-link:            #FF6D68;
+  --text-link:            #0400F5;
 
   /* ── ACCENTS ──────────────────────────── */
-  --accent-primary:  #FF6D68;
+  --accent-primary:  #0400F5;
   --accent-norton:   #ED2567;
   --accent-violet:   #A884FF;
   --accent-blue:     #3B82F6;
@@ -32,8 +32,8 @@
   --status-converti-bg:     rgba(45,158,107,0.10);
   --status-interesse:       #F59E0B;
   --status-interesse-bg:    rgba(245,158,11,0.10);
-  --status-chaud:           #FF6D68;
-  --status-chaud-bg:        rgba(255,109,104,0.10);
+  --status-chaud:           #0400F5;
+  --status-chaud-bg:        rgba(4,0,245,0.10);
   --status-arappeler:       #3B82F6;
   --status-arappeler-bg:    rgba(59,130,246,0.10);
   --status-nrp:             #8A9BB0;
@@ -56,7 +56,7 @@
   --border-subtle:  rgba(26,26,46,0.06);
   --border-medium:  rgba(26,26,46,0.12);
   --border-strong:  rgba(26,26,46,0.22);
-  --border-accent:  rgba(255,109,104,0.45);
+  --border-accent:  rgba(4,0,245,0.45);
   --border-violet:  rgba(168,132,255,0.45);
   --border-anchor:  rgba(229,225,211,0.16);
 
@@ -106,7 +106,7 @@
 
   /* Brand (préservés pour composants logo) */
   --brand-marvesting:       #ED2567;
-  --brand-marvesting-soft:  #FF6D68;
+  --brand-marvesting-soft:  #0400F5;
   --brand-marvesting-alert: #FF1209;
   --brand-marvesting-dark:  #343F48;
   --brand-norton:           #FFE01A;
@@ -122,15 +122,15 @@
   --color-border:       rgba(26,26,46,0.12);
   --color-accent:       #A884FF;
   --color-error:        #D93025;
-  --color-primary:      #FF6D68;
-  --color-cta:          #FF6D68;
-  --color-nav:          #FF6D68;
+  --color-primary:      #0400F5;
+  --color-cta:          #0400F5;
+  --color-nav:          #0400F5;
 
   /* Aliases internes */
-  --c-primary:     #FF6D68;
-  --c-primary-d:   #e85550;
-  --c-cta:         #FF6D68;
-  --c-cta-d:       #e85550;
+  --c-primary:     #0400F5;
+  --c-primary-d:   #0300C4;
+  --c-cta:         #0400F5;
+  --c-cta-d:       #0300C4;
   --c-accent:      #A884FF;
   --c-accent-soft: #c4acff;
   --c-success:     #2D9E6B;
@@ -155,7 +155,7 @@
   --font:          'Inter', 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
   /* Tokens secondaires (rétro-compat) */
-  --c-secondary:     #FF6D68;
+  --c-secondary:     #0400F5;
   --c-norton-red:    #FF5F5A;
   --c-ism-dark:      #FAF8F4;
   --c-cream:         #EDE7D9;
@@ -164,8 +164,8 @@
   --c-muted:         #8A9BB0;
   --c-surface-2:     #EDE7D9;
   --c-outline:       rgba(26,26,46,0.22);
-  --c-primary-light: rgba(255,109,104,0.15);
-  --c-primary-10:    rgba(255,109,104,0.10);
+  --c-primary-light: rgba(4,0,245,0.15);
+  --c-primary-10:    rgba(4,0,245,0.10);
 
   /* Statuts tintés — PHONE OS light mode */
   --st-green-bg:  rgba(45,158,107,0.10);  --st-green-fg:  #2D9E6B;
@@ -331,7 +331,7 @@ body {
   background: var(--bg-base); border: 1.5px solid transparent;
   border-radius: var(--radius); padding: 0 14px;
 }
-.login-champ:focus-within { border-color: var(--c-primary); box-shadow: 0 0 0 3px rgba(255,109,104,.15); background: var(--bg-warm-white); }
+.login-champ:focus-within { border-color: var(--c-primary); box-shadow: 0 0 0 3px rgba(4,0,245,.15); background: var(--bg-warm-white); }
 .login-champ .champ-icone { font-size: 16px; color: var(--c-text-2); flex-shrink: 0; }
 .login-champ input {
   flex: 1; border: none; outline: none; background: transparent;
@@ -639,7 +639,7 @@ body {
     font-family: var(--font);
   }
   .nav-sidebar-danger { color: var(--accent-primary) !important; }
-  .nav-sidebar-danger:hover { background: rgba(255,109,104,.12) !important; color: var(--accent-primary) !important; }
+  .nav-sidebar-danger:hover { background: rgba(4,0,245,.12) !important; color: var(--accent-primary) !important; }
 
   /* ─── Sidebar COLLAPSED (58px icon-rail) ─── */
   body.sidebar-collapsed .nav-principale {
@@ -837,7 +837,7 @@ details[open] > .cv-rapport-toggle::before { transform: rotate(90deg); }
   border-radius: var(--radius-sm); padding: 8px 6px; font-size: 12px;
   cursor: not-allowed; opacity: 0.7; text-align: center;
 }
-.btn-ia-slot:not([disabled]) { cursor: pointer; opacity: 1; border-style: solid; border-color: var(--c-primary); color: var(--c-primary); background: rgba(255,109,104,0.06); }
+.btn-ia-slot:not([disabled]) { cursor: pointer; opacity: 1; border-style: solid; border-color: var(--c-primary); color: var(--c-primary); background: rgba(4,0,245,0.06); }
 
 /* ── Pace badges ── */
 .pace-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; margin-left: 6px; }
@@ -889,13 +889,13 @@ details[open] > .cv-rapport-toggle::before { transform: rotate(90deg); }
   box-shadow: var(--shadow-card);
   transition: transform .15s, box-shadow .15s;
 }
-.kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px -4px rgba(255,109,104,.15); }
+.kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px -4px rgba(4,0,245,.15); }
 .kpi-card .kpi-accent {
   position: absolute; top: 0; left: 0; width: 5px; height: 100%;
   border-radius: 16px 0 0 16px; background: var(--c-primary);
 }
 .kpi-accent.acc-primary { background: var(--c-primary); }
-.kpi-accent.acc-coral   { background: #FF6D68; }
+.kpi-accent.acc-coral   { background: #0400F5; }
 .kpi-accent.acc-indigo  { background: #3F51B5; }
 .kpi-accent.acc-teal    { background: #00897B; }
 .kpi-accent.acc-amber   { background: #f59e0b; }
@@ -939,8 +939,8 @@ details[open] > .cv-rapport-toggle::before { transform: rotate(90deg); }
 .pill-orange  { background: var(--st-orange-bg); color: var(--st-orange-fg); }
 .pill-red     { background: var(--st-red-bg);    color: var(--st-red-fg); }
 .pill-gray    { background: var(--st-gray-bg);   color: var(--st-gray-fg); }
-.pill-primary { background: rgba(255,109,104,.10); color: var(--c-primary); }
-.pill-coral   { background: rgba(255,109,104,.10); color: #e85550; }
+.pill-primary { background: rgba(4,0,245,.10); color: var(--c-primary); }
+.pill-coral   { background: rgba(4,0,245,.10); color: #0300C4; }
 
 /* ── Barres de progression ── */
 .bar-track {
@@ -968,7 +968,7 @@ details[open] > .cv-rapport-toggle::before { transform: rotate(90deg); }
 .tab-btn-premium:hover { background: var(--c-cream); }
 .tab-btn-premium.actif {
   background: var(--c-primary); color: #fff; border-color: var(--c-primary);
-  box-shadow: 0 4px 12px -2px rgba(255,109,104,.25);
+  box-shadow: 0 4px 12px -2px rgba(4,0,245,.25);
 }
 .tab-num {
   font-size: 10px; padding: 2px 6px; border-radius: 6px;
@@ -1013,7 +1013,7 @@ details[open] > .cv-rapport-toggle::before { transform: rotate(90deg); }
   }
   .desktop-table-data-view tbody tr:last-child td { border-bottom: none; }
   .desktop-table-data-view tbody tr { transition: background .12s; }
-  .desktop-table-data-view tbody tr:hover { background: rgba(255,109,104,.05); }
+  .desktop-table-data-view tbody tr:hover { background: rgba(4,0,245,.05); }
   .desktop-table-data-view th {
     font-size: 10px; font-weight: 800; text-transform: uppercase;
     letter-spacing: .06em; color: var(--c-text-2);

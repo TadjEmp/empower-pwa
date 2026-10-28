@@ -169,7 +169,7 @@ window.VueObjectifs = {
     try {
       await SheetsAPI.mettreAJourCA(`${quarter}FY27`, val);
       SheetsAPI.viderCache('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES');
-      Toast.afficher('✅ CA déclaré avec succès', 'succes');
+      Toast.afficher('CA déclaré avec succès', 'succes');
       this.state.modalCA = false;
       await this.init();
     } catch(err) {
@@ -461,7 +461,7 @@ window.VueObjectifs = {
     return `
     <div class="modal-overlay" onclick="if(event.target===this)VueObjectifs.fermerModalCA()">
       <div class="modal">
-        <h3>📝 Déclarer mon CA</h3>
+        <h3>Déclarer mon CA</h3>
         <p style="font-size:12px;color:var(--c-text-2);margin-bottom:14px">
           Saisissez votre CA réalisé cumulé pour le quarter sélectionné.
         </p>
@@ -527,7 +527,7 @@ window.VueObjectifs = {
     return `
     <div class="modal-overlay" onclick="if(event.target===this)VueObjectifs.fermerModalSaisie()">
       <div class="modal">
-        <h3>📥 Saisir Objectifs & Réalisés — ${q} FY27</h3>
+        <h3>Saisir Objectifs & Réalisés — ${q} FY27</h3>
         <p style="font-size:12px;color:var(--c-text-2);margin-bottom:14px">
           CA réalisé cumulé · objectifs CA, NSB et onboarding par CDS.
         </p>

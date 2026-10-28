@@ -86,7 +86,7 @@ window.NonSuivis = {
     try {
       const r = await SheetsAPI.reattribuerCompte(c._uuid, c.PIN_CDS_Assigne ? Number(c.PIN_CDS_Assigne) : null, nouveauPin, mode);
       if (!r || !r.ok) {
-        Toast.afficher('❌ ' + (this.ERREURS[r && r.erreur] || (r && r.erreur) || 'Échec'), 'erreur', 6000);
+        Toast.afficher('' + (this.ERREURS[r && r.erreur] || (r && r.erreur) || 'Échec'), 'erreur', 6000);
         await this.charger();
         if (apres) apres(false);
         return false;
@@ -97,7 +97,7 @@ window.NonSuivis = {
       if (apres) apres(true);
       return true;
     } catch (e) {
-      Toast.afficher('❌ ' + (e.message || e), 'erreur');
+      Toast.afficher('' + (e.message || e), 'erreur');
       return false;
     }
   },
@@ -118,13 +118,13 @@ window.NonSuivis = {
           <td style="color:var(--c-text-2)">${h.Mode === 'REPRISE' ? 'reprise' : 'manager'}</td></tr>`).join('');
     return `
       <div class="bloc-fiche">
-        <div class="bloc-titre">🤝 Suivi & attribution</div>
+        <div class="bloc-titre">Suivi & attribution</div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px">
           ${nonSuivi ? `<span class="badge-nonsuivi">À reprendre</span><span style="color:var(--c-text-2)">${E(this.libelleRaisons(c))}</span>`
-                     : '<span style="color:var(--c-success);font-weight:600">✓ Compte suivi</span>'}
+                     : '<span style="color:var(--c-success);font-weight:600">Compte suivi</span>'}
           <span style="margin-left:auto">Propriétaire : <strong>${E(c.Nom_CDS || 'aucun')}</strong></span>
         </div>
-        ${this.peutReprendre(c) ? `<button class="btn-primaire" style="margin-top:10px;width:auto;padding:10px 16px" onclick="VueFicheCompte.reprendre()">🤝 Je reprends ce compte</button>` : ''}
+        ${this.peutReprendre(c) ? `<button class="btn-primaire" style="margin-top:10px;width:auto;padding:10px 16px" onclick="VueFicheCompte.reprendre()">Je reprends ce compte</button>` : ''}
         ${lignes ? `<table style="width:100%;font-size:12px;margin-top:10px;border-collapse:collapse"><tbody>${lignes}</tbody></table>
           <p style="font-size:11px;color:var(--c-text-2);margin:6px 0 0">Le CA réalisé avant un changement reste au commercial précédent ; le nouveau compte à partir de la semaine fiscale suivante.</p>` : ''}
       </div>`;

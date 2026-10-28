@@ -194,9 +194,9 @@ window.VueDashboardCDS = {
           <div class="bloc-fiche">
             <div class="bloc-titre">Aller plus loin</div>
             <div style="display:flex;gap:10px;flex-wrap:wrap">
-              <button class="btn-secondaire" style="flex:1;min-width:140px" onclick="Router.aller('#/objectifs')">📊 Détail Objectifs</button>
-              <button class="btn-secondaire" style="flex:1;min-width:140px" onclick="Router.aller('#/primes')">🏅 Mes Primes</button>
-              <button class="btn-secondaire" style="flex:1;min-width:140px" onclick="Router.aller('#/comptes-historiques')">📁 Historique CA</button>
+              <button class="btn-secondaire" style="flex:1;min-width:140px" onclick="Router.aller('#/objectifs')">Détail Objectifs</button>
+              <button class="btn-secondaire" style="flex:1;min-width:140px" onclick="Router.aller('#/primes')">Mes Primes</button>
+              <button class="btn-secondaire" style="flex:1;min-width:140px" onclick="Router.aller('#/comptes-historiques')">Historique CA</button>
             </div>
           </div>
         </div>

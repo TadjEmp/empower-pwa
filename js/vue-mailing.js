@@ -162,7 +162,7 @@ window.VueMailing = {
         if (local) Object.assign(local, maj);
       }
 
-      Toast.afficher(`✅ Mailing loggué : ${s.cible.nom}`, 'succes', 4000);
+      Toast.afficher(`Mailing loggué : ${s.cible.nom}`, 'succes', 4000);
       s.cible = null; s.motifs = []; s.note = ''; s.recherche = '';
       s.envoiEnCours = false;
       await this._chargerJournal();
@@ -170,7 +170,7 @@ window.VueMailing = {
     } catch(e) {
       s.envoiEnCours = false;
       this.render();
-      Toast.afficher('❌ ' + e.message, 'erreur');
+      Toast.afficher('' + e.message, 'erreur');
     }
   },
 
@@ -187,7 +187,7 @@ window.VueMailing = {
         .filter(a => a.Type_Action === 'Mailing')
         .filter(a => Session.voitTout() || Number(a.PIN_CDS) === Session.pin)
         .sort((a, b) => (b.Date_Action || '').localeCompare(a.Date_Action || ''));
-    } catch(e) { Toast.afficher('❌ Chargement journal : ' + e.message, 'erreur'); }
+    } catch(e) { Toast.afficher('Chargement journal : ' + e.message, 'erreur'); }
     this.state.journalChargement = false;
     this.render();
   },
@@ -226,7 +226,7 @@ window.VueMailing = {
     app.innerHTML = `
       <header class="header-vue">
         <button onclick="${backAction}" class="btn-retour">←</button>
-        <h1>📧 Mailing</h1>
+        <h1>Mailing</h1>
       </header>
       <div class="q-contenu avec-nav q-contenu-large">
         ${s.chargement ? '<div class="q-champs"><div style="padding:32px;text-align:center;color:var(--c-text-2)">Chargement…</div></div>' : this._renderCorps()}

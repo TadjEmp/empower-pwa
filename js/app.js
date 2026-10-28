@@ -100,10 +100,10 @@ function _initPollingNotifs() {
       if (nouvelles.length === 0) return;
       // Anti-flood : un seul toast résumé si plusieurs notifs d'un coup
       if (nouvelles.length > 3) {
-        Toast.afficher('🔔 ' + nouvelles.length + ' nouvelles notifications', 'info', 5000);
+        Toast.afficher('' + nouvelles.length + ' nouvelles notifications', 'info', 5000);
       } else {
         nouvelles.forEach(function(n) {
-          Toast.afficher('🔔 ' + (n.Message || 'Nouvelle notification'), 'info', 5000);
+          Toast.afficher('' + (n.Message || 'Nouvelle notification'), 'info', 5000);
         });
       }
     } catch(e) {}
