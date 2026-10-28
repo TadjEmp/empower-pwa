@@ -357,8 +357,8 @@ window.VueComptes = {
             <option value="">Vues sauvegardées…</option>
             ${this.state.vuesFiltres.map(v => `<option value="${v.id}" ${this.state.vueFiltreActive === v.id ? 'selected' : ''}>${v.nom}</option>`).join('')}
           </select>
-          <button class="btn-filtre" title="Enregistrer les filtres actuels" onclick="VueComptes.demanderSauvegardeVue()">💾</button>
-          ${this.state.vueFiltreActive ? `<button class="btn-filtre" title="Supprimer cette vue" onclick="VueComptes.supprimerVueFiltre()">🗑️</button>` : ''}
+          <button class="btn-filtre" title="Enregistrer les filtres actuels" onclick="VueComptes.demanderSauvegardeVue()"><span class="material-symbols-outlined" aria-hidden="true">save</span></button>
+          ${this.state.vueFiltreActive ? `<button class="btn-filtre" title="Supprimer cette vue" onclick="VueComptes.supprimerVueFiltre()"><span class="material-symbols-outlined" aria-hidden="true">delete</span></button>` : ''}
         </div>
 
         <!-- BUG-05 : filtres statut calculé -->
@@ -587,7 +587,7 @@ window.VueComptes = {
                     </select>` : (nomCDS || 'n.c.')}</td>
                   <td>${estLectureSeule ? 'n.c.' : `
                     <button class="btn-visiter" style="padding:4px 10px;font-size:12px" onclick="VueQuestionnaire._visitePlanifiee=null;Router.aller('#/questionnaire/${c.ID_Compte}')">Visiter</button>
-                    <button class="btn-tel-outline" style="padding:4px 8px" onclick="Router.aller('#/phoning/${c.ID_Compte}')" title="Appeler">📞</button>`}</td>
+                    <button class="btn-tel-outline" style="padding:4px 8px" onclick="Router.aller('#/phoning/${c.ID_Compte}')" title="Appeler"><span class="material-symbols-outlined" aria-hidden="true">call</span></button>`}</td>
                 </tr>`;
               }).join('')}
             </tbody>

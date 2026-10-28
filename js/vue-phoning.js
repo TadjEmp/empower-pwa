@@ -1102,7 +1102,7 @@ window.VuePhoning = {
         <button class="btn-secondaire" style="flex:2;font-size:12px;padding:8px"
                 onclick="VuePhoning.demarrerSaisiePostAppel('${c.ID_Compte}')" title="Renseigner un appel déjà passé">Saisie post appel</button>
         <button class="btn-secondaire" style="flex:1;font-size:12px;padding:8px"
-                onclick="VuePhoning.ouvrirFormPlanif('${c.ID_Compte}')" title="Planifier un appel pour ce compte (apparaît dans Planning)">📅</button>
+                onclick="VuePhoning.ouvrirFormPlanif('${c.ID_Compte}')" title="Planifier un appel pour ce compte (apparaît dans Planning)"><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span></button>
       </div>
     </div>`;
       }).join('') + `</div>`;
@@ -1437,7 +1437,7 @@ window.VuePhoning = {
             <button class="btn-secondaire" style="padding:5px 10px;font-size:12px;width:auto"
                     onclick="VuePhoning.ouvrirEditAppel('${a.ID_Appel}')">Modifier</button>
             <button class="btn-secondaire" style="padding:5px 10px;font-size:12px;width:auto;color:var(--c-danger);border-color:var(--c-danger)"
-                    onclick="VuePhoning.demanderSuppressionAppel('${a.ID_Appel}')">✕</button>
+                    onclick="VuePhoning.demanderSuppressionAppel('${a.ID_Appel}')"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
           </div>` : ''}
         </div>`;
       }).join('')}
@@ -2058,7 +2058,7 @@ window.VuePhoning = {
                    value="${(d.coordTel !== undefined ? d.coordTel : c?.Tel) || ''}"
                    placeholder="📞 Téléphone, manquant"
                    oninput="VuePhoning.state.d.coordTel=this.value"/>
-            ${(d.coordTel !== undefined ? d.coordTel : c?.Tel) ? `<a class="btn-lien" style="flex-shrink:0;padding:6px 8px" href="tel:${String(d.coordTel !== undefined ? d.coordTel : c.Tel).replace(/\s/g,'')}">☎</a>` : ''}
+            ${(d.coordTel !== undefined ? d.coordTel : c?.Tel) ? `<a class="btn-lien" style="flex-shrink:0;padding:6px 8px" href="tel:${String(d.coordTel !== undefined ? d.coordTel : c.Tel).replace(/\s/g,'')}"><span class="material-symbols-outlined" aria-hidden="true">call</span></a>` : ''}
           </div>
           <input class="q-input" type="email" style="font-size:13px;padding:6px 8px"
                  value="${(d.coordEmail !== undefined ? d.coordEmail : c?.Email) || ''}"
@@ -2106,7 +2106,7 @@ window.VuePhoning = {
 
     const scoreStars = score => Array.from({length:5}, (_, i) => `
       <button type="button" style="font-size:22px;background:none;border:none;cursor:pointer;padding:2px;line-height:1;color:${i < score ? '#f59e0b' : 'var(--c-border)'}"
-              onclick="VuePhoning.state.d.interetScore=${i+1};VuePhoning.render()">★</button>`
+              onclick="VuePhoning.state.d.interetScore=${i+1};VuePhoning.render()"><span class="material-symbols-outlined" aria-hidden="true">star</span></button>`
     ).join('');
 
     return `<div class="q-champs">
@@ -2263,7 +2263,7 @@ window.VuePhoning = {
             Lancer l'appel
           </button>
           <button class="btn-secondaire" style="flex:1;font-size:13px;padding:9px"
-                  onclick="VuePhoning.supprimerPlanif('${a.ID_Appel}')">🗑</button>
+                  onclick="VuePhoning.supprimerPlanif('${a.ID_Appel}')"><span class="material-symbols-outlined" aria-hidden="true">delete</span></button>
         </div>
       </div>`;
   },
@@ -2359,7 +2359,7 @@ window.VuePhoning = {
       : `${s.commercialSelectionne ? this._boutonRetourCommerciauxPlanning() : ''}
         ${liste.length === 0
           ? `<div style="padding:32px;text-align:center;color:var(--c-text-2)">
-               <div style="font-size:32px;margin-bottom:8px">📭</div>
+               <div style="font-size:32px;margin-bottom:8px"><span class="material-symbols-outlined" aria-hidden="true">inbox</span></div>
                <div style="font-size:14px">Aucun appel planifié pour cette période</div>
                <div style="font-size:12px;margin-top:4px">Cliquez "Planifier un appel" pour en créer un.</div>
              </div>`
@@ -2425,7 +2425,7 @@ window.VuePhoning = {
           ${f.idCompte
             ? `<div style="padding:10px;background:var(--c-bg);border-radius:var(--radius-sm);font-weight:700;border:1.5px solid var(--c-primary)">${f.nomCompte}
                  <button type="button" onclick="VuePhoning.state.formPlanif.idCompte=null;VuePhoning.state.formPlanif.nomCompte='';VuePhoning.render()"
-                         style="float:right;background:none;border:none;cursor:pointer;color:var(--c-text-2)">✕</button>
+                         style="float:right;background:none;border:none;cursor:pointer;color:var(--c-text-2)"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
                </div>`
             : `<input class="q-input" placeholder="🔍 Rechercher un compte…" id="planif-recherche"
                      value="${f.rechercheCompte || ''}"

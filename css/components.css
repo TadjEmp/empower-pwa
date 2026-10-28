@@ -76,7 +76,7 @@
   padding: 4px 10px;
   border-radius: 999px;
   font: 500 12px/1 var(--font-mono);
-  transition: all 200ms ease;
+  transition: transform 200ms, background-color 200ms, color 200ms, opacity 200ms, border-color 200ms;
   white-space: nowrap;
   cursor: default;
 }
@@ -188,7 +188,7 @@
   border: 1.5px solid var(--c-border);
   font-size: 13px; font-weight: 600; white-space: nowrap;
   background: var(--c-surface); cursor: pointer;
-  transition: all .15s;
+  transition: transform .15s, background-color .15s, color .15s, opacity .15s, border-color .15s;
 }
 .btn-filtre:hover { background: var(--c-cream); }
 .btn-filtre.actif {

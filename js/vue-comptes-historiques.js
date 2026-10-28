@@ -229,8 +229,8 @@ window.VueComptesHistoriques = {
             </div>` : ''}
             <div class="cc-actions">
               <button class="btn-visiter" onclick="Router.aller('#/visites?compte=${encodeURIComponent(c.id||c.nom)}')">Planifier visite</button>
-              <button class="btn-tel-outline" onclick="Router.aller('#/phoning${c.id ? '/'+c.id : ''}')" title="Appeler">📞</button>
-              ${c.id ? `<button class="btn-tel-outline" onclick="Router.aller('#/compte/${c.id}')" title="Fiche">📋</button>` : ''}
+              <button class="btn-tel-outline" onclick="Router.aller('#/phoning${c.id ? '/'+c.id : ''}')" title="Appeler"><span class="material-symbols-outlined" aria-hidden="true">call</span></button>
+              ${c.id ? `<button class="btn-tel-outline" onclick="Router.aller('#/compte/${c.id}')" title="Fiche"><span class="material-symbols-outlined" aria-hidden="true">assignment</span></button>` : ''}
             </div>
           </div>`;
           }).join('')}
@@ -262,7 +262,7 @@ window.VueComptesHistoriques = {
                   ${Session.voitTout() ? `<td>${c.cdsPrenom !== 'n.c.' ? '👤 ' + c.cdsPrenom : 'n.c.'}</td>` : ''}
                   <td>
                     <button class="btn-visiter" style="padding:4px 10px;font-size:12px" onclick="Router.aller('#/visites?compte=${encodeURIComponent(c.id||c.nom)}')">Visite</button>
-                    <button class="btn-tel-outline" style="padding:4px 8px" onclick="Router.aller('#/phoning${c.id ? '/'+c.id : ''}')" title="Appeler">📞</button>
+                    <button class="btn-tel-outline" style="padding:4px 8px" onclick="Router.aller('#/phoning${c.id ? '/'+c.id : ''}')" title="Appeler"><span class="material-symbols-outlined" aria-hidden="true">call</span></button>
                   </td>
                 </tr>`;
               }).join('')}

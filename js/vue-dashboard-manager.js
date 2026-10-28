@@ -450,7 +450,7 @@ window.VueDashboardManager = {
       <div class="modal" style="max-width:340px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
           <h3 style="margin:0;font-size:16px">Export XLSX, Direction</h3>
-          <button class="btn-retour" onclick="VueDashboardManager.fermerExportDir()">✕</button>
+          <button class="btn-retour" onclick="VueDashboardManager.fermerExportDir()"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
         </div>
         <p style="font-size:12px;color:var(--c-text-2);margin-bottom:16px">Exporte toutes les données accessibles à votre profil.</p>
         <div style="display:flex;flex-direction:column;gap:10px">
@@ -1030,8 +1030,8 @@ window.VueDashboardManager = {
               <div class="alerte-ligne">${PACE[e.pace].lbl} <strong>${e.nom}</strong>, ${e.pct}% de l'objectif ${d.quarter}</div>`).join('')}
             ${d.leadsBloques.length ? `<div class="alerte-ligne no-print" onclick="Router.aller('#/empower-tracker')"><strong>${d.leadsBloques.length}</strong> lead(s) sans action > 7 jours</div>` : ''}
             ${d.comptesRouges.length ? `<div class="alerte-ligne no-print" onclick="Router.aller('#/comptes')"><strong>${d.comptesRouges.length}</strong> compte(s) en retard d'action</div>` : ''}
-            ${d.visitesManquees.length ? `<div class="alerte-ligne no-print" onclick="Router.aller('#/visites')">🔴 <strong>${d.visitesManquees.length}</strong> visite(s) planifiée(s) manquée(s)</div>` : ''}
-            ${d.comptesNonAttribues.length ? `<div class="alerte-ligne no-print" onclick="VueComptes.state.filtreStatut='SANS_CDS';Router.aller('#/comptes')">🏢 <strong>${d.comptesNonAttribues.length}</strong> compte(s) non attribué(s), dont Sell-In</div>` : ''}
+            ${d.visitesManquees.length ? `<div class="alerte-ligne no-print" onclick="Router.aller('#/visites')"><span class="material-symbols-outlined" aria-hidden="true">fiber_manual_record</span><strong>${d.visitesManquees.length}</strong> visite(s) planifiée(s) manquée(s)</div>` : ''}
+            ${d.comptesNonAttribues.length ? `<div class="alerte-ligne no-print" onclick="VueComptes.state.filtreStatut='SANS_CDS';Router.aller('#/comptes')"><span class="material-symbols-outlined" aria-hidden="true">apartment</span><strong>${d.comptesNonAttribues.length}</strong> compte(s) non attribué(s), dont Sell-In</div>` : ''}
             <div id="ns-alerte">${window.NonSuivis ? NonSuivis.htmlAlerte() : ''}</div>
             ${!d.leadsBloques.length && !d.comptesRouges.length && !d.visitesManquees.length && !d.comptesNonAttribues.length && d.equipe.every(e => e.pace === 'ON_TRACK') ? '<div class="pas-de-donnees">Aucune alerte active.</div>' : ''}
           </div>

@@ -1577,7 +1577,7 @@ window.VueVisites = {
                     onclick="VueVisites.dupliquerVisite('${v.ID_Visite}')">+1</button>
             `}
             <button class="btn-secondaire" title="Supprimer" style="padding:10px 14px;font-size:15px;width:auto;color:var(--c-danger);border-color:var(--c-danger)"
-                    onclick="VueVisites.demanderSuppression('${v.ID_Visite}')">✕</button>
+                    onclick="VueVisites.demanderSuppression('${v.ID_Visite}')"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
           ` : ''}
         </div>
       </div>`;
@@ -2050,13 +2050,13 @@ window.VueVisites = {
             ${m.photos.map(url => `
               <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
                 <img src="${url}" style="width:64px;height:64px;object-fit:cover;border-radius:var(--radius-sm)"/>
-                <button type="button" class="btn-sup-photo" onclick="VueVisites.supprimerPhotoEdition('${url.replace(/'/g, "\\'")}')">✕</button>
+                <button type="button" class="btn-sup-photo" onclick="VueVisites.supprimerPhotoEdition('${url.replace(/'/g, "\\'")}')"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
               </div>`).join('')}
             ${m.photosEnAttente.map((p, i) => `
               <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
                 <img src="${p}" style="width:64px;height:64px;object-fit:cover;border-radius:var(--radius-sm)"/>
                 <span style="font-size:11px;color:var(--c-text-2)">nouvelle</span>
-                <button type="button" class="btn-sup-photo" onclick="VueVisites.supprimerPhotoEnAttenteEdition(${i})">✕</button>
+                <button type="button" class="btn-sup-photo" onclick="VueVisites.supprimerPhotoEnAttenteEdition(${i})"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
               </div>`).join('')}
             ${(m.photos.length + m.photosEnAttente.length) < 4 ? `
             <div style="display:flex;gap:8px;margin-top:8px">

@@ -265,7 +265,7 @@ window.VuePhotos = {
     groupes = groupes || this._grouper(flat);
     return `${flat.length === 0
           ? `<div style="text-align:center;padding:48px 20px;color:var(--c-text-2)">
-               <div style="font-size:40px;margin-bottom:12px">📷</div>
+               <div style="font-size:40px;margin-bottom:12px"><span class="material-symbols-outlined" aria-hidden="true">photo_camera</span></div>
                <div style="font-size:15px;font-weight:700;margin-bottom:6px">Aucune photo</div>
                <div style="font-size:13px">Les photos prises lors des visites terrain apparaissent ici.</div>
              </div>`

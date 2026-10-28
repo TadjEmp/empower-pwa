@@ -1705,9 +1705,9 @@ window.VueAdmin = {
                 background:rgba(16,185,129,.1);border:1px solid var(--c-success,#10b981)">
                 <div style="font-weight:700;margin-bottom:4px">Synchronisation réussie · ${r.ts}</div>
                 <div style="display:flex;gap:16px;font-size:12px;flex-wrap:wrap">
-                  <span>✅ <strong>${r.matched}</strong> comptes mis à jour</span>
-                  ${r.crees > 0 ? `<span style="color:var(--c-primary)">🏢 <strong>${r.crees}</strong> créé(s), non attribués</span>` : ''}
-                  ${r.nonMatch > 0 ? `<span style="color:var(--c-warning)">⚠️ <strong>${r.nonMatch}</strong> à valider manuellement</span>` : '<span>Aucun cas à valider</span>'}
+                  <span><span class="material-symbols-outlined" aria-hidden="true">check_circle</span><strong>${r.matched}</strong> comptes mis à jour</span>
+                  ${r.crees > 0 ? `<span style="color:var(--c-primary)"><span class="material-symbols-outlined" aria-hidden="true">apartment</span><strong>${r.crees}</strong> créé(s), non attribués</span>` : ''}
+                  ${r.nonMatch > 0 ? `<span style="color:var(--c-warning)"><span class="material-symbols-outlined" aria-hidden="true">warning</span><strong>${r.nonMatch}</strong> à valider manuellement</span>` : '<span>Aucun cas à valider</span>'}
                 </div>
               </div>
               ${this.state.syncSellInNonMatcher.length > 0 ? `

@@ -61,7 +61,7 @@ window.NonSuivis = {
 
   htmlAlerte() {
     const n = this.nb();
-    return n ? `<div class="alerte-ligne no-print" onclick="VueComptes.state.filtreStatut='A_REPRENDRE';Router.aller('#/comptes')">🤝 <strong>${n}</strong> compte(s) non suivi(s) à reprendre</div>` : '';
+    return n ? `<div class="alerte-ligne no-print" onclick="VueComptes.state.filtreStatut='A_REPRENDRE';Router.aller('#/comptes')"><span class="material-symbols-outlined" aria-hidden="true">handshake</span><strong>${n}</strong> compte(s) non suivi(s) à reprendre</div>` : '';
   },
   peindreAlerte() { const el = document.getElementById('ns-alerte'); if (el) el.innerHTML = this.htmlAlerte(); },
 

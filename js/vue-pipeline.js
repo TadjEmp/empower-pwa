@@ -874,15 +874,15 @@ window.VuePipeline = {
             <option value="">Vues sauvegardées…</option>
             ${this.state.vuesFiltres.map(v => `<option value="${v.id}" ${this.state.vueFiltreActive === v.id ? 'selected' : ''}>${v.nom}</option>`).join('')}
           </select>
-          <button class="btn-filtre" title="Enregistrer les filtres actuels" onclick="VuePipeline.demanderSauvegardeVue()">💾</button>
-          ${this.state.vueFiltreActive ? `<button class="btn-filtre" title="Supprimer cette vue" onclick="VuePipeline.supprimerVueFiltre()">🗑️</button>` : ''}
+          <button class="btn-filtre" title="Enregistrer les filtres actuels" onclick="VuePipeline.demanderSauvegardeVue()"><span class="material-symbols-outlined" aria-hidden="true">save</span></button>
+          ${this.state.vueFiltreActive ? `<button class="btn-filtre" title="Supprimer cette vue" onclick="VuePipeline.supprimerVueFiltre()"><span class="material-symbols-outlined" aria-hidden="true">delete</span></button>` : ''}
         </div>
       </div>
 
       <div id="tracker-resultats-zone">${this._renderResultatsZone(leads, voitTous)}</div>
 
       ${peutSaisir ? '<button class="fab" onclick="VuePipeline.ouvrirSaisie()" title="Nouveau lead" style="bottom:140px">＋</button>' : ''}
-      ${(Session.estManager() || Session.estChannel()) ? `<button class="fab fab-export" onclick="VuePipeline.ouvrirExport()" title="Export Excel" style="bottom:210px;background:var(--c-success);font-size:18px">📥</button>` : ''}
+      ${(Session.estManager() || Session.estChannel()) ? `<button class="fab fab-export" onclick="VuePipeline.ouvrirExport()" title="Export Excel" style="bottom:210px;background:var(--c-success);font-size:18px"><span class="material-symbols-outlined" aria-hidden="true">download</span></button>` : ''}
       ${NavBar('tracker')}
       ${this._renderModal()}
       ${this._renderPanneauExport()}
@@ -907,7 +907,7 @@ window.VuePipeline = {
 
       ${this.state.leads.length === 0 ? `
         <div class="vide" style="text-align:center;padding:40px 20px;color:var(--c-text-2)">
-          <div style="font-size:32px;margin-bottom:12px">📭</div>
+          <div style="font-size:32px;margin-bottom:12px"><span class="material-symbols-outlined" aria-hidden="true">inbox</span></div>
           <div style="font-weight:700;color:var(--c-title);margin-bottom:6px">Aucun lead à traiter</div>
           <div style="font-size:13px">Aucun lead assigné à votre compte. Les leads importés apparaissent ici une fois attribués.</div>
         </div>` : ''}
@@ -952,7 +952,7 @@ window.VuePipeline = {
               <div class="kanban-ligne" data-id="${l.ID_Prospect}" onclick="VuePipeline.ouvrirLead('${l.ID_Prospect}')" title="${l.Nom_Compte}">
                 <span class="kanban-ligne-pot" style="background:${potCoul}"></span>
                 <span class="kanban-ligne-nom">${l.Nom_Compte}</span>
-                ${alerte ? '<span class="kanban-ligne-alerte">⚠️</span>' : ''}
+                ${alerte ? '<span class="kanban-ligne-alerte"><span class="material-symbols-outlined" aria-hidden="true">warning</span></span>' : ''}
                 <span class="kanban-ligne-cds">${this._nomCDS(l.PIN_CDS_Assigne).slice(0, 1)}</span>
               </div>`;
             }).join('') : affichees.map(l => `
@@ -1040,7 +1040,7 @@ window.VuePipeline = {
   _renderTableau(leadsEntree, voitTous) {
     if (leadsEntree.length === 0) return `
       <div class="vide" style="text-align:center;padding:40px 20px;color:var(--c-text-2)">
-        <div style="font-size:32px;margin-bottom:12px">📭</div>
+        <div style="font-size:32px;margin-bottom:12px"><span class="material-symbols-outlined" aria-hidden="true">inbox</span></div>
         <div style="font-weight:700;color:var(--c-title);margin-bottom:6px">Aucun résultat</div>
       </div>`;
 
@@ -1349,7 +1349,7 @@ window.VuePipeline = {
               ${l.CANAL ? `<span style="font-size:11px;color:var(--c-text-2);white-space:nowrap">${l.CANAL}</span>` : ''}
             </div>
           </div>
-          <button class="btn-retour" title="Fermer" onclick="VuePipeline.fermerModal()" style="flex-shrink:0">✕</button>
+          <button class="btn-retour" title="Fermer" onclick="VuePipeline.fermerModal()" style="flex-shrink:0"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
         </div>
 
         <!-- Infos lead complètes -->

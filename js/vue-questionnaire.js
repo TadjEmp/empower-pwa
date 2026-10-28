@@ -967,7 +967,7 @@ window.VueQuestionnaire = {
     const d = this.state.d;
     document.getElementById('app').innerHTML = `
       <div class="visite-succes">
-        <div class="succes-icone">✅</div>
+        <div class="succes-icone"><span class="material-symbols-outlined" aria-hidden="true">check_circle</span></div>
         <h2>Visite enregistrée</h2>
         <p class="succes-duree">${this.state.cible.Nom_Compte} · ${dureeMin} min</p>
         <div class="succes-recap">
@@ -1002,7 +1002,7 @@ window.VueQuestionnaire = {
           <div class="q-nom-compte">${s.cible ? s.cible.Nom_Compte : 'Visite terrain'}</div>
           <div class="q-sous-titre">Étape ${s.etape + 1}/${this.ETAPES.length} · ${this.ETAPES[s.etape]}</div>
         </div>
-        ${s.gps.lat ? '<span title="GPS capturé">📍</span>' : ''}
+        ${s.gps.lat ? '<span title="GPS capturé"><span class="material-symbols-outlined" aria-hidden="true">location_on</span></span>' : ''}
       </header>
 
       <div style="height:6px;background:var(--c-border);border-radius:0">
@@ -1046,7 +1046,7 @@ window.VueQuestionnaire = {
     const verrouille = this._sourceVerrouillee;
     const bannereFroid = verrouille === 'FROID' ? `
       <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fff8e1;border-radius:var(--radius-sm);border-left:4px solid #ffc107;margin-bottom:14px">
-        <span style="font-size:22px">❄️</span>
+        <span style="font-size:22px"><span class="material-symbols-outlined" aria-hidden="true">ac_unit</span></span>
         <div>
           <div style="font-size:13px;font-weight:700;color:#795548">Visite à froid</div>
           <div style="font-size:11px;color:var(--c-text-2)">Prospect hors base, non référencé dans vos comptes</div>
@@ -1341,7 +1341,7 @@ window.VueQuestionnaire = {
                 <button type="button" class="q-chip" style="font-size:11px;padding:4px 8px${s.photoTags[i] === t ? ';background:var(--c-cta);color:#fff;border-color:var(--c-cta)' : ''}"
                         onclick="VueQuestionnaire.state.photoTags[${i}]='${t}';VueQuestionnaire.render()">${t}</button>`).join('')}
             </div>
-            <button class="btn-sup-photo" onclick="VueQuestionnaire.supprimerPhoto(${i})">✕</button>
+            <button class="btn-sup-photo" onclick="VueQuestionnaire.supprimerPhoto(${i})"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
           </div>`).join('')}
         ${s.photos.length < 4 ? `
         <div style="display:flex;gap:8px;margin-top:8px">
