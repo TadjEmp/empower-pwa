@@ -15,6 +15,7 @@ window.VueLogin = {
       if (m) { this.state.mode = 'nouveau-mdp'; this.state.resetToken = m[1]; }
       else   { this.state.mode = 'reset'; }
     }
+    this._gestes();
     this.render();
   },
 
@@ -157,8 +158,36 @@ window.VueLogin = {
     if (svg) svg.style.opacity = input.type === 'text' ? '1' : '0.45';
   },
 
+  // Un gestionnaire de mots de passe (ou le remplissage automatique de la PWA) peut soumettre le
+  // formulaire seul dès que les champs sont remplis. On n'accepte la connexion que si l'utilisateur
+  // vient d'appuyer sur « Se connecter » ou sur Entrée / Aller du clavier (événements de confiance).
+  _gestes() {
+    if (this._gestesActifs) return;
+    this._gestesActifs = true;
+    const marquer = e => { if (e.isTrusted) this._geste = Date.now(); };
+    document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('.btn-login')) marquer(e); }, true);
+    document.addEventListener('click', e => { if (e.target.closest && e.target.closest('.btn-login')) marquer(e); }, true);
+    document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.closest && e.target.closest('.login-form')) marquer(e); }, true);
+  },
+
+  _gesteRecent() { return !!this._geste && Date.now() - this._geste < 3000; },
+
   async soumettre(e) {
     e.preventDefault();
+    this._gestes();
+    if (!this._gesteRecent()) {
+      // Envoi automatique détecté : on laisse les champs remplis et on invite à valider soi-même.
+      let info = document.getElementById('login-info');
+      if (!info) {
+        info = document.createElement('div');
+        info.id = 'login-info'; info.className = 'login-info'; info.setAttribute('role', 'status');
+        const btn = e.target.querySelector('.btn-login');
+        if (btn) btn.parentNode.insertBefore(info, btn);
+      }
+      info.textContent = 'Vérifiez vos identifiants puis appuyez sur « Se connecter ».';
+      return;
+    }
+    this._geste = 0;
     const email = document.getElementById('login-email').value.trim();
     const mdp   = document.getElementById('login-mdp').value;
     this.state.chargement = true;
