@@ -75,7 +75,7 @@ const SheetsAPI = {
 };
 
 /* ============================================================
-  UI COMPONENTS — SÉLECTEUR COMMERCIAL
+  UI COMPONENTS, SÉLECTEUR COMMERCIAL
 ============================================================ */
 async function renderCommercialSelector(containerId, onChange) {
   const container = document.getElementById(containerId);
@@ -104,7 +104,7 @@ async function renderCommercialSelector(containerId, onChange) {
 }
 
 /* ============================================================
-  UI COMPONENTS — MODAL DÉCLARER CA
+  UI COMPONENTS, MODAL DÉCLARER CA
 ============================================================ */
 function openDeclareCaModal(codeClient, raisonSociale, fy = 'FY27') {
   const existing = document.getElementById('declare-ca-modal');
@@ -202,7 +202,7 @@ async function _submitDeclareCA(codeClient, fy) {
 }
 
 /* ============================================================
-  UI COMPONENTS — MODAL AJOUT LEAD
+  UI COMPONENTS, MODAL AJOUT LEAD
 ============================================================ */
 function openAddLeadModal(fy = 'FY27') {
   const existing = document.getElementById('add-lead-modal');
@@ -325,7 +325,7 @@ async function _submitAddLead(fy) {
 }
 
 /* ============================================================
-  PATCH VUE PHONING — appeler dans saveCall()
+  PATCH VUE PHONING, appeler dans saveCall()
   Usage : await syncCallToSheet('CODE_CLIENT', 'FY27');
 ============================================================ */
 async function syncCallToSheet(codeClient, fy = 'FY27') {
@@ -353,7 +353,7 @@ async function syncCallToSheet(codeClient, fy = 'FY27') {
 }
 
 /* ============================================================
-  PATCH DASHBOARD — charger les KPIs au démarrage
+  PATCH DASHBOARD, charger les KPIs au démarrage
   Usage : initDashboardKPIs();
 ============================================================ */
 async function initDashboardKPIs() {

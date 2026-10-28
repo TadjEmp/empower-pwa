@@ -55,13 +55,13 @@ window.VueQuestionnaire = {
   ],
 
   FREINS: [
-    { id: '❌ Norton ne correspond pas à la cible', argu: '<strong>Gamme NSB dédiée TPE/PME</strong> — 1 à 20 postes, clé en main. Non substituable aux solutions entreprise.' },
+    { id: '❌ Norton ne correspond pas à la cible', argu: '<strong>Gamme NSB dédiée TPE/PME</strong>, 1 à 20 postes, clé en main. Non substituable aux solutions entreprise.' },
     { id: '💰 Tarifs perçus comme excessifs',       argu: '<strong>Revenus récurrents +25% sur 3 ans via EMPOWER.</strong> ROI revendeur prouvé. Portail EMPOWER : calcul marge en temps réel.' },
     { id: '🔄 Travaille déjà avec un autre éditeur', argu: '<strong>Complémentaire, non substituable.</strong> Norton = grand public + TPE, pas concurrentiel. Proposez un run parallèle.' },
     { id: '📉 Mauvais historique Norton',            argu: '<strong>Nouveau programme EMPOWER 2025.</strong> Support dédié + formation incluse + accompagnement CDS personnalisé.' },
     { id: '⏳ Pas le temps de former les équipes',   argu: '<strong>Formation EMPOWER 30 min à distance.</strong> Sans contrainte horaire. Norton s\'occupe de l\'essentiel de l\'intégration.' },
-    { id: '🤷 Manque de visibilité sur les marges',  argu: '<strong>Portail EMPOWER — calcul marge en temps réel.</strong> Offres enregistrées, accès immédiat. ESD zéro rupture.' },
-    { id: '📦 Problème de stock / approvisionnement', argu: '<strong>ESD disponible immédiatement.</strong> Zéro rupture sur le numérique — livraison instantanée à la commande.' },
+    { id: '🤷 Manque de visibilité sur les marges',  argu: '<strong>Portail EMPOWER, calcul marge en temps réel.</strong> Offres enregistrées, accès immédiat. ESD zéro rupture.' },
+    { id: '📦 Problème de stock / approvisionnement', argu: '<strong>ESD disponible immédiatement.</strong> Zéro rupture sur le numérique, livraison instantanée à la commande.' },
   ],
 
   CONCURRENTS: [
@@ -303,7 +303,7 @@ window.VueQuestionnaire = {
       // visite précise (jamais une autre, cf. _cleBrouillon) : reprend
       // l'étape, les réponses ET les photos déjà prises avant l'interruption.
       if (this._restaurerBrouillon(this._cleBrouillonCourante)) {
-        Toast.afficher('Reprise après interruption — vos réponses ont été restaurées', 'info', 5000);
+        Toast.afficher('Reprise après interruption, vos réponses ont été restaurées', 'info', 5000);
       }
       this.state.chargement = false;
       this.render();
@@ -450,7 +450,7 @@ window.VueQuestionnaire = {
         <h3>Ajouter au Tracker Empower</h3>
         ${m.doublonExistant ? `
         <div style="background:color-mix(in srgb,var(--c-warning) 12%,transparent);border:1px solid var(--c-warning);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px">
-          <div style="font-weight:700;color:var(--c-warning);margin-bottom:6px">Ce nom existe déjà — ${m.doublonExistant._typeDoublon === 'compte' ? 'compte actif' : 'lead Tracker'}</div>
+          <div style="font-weight:700;color:var(--c-warning);margin-bottom:6px">Ce nom existe déjà, ${m.doublonExistant._typeDoublon === 'compte' ? 'compte actif' : 'lead Tracker'}</div>
           <div style="font-size:13px;margin-bottom:10px"><strong>${m.doublonExistant.Nom_Compte}</strong></div>
           <button class="btn-primaire" style="width:100%;font-size:12px" onclick="VueQuestionnaire.forcerAjoutTracker()">Ajouter quand même</button>
         </div>` : ''}
@@ -522,7 +522,7 @@ window.VueQuestionnaire = {
     zone.innerHTML = (this.state.suggestionsOuvertes ? this.suggestions : []).map((c, i) => `
       <div class="q-arbre-btn" style="margin-top:4px" onclick="VueQuestionnaire.choisirCible(${i})">
         <strong>${c.Nom_Compte}</strong>
-        <span style="color:var(--c-text-2);font-size:12px"> · ${c.Ville||'—'}${c.STATUT_COMPTE?' · '+c.STATUT_COMPTE:''}</span>
+        <span style="color:var(--c-text-2);font-size:12px"> · ${c.Ville||'n.c.'}${c.STATUT_COMPTE?' · '+c.STATUT_COMPTE:''}</span>
       </div>`).join('');
   },
 
@@ -683,7 +683,7 @@ window.VueQuestionnaire = {
           else photosEchouees++;
         } catch { photosEchouees++; }
       }
-      if (photosEchouees > 0) Toast.afficher(`${photosEchouees} photo(s) non uploadée(s) — vérifiez la connexion`, 'warning', 5000);
+      if (photosEchouees > 0) Toast.afficher(`${photosEchouees} photo(s) non uploadée(s), vérifiez la connexion`, 'warning', 5000);
 
       // Feuille de route Phase 3 — signature, facultative : un échec d'upload
       // ne doit jamais bloquer l'enregistrement de la visite.
@@ -746,7 +746,7 @@ window.VueQuestionnaire = {
         FLAG_ALERTE_ALEXANDRA:   empowerAlerte ? 'OUI' : '',
         Slider_Receptivite:      d.score,
         Note_Privee:             [d.note, d.commentaireLibre, d.resumeIA ? `[IA] ${d.resumeIA}` : ''].filter(Boolean).join('\n'),
-        Prochaine_Action_Texte:  d.prochaineAction + (d.prochaineActionTexte ? ' — ' + d.prochaineActionTexte : ''),
+        Prochaine_Action_Texte:  d.prochaineAction + (d.prochaineActionTexte ? ', ' + d.prochaineActionTexte : ''),
         Prochaine_Action_Date:   d.prochaineActionDate,
         Photo_URL:               photoURLs.join(' | '),
         Signature_URL:           signatureURL || '',
@@ -851,7 +851,7 @@ window.VueQuestionnaire = {
         Nom_Compte:   s.cible.Nom_Compte,
         Statut_Avant: s.cible.STATUT_COMPTE || s.cible.Statut || '',
         Statut_Apres: arbEMPOWER,
-        Resum_IA:     d.resumeIA || `Visite ${d.resultatVisite} — réceptivité ${d.score}/5`,
+        Resum_IA:     d.resumeIA || `Visite ${d.resultatVisite}, réceptivité ${d.score}/5`,
         GPS_Lat:      s.gps.lat,
         GPS_Lng:      s.gps.lng,
         Timestamp:    new Date().toISOString(),
@@ -971,8 +971,8 @@ window.VueQuestionnaire = {
         <h2>Visite enregistrée</h2>
         <p class="succes-duree">${this.state.cible.Nom_Compte} · ${dureeMin} min</p>
         <div class="succes-recap">
-          <div>${d.resultatVisite || '—'} · Réceptivité : ${d.score}/5</div>
-          ${d.prochaineAction ? `<div>🎯 ${d.prochaineAction}${d.prochaineActionDate?' — '+dateRelative(d.prochaineActionDate):''}</div>` : ''}
+          <div>${d.resultatVisite || 'n.c.'} · Réceptivité : ${d.score}/5</div>
+          ${d.prochaineAction ? `<div>🎯 ${d.prochaineAction}${d.prochaineActionDate?', '+dateRelative(d.prochaineActionDate):''}</div>` : ''}
           ${empowerAlerte ? '<div>Alerte EMPOWER envoyée à Alexandra</div>' : ''}
           ${d.resumeIA ? `<div>🤖 ${d.resumeIA}</div>` : ''}
         </div>
@@ -1049,7 +1049,7 @@ window.VueQuestionnaire = {
         <span style="font-size:22px">❄️</span>
         <div>
           <div style="font-size:13px;font-weight:700;color:#795548">Visite à froid</div>
-          <div style="font-size:11px;color:var(--c-text-2)">Prospect hors base — non référencé dans vos comptes</div>
+          <div style="font-size:11px;color:var(--c-text-2)">Prospect hors base, non référencé dans vos comptes</div>
         </div>
       </div>` : '';
     // Bug audit (compte-rendu) — Adresse/Département/Email manquaient ici alors
@@ -1101,11 +1101,11 @@ window.VueQuestionnaire = {
       </label>` : ''}
       ${zoneRecherche}
       ${s.cible && s.typeSource!=='FROID' ? `<div class="q-recap">
-        <div class="q-recap-ligne"><span>Statut</span><strong>${s.cible.STATUT_COMPTE||s.cible.Statut||'—'}</strong></div>
+        <div class="q-recap-ligne"><span>Statut</span><strong>${s.cible.STATUT_COMPTE||s.cible.Statut||'n.c.'}</strong></div>
         ${s.cible.CA_FY25 ? `<div class="q-recap-ligne"><span>CA FY25</span><strong>${formatEuro(s.cible.CA_FY25)}</strong></div>` : ''}
       </div>
       <p class="q-intro" style="margin-top:14px">Fiche contact
-        <span style="color:var(--c-text-2);font-size:11px">(vérifiez/complétez — enregistré sur ${s.typeSource==='PROSPECT'?'le prospect':'le compte'} à la validation de la visite)</span>
+        <span style="color:var(--c-text-2);font-size:11px">(vérifiez/complétez, enregistré sur ${s.typeSource==='PROSPECT'?'le prospect':'le compte'} à la validation de la visite)</span>
       </p>
       <label class="q-label">Adresse
         <input class="q-input" placeholder="ex : 12 rue de la Paix" value="${s.cible.Adresse || ''}"
@@ -1133,8 +1133,8 @@ window.VueQuestionnaire = {
         ${s.dernieresVisites.map(v => `
         <div style="border-bottom:1px solid var(--c-border);padding:6px 0;font-size:13px">
           <div style="display:flex;justify-content:space-between">
-            <strong>${v.Date||'—'}</strong>
-            <span style="color:${v.Resultat_Visite==='Positif'||v.Resultat_Visite==='✅ Positif'?'var(--c-success)':v.Resultat_Visite==='Négatif'||v.Resultat_Visite==='❌ Négatif'?'var(--c-danger)':'var(--c-warning)'}">${v.Resultat_Visite||'—'}</span>
+            <strong>${v.Date||'n.c.'}</strong>
+            <span style="color:${v.Resultat_Visite==='Positif'||v.Resultat_Visite==='✅ Positif'?'var(--c-success)':v.Resultat_Visite==='Négatif'||v.Resultat_Visite==='❌ Négatif'?'var(--c-danger)':'var(--c-warning)'}">${v.Resultat_Visite||'n.c.'}</span>
             <span style="color:var(--c-text-2)">⭐ ${v.Slider_Receptivite||'?'}/5</span>
           </div>
           ${v.Prochaine_Action_Texte ? `<div style="font-size:11px;color:var(--c-primary);margin-top:2px">→ ${v.Prochaine_Action_Texte}</div>` : ''}
@@ -1167,7 +1167,7 @@ window.VueQuestionnaire = {
       ${this._chips('activitesPrincipales', this.ACTIVITES)}
       <p class="q-intro" style="margin-top:14px">Situation géographique</p>
       ${this._radios('situationGeo', this.SITUATIONS_GEO)}
-      <label class="q-label" style="margin-top:14px">Nombre de salariés <span style="color:var(--c-text-2);font-size:11px">(optionnel — qualification revendeur)</span>
+      <label class="q-label" style="margin-top:14px">Nombre de salariés <span style="color:var(--c-text-2);font-size:11px">(optionnel, qualification revendeur)</span>
         <input class="q-input" type="number" min="0" placeholder="ex : 5" value="${d.nbEmployes}"
                oninput="VueQuestionnaire.set('nbEmployes',this.value)"/></label>
     </div>`;
@@ -1230,7 +1230,7 @@ window.VueQuestionnaire = {
   _etape4() {
     const d = this.state.d;
     return `<div class="q-champs">
-      <p class="q-intro">Sélectionnez les freins mentionnés — l'argumentaire recommandé s'affiche automatiquement :</p>
+      <p class="q-intro">Sélectionnez les freins mentionnés, l'argumentaire recommandé s'affiche automatiquement :</p>
       <div class="q-arbre">
         ${this.FREINS.map(f => {
           const actif = d.freins.includes(f.id);
@@ -1311,18 +1311,18 @@ window.VueQuestionnaire = {
     return `<div class="q-champs">
       <div class="q-recap">
         <h3>Résumé de la visite</h3>
-        <div class="q-recap-ligne"><span>Compte</span><strong>${s.cible?.Nom_Compte||'—'}</strong></div>
+        <div class="q-recap-ligne"><span>Compte</span><strong>${s.cible?.Nom_Compte||'n.c.'}</strong></div>
         <div class="q-recap-ligne"><span>Date / Heure</span><strong>${d.date} · ${d.heure}</strong></div>
-        <div class="q-recap-ligne"><span>Interlocuteur</span><strong>${d.interlocuteurNom||'—'} ${d.interlocuteurFonction?'· '+d.interlocuteurFonction:''}</strong></div>
-        <div class="q-recap-ligne"><span>Type revendeur</span><strong>${d.typeRevendeur.join(', ')||'—'}</strong></div>
-        <div class="q-recap-ligne"><span>Objectifs</span><strong>${d.objectifsVisite.join(', ')||'—'}</strong></div>
-        <div class="q-recap-ligne"><span>Norton référencé</span><strong>${d.nortonReference||'—'}${d.nortonFormat.length?' · '+d.nortonFormat.join(', '):''}</strong></div>
-        <div class="q-recap-ligne"><span>EMPOWER</span><strong>${d.empowerPartenaire||'—'}${d.empowerInteresse?' → Intéressé : '+d.empowerInteresse:''}</strong></div>
-        <div class="q-recap-ligne"><span>Résultat</span><strong>${d.resultatVisite||'—'}</strong></div>
+        <div class="q-recap-ligne"><span>Interlocuteur</span><strong>${d.interlocuteurNom||'n.c.'} ${d.interlocuteurFonction?'· '+d.interlocuteurFonction:''}</strong></div>
+        <div class="q-recap-ligne"><span>Type revendeur</span><strong>${d.typeRevendeur.join(', ')||'n.c.'}</strong></div>
+        <div class="q-recap-ligne"><span>Objectifs</span><strong>${d.objectifsVisite.join(', ')||'n.c.'}</strong></div>
+        <div class="q-recap-ligne"><span>Norton référencé</span><strong>${d.nortonReference||'n.c.'}${d.nortonFormat.length?' · '+d.nortonFormat.join(', '):''}</strong></div>
+        <div class="q-recap-ligne"><span>EMPOWER</span><strong>${d.empowerPartenaire||'n.c.'}${d.empowerInteresse?' → Intéressé : '+d.empowerInteresse:''}</strong></div>
+        <div class="q-recap-ligne"><span>Résultat</span><strong>${d.resultatVisite||'n.c.'}</strong></div>
         <div class="q-recap-ligne"><span>Score</span><strong>${d.score}/5</strong></div>
-        <div class="q-recap-ligne"><span>Prochaine action</span><strong>${d.prochaineAction||'—'}${d.prochaineActionDate?' — '+dateRelative(d.prochaineActionDate):''}</strong></div>
+        <div class="q-recap-ligne"><span>Prochaine action</span><strong>${d.prochaineAction||'n.c.'}${d.prochaineActionDate?', '+dateRelative(d.prochaineActionDate):''}</strong></div>
         ${empowerAlerte ? '<div style="font-size:12px;color:var(--c-primary);font-weight:600;padding:6px 0">Alerte EMPOWER → Alexandra sera envoyée</div>' : ''}
-        <div class="q-recap-ligne"><span>GPS</span><strong>${s.gps.lat?'📍 capturé':'—'}</strong></div>
+        <div class="q-recap-ligne"><span>GPS</span><strong>${s.gps.lat?'📍 capturé':'n.c.'}</strong></div>
       </div>
 
       ${d.empowerInteresse === 'OUI' ? `

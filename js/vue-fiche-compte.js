@@ -46,7 +46,7 @@ window.VueFicheCompte = {
   // Bloc 1 §6.2 — dates dernière visite / dernier appel / prochaine visite,
   // calculées depuis this.state.visites/appels (déjà chargés) plutôt que lues
   // sur un champ figé de la fiche compte.
-  _dateLigne(iso) { return iso ? dateRelative(String(iso).slice(0, 10)) : '—'; },
+  _dateLigne(iso) { return iso ? dateRelative(String(iso).slice(0, 10)) : 'n.c.'; },
   _dernierVisiteRealisee() {
     const v = (this.state.visites || []).find(x => String(x.Statut_Visite || '').toLowerCase() === 'realisee');
     return v ? v.Date : null;
@@ -249,8 +249,8 @@ window.VueFicheCompte = {
     const c = this.state.compte;
     ConfirmModal.demander({
       titre: `Ajouter ${c.Nom_Compte} au Tracker ?`,
-      message: `Démarre le suivi d'onboarding EMPOWER pour ce compte Grossiste — visible dans le Tracker, attribué à ${window.resolveCDS(c.PIN_CDS_Assigne || c.Nom_CDS)}.`,
-      champ: { placeholder: 'Note (optionnel) — contexte, pourquoi maintenant…' },
+      message: `Démarre le suivi d'onboarding EMPOWER pour ce compte Grossiste, visible dans le Tracker, attribué à ${window.resolveCDS(c.PIN_CDS_Assigne || c.Nom_CDS)}.`,
+      champ: { placeholder: 'Note (optionnel), contexte, pourquoi maintenant…' },
       labelConfirmer: 'Ajouter au Tracker',
       onConfirm: (note) => this._confirmerAjoutTrackerDepuisCompte(note),
     });
@@ -301,7 +301,7 @@ window.VueFicheCompte = {
         SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
           ID_Notif: genId('NOTIF'), Date_Envoi: new Date().toISOString(),
           PIN_Destinataire: dest, Type_Notif: 'NOUVEAU_LEAD',
-          Message: `🎯 Nouveau lead depuis fiche compte (${Session.nom}) : ${c.Nom_Compte} — Grossiste à onboarder`,
+          Message: `🎯 Nouveau lead depuis fiche compte (${Session.nom}) : ${c.Nom_Compte}, Grossiste à onboarder`,
           ID_Cible: lead.ID_Prospect, Statut_Lu: false, Timestamp: new Date().toISOString(),
         }).catch(() => {});
       }
@@ -329,7 +329,7 @@ window.VueFicheCompte = {
     ConfirmModal.demander({
       titre: 'Supprimer ce compte ?',
       message: `"${nomCompte}"`,
-      detail: "À utiliser uniquement si ce compte est un doublon d'un autre compte déjà existant — l'historique (visites, appels, CA) reste conservé mais ce compte n'apparaîtra plus dans les listes.",
+      detail: "À utiliser uniquement si ce compte est un doublon d'un autre compte déjà existant, l'historique (visites, appels, CA) reste conservé mais ce compte n'apparaîtra plus dans les listes.",
       labelConfirmer: 'Supprimer', danger: true,
       onConfirm: () => this._supprimerCompteConfirme(idCompte),
     });
@@ -372,13 +372,13 @@ window.VueFicheCompte = {
     return `
       <div class="modal-overlay" onclick="if(event.target===this)VueFicheCompte.fermerRapportPhoning()">
         <div class="modal" style="max-width:520px;margin:0 auto">
-          <h3>Rapport Phoning — ${this.state.compte.Nom_Compte}</h3>
+          <h3>Rapport Phoning, ${this.state.compte.Nom_Compte}</h3>
           ${appels.length === 0 ? '<div class="vide-liste">Aucun appel enregistré pour ce compte</div>' : `
             <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">${appels.length} appel${appels.length > 1 ? 's' : ''} au total</p>
             ${appels.map(a => `
             <div class="carte-appel" style="margin-bottom:10px">
-              <div class="appel-date">${a.Date || '—'} · ${window.resolveCDS(a.PIN_CDS || a.Nom_CDS)}</div>
-              <div class="appel-resultat">${a.Statut_Appel || '—'} · Intérêt EMPOWER : ${a.Interet_EMPOWER || '—'}${a.Interet_Score ? ' (' + a.Interet_Score + '/5)' : ''}</div>
+              <div class="appel-date">${a.Date || 'n.c.'} · ${window.resolveCDS(a.PIN_CDS || a.Nom_CDS)}</div>
+              <div class="appel-resultat">${a.Statut_Appel || 'n.c.'} · Intérêt EMPOWER : ${a.Interet_EMPOWER || 'n.c.'}${a.Interet_Score ? ' (' + a.Interet_Score + '/5)' : ''}</div>
               ${a.Frein_Principal ? `<div class="appel-frein">Frein : ${a.Frein_Principal}</div>` : ''}
               ${a.Prochaine_Action ? `<div class="appel-frein">→ ${a.Prochaine_Action}${a.Date_Rappel ? ' (' + a.Date_Rappel + ')' : ''}</div>` : ''}
               ${a.Note ? `<div class="pa-note">📝 ${a.Note}</div>` : ''}
@@ -486,23 +486,23 @@ window.VueFicheCompte = {
         </div>
         ${coordManquantes ? `
         <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:10px;border-radius:var(--radius-sm);background:color-mix(in srgb,var(--c-warning) 10%,transparent);border:1px solid color-mix(in srgb,var(--c-warning) 30%,transparent);font-size:12px;color:var(--c-warning)">
-          ⚠️ Coordonnées manquantes —
+          ⚠️ Coordonnées manquantes
           <button class="btn-lien" style="font-size:12px;color:var(--c-primary);font-weight:600"
                   onclick="VueFicheCompte.ouvrirEditionCoordonnees()">Saisir maintenant →</button>
         </div>` : ''}
         <div class="grille-identite">
           ${c.Adresse ? `<div class="id-ligne"><span>Adresse</span><strong>${c.Adresse}</strong></div>` : ''}
-          <div class="id-ligne"><span>Ville</span><strong>${c.Ville || '—'}${c.Code_Postal ? ' (' + c.Code_Postal + ')' : ''}</strong></div>
-          <div class="id-ligne"><span>Département</span><strong>${dept || '—'}</strong></div>
-          <div class="id-ligne"><span>Canal / Secteur</span><strong>${c.CANAL || '—'} · ${c.SECTEUR || '—'}</strong></div>
-          <div class="id-ligne"><span>Contact</span><strong>${c.Contact_Nom ? `${c.Contact_Nom}${c.Contact_Fonction ? ' · ' + c.Contact_Fonction : ''}` : '—'}</strong></div>
-          <div class="id-ligne"><span>Téléphone</span><strong>${c.Tel ? `<a class="lien-tel" href="tel:${c.Tel.replace(/\s/g,'')}">${c.Tel}</a>` : '—'}</strong></div>
-          <div class="id-ligne"><span>Email</span><strong>${c.Email ? `<a class="lien-email" href="mailto:${c.Email}">${c.Email}</a>` : '—'}</strong></div>
+          <div class="id-ligne"><span>Ville</span><strong>${c.Ville || 'n.c.'}${c.Code_Postal ? ' (' + c.Code_Postal + ')' : ''}</strong></div>
+          <div class="id-ligne"><span>Département</span><strong>${dept || 'n.c.'}</strong></div>
+          <div class="id-ligne"><span>Canal / Secteur</span><strong>${c.CANAL || 'n.c.'} · ${c.SECTEUR || 'n.c.'}</strong></div>
+          <div class="id-ligne"><span>Contact</span><strong>${c.Contact_Nom ? `${c.Contact_Nom}${c.Contact_Fonction ? ' · ' + c.Contact_Fonction : ''}` : 'n.c.'}</strong></div>
+          <div class="id-ligne"><span>Téléphone</span><strong>${c.Tel ? `<a class="lien-tel" href="tel:${c.Tel.replace(/\s/g,'')}">${c.Tel}</a>` : 'n.c.'}</strong></div>
+          <div class="id-ligne"><span>Email</span><strong>${c.Email ? `<a class="lien-email" href="mailto:${c.Email}">${c.Email}</a>` : 'n.c.'}</strong></div>
           <div class="id-ligne"><span>CDS</span>${
             Session.voitTout()
               ? `<select onchange="VueFicheCompte.changerCDS('${c.ID_Compte}', this.value)"
                          style="font-size:13px;padding:3px 6px;border:1px solid var(--c-border);border-radius:var(--radius-sm)">
-                  <option value="">— Non attribué —</option>
+                  <option value="">Non attribué</option>
                   ${this.CDS_ASSIGNABLES.map(x => `<option value="${x.pin}" ${Number(c.PIN_CDS_Assigne) === x.pin ? 'selected' : ''}>${x.nom}</option>`).join('')}
                 </select>`
               : `<strong>${window.resolveCDS(c.PIN_CDS_Assigne || c.Nom_CDS)}</strong>`
@@ -531,9 +531,9 @@ window.VueFicheCompte = {
           <div class="id-ligne"><span>CA FY26</span><strong>${window.fmtCA(this.state.v17?.['CA FY26 €'] ?? c.CA_FY26)} €</strong></div>
           <div class="id-ligne"><span>Dernier Q (${this.state.quarter}·27)</span><strong>${(() => {
             const v = window.caQuarterActif(this.state.v17, this.state.quarter, 'sellin') ?? window.caQuarterActif(c, this.state.quarter);
-            return v !== null ? window.fmtCA(v) : '—';
+            return v !== null ? window.fmtCA(v) : 'n.c.';
           })()} €</strong></div>
-          <div class="id-ligne"><span>Potentiel</span><strong>${c.POTENTIEL || this.state.v17?.POTENTIEL_UPSELL || '—'}</strong></div>
+          <div class="id-ligne"><span>Potentiel</span><strong>${c.POTENTIEL || this.state.v17?.POTENTIEL_UPSELL || 'n.c.'}</strong></div>
           ${this.state.v17?.GROSSISTE_PRINCIPAL ? `<div class="id-ligne"><span>Grossiste</span><strong>${this.state.v17.GROSSISTE_PRINCIPAL}</strong></div>` : ''}
         </div>
         ${this.state.appels[0]?.Note ? `
@@ -545,10 +545,10 @@ window.VueFicheCompte = {
         <div style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;background:color-mix(in srgb,var(--c-primary) 12%,transparent);color:var(--c-primary);border:1px solid color-mix(in srgb,var(--c-primary) 30%,transparent)">
           ❄️ Créé depuis visite à froid
         </div>` : ''}
-        <div class="statut-fy27">${c.STATUT_COMPTE || '—'} · Priorité ${c.Priorite || '—'}</div>
+        <div class="statut-fy27">${c.STATUT_COMPTE || 'n.c.'} · Priorité ${c.Priorite || 'n.c.'}</div>
         <div style="margin-top:10px;text-align:right">
           <button class="btn-lien" style="font-size:11px;color:var(--c-danger)"
-                  title="Compte en double — supprime ce compte, conserve l'historique lié"
+                  title="Compte en double, supprime ce compte, conserve l'historique lié"
                   onclick="VueFicheCompte.supprimerCompte('${c.ID_Compte}', '${(c.Nom_Compte || '').replace(/'/g, "\\'")}')"
                   ${this.state.suppressionEnCours ? 'disabled' : ''}>
             🗑 Compte en double ? Supprimer
@@ -578,7 +578,7 @@ window.VueFicheCompte = {
       <!-- CA HISTORIQUE -->
       <div class="bloc-fiche">
         <div class="bloc-titre">CA Historique</div>
-        ${!v17 ? '<div class="pas-de-v17">Pas de correspondance V17 — données MDB</div>' : ''}
+        ${!v17 ? '<div class="pas-de-v17">Pas de correspondance V17, données MDB</div>' : ''}
         <div class="graphique-ca">
           ${this._barreCA('FY25', fy25, maxCA)}
           ${this._barreCA('FY26', fy26, maxCA)}
@@ -586,9 +586,9 @@ window.VueFicheCompte = {
         </div>
         ${v17 ? `
         <div class="grille-identite" style="margin-top:12px">
-          <div class="id-ligne"><span>Évolution FY26 vs FY25</span><strong>${(() => { const ev = window.parseCA(v17['EVOL_FY26_VS_FY25_%']); return ev !== null ? ev + ' %' : (v17['EVOL_FY26_VS_FY25_%'] ? String(v17['EVOL_FY26_VS_FY25_%']) : '—'); })()}</strong></div>
-          <div class="id-ligne"><span>Potentiel upsell</span><strong>${v17.POTENTIEL_UPSELL || '—'}</strong></div>
-          <div class="id-ligne"><span>Score potentiel</span><strong>${v17.SCORE_POTENTIEL != null && v17.SCORE_POTENTIEL !== '' ? String(v17.SCORE_POTENTIEL) + '/100' : '—'}</strong></div>
+          <div class="id-ligne"><span>Évolution FY26 vs FY25</span><strong>${(() => { const ev = window.parseCA(v17['EVOL_FY26_VS_FY25_%']); return ev !== null ? ev + ' %' : (v17['EVOL_FY26_VS_FY25_%'] ? String(v17['EVOL_FY26_VS_FY25_%']) : 'n.c.'); })()}</strong></div>
+          <div class="id-ligne"><span>Potentiel upsell</span><strong>${v17.POTENTIEL_UPSELL || 'n.c.'}</strong></div>
+          <div class="id-ligne"><span>Score potentiel</span><strong>${v17.SCORE_POTENTIEL != null && v17.SCORE_POTENTIEL !== '' ? String(v17.SCORE_POTENTIEL) + '/100' : 'n.c.'}</strong></div>
         </div>` : ''}
       </div>
 
@@ -607,7 +607,7 @@ window.VueFicheCompte = {
 
       <!-- ACTIVITÉ — Feuille de route Phase 2 : chronologie unifiée visites +
            appels (inspirée de la "All-in-One Lead/Deal Page" de frappe/crm,
-           cf. Repères CRM) — remplace les deux blocs Visites/Appels séparés,
+           cf. Repères CRM), remplace les deux blocs Visites/Appels séparés,
            qu'il fallait recroiser mentalement pour reconstituer l'historique
            réel du compte. Mêmes données déjà chargées (state.visites/appels),
            aucun nouveau fetch. -->
@@ -630,17 +630,17 @@ window.VueFicheCompte = {
         const v = ev.item;
         return `
           <div class="carte-visite">
-            <div class="visite-date">🗺️ ${v.Date || '—'} · ${v.Heure || ''} · ${window.resolveCDS(v.PIN_CDS || v.Nom_CDS)}</div>
-            <div class="visite-resultat">${v.Resultat_Visite || v.Type_Visite || '—'}</div>
-            <div class="visite-score">Réceptivité ${v.Slider_Receptivite != null && v.Slider_Receptivite !== '' ? v.Slider_Receptivite : '—'}/5${v.Prochaine_Action_Texte ? ` · → ${v.Prochaine_Action_Texte}` : ''}</div>
+            <div class="visite-date">🗺️ ${v.Date || 'n.c.'} · ${v.Heure || ''} · ${window.resolveCDS(v.PIN_CDS || v.Nom_CDS)}</div>
+            <div class="visite-resultat">${v.Resultat_Visite || v.Type_Visite || 'n.c.'}</div>
+            <div class="visite-score">Réceptivité ${v.Slider_Receptivite != null && v.Slider_Receptivite !== '' ? v.Slider_Receptivite : 'n.c.'}/5${v.Prochaine_Action_Texte ? ` · → ${v.Prochaine_Action_Texte}` : ''}</div>
             ${this._libelleSuite(v.ID_Action_Origine)}
           </div>`;
       }
       const a = ev.item;
       return `
           <div class="carte-appel">
-            <div class="appel-date">📞 ${a.Date || '—'} · ${window.resolveCDS(a.PIN_CDS || a.Nom_CDS)}</div>
-            <div class="appel-resultat">${a.Statut_Appel || '—'} · Intérêt EMPOWER : ${a.Interet_EMPOWER || '—'}</div>
+            <div class="appel-date">📞 ${a.Date || 'n.c.'} · ${window.resolveCDS(a.PIN_CDS || a.Nom_CDS)}</div>
+            <div class="appel-resultat">${a.Statut_Appel || 'n.c.'} · Intérêt EMPOWER : ${a.Interet_EMPOWER || 'n.c.'}</div>
             <div class="appel-frein">${a.Frein_Principal ? `Frein : ${a.Frein_Principal}` : ''}${a.Prochaine_Action ? ` · → ${a.Prochaine_Action}` : ''}</div>
             ${this._libelleSuite(a.ID_Action_Origine)}
           </div>`;

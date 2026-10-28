@@ -125,7 +125,7 @@ const FF = window.FichesFroides;
   await t('prefill : une fiche préremplit la nouvelle visite (pas de ressaisie)', async () => {
     const p = FF.prefill({ ID_Fiche: 'F1', Nom_Magasin: 'Boutique Zen', Ville: 'Dijon', Tel: '01', Resultat_Derniere: 'Intéressé', Prochaine_Action: 'Démo' });
     eq(p.horsBase, true); eq(p.idFicheFroide, 'F1'); eq(p.nomLibre, 'Boutique Zen'); eq(p.villeLibre, 'Dijon');
-    eq(p.commentairePrep, 'Dernier résultat : Intéressé — Démo');
+    eq(p.commentairePrep, 'Dernier résultat : Intéressé, Démo');
   });
 
   await t('revisitables : exclut les converties, tri alphabétique', async () => {

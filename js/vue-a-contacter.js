@@ -63,7 +63,7 @@ window.VueAContacter = {
     this.render();
   },
 
-  _fmt(d) { const s = String(d || '').slice(0, 10); return s ? `${s.slice(8, 10)}/${s.slice(5, 7)}` : '—'; },
+  _fmt(d) { const s = String(d || '').slice(0, 10); return s ? `${s.slice(8, 10)}/${s.slice(5, 7)}` : 'n.c.'; },
   _eur(n) { return Number(n || 0).toLocaleString('fr-FR', { maximumFractionDigits: 0 }) + ' €'; },
 
   get liste() {

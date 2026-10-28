@@ -166,7 +166,7 @@ window.VueDashboardManager = {
     leads.forEach(p => {
       const pinOuNom = p.PIN_CDS_Assigne || p.Nom_CDS;
       const prenom   = resolveCDS(pinOuNom);
-      if (prenom === '—') return;           // lead non assigné → exclu du taux
+      if (prenom === 'n.c.') return;           // lead non assigné → exclu du taux
       if (!parCDS[prenom]) parCDS[prenom] = { nom: prenom, assignes: 0, integres: 0 };
       parCDS[prenom].assignes++;
       if (norm(p.STATUT_EMPOWER) === 'INTEGRE' || norm(p.Flag_converti) === 'TRUE') parCDS[prenom].integres++;
@@ -179,7 +179,7 @@ window.VueDashboardManager = {
     // Lecture seule. Pas de sell-in brut, pas de détail volumes/prix.
     const caParCDS = (objectifs || []).map(o => {
       const prenom = resolveCDS(o.PIN_CDS || o.Nom_CDS);
-      if (prenom === '—') return null;
+      if (prenom === 'n.c.') return null;
       // détecte une saisie manuelle via la note "[Manuel]" posée par Tadjidine (BUG-08)
       const noteQ = ['Q1','Q2','Q3','Q4']
         .map(q => String(o[`${q}_Note_Saisie`] || ''))
@@ -204,9 +204,9 @@ window.VueDashboardManager = {
     const derniersIntegres = leads
       .filter(p => norm(p.STATUT_EMPOWER) === 'INTEGRE')
       .map(p => ({
-        nom:    p.Nom_Compte || '—',
+        nom:    p.Nom_Compte || 'n.c.',
         cds:    resolveCDS(p.PIN_CDS_Assigne || p.Nom_CDS),
-        origine: p.ORIGINE || '—',
+        origine: p.ORIGINE || 'n.c.',
         date:   dateRef(p),
       }))
       .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
@@ -233,7 +233,7 @@ window.VueDashboardManager = {
         return age !== null && age >= 14;
       })
       .map(p => ({
-        nom: p.Nom_Compte || '—',
+        nom: p.Nom_Compte || 'n.c.',
         cds: resolveCDS(p.PIN_CDS_Assigne || p.Nom_CDS),
         jours: ancienneteJours(p),
       }))
@@ -258,10 +258,10 @@ window.VueDashboardManager = {
       .map(p => {
         const t = dernierContactTime(p);
         return {
-          nom:   p.Nom_Compte || '—',
+          nom:   p.Nom_Compte || 'n.c.',
           cds:   resolveCDS(p.PIN_CDS_Assigne || p.Nom_CDS),
           jours: Math.floor((now - t) / 86400000),
-          statut: p.STATUT_EMPOWER || '—',
+          statut: p.STATUT_EMPOWER || 'n.c.',
         };
       })
       .sort((a, b) => (b.jours || 0) - (a.jours || 0));
@@ -270,9 +270,9 @@ window.VueDashboardManager = {
     const leadsArchive = leads
       .filter(p => norm(p.STATUT_EMPOWER) === 'ARCHIVE')
       .map(p => ({
-        nom:  p.Nom_Compte || '—',
+        nom:  p.Nom_Compte || 'n.c.',
         cds:  resolveCDS(p.PIN_CDS_Assigne || p.Nom_CDS),
-        note: String(p.NOTE_BLOCAGE || p.Note_Blocage || p.FLAG_ACTION || '').trim() || '—',
+        note: String(p.NOTE_BLOCAGE || p.Note_Blocage || p.FLAG_ACTION || '').trim() || 'n.c.',
       }));
 
     const totalPipeline   = cTraiter + cEnCours + cIntegre + cArchive;
@@ -449,7 +449,7 @@ window.VueDashboardManager = {
     <div class="modal-overlay" onclick="if(event.target===this)VueDashboardManager.fermerExportDir()">
       <div class="modal" style="max-width:340px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-          <h3 style="margin:0;font-size:16px">Export XLSX — Direction</h3>
+          <h3 style="margin:0;font-size:16px">Export XLSX, Direction</h3>
           <button class="btn-retour" onclick="VueDashboardManager.fermerExportDir()">✕</button>
         </div>
         <p style="font-size:12px;color:var(--c-text-2);margin-bottom:16px">Exporte toutes les données accessibles à votre profil.</p>
@@ -500,7 +500,7 @@ window.VueDashboardManager = {
       });
       await SheetsAPI.viderCache('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES');
       if (fb) { fb.style.color = 'var(--c-success)'; fb.textContent = `✅ CA ${quarter} de ${resolveCDS(pin)} mis à jour : ${formatEuro(val)}`; }
-      Toast.afficher(`CA ${quarter} — ${resolveCDS(pin)} : ${formatEuro(val)}`, 'succes');
+      Toast.afficher(`CA ${quarter}, ${resolveCDS(pin)} : ${formatEuro(val)}`, 'succes');
       // Rafraîchit le dashboard après 1.5s
       setTimeout(() => this.init(), 1500);
     } catch(e) {
@@ -685,7 +685,7 @@ window.VueDashboardManager = {
 
           <!-- CAMEMBERTS DYNAMIQUES VISITES/APPELS + CA CUMULÉ — Bloc 1 §2/§3
                (mêmes règles de visibilité que l'Accueil Admin, mutualisé via
-               js/dashboard-activite.js — cf. Bloc 4 anti-duplication) -->
+               js/dashboard-activite.js, cf. Bloc 4 anti-duplication) -->
           ${f ? window.renderBlocCamemberts(f, this._raw, 'VueDashboardManager') : ''}
           ${f ? window.renderBlocCAHebdo(f, 'VueDashboardManager', formatEuro) : ''}
           </div><!-- /dash-col-main -->
@@ -699,7 +699,7 @@ window.VueDashboardManager = {
             <div class="dash-alertes">
               ${dc.alerteWelcome.map(l => `
                 <div class="alerte-ligne" onclick="Router.aller('#/empower-tracker')" style="cursor:pointer">
-                  <strong>${l.nom}</strong> — ${l.cds} · <span style="color:var(--c-danger);font-weight:700">${l.jours} j sans WP</span>
+                  <strong>${l.nom}</strong>, ${l.cds} · <span style="color:var(--c-danger);font-weight:700">${l.jours} j sans WP</span>
                 </div>`).join('')}
             </div>` : '<div class="pas-de-donnees">Aucun lead en alerte Welcome Pack 🎉</div>'}
           </div>
@@ -712,7 +712,7 @@ window.VueDashboardManager = {
             <div class="dash-alertes">
               ${dc.alerte45j.map(l => `
                 <div class="alerte-ligne" onclick="Router.aller('#/empower-tracker')" style="cursor:pointer">
-                  <strong>${l.nom}</strong> — ${l.cds}
+                  <strong>${l.nom}</strong>, ${l.cds}
                   · <span style="color:var(--c-danger);font-weight:700">${l.jours} j</span>
                   · <span style="font-size:11px;color:var(--c-text-2)">${l.statut}</span>
                 </div>`).join('')}
@@ -727,7 +727,7 @@ window.VueDashboardManager = {
             <div class="dash-alertes">
               ${dc.comptesNonAttribues.slice(0, 8).map(c => `
                 <div class="alerte-ligne" onclick="VueComptes.state.filtreStatut='SANS_CDS';Router.aller('#/comptes')" style="cursor:pointer">
-                  <strong>${c.Nom_Compte || '—'}</strong>${c.Source_Import === 'SYNC_SELLIN' ? ' · <span style="font-size:11px;color:var(--c-text-2)">via Sell-In</span>' : ''}
+                  <strong>${c.Nom_Compte || 'n.c.'}</strong>${c.Source_Import === 'SYNC_SELLIN' ? ' · <span style="font-size:11px;color:var(--c-text-2)">via Sell-In</span>' : ''}
                 </div>`).join('')}
             </div>
             <button class="btn-lien no-print" onclick="VueComptes.state.filtreStatut='SANS_CDS';Router.aller('#/comptes')" style="font-size:12px;margin-top:8px">Attribuer un CDS →</button>
@@ -770,13 +770,13 @@ window.VueDashboardManager = {
       </div>` : '<div class="pas-de-donnees">Aucun lead assigné.</div>';
 
     const caCorps = `
-      <p style="font-size:11px;color:var(--c-text-2);margin:0 0 10px">Valeur saisie par Tadjidine — source indiquée pour chaque CDS.</p>
+      <p style="font-size:11px;color:var(--c-text-2);margin:0 0 10px">Valeur saisie par Tadjidine, source indiquée pour chaque CDS.</p>
       ${dc.caParCDS.length ? `
       <div class="tableau-equipe">
         ${dc.caParCDS.map(c => `
           <div class="te-ligne" style="grid-template-columns:1fr auto auto;gap:8px">
             <span><strong>${c.nom}</strong></span>
-            <span style="font-size:13px">${c.caStr === '—' ? '—' : c.caStr + ' €'}</span>
+            <span style="font-size:13px">${c.caStr === 'n.c.' ? 'n.c.' : c.caStr + ' €'}</span>
             <span>${badgeSource(c.source)}</span>
           </div>`).join('')}
       </div>` : '<div class="pas-de-donnees">Aucune donnée CA.</div>'}`;
@@ -857,7 +857,7 @@ window.VueDashboardManager = {
       <div class="dash-body copil-print avec-nav">
         <div class="dash-col-main">
         <div class="print-only" style="display:none">
-          <h1>COPIL ESI — ${d.semaine} FY27</h1>
+          <h1>COPIL ESI, ${d.semaine} FY27</h1>
           <p>${dateFr} · Empower Sales Intelligence · Norton France</p>
         </div>
         <p class="dash-date" style="color:var(--c-text-2);font-family:Montserrat,sans-serif;font-size:13px">${dateFr} · ${d.semaine} · ${d.quarter} FY27</p>
@@ -893,7 +893,7 @@ window.VueDashboardManager = {
         <div class="dash-grid-2col">
         ${this._sectionThematique('🔵 CA', '#0050FF', `
           <div class="bloc-fiche dash-pace" style="margin-bottom:12px">
-            <div class="bloc-titre">Équipe — Pace CA ${d.quarter}
+            <div class="bloc-titre">Équipe, Pace CA ${d.quarter}
               <span class="pace-badge ${d.pctTotal >= 100 ? 'pace-ok' : d.pctTotal >= 80 ? 'pace-watch' : 'pace-risk'}">${d.pctTotal}%</span>
             </div>
             <div class="pace-chiffres">
@@ -901,7 +901,7 @@ window.VueDashboardManager = {
             </div>
             <div class="pace-barre"><div class="pace-barre-fill ${d.pctTotal >= 100 ? 'pace-ok' : d.pctTotal >= 80 ? 'pace-watch' : 'pace-risk'}" style="width:${Math.min(d.pctTotal, 100)}%"></div></div>
           </div>
-          <div class="bloc-titre">CA réalisé vs objectif par CDS — ${d.quarter}</div>
+          <div class="bloc-titre">CA réalisé vs objectif par CDS, ${d.quarter}</div>
           ${this._svgCaEquipe(d.equipe)}
           <div style="display:flex;gap:16px;font-size:11px;color:var(--c-text-2);margin-top:8px;flex-wrap:wrap">
             <span><span style="display:inline-block;width:10px;height:10px;background:#E8E8ED;border-radius:2px;vertical-align:middle"></span> Objectif</span>
@@ -929,7 +929,7 @@ window.VueDashboardManager = {
           const COUL = { PROSPECTION_FROIDE: '#0EA5E9', SUIVI_ACTIF: '#f59e0b', ONBOARDING_EMPOWER: '#00b27e' };
           const pfCorps = `
             <p style="font-size:12px;color:var(--c-text-2);margin:0 0 10px">
-              Répartition des visites par type — cadre dédié au suivi terrain, distinct du CA/objectifs.
+              Répartition des visites par type, cadre dédié au suivi terrain, distinct du CA/objectifs.
             </p>
             <select onchange="VueDashboardManager.filtrerPipelineFroid(this.value?Number(this.value):null)"
                     style="padding:6px 8px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);font-size:12px;margin-bottom:12px">
@@ -966,7 +966,7 @@ window.VueDashboardManager = {
             Cette semaine : <strong style="color:var(--c-text)">${d.equipe.reduce((s,e)=>s+e.visitesSem,0)} visite(s)</strong> ·
             <strong style="color:var(--c-text)">${d.equipe.reduce((s,e)=>s+e.appelsSem,0)} appel(s)</strong>
           </p>
-          <div class="bloc-titre">Activité équipe — 6 semaines</div>
+          <div class="bloc-titre">Activité équipe, 6 semaines</div>
           ${this._svgActiviteEquipe(d.activiteEquipe)}
         `)}
 
@@ -980,17 +980,17 @@ window.VueDashboardManager = {
               <span style="display:flex;align-items:center;gap:8px">${avatarCDS(e.pin, 26)}<strong>${e.nom}</strong></span>
               <span style="font-size:12px">${formatEuro(e.ca)} / ${formatEuro(e.obj)}</span>
               <span class="pace-badge ${PACE[e.pace].cls}">${e.pct}%</span>
-              <span style="font-size:11px;color:#9333ea">${e.caFY26 > 0 ? formatEuro(e.caFY26) : '—'}</span>
+              <span style="font-size:11px;color:#9333ea">${e.caFY26 > 0 ? formatEuro(e.caFY26) : 'n.c.'}</span>
               <span>${e.visitesSem}</span>
               <span>${e.appelsSem}</span>
               <span>${e.leadsEnCours}</span>
-              <span style="font-size:12px;font-weight:700;color:${e.tauxTransfo === null ? 'var(--c-text-2)' : e.tauxTransfo >= 25 ? 'var(--c-success)' : e.tauxTransfo >= 10 ? 'var(--c-warning)' : 'var(--c-danger)'}" title="${e.visitesRealiseesQ} visite(s) réalisée(s) ${d.quarter}">${e.tauxTransfo === null ? '—' : e.tauxTransfo + '%'}</span>
+              <span style="font-size:12px;font-weight:700;color:${e.tauxTransfo === null ? 'var(--c-text-2)' : e.tauxTransfo >= 25 ? 'var(--c-success)' : e.tauxTransfo >= 10 ? 'var(--c-warning)' : 'var(--c-danger)'}" title="${e.visitesRealiseesQ} visite(s) réalisée(s) ${d.quarter}">${e.tauxTransfo === null ? 'n.c.' : e.tauxTransfo + '%'}</span>
             </div>`).join('')}
           </div>
           <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">Vis. = visites ${d.semaine} · App. = appels ${d.semaine} · Leads = leads actifs · <span style="color:#9333ea">FY26/trim = CA FY26 annuel ÷ 4</span> · Transfo. = part des visites réalisées ${d.quarter} au résultat positif ou à statut EMPOWER avancé</p>
           <div style="height:1px;background:var(--c-border);margin:14px 0"></div>
           <div class="bloc-titre" style="padding:0">Saisie CA réalisé à date</div>
-          <p style="font-size:12px;color:var(--c-text-2);margin:6px 0 12px">Renseignez le CA terrain pour un CDS — la valeur remplace le sell-in du quarter sélectionné.</p>
+          <p style="font-size:12px;color:var(--c-text-2);margin:6px 0 12px">Renseignez le CA terrain pour un CDS, la valeur remplace le sell-in du quarter sélectionné.</p>
           <div style="display:grid;gap:10px">
             <div style="display:flex;gap:10px;flex-wrap:wrap">
               <label style="flex:1;min-width:120px;font-size:13px">CDS
@@ -1027,11 +1027,11 @@ window.VueDashboardManager = {
           <div class="bloc-titre">Alertes équipe</div>
           <div class="dash-alertes">
             ${d.equipe.filter(e => e.pace !== 'ON_TRACK').map(e => `
-              <div class="alerte-ligne">${PACE[e.pace].lbl} <strong>${e.nom}</strong> — ${e.pct}% de l'objectif ${d.quarter}</div>`).join('')}
+              <div class="alerte-ligne">${PACE[e.pace].lbl} <strong>${e.nom}</strong>, ${e.pct}% de l'objectif ${d.quarter}</div>`).join('')}
             ${d.leadsBloques.length ? `<div class="alerte-ligne no-print" onclick="Router.aller('#/empower-tracker')"><strong>${d.leadsBloques.length}</strong> lead(s) sans action > 7 jours</div>` : ''}
             ${d.comptesRouges.length ? `<div class="alerte-ligne no-print" onclick="Router.aller('#/comptes')"><strong>${d.comptesRouges.length}</strong> compte(s) en retard d'action</div>` : ''}
             ${d.visitesManquees.length ? `<div class="alerte-ligne no-print" onclick="Router.aller('#/visites')">🔴 <strong>${d.visitesManquees.length}</strong> visite(s) planifiée(s) manquée(s)</div>` : ''}
-            ${d.comptesNonAttribues.length ? `<div class="alerte-ligne no-print" onclick="VueComptes.state.filtreStatut='SANS_CDS';Router.aller('#/comptes')">🏢 <strong>${d.comptesNonAttribues.length}</strong> compte(s) non attribué(s) — dont Sell-In</div>` : ''}
+            ${d.comptesNonAttribues.length ? `<div class="alerte-ligne no-print" onclick="VueComptes.state.filtreStatut='SANS_CDS';Router.aller('#/comptes')">🏢 <strong>${d.comptesNonAttribues.length}</strong> compte(s) non attribué(s), dont Sell-In</div>` : ''}
             <div id="ns-alerte">${window.NonSuivis ? NonSuivis.htmlAlerte() : ''}</div>
             ${!d.leadsBloques.length && !d.comptesRouges.length && !d.visitesManquees.length && !d.comptesNonAttribues.length && d.equipe.every(e => e.pace === 'ON_TRACK') ? '<div class="pas-de-donnees">Aucune alerte active.</div>' : ''}
           </div>
@@ -1039,7 +1039,7 @@ window.VueDashboardManager = {
 
         <!-- GEM-07 Synthèse hebdo équipe -->
         <div class="bloc-fiche no-print">
-          <div class="bloc-titre">Assistant IA — Synthèse hebdo équipe</div>
+          <div class="bloc-titre">Assistant IA, Synthèse hebdo équipe</div>
           <p style="font-size:12px;color:var(--c-text-2);margin-bottom:10px">Gemini analyse les KPIs de la semaine et génère un bilan, alertes, tendances et recommandations.</p>
           <button id="btn-gem07" class="btn-secondaire" onclick="VueDashboardManager.syntheseHebdo()">Synthèse hebdo IA</button>
           <div id="gem07-zone"

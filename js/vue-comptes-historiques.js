@@ -71,12 +71,12 @@ window.VueComptesHistoriques = {
 
         return {
           id:       mdb?.ID_Compte || null,
-          nom:      r.RESELLER || '—',
-          canal:    r.CANAL || '—',
+          nom:      r.RESELLER || 'n.c.',
+          canal:    r.CANAL || 'n.c.',
           caFy25,
           caFy26,
           caQ1Fy27,
-          statut:   mdb?.STATUT_COMPTE || r.STATUT_FY27 || r.FLAG_BRUT || '—',
+          statut:   mdb?.STATUT_COMPTE || r.STATUT_FY27 || r.FLAG_BRUT || 'n.c.',
           priorite: r.FLAG_BRUT || '',
           pin:      pinBrut,   // stocké pour filtrage CDS mais jamais affiché
           cdsPrenom,           // prénom résolu — utilisé dans l'UI
@@ -164,7 +164,7 @@ window.VueComptesHistoriques = {
       <!-- Stats rapides — KPI cards façon DASHBOARD_W09 -->
       <div class="kpi-grid-layout">
         ${kpiCard({ label: 'Comptes',    value: total,        accent: 'primary' })}
-        ${kpiCard({ label: 'CA FY26',    value: window.fmtCA(caTotal) !== '—' ? window.fmtCA(caTotal) : '—', unit: '€', accent: 'teal' })}
+        ${kpiCard({ label: 'CA FY26',    value: window.fmtCA(caTotal) !== 'n.c.' ? window.fmtCA(caTotal) : 'n.c.', unit: '€', accent: 'teal' })}
       </div>
 
       <!-- Filtres -->
@@ -209,20 +209,20 @@ window.VueComptesHistoriques = {
             const caFy26Fmt   = window.fmtCA(c.caFy26);
             const caFy25Fmt   = window.fmtCA(c.caFy25);
             const caQ1Fy27Fmt = window.fmtCA(c.caQ1Fy27);
-            const caFy26Affiche = caFy26Fmt !== '—' ? `${caFy26Fmt} €` : '—';
+            const caFy26Affiche = caFy26Fmt !== 'n.c.' ? `${caFy26Fmt} €` : 'n.c.';
             return `
           <div class="carte-compte-v2">
             <div class="cc-pills" onclick="${c.id ? `Router.aller('#/compte/${c.id}')` : 'void(0)'}">
               <span style="font-size:13px;font-weight:700;color:var(--c-title)">${caFy26Affiche}<span style="font-size:11px;font-weight:400;color:var(--c-text-2)"> FY26</span></span>
             </div>
-            <div class="cc-nom" onclick="${c.id ? `Router.aller('#/compte/${c.id}')` : 'void(0)'}">${c.nom !== '—' ? c.nom : '—'}</div>
+            <div class="cc-nom" onclick="${c.id ? `Router.aller('#/compte/${c.id}')` : 'void(0)'}">${c.nom !== 'n.c.' ? c.nom : 'n.c.'}</div>
             <div class="cc-infos">
-              <span>📍 ${c.canal !== '—' ? c.canal : '—'}</span>
-              ${caFy25Fmt !== '—' ? `<span>FY25 : ${caFy25Fmt} €</span>` : ''}
-              ${caQ1Fy27Fmt !== '—' ? `<span style="color:var(--c-success)">${this.state.quarter}FY27 : ${caQ1Fy27Fmt} €</span>` : ''}
-              ${Session.voitTout() && c.cdsPrenom !== '—' ? `<span>👤 ${c.cdsPrenom}</span>` : ''}
+              <span>📍 ${c.canal !== 'n.c.' ? c.canal : 'n.c.'}</span>
+              ${caFy25Fmt !== 'n.c.' ? `<span>FY25 : ${caFy25Fmt} €</span>` : ''}
+              ${caQ1Fy27Fmt !== 'n.c.' ? `<span style="color:var(--c-success)">${this.state.quarter}FY27 : ${caQ1Fy27Fmt} €</span>` : ''}
+              ${Session.voitTout() && c.cdsPrenom !== 'n.c.' ? `<span>👤 ${c.cdsPrenom}</span>` : ''}
             </div>
-            ${c.statut && c.statut !== '—' ? `
+            ${c.statut && c.statut !== 'n.c.' ? `
             <div class="cc-infos" style="margin-top:4px">
               <span class="statut-pill statut-${slugify(c.statut).replace(/-/g,'_')}">${c.statut}</span>
               ${c.dateNextAction ? `<span class="${estDepassee(c.dateNextAction)?'prochaine-action alerte':''}">⏰ ${dateRelative(c.dateNextAction)}</span>` : ''}
@@ -253,13 +253,13 @@ window.VueComptesHistoriques = {
                 const caFy25Fmt   = window.fmtCA(c.caFy25);
                 const caQ1Fy27Fmt = window.fmtCA(c.caQ1Fy27);
                 return `<tr>
-                  <td class="compte-nom" onclick="${c.id ? `Router.aller('#/compte/${c.id}')` : 'void(0)'}">${c.nom !== '—' ? c.nom : '—'}</td>
-                  <td>${c.canal !== '—' ? c.canal : '—'}</td>
-                  <td class="num">${caFy25Fmt !== '—' ? caFy25Fmt + ' €' : '—'}</td>
-                  <td class="num" style="font-weight:700;color:var(--c-title)">${caFy26Fmt !== '—' ? caFy26Fmt + ' €' : '—'}</td>
-                  <td class="num" style="font-weight:600;color:var(--c-success)">${caQ1Fy27Fmt !== '—' ? caQ1Fy27Fmt + ' €' : '—'}</td>
-                  <td>${c.statut && c.statut !== '—' ? `<span class="statut-pill statut-${slugify(c.statut).replace(/-/g,'_')}">${c.statut}</span>` : '—'}</td>
-                  ${Session.voitTout() ? `<td>${c.cdsPrenom !== '—' ? '👤 ' + c.cdsPrenom : '—'}</td>` : ''}
+                  <td class="compte-nom" onclick="${c.id ? `Router.aller('#/compte/${c.id}')` : 'void(0)'}">${c.nom !== 'n.c.' ? c.nom : 'n.c.'}</td>
+                  <td>${c.canal !== 'n.c.' ? c.canal : 'n.c.'}</td>
+                  <td class="num">${caFy25Fmt !== 'n.c.' ? caFy25Fmt + ' €' : 'n.c.'}</td>
+                  <td class="num" style="font-weight:700;color:var(--c-title)">${caFy26Fmt !== 'n.c.' ? caFy26Fmt + ' €' : 'n.c.'}</td>
+                  <td class="num" style="font-weight:600;color:var(--c-success)">${caQ1Fy27Fmt !== 'n.c.' ? caQ1Fy27Fmt + ' €' : 'n.c.'}</td>
+                  <td>${c.statut && c.statut !== 'n.c.' ? `<span class="statut-pill statut-${slugify(c.statut).replace(/-/g,'_')}">${c.statut}</span>` : 'n.c.'}</td>
+                  ${Session.voitTout() ? `<td>${c.cdsPrenom !== 'n.c.' ? '👤 ' + c.cdsPrenom : 'n.c.'}</td>` : ''}
                   <td>
                     <button class="btn-visiter" style="padding:4px 10px;font-size:12px" onclick="Router.aller('#/visites?compte=${encodeURIComponent(c.id||c.nom)}')">Visite</button>
                     <button class="btn-tel-outline" style="padding:4px 8px" onclick="Router.aller('#/phoning${c.id ? '/'+c.id : ''}')" title="Appeler">📞</button>

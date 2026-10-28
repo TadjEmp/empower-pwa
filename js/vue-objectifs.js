@@ -270,7 +270,7 @@ window.VueObjectifs = {
 
     return `
       <div class="bloc-fiche">
-        <div class="bloc-titre">Radar de performance — ${q}
+        <div class="bloc-titre">Radar de performance, ${q}
           <select style="margin-left:auto;font-size:12px;padding:4px 8px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);background:var(--c-surface);color:var(--c-title)"
                   onchange="VueObjectifs.state.radarCDS=Number(this.value);VueObjectifs.render()">
             ${donnees.map(d => `<option value="${d.pin}" ${d.pin === cds.pin ? 'selected' : ''}>${d.nom}</option>`).join('')}
@@ -286,7 +286,7 @@ window.VueObjectifs = {
           <div class="stat-mini"><div>${cds.axe2}%</div><div>Axe 2 · NSB</div></div>
           <div class="stat-mini"><div>${cds.axe3}%</div><div>Axe 3 · Onboarding</div></div>
         </div>
-        <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">Chaque axe est plafonné à 100% de l'objectif du quarter — permet de comparer l'équilibre entre les 3 axes plutôt que leur seule valeur brute.</p>
+        <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">Chaque axe est plafonné à 100% de l'objectif du quarter, permet de comparer l'équilibre entre les 3 axes plutôt que leur seule valeur brute.</p>
       </div>`;
   },
 
@@ -308,11 +308,11 @@ window.VueObjectifs = {
     // fmtEUR : affiche '—' si valeur invalide/nulle, sinon montant €
     const fmtEUR = v => {
       const n = window.parseCA(v);
-      if (n === null || !isFinite(n)) return '—';
+      if (n === null || !isFinite(n)) return 'n.c.';
       return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR',
         minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
     };
-    const safePct = p => (typeof p === 'number' && isFinite(p)) ? `${p}%` : '—';
+    const safePct = p => (typeof p === 'number' && isFinite(p)) ? `${p}%` : 'n.c.';
 
     const renderCDS = (pin, nomBrut) => {
       const d = this._donneesCDS(pin);
@@ -320,9 +320,9 @@ window.VueObjectifs = {
       const a2 = this._axe2CDS(pin);
       const a3 = this._axe3CDS(pin);
       // Résolution du nom : priorité resolveCDS(pin) — jamais de PIN brut dans l'UI
-      const nomAffiche = window.resolveCDS(pin) !== '—' ? window.resolveCDS(pin)
-                       : (nomBrut ? window.resolveCDS(nomBrut) || nomBrut : '—');
-      const ecartHtml = d.ecart === null ? '—'
+      const nomAffiche = window.resolveCDS(pin) !== 'n.c.' ? window.resolveCDS(pin)
+                       : (nomBrut ? window.resolveCDS(nomBrut) || nomBrut : 'n.c.');
+      const ecartHtml = d.ecart === null ? 'n.c.'
         : `${d.ecart > 0 ? '-' : '+'}${fmtEUR(Math.abs(d.ecart))}`;
       const ecartCouleur = d.ecart === null ? 'var(--c-text-2)'
         : d.ecart > 0 ? 'var(--c-danger)' : 'var(--c-success)';
@@ -331,10 +331,10 @@ window.VueObjectifs = {
           <div class="bloc-titre">${nomAffiche}
             <span class="pace-badge ${d.pace === 'ON_TRACK' ? 'pace-ok' : d.pace === 'WATCH' ? 'pace-watch' : 'pace-risk'}">${PACE_LBL[d.pace]}</span>
           </div>
-          <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;margin-bottom:4px">AXE 1 — CA</div>
+          <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;margin-bottom:4px">AXE 1, CA</div>
           <div class="pace-chiffres">
             <strong>${fmtEUR(d.ca)}</strong>
-            <span>/ ${fmtEUR(d.obj)} — ${q}</span>
+            <span>/ ${fmtEUR(d.obj)}, ${q}</span>
           </div>
           ${this._barreProgression(d.pct, d.pace)}
           <div class="objectifs-grille" style="margin-top:10px">
@@ -346,18 +346,18 @@ window.VueObjectifs = {
             </div>
           </div>
           <div style="height:1px;background:var(--c-border);margin:12px 0"></div>
-          <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;margin-bottom:4px">AXE 2 — NSB</div>
+          <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;margin-bottom:4px">AXE 2, NSB</div>
           <div class="objectifs-grille">
-            <div class="stat-mini"><div>${a2.valide ?? '—'}</div><div>Validés</div></div>
-            <div class="stat-mini"><div>${(a2.total - a2.valide) ?? '—'}</div><div>En attente</div></div>
+            <div class="stat-mini"><div>${a2.valide ?? 'n.c.'}</div><div>Validés</div></div>
+            <div class="stat-mini"><div>${(a2.total - a2.valide) ?? 'n.c.'}</div><div>En attente</div></div>
             ${a2.obj2 > 0 ? `<div class="stat-mini"><div>${a2.obj2}</div><div>Objectif NSB</div></div>` : ''}
           </div>
           <div style="height:1px;background:var(--c-border);margin:12px 0"></div>
-          <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;margin-bottom:4px">AXE 3 — ONBOARDING EMPOWER</div>
+          <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;margin-bottom:4px">AXE 3, ONBOARDING EMPOWER</div>
           <div class="objectifs-grille">
-            <div class="stat-mini"><div>${a3.integres ?? '—'}</div><div>Total intégrés</div></div>
-            <div class="stat-mini"><div>${a3.viaCanal ?? '—'}</div><div>Via Alexandra</div></div>
-            <div class="stat-mini"><div>${a3.terrain ?? '—'}</div><div>Par le CDS</div></div>
+            <div class="stat-mini"><div>${a3.integres ?? 'n.c.'}</div><div>Total intégrés</div></div>
+            <div class="stat-mini"><div>${a3.viaCanal ?? 'n.c.'}</div><div>Via Alexandra</div></div>
+            <div class="stat-mini"><div>${a3.terrain ?? 'n.c.'}</div><div>Par le CDS</div></div>
             ${a3.obj3 > 0 ? `<div class="stat-mini"><div>${a3.obj3}</div><div>Objectif</div></div>` : ''}
           </div>
         </div>`;
@@ -368,9 +368,9 @@ window.VueObjectifs = {
       // Construit la liste CDS depuis objectifs — nom résolu via resolveCDS
       const CDS = this.state.objectifs.map(o => ({
         pin: Number(o.PIN_CDS),
-        nom: window.resolveCDS(Number(o.PIN_CDS)) !== '—'
+        nom: window.resolveCDS(Number(o.PIN_CDS)) !== 'n.c.'
           ? window.resolveCDS(Number(o.PIN_CDS))
-          : window.resolveCDS(o.Nom_CDS) || (o.Nom_CDS || '—'),
+          : window.resolveCDS(o.Nom_CDS) || (o.Nom_CDS || 'n.c.'),
       }));
       const totalCA  = CDS.reduce((s, c) => s + (this._donneesCDS(c.pin).ca  || 0), 0);
       const totalObj = CDS.reduce((s, c) => s + (this._donneesCDS(c.pin).obj || 0), 0);
@@ -398,7 +398,7 @@ window.VueObjectifs = {
         </div>`;
       corps = `
         <div class="bloc-fiche">
-          <div class="bloc-titre">Équipe — ${q}
+          <div class="bloc-titre">Équipe, ${q}
             <span class="pace-badge ${paceTotal === 'ON_TRACK' ? 'pace-ok' : paceTotal === 'WATCH' ? 'pace-watch' : 'pace-risk'}">${pctTotal}%</span>
             <button class="btn-lien" style="margin-left:auto;font-size:13px" onclick="VueObjectifs.ouvrirModalSaisie()">
               📥 Saisir / Modifier Objectifs
@@ -511,9 +511,9 @@ window.VueObjectifs = {
       if (!this.state.formSaisie[id] || typeof this.state.formSaisie[id] !== 'object')
         this.state.formSaisie[id] = { ca: 0, obj_ca: 0, obj_nsb: 0, obj_onboard: 0 };
       // Nom résolu : jamais de PIN brut ni de Nom_CDS non traité
-      const nomAff = window.resolveCDS(Number(o.PIN_CDS)) !== '—'
+      const nomAff = window.resolveCDS(Number(o.PIN_CDS)) !== 'n.c.'
         ? window.resolveCDS(Number(o.PIN_CDS))
-        : window.resolveCDS(o.Nom_CDS) || (o.Nom_CDS || '—');
+        : window.resolveCDS(o.Nom_CDS) || (o.Nom_CDS || 'n.c.');
       return `
         <div style="margin-bottom:14px;padding:10px;background:var(--c-bg);border-radius:var(--radius-sm);border:1px solid var(--c-border)">
           <div style="font-weight:700;font-size:14px;margin-bottom:8px">${nomAff}</div>
@@ -527,7 +527,7 @@ window.VueObjectifs = {
     return `
     <div class="modal-overlay" onclick="if(event.target===this)VueObjectifs.fermerModalSaisie()">
       <div class="modal">
-        <h3>Saisir Objectifs & Réalisés — ${q} FY27</h3>
+        <h3>Saisir Objectifs & Réalisés, ${q} FY27</h3>
         <p style="font-size:12px;color:var(--c-text-2);margin-bottom:14px">
           CA réalisé cumulé · objectifs CA, NSB et onboarding par CDS.
         </p>

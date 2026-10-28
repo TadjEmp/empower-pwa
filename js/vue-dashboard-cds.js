@@ -59,7 +59,7 @@ window.VueDashboardCDS = {
     const CA = v => (typeof window.parseCA === 'function' ? (window.parseCA(v) ?? 0) : Number(v) || 0);
     const fmtEUR = v => {
       const s = (typeof window.fmtCA === 'function') ? window.fmtCA(v) : null;
-      return (s && s !== '—') ? `${s} €` : '—';
+      return (s && s !== 'n.c.') ? `${s} €` : 'n.c.';
     };
     const o = raw.objectifs.find(x => Number(x.PIN_CDS) === Session.pin) || {};
     const quarters = ['Q1', 'Q2', 'Q3', 'Q4'].map(q => {
@@ -85,14 +85,14 @@ window.VueDashboardCDS = {
     app.innerHTML = `
       <header class="dash-page-header">
         <div class="dash-ph-left">
-          <div class="dash-ph-title">Reporting — ${Session.nom || '—'}</div>
+          <div class="dash-ph-title">Reporting, ${Session.nom || 'n.c.'}</div>
           <div class="dash-ph-date">${dateFr}</div>
         </div>
       </header>
       <div class="dash-body avec-nav">
         <div class="dash-col-main">
           <div class="bloc-fiche">
-            <div class="bloc-titre">FY27 — Q1 → Q4
+            <div class="bloc-titre">FY27, Q1 → Q4
               <span class="badge-compteur">${fmtEUR(caFY27Total)} / ${fmtEUR(objFY27Total)}</span>
             </div>
             <div class="tableau-equipe">
@@ -104,8 +104,8 @@ window.VueDashboardCDS = {
                    onclick="FilterState.set({quarter:'${x.q}'});Router.aller('#/objectifs')" title="Voir le détail dans Objectifs">
                 <span><strong>${x.q}</strong></span>
                 <span style="font-size:12px">${fmtEUR(x.ca)} / ${fmtEUR(x.obj)}</span>
-                <span style="font-weight:700">${x.obj > 0 ? x.pct + '%' : '—'}</span>
-                <span class="pace-badge ${PACE_BADGE[x.pace]}">${x.obj > 0 ? PACE_LBL[x.pace] : '—'}</span>
+                <span style="font-weight:700">${x.obj > 0 ? x.pct + '%' : 'n.c.'}</span>
+                <span class="pace-badge ${PACE_BADGE[x.pace]}">${x.obj > 0 ? PACE_LBL[x.pace] : 'n.c.'}</span>
               </div>`).join('')}
             </div>
             <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">Cliquez un trimestre pour le détail complet (axes NSB/Onboarding) dans Objectifs.</p>
@@ -137,9 +137,9 @@ window.VueDashboardCDS = {
             </div>
             ${d.top5.map(c => `
               <div class="relance-ligne" onclick="Router.aller('#/comptes-historiques')">
-                <div class="relance-nom">${c.Nom_Compte || c.ID_Compte || '—'}</div>
+                <div class="relance-nom">${c.Nom_Compte || c.ID_Compte || 'n.c.'}</div>
                 <div class="relance-meta">
-                  <span class="statut-pill statut-reactiver">${String(c.STATUT_COMPTE || '—').toUpperCase()}</span>
+                  <span class="statut-pill statut-reactiver">${String(c.STATUT_COMPTE || 'n.c.').toUpperCase()}</span>
                   <strong style="margin-left:auto">${fmtEUR(c.CA_FY26 ?? c['CA FY26 €'] ?? c.CA_FY25)}</strong>
                 </div>
               </div>`).join('')}
@@ -155,7 +155,7 @@ window.VueDashboardCDS = {
             </div>
             ${d.mesProspects.slice(0, 5).map(p => `
               <div class="relance-ligne" onclick="Router.aller('#/phoning/${p.ID_Prospect}')">
-                <div class="relance-nom">${p.Nom_Compte || p.Nom_Prospect || p.ID_Prospect || '—'}</div>
+                <div class="relance-nom">${p.Nom_Compte || p.Nom_Prospect || p.ID_Prospect || 'n.c.'}</div>
                 <div class="relance-meta">
                   ${p.POTENTIEL ? `<span style="font-size:11px;font-weight:700;color:${potCoul[p.POTENTIEL] || '#888'}">${p.POTENTIEL}</span>` : ''}
                   ${p.Ville ? `<span style="font-size:11px;color:var(--c-text-2)">${p.Ville}</span>` : ''}
@@ -170,9 +170,9 @@ window.VueDashboardCDS = {
             </div>
             ${d.comptesAReactiver.slice(0, 5).map(c => `
               <div class="relance-ligne" onclick="Router.aller('#/comptes-historiques')">
-                <div class="relance-nom">${c.Nom_Compte || c.ID_Compte || '—'}</div>
+                <div class="relance-nom">${c.Nom_Compte || c.ID_Compte || 'n.c.'}</div>
                 <div class="relance-meta">
-                  <span class="statut-pill statut-reactiver">${String(c.STATUT_COMPTE || '—').toUpperCase()}</span>
+                  <span class="statut-pill statut-reactiver">${String(c.STATUT_COMPTE || 'n.c.').toUpperCase()}</span>
                   <strong style="margin-left:auto">${fmtEUR(c.CA_FY26 ?? c['CA FY26 €'] ?? c.CA_FY25)}</strong>
                 </div>
               </div>`).join('')}
@@ -315,10 +315,10 @@ window.VueDashboardCDS = {
       .sort((a, b) => b.q1 - a.q1)
       .slice(0, 5)
       .map(x => ({
-        nom:  x.c.Nom_Compte || x.c.ID_Compte || '—',
+        nom:  x.c.Nom_Compte || x.c.ID_Compte || 'n.c.',
         ville: x.c.Ville || '',
         caQ1: x.q1,
-        statut: String(x.c.STATUT_COMPTE || '').toUpperCase() || '—',
+        statut: String(x.c.STATUT_COMPTE || '').toUpperCase() || 'n.c.',
       }));
 
     // Le graphique CA hebdo (W1→W13) est désormais calculé par _donneesFiltrables()
@@ -338,8 +338,8 @@ window.VueDashboardCDS = {
       })
       .slice(0, 6)
       .map(n => ({
-        message: String(n.Message || '').trim() || '—',
-        type:    String(n.Type_Notif || '').trim() || '—',
+        message: String(n.Message || '').trim() || 'n.c.',
+        type:    String(n.Type_Notif || '').trim() || 'n.c.',
         cible:   String(n.ID_Cible || '').trim(),
       }));
 
@@ -349,7 +349,7 @@ window.VueDashboardCDS = {
       if (p >= 120) return { montant: 500, label: '≥120% · P2+P3 hors plafond' };
       if (p >= 100) return { montant: 400, label: '100-119% · Palier P2' };
       if (p >= 80)  return { montant: 200, label: '80-99% · Palier P1' };
-      return { montant: 0, label: `${Math.round(p)}% — seuil P1 à 80%` };
+      return { montant: 0, label: `${Math.round(p)}%, seuil P1 à 80%` };
     })();
 
     // ── Activité 6 dernières semaines (graphique) ──
@@ -409,7 +409,7 @@ window.VueDashboardCDS = {
     // BLOC 9 : CA via fmtCA → '—' si invalide/NaN, jamais de valeur incohérente
     const fmtEUR = v => {
       const s = (typeof window.fmtCA === 'function') ? window.fmtCA(v) : null;
-      return (s && s !== '—') ? `${s} €` : '—';
+      return (s && s !== 'n.c.') ? `${s} €` : 'n.c.';
     };
     const dateFr = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     const PACE = {
@@ -441,17 +441,17 @@ window.VueDashboardCDS = {
     //    données existantes. Ordre : visites du jour → rappels dépassés → leads.
     const prios = [
       ...d.visitesAujourdhui.slice(0, 3).map(v => ({
-        titre: v.Nom_Compte || v.ID_Compte || '—', type: 'Visite',
+        titre: v.Nom_Compte || v.ID_Compte || 'n.c.', type: 'Visite',
         coul: 'var(--accent)', meta: v.Heure || '',
         action: `Router.aller('#/visites/cr/${v.ID_Visite || ''}')`, cta: 'CR',
       })),
       ...d.nextStepsDepasses.slice(0, 2).map(c => ({
-        titre: c.Nom_Compte || c.ID_Compte || '—', type: 'Rappel dépassé',
+        titre: c.Nom_Compte || c.ID_Compte || 'n.c.', type: 'Rappel dépassé',
         coul: 'var(--signal)', meta: dateRelative(c.Date_Prochaine_Action),
         action: `Router.aller('#/compte/${c.ID_Compte}')`, cta: 'Fiche',
       })),
       ...d.leadsATraiter.slice(0, 2).map(p => ({
-        titre: p.Nom_Compte || p.Nom_Prospect || '—', type: 'Lead à traiter',
+        titre: p.Nom_Compte || p.Nom_Prospect || 'n.c.', type: 'Lead à traiter',
         coul: 'var(--cobalt)', meta: p.POTENTIEL || '',
         action: `Router.aller('#/empower-tracker')`, cta: 'Tracker',
       })),
@@ -471,7 +471,7 @@ window.VueDashboardCDS = {
       <!-- Header desktop Oltega — masqué mobile (CSS) -->
       <header class="dash-page-header">
         <div class="dash-ph-left">
-          <div class="dash-ph-title">Bonjour, ${Session.nom || '—'}</div>
+          <div class="dash-ph-title">Bonjour, ${Session.nom || 'n.c.'}</div>
           <div class="dash-ph-date">${dateFr} · ${d.semaine}</div>
         </div>
         <div class="dash-ph-right">
@@ -490,7 +490,7 @@ window.VueDashboardCDS = {
       <!-- Héro navy (mobile uniquement — masqué ≥900px via CSS) -->
       <div class="dash-hero">
         <div class="dash-hero-cycle">Cycle FY27 · ${d.semaine} · ${dateFr}</div>
-        <div class="dash-hero-titre">Bonjour ${Session.nom || '—'}
+        <div class="dash-hero-titre">Bonjour ${Session.nom || 'n.c.'}
           <button class="btn-deco" onclick="Session.deconnecter();Router.aller('#/login')" title="Déconnexion"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg></button>
         </div>
         <div class="dash-hero-tuiles">

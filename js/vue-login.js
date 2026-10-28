@@ -63,7 +63,7 @@ window.VueLogin = {
 
           <img src="img/logo-marvesting-sm.png" alt="Marvesting" class="login-marvesting"/>
         </div>
-        <div class="login-aide">Accès réservé — Impact Sales Marketing</div>
+        <div class="login-aide">Accès réservé, Impact Sales Marketing</div>
       </div>`;
   },
 
@@ -72,7 +72,7 @@ window.VueLogin = {
       <div class="login-page">
         <div class="login-carte">
           <h1 class="login-titre" style="font-size:20px">Mot de passe oublié</h1>
-          <p class="login-sous">Saisissez votre email — vous recevrez un lien valable 30 minutes.</p>
+          <p class="login-sous">Saisissez votre email, vous recevrez un lien valable 30 minutes.</p>
           <form class="login-form" onsubmit="VueLogin.envoyerReset(event)">
             <div class="login-champ">
               <span class="champ-icone">✉️</span>

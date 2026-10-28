@@ -179,7 +179,7 @@ window.FichesFroides = {
       adresseLibre: f.Adresse || '', telLibre: f.Tel || '', emailLibre: f.Email || '',
       typeVisite: 'SUIVI_ACTIF',
       commentairePrep: [f.Resultat_Derniere && `Dernier résultat : ${f.Resultat_Derniere}`, f.Prochaine_Action]
-        .filter(Boolean).join(' — '),
+        .filter(Boolean).join(', '),
       prochaineEtape: f.Prochaine_Action || '',
     };
   },

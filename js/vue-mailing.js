@@ -137,7 +137,7 @@ window.VueMailing = {
     s.envoiEnCours = true;
     this.render();
     const c = s.cible.obj;
-    const resum = s.motifs.join(', ') + (s.note.trim() ? ' — ' + s.note.trim() : '');
+    const resum = s.motifs.join(', ') + (s.note.trim() ? ', ' + s.note.trim() : '');
     try {
       // 1. Log 📊_ACTIONS — même convention que valider() de vue-phoning.js
       await SheetsAPI.ecrire('EMPOWER_MDB', '📊_ACTIONS', {
@@ -290,7 +290,7 @@ window.VueMailing = {
         <span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;background:${x.type==='compte'?'var(--c-title)':'var(--c-warning)'};color:#fff">${x.type==='compte'?'COMPTE':'LEAD'}</span>
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${x.nom}</div>
-          <div style="font-size:12px;color:var(--c-text-2)">${x.obj.Ville || '—'}</div>
+          <div style="font-size:12px;color:var(--c-text-2)">${x.obj.Ville || 'n.c.'}</div>
         </div>
         <span style="color:var(--c-text-2)">→</span>
       </div>`).join('') + `</div>`;
@@ -305,7 +305,7 @@ window.VueMailing = {
           <span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;background:${s.cible.type==='compte'?'var(--c-title)':'var(--c-warning)'};color:#fff">${s.cible.type==='compte'?'COMPTE':'LEAD'}</span>
           <strong style="font-size:15px">${s.cible.nom}</strong>
         </div>
-        <div style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">${c.Ville || '—'}${c.Email ? ' · ' + c.Email : ''}</div>
+        <div style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">${c.Ville || 'n.c.'}${c.Email ? ' · ' + c.Email : ''}</div>
 
         <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px">Motif(s) du mailing *</label>
         ${QuestionnaireBranching.chipsMultiSelect({ champ: 'motif', options: this.MOTIFS, valeurs: s.motifs, onToggle: 'VueMailing.toggleMotif' })}
@@ -344,7 +344,7 @@ window.VueMailing = {
     return `<div class="phoning-base-grid">` + l.map(a => `
       <div style="background:var(--c-surface);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:11px;margin-bottom:8px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <strong style="font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.Nom_Compte || '—'}</strong>
+          <strong style="font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.Nom_Compte || 'n.c.'}</strong>
           <span style="font-size:11px;color:var(--c-text-2)">${(a.Date_Action || '').slice(0, 10)}</span>
         </div>
         <div style="font-size:12px;color:var(--c-text-2)">${resolveCDS(a.PIN_CDS) || ''}</div>

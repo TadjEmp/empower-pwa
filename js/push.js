@@ -57,7 +57,7 @@ window.PushNotifs = {
     this._enCours = true; this._rendre();
     try {
       const perm = await Notification.requestPermission();
-      if (perm !== 'granted') { Toast.afficher('Notifications refusées — autorisez-les dans les réglages du navigateur', 'warning', 6000); return; }
+      if (perm !== 'granted') { Toast.afficher('Notifications refusées, autorisez-les dans les réglages du navigateur', 'warning', 6000); return; }
       const reg = await navigator.serviceWorker.ready;
       const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: this._cle(this.VAPID_PUBLIC) });
       await this._enregistrer(sub);

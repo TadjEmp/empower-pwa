@@ -294,7 +294,7 @@ window.VueComptes = {
   _badgeEmpower(c) {
     return window.estEmpower(c)
       ? `<span class="badge-empower badge-empower-oui" title="Compte Empower">Empower</span>`
-      : `<span class="badge-empower badge-empower-non" title="Grossiste — potentiel onboarding Empower">Grossiste</span>`;
+      : `<span class="badge-empower badge-empower-non" title="Grossiste, potentiel onboarding Empower">Grossiste</span>`;
   },
 
   render() {
@@ -342,7 +342,7 @@ window.VueComptes = {
         ${kpiCard({ label: 'Comptes',      value: total,    accent: 'primary' })}
         ${kpiCard({ label: 'Actifs',       value: nbActif,  accent: 'teal' })}
         ${kpiCard({ label: 'À réactiver',  value: nbReact,  accent: 'amber' })}
-        ${kpiCard({ label: 'CA FY27',      value: window.fmtCA(caTotalP) !== '—' ? window.fmtCA(caTotalP) : '0', unit: '€', accent: 'indigo' })}
+        ${kpiCard({ label: 'CA FY27',      value: window.fmtCA(caTotalP) !== 'n.c.' ? window.fmtCA(caTotalP) : '0', unit: '€', accent: 'indigo' })}
       </div>
 
       <div class="barre-filtres">
@@ -444,7 +444,7 @@ window.VueComptes = {
             const caFY26 = window.fmtCA(c.CA_FY26);
             const caQ1   = window.fmtCA(window.caQuarterActif(c, this.state.quarter));
             // resolveCDS (utils.js) : retourne '—' si PIN inconnu — jamais de PIN brut dans l'UI
-            const nomCDS = window.resolveCDS(c.PIN_CDS_Assigne) !== '—'
+            const nomCDS = window.resolveCDS(c.PIN_CDS_Assigne) !== 'n.c.'
               ? window.resolveCDS(c.PIN_CDS_Assigne)
               : (c.Nom_CDS ? window.resolveCDS(c.Nom_CDS) : null);
             // Alexandra (CHANNEL_MANAGER) : vue lecture seule — pas d'actions terrain
@@ -481,7 +481,7 @@ window.VueComptes = {
                 }</span>`
               : '';
             const alerteInactivite = inactif45
-              ? `<div class="alerte-inactivite"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> INACTIF ${dernActJours}j — aucun contact</div>`
+              ? `<div class="alerte-inactivite"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> INACTIF ${dernActJours}j, aucun contact</div>`
               : '';
             const estDoublon = doublons.has(normaliserNom(c.Nom_Compte || ''));
             return `
@@ -490,7 +490,7 @@ window.VueComptes = {
             <div class="cc-pills" onclick="VueComptes.ouvrirFiche('${c.ID_Compte}')">
               ${badgeStatutCompte(c)}
               ${this._badgeEmpower(c)}
-              ${estDoublon ? `<span style="color:var(--c-warning);font-size:11px;font-weight:700" title="Un autre compte porte le même nom — ouvrir la fiche pour supprimer le doublon">Doublon</span>` : ''}
+              ${estDoublon ? `<span style="color:var(--c-warning);font-size:11px;font-weight:700" title="Un autre compte porte le même nom, ouvrir la fiche pour supprimer le doublon">Doublon</span>` : ''}
               ${badgeDernier}
               ${NonSuivis.badge(c)}
               ${window.AContacter ? AContacter.badge(c) : ''}
@@ -498,12 +498,12 @@ window.VueComptes = {
               ${badgeDernierAppel}
               ${this._badgePriorite(c.Priorite)}
               <span style="margin-left:auto;font-size:12px;color:var(--c-muted)">FY26 ${caFY26}</span>
-              <span style="font-size:13px;font-weight:700;color:var(--c-title)">FY27 ${this.state.quarter} ${caQ1 !== '—' ? caQ1 : '—'}</span>
+              <span style="font-size:13px;font-weight:700;color:var(--c-title)">FY27 ${this.state.quarter} ${caQ1 !== 'n.c.' ? caQ1 : 'n.c.'}</span>
             </div>
-            <div class="cc-nom" onclick="VueComptes.ouvrirFiche('${c.ID_Compte}')">${c.Nom_Compte || '—'}</div>
+            <div class="cc-nom" onclick="VueComptes.ouvrirFiche('${c.ID_Compte}')">${c.Nom_Compte || 'n.c.'}</div>
             <div class="cc-infos" onclick="VueComptes.ouvrirFiche('${c.ID_Compte}')">
-              <span><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> ${c.Ville || '—'}</span>
-              <span>${c.CANAL || '—'}</span>
+              <span><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> ${c.Ville || 'n.c.'}</span>
+              <span>${c.CANAL || 'n.c.'}</span>
               ${live.dernierAppel ? `<span title="Dernier appel">📞 ${dateRelative(live.dernierAppel)}</span>` : ''}
               ${prochaineVisite ? `
                 <span class="${estDepassee(prochaineVisite) ? 'prochaine-action alerte' : ''}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${dateRelative(prochaineVisite)}</span>` : ''}
@@ -520,7 +520,7 @@ window.VueComptes = {
               <span style="font-weight:600">${nomCDS ? nomCDS : '<span style="color:var(--c-warning)">Non attribué</span>'}</span>
               <select style="flex:1;border:1px solid var(--c-border);border-radius:4px;padding:4px 6px;font-size:12px"
                       onchange="VueComptes.attribuer('${c.ID_Compte}', this.value)">
-                <option value="">— attribuer —</option>
+                <option value="">attribuer</option>
                 ${cdsList.map(x => `<option value="${x.pin}" ${Number(c.PIN_CDS_Assigne) === x.pin ? 'selected' : ''}>${x.nom}</option>`).join('')}
               </select>
             </div>` : ''}
@@ -548,7 +548,7 @@ window.VueComptes = {
                 const caFY25 = window.fmtCA(c.CA_FY25);
                 const caFY26 = window.fmtCA(c.CA_FY26);
                 const caQ1   = window.fmtCA(window.caQuarterActif(c, this.state.quarter));
-                const nomCDS = window.resolveCDS(c.PIN_CDS_Assigne) !== '—'
+                const nomCDS = window.resolveCDS(c.PIN_CDS_Assigne) !== 'n.c.'
                   ? window.resolveCDS(c.PIN_CDS_Assigne)
                   : (c.Nom_CDS ? window.resolveCDS(c.Nom_CDS) : null);
                 const estLectureSeule = Session.role === 'CHANNEL_MANAGER';
@@ -556,7 +556,7 @@ window.VueComptes = {
                 const prochaineVisiteRow = this._prochaineVisite(c);
                 const pa = prochaineVisiteRow
                   ? `<span class="${estDepassee(prochaineVisiteRow) ? 'prochaine-action alerte' : ''}">⏰ ${dateRelative(prochaineVisiteRow)}</span>${liveRow.dernierAppel ? `<br><span style="font-size:10px;color:var(--c-muted)">📞 ${dateRelative(liveRow.dernierAppel)}</span>` : ''}`
-                  : (liveRow.dernierAppel ? `<span style="font-size:11px;color:var(--c-muted)">📞 ${dateRelative(liveRow.dernierAppel)}</span>` : '—');
+                  : (liveRow.dernierAppel ? `<span style="font-size:11px;color:var(--c-muted)">📞 ${dateRelative(liveRow.dernierAppel)}</span>` : 'n.c.');
                 const dteDA = this._dernierContact(c) || '';
                 const joursDA = dteDA ? Math.max(0, Math.floor((Date.now() - new Date(dteDA).getTime()) / 86400000)) : null;
                 const rowStyle = (joursDA !== null && joursDA > 45) ? 'border-left:3px solid var(--c-danger);background:rgba(217,48,37,.04)' : '';
@@ -572,20 +572,20 @@ window.VueComptes = {
                 const estDoublonRow = doublons.has(normaliserNom(c.Nom_Compte || ''));
                 return `<tr style="${rowStyle}">
                   <td>${badgeStatutCompte(c)} ${this._badgeEmpower(c)}${estDoublonRow ? `<br><span style="font-size:10px;font-weight:700;color:var(--c-warning)" title="Un autre compte porte le même nom">Doublon</span>` : ''}${joursDA !== null && joursDA > 45 ? `<br><span style="font-size:10px;font-weight:700;color:var(--c-danger)">⚠ ${joursDA}j</span>` : ''}</td>
-                  <td class="compte-nom" onclick="VueComptes.ouvrirFiche('${c.ID_Compte}')">${c.Nom_Compte || '—'}</td>
-                  <td>${c.Ville || '—'}</td>
-                  <td>${c.CANAL || '—'}</td>
+                  <td class="compte-nom" onclick="VueComptes.ouvrirFiche('${c.ID_Compte}')">${c.Nom_Compte || 'n.c.'}</td>
+                  <td>${c.Ville || 'n.c.'}</td>
+                  <td>${c.CANAL || 'n.c.'}</td>
                   <td class="num" style="color:var(--c-muted)">${caFY25}</td>
                   <td class="num" style="color:var(--c-muted)">${caFY26}</td>
-                  <td class="num" style="font-weight:700;color:var(--c-title)">${caQ1 !== '—' ? caQ1 : caFY26}${deltaHtml}</td>
+                  <td class="num" style="font-weight:700;color:var(--c-title)">${caQ1 !== 'n.c.' ? caQ1 : caFY26}${deltaHtml}</td>
                   <td>${pa}</td>
                   <td>${Session.estManager() ? `
                     <select style="border:1px solid var(--c-border);border-radius:4px;padding:3px 6px;font-size:12px"
                             onchange="VueComptes.attribuer('${c.ID_Compte}', this.value)">
                       <option value="">${nomCDS ? '👤 ' + nomCDS : '⚠️ attribuer'}</option>
                       ${cdsList.map(x => `<option value="${x.pin}" ${Number(c.PIN_CDS_Assigne) === x.pin ? 'selected' : ''}>${x.nom}</option>`).join('')}
-                    </select>` : (nomCDS || '—')}</td>
-                  <td>${estLectureSeule ? '—' : `
+                    </select>` : (nomCDS || 'n.c.')}</td>
+                  <td>${estLectureSeule ? 'n.c.' : `
                     <button class="btn-visiter" style="padding:4px 10px;font-size:12px" onclick="VueQuestionnaire._visitePlanifiee=null;Router.aller('#/questionnaire/${c.ID_Compte}')">Visiter</button>
                     <button class="btn-tel-outline" style="padding:4px 8px" onclick="Router.aller('#/phoning/${c.ID_Compte}')" title="Appeler">📞</button>`}</td>
                 </tr>`;
@@ -601,7 +601,7 @@ window.VueComptes = {
     if (!pin || Session.role === 'CHANNEL_MANAGER') return;
     if (!Session.estManager()) return;
     const nom = window.resolveCDS(pin); // utils.js — retourne '—' si inconnu
-    if (nom === '—') { Toast.afficher('CDS inconnu', 'erreur'); return; }
+    if (nom === 'n.c.') { Toast.afficher('CDS inconnu', 'erreur'); return; }
     const c = this.state.comptes.find(x => String(x.ID_Compte) === String(idCompte));
     if (!c) return;
     await NonSuivis.reattribuer(c, Number(pin), () => this.init());

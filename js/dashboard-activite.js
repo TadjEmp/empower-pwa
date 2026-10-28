@@ -177,7 +177,7 @@ function renderBlocCamemberts(f, raw, ns) {
   const { camembertVisites, camembertAppels } = segmentsCamembertsActivite(f, ns);
   return `
   <div class="bloc-fiche">
-    <div class="bloc-titre">Répartition activité — ${f.quarter}${f.semaineSeule ? ' · ' + f.semaineSeule.split('-')[1] : ''}</div>
+    <div class="bloc-titre">Répartition activité, ${f.quarter}${f.semaineSeule ? ' · ' + f.semaineSeule.split('-')[1] : ''}</div>
     <div class="dash-filtres-camembert">
       ${['Q1','Q2','Q3','Q4'].map(q => `<button class="btn-filtre ${f.quarter === q ? 'actif' : ''}" onclick="${ns}.setQuarterCamembert('${q}')">${q}</button>`).join('')}
       <button class="btn-filtre ${f.semaineSeule ? 'actif' : ''}" onclick="${ns}.toggleSemaineCamembert()">Semaine en cours</button>

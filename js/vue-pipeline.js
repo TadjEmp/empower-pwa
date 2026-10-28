@@ -312,7 +312,7 @@ window.VuePipeline = {
       'PERDU':                '🗄 Perdu',
       'A_VISITER':            '📍 À visiter',
     };
-    return MAP[String(flag || '').toUpperCase()] || flag || '—';
+    return MAP[String(flag || '').toUpperCase()] || flag || 'n.c.';
   },
 
   // Origines distinctes présentes dans les leads (case-insensitive, libellé d'affichage = 1ère occurrence)
@@ -341,7 +341,7 @@ window.VuePipeline = {
     const coul = j > 30 ? 'var(--c-danger)' : j > 7 ? 'var(--c-warning)' : 'var(--c-success)';
     const titre = p.Date_Derniere_Action
       ? `Dernier contact (${p.Type_Derniere_Action || 'action'}) il y a ${j}j`
-      : `Aucun contact enregistré — ${j}j depuis l'attribution`;
+      : `Aucun contact enregistré, ${j}j depuis l'attribution`;
     // V7 §4 (BLOC 02) — ancienneté = donnée : typo + couleur sémantique,
     // pas de pill cerclée.
     return `<span class="badge-age" title="${titre}" style="font-size:11px;font-weight:700;color:${coul};white-space:nowrap;font-variant-numeric:tabular-nums">${j}j</span>`;
@@ -472,7 +472,7 @@ window.VuePipeline = {
     if (!pin || !Session.voitTout() || pin === Number(Session.pin)) return;
     const MSGS = {
       EN_COURS: `🔵 ${lead.Nom_Compte} passé en cours de traitement`,
-      INTEGRE:  `✅ ${lead.Nom_Compte} intégré — bravo !`,
+      INTEGRE:  `✅ ${lead.Nom_Compte} intégré, bravo !`,
       ARCHIVE:  `🗄 ${lead.Nom_Compte} archivé`,
     };
     const TYPES = { EN_COURS: 'STATUT_EN_COURS', INTEGRE: 'STATUT_INTEGRE', ARCHIVE: 'STATUT_ARCHIVE' };
@@ -506,7 +506,7 @@ window.VuePipeline = {
         ID_Notif:         genId('NOTIF'),
         PIN_Destinataire: Number(pin),
         Type_Notif:       'LEAD_ASSIGNE',
-        Message:          `🎯 Lead assigné : ${lead.Nom_Compte}${lead.Ville ? ' — ' + lead.Ville : ''} — Potentiel : ${lead.POTENTIEL || '?'}`,
+        Message:          `🎯 Lead assigné : ${lead.Nom_Compte}${lead.Ville ? ', ' + lead.Ville : ''}, Potentiel : ${lead.POTENTIEL || '?'}`,
         ID_Cible:         lead.ID_Prospect,
         Statut_Lu:        false,
         Date_Envoi:       new Date().toISOString(),
@@ -543,14 +543,14 @@ window.VuePipeline = {
       if (res?.doublon_probable && res.score > 70) {
         ConfirmModal.demander({
           titre: 'Doublon probable détecté',
-          message: `Compte similaire existant : "${res.nom_similaire}" — similarité ${res.score}%`,
+          message: `Compte similaire existant : "${res.nom_similaire}", similarité ${res.score}%`,
           detail: res.explication || '',
           labelConfirmer: 'Continuer quand même',
           onConfirm: () => this._creerLeadPipeline(nomSaisi, vals),
         });
         return;
       }
-    } catch { /* GEM-T02 optionnel — on continue si erreur */ }
+    } catch { /* GEM-T02 optionnel, on continue si erreur */ }
 
     await this._creerLeadPipeline(nomSaisi, vals);
   },
@@ -593,7 +593,7 @@ window.VuePipeline = {
           ID_Notif:         genId('NOTIF'),
           PIN_Destinataire: Number(cdsAssignePin),
           Type_Notif:       'LEAD_ASSIGNE',
-          Message:          `🎯 Lead assigné : ${lead.Nom_Compte}${lead.Ville ? ' — ' + lead.Ville : ''} — Potentiel : ${lead.POTENTIEL || '?'}`,
+          Message:          `🎯 Lead assigné : ${lead.Nom_Compte}${lead.Ville ? ', ' + lead.Ville : ''}, Potentiel : ${lead.POTENTIEL || '?'}`,
           ID_Cible:         lead.ID_Prospect,
           Statut_Lu:        false,
           Date_Envoi:       new Date().toISOString(),
@@ -862,7 +862,7 @@ window.VuePipeline = {
             <option value="TOUS">Toutes origines</option>
             ${this._originesDistinctes().map(o => `<option value="${o}" ${String(this.state.filtreOrigine).toLowerCase()===String(o).toLowerCase()?'selected':''}>${o}</option>`).join('')}
           </select>` : ''}
-          ${/* BLOC 7 — filtre channel */ this.CHANNELS.length > 1 ? `
+          ${/* BLOC 7, filtre channel */ this.CHANNELS.length > 1 ? `
           <select onchange="VuePipeline.state.filtreChannel=this.value;VuePipeline.render()">
             <option value="TOUS">Tous canaux</option>
             ${this.CHANNELS.map(c => `<option value="${c}" ${this.state.filtreChannel===c?'selected':''}>${c}</option>`).join('')}
@@ -998,7 +998,7 @@ window.VuePipeline = {
                   <span class="kanban-voir" style="margin-left:auto">Voir →</span>
                 </div>
               </div>`).join('')}
-            ${col.length === 0 ? '<div class="kanban-vide">—</div>' : ''}
+            ${col.length === 0 ? '<div class="kanban-vide">n.c.</div>' : ''}
             </div>
             ${masques > 0 ? `
               <div class="kanban-voir-plus" onclick="VuePipeline.etendre('${st.id}')">
@@ -1122,16 +1122,16 @@ window.VuePipeline = {
               <td class="compte-nom" onclick="VuePipeline.ouvrirLead('${l.ID_Prospect}')" style="cursor:pointer;font-weight:600">
                 ${l.Nom_Compte}
               </td>
-              ${cc.canal ? `<td style="font-size:12px;color:var(--c-text-2)">${l.CANAL || '—'}</td>` : ''}
+              ${cc.canal ? `<td style="font-size:12px;color:var(--c-text-2)">${l.CANAL || 'n.c.'}</td>` : ''}
               <td>
                 <span class="statut-pill statut-${(l._statut||'').toLowerCase()}" style="font-size:10px">
                   ${statutLabel(l._statut)}
                 </span>
               </td>
-              ${cc.potentiel ? `<td>${l.POTENTIEL ? `<span class="pot-pill pot-${(l.POTENTIEL||'').toLowerCase()}">${l.POTENTIEL}</span>` : '—'}</td>` : ''}
+              ${cc.potentiel ? `<td>${l.POTENTIEL ? `<span class="pot-pill pot-${(l.POTENTIEL||'').toLowerCase()}">${l.POTENTIEL}</span>` : 'n.c.'}</td>` : ''}
               ${showCDS ? `<td style="font-size:12px">${this._nomCDS(l.PIN_CDS_Assigne)}</td>` : ''}
               ${cc.action ? `<td style="font-size:12px;color:${l.Date_prochaine_action && estDepassee(l.Date_prochaine_action) ? 'var(--c-danger)' : 'var(--c-text-2)'}">
-                ${l.Date_prochaine_action ? dateRelative(l.Date_prochaine_action) : '—'}
+                ${l.Date_prochaine_action ? dateRelative(l.Date_prochaine_action) : 'n.c.'}
               </td>` : ''}
               ${cc.alertes ? `<td style="font-size:12px;white-space:nowrap">
                 ${wpRetard   ? '<span style="color:var(--c-danger);font-weight:700">WP J+14</span><br>' : ''}
@@ -1140,9 +1140,9 @@ window.VuePipeline = {
                 ${l._activationSellIn ? '<span style="color:var(--c-success);font-weight:700">Sell-In</span>' : l._activationSellInFlou ? `<span style="color:var(--c-warning);font-weight:700" title="Rapprochement approximatif : ${l._activationSellInFlou.nom} (${l._activationSellInFlou.score}%)">Sell-In ?</span>` : ''}
                 ${SellInFlag.badgePourNom(l.Nom_Compte)}
                 ${l.Commande_Manuelle ? '<span style="color:var(--c-success);font-weight:700">Déclarée</span>' : ''}
-                ${!wpRetard && !contact45j && !activite7j && !l._activationSellIn && !l._activationSellInFlou && !l.Commande_Manuelle ? '<span style="color:var(--c-text-2)">—</span>' : ''}
+                ${!wpRetard && !contact45j && !activite7j && !l._activationSellIn && !l._activationSellInFlou && !l.Commande_Manuelle ? '<span style="color:var(--c-text-2)">n.c.</span>' : ''}
               </td>` : ''}
-              ${cc.source ? `<td style="font-size:11px;color:var(--c-text-2)">${(l.ORIGINE||'—').replace('Import_','').replace(/_/g,' ')}</td>` : ''}
+              ${cc.source ? `<td style="font-size:11px;color:var(--c-text-2)">${(l.ORIGINE||'n.c.').replace('Import_','').replace(/_/g,' ')}</td>` : ''}
               <td>
                 <button class="btn-visiter" style="padding:4px 10px;font-size:12px"
                         onclick="VuePipeline.ouvrirLead('${l.ID_Prospect}')">Voir →</button>
@@ -1212,7 +1212,7 @@ window.VuePipeline = {
           <form onsubmit="VuePipeline.confirmerArchive(event)">
             <label>Motif *
               <select id="archive-motif" required>
-                <option value="">— choisir —</option>
+                <option value="">choisir</option>
                 ${this.MOTIFS_ARCHIVE.map(mo => `<option value="${mo.id}">${mo.lbl}</option>`).join('')}
               </select>
             </label>
@@ -1232,12 +1232,12 @@ window.VuePipeline = {
       <div class="modal-overlay" onclick="if(event.target===this)VuePipeline.fermerModal()">
         <div class="modal">
           <h3>Nouveau lead EMPOWER</h3>
-          <p style="font-size:12px;color:var(--c-text-2);margin:-4px 0 12px">Renseigne le prospect identifié — plus tu donnes d'infos, plus l'IA enrichira la fiche automatiquement (potentiel, canal, angle d'approche).</p>
+          <p style="font-size:12px;color:var(--c-text-2);margin:-4px 0 12px">Renseigne le prospect identifié, plus tu donnes d'infos, plus l'IA enrichira la fiche automatiquement (potentiel, canal, angle d'approche).</p>
           <form onsubmit="VuePipeline.saisirLead(event)">
 
             <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.05em;margin-bottom:6px">IDENTIFICATION</div>
             <label>Enseigne / Raison sociale *
-              <input id="nl-nom" required placeholder="ex : MICRO PLUS INFORMATIQUE — en majuscules"/></label>
+              <input id="nl-nom" required placeholder="ex : MICRO PLUS INFORMATIQUE, en majuscules"/></label>
             <label>Adresse postale
               <input id="nl-adresse" placeholder="ex : 12 rue du Général de Gaulle"/></label>
             <div style="display:flex;gap:10px">
@@ -1274,9 +1274,9 @@ window.VuePipeline = {
             <div style="display:flex;gap:10px">
               <label style="flex:1">Potentiel estimé
                 <select id="nl-potentiel">
-                  <option value="Fort">Fort — > 30 000 €/an</option>
-                  <option value="Moyen" selected>Moyen — 10-30 k€/an</option>
-                  <option value="Faible">Faible — < 10 000 €/an</option>
+                  <option value="Fort">Fort, > 30 000 €/an</option>
+                  <option value="Moyen" selected>Moyen, 10-30 k€/an</option>
+                  <option value="Faible">Faible, < 10 000 €/an</option>
                 </select>
               </label>
               <label style="flex:1">Prochaine action
@@ -1284,30 +1284,30 @@ window.VuePipeline = {
             </div>
             <label>Source du lead
               <select id="nl-origine">
-                <option value="Alexandra">Alexandra — saisie directe</option>
-                <option value="FDV">FDV — force de vente terrain</option>
-                <option value="Web">Web — site / formulaire</option>
+                <option value="Alexandra">Alexandra, saisie directe</option>
+                <option value="FDV">FDV, force de vente terrain</option>
+                <option value="Web">Web, site / formulaire</option>
                 <option value="Recommandation">Recommandation client</option>
                 <option value="Salon">Salon / Événement</option>
                 <option value="Autre">Autre</option>
               </select>
             </label>
-            ${/* BLOC 4.1 — attribution directe à la création */ this._peutAssigner() ? `
+            ${/* BLOC 4.1, attribution directe à la création */ this._peutAssigner() ? `
             <label>Attribuer à un CDS (optionnel)
               <select id="nl-cds-assigne">
-                <option value="">— Non attribué pour l'instant —</option>
+                <option value="">Non attribué pour l'instant</option>
                 ${(this.CDS.length ? this.CDS : this.CDS_FALLBACK).map(c => `<option value="${c.pin}">${this._nomCDS(c.pin)}</option>`).join('')}
               </select>
             </label>
             <label>Statut initial du lead
               <select id="nl-statut">
-                <option value="SAISIE">À traiter — sans CDS assigné</option>
-                <option value="ASSIGNE">Assigné — CDS désigné</option>
+                <option value="SAISIE">À traiter, sans CDS assigné</option>
+                <option value="ASSIGNE">Assigné, CDS désigné</option>
               </select>
             </label>` : ''}
             <label>Notes de qualification
               <textarea id="nl-note" rows="4"
-                        placeholder="Exemple : revendeur IT 5 boutiques — déjà utilisateur Norton Home / rencontré au salon IT Partners en nov. 2024 — intérêt confirmé pour EMPOWER pack revendeur — demande démo avant signature — bloquer sur le prix à date. Contact : Jean Martin (gérant), disponible le matin."></textarea>
+                        placeholder="Exemple : revendeur IT 5 boutiques, déjà utilisateur Norton Home / rencontré au salon IT Partners en nov. 2024, intérêt confirmé pour EMPOWER pack revendeur, demande démo avant signature, bloquer sur le prix à date. Contact : Jean Martin (gérant), disponible le matin."></textarea>
             </label>
 
             <div class="modal-btns">
@@ -1356,20 +1356,20 @@ window.VuePipeline = {
         <div class="q-recap" style="margin-bottom:12px">
           <div class="q-recap-ligne"><span>CDS assigné</span><strong>${this._nomCDS(l.PIN_CDS_Assigne)}</strong></div>
           ${l._activationSellIn ? `<div class="q-recap-ligne"><span>Sell-In</span><strong style="color:var(--c-success)">Commande détectée (FY27)${this._sellInFraicheur()}</strong></div>`
-            : l._activationSellInFlou ? `<div class="q-recap-ligne"><span>Sell-In</span><strong style="color:var(--c-warning)" title="Rapprochement approximatif, à confirmer">Probable — "${l._activationSellInFlou.nom}" (${l._activationSellInFlou.score}%)${this._sellInFraicheur()}</strong></div>` : ''}
+            : l._activationSellInFlou ? `<div class="q-recap-ligne"><span>Sell-In</span><strong style="color:var(--c-warning)" title="Rapprochement approximatif, à confirmer">Probable, "${l._activationSellInFlou.nom}" (${l._activationSellInFlou.score}%)${this._sellInFraicheur()}</strong></div>` : ''}
           ${l.Commande_Manuelle ? `<div class="q-recap-ligne"><span>Déclaration</span><strong style="color:var(--c-success)">Commande déclarée${l.Date_Commande_Manuelle ? ' le ' + new Date(l.Date_Commande_Manuelle).toLocaleDateString('fr-FR') : ''}</strong></div>` : ''}
           ${l.Adresse ? `<div class="q-recap-ligne"><span>Adresse</span><strong>${l.Adresse}</strong></div>` : ''}
-          ${l.Ville || l.Code_Postal ? `<div class="q-recap-ligne"><span>Localisation</span><strong>${l.Ville || '—'} ${l.Code_Postal||''}</strong></div>` : ''}
+          ${l.Ville || l.Code_Postal ? `<div class="q-recap-ligne"><span>Localisation</span><strong>${l.Ville || 'n.c.'} ${l.Code_Postal||''}</strong></div>` : ''}
           ${l.Tel ? `<div class="q-recap-ligne"><span>Téléphone</span><strong><a class="lien-tel" href="tel:${String(l.Tel).replace(/\s/g, '')}">${l.Tel}</a></strong></div>` : ''}
           ${l.Email ? `<div class="q-recap-ligne"><span>Email</span><strong>${l.Email}</strong></div>` : ''}
           ${l.CONTACT_NOM ? `<div class="q-recap-ligne"><span>Contact</span><strong>${l.CONTACT_NOM}${l.CONTACT_FONCTION ? ' · ' + l.CONTACT_FONCTION : ''}</strong></div>` : ''}
-          <div class="q-recap-ligne"><span>Dernière relance</span><strong>${l.Date_prochaine_action ? dateRelative(l.Date_prochaine_action) : (l.Date_Import ? dateRelative(l.Date_Import) : '—')}</strong></div>
+          <div class="q-recap-ligne"><span>Dernière relance</span><strong>${l.Date_prochaine_action ? dateRelative(l.Date_prochaine_action) : (l.Date_Import ? dateRelative(l.Date_Import) : 'n.c.')}</strong></div>
           <div class="q-recap-ligne"><span>Action en cours</span><strong>${this._labelFlag(l.FLAG_ACTION)}</strong></div>
           ${l.ORIGINE ? `<div class="q-recap-ligne"><span>Source</span><strong style="font-size:11px">${l.ORIGINE.replace('Import_','').replace(/_/g,' ')}</strong></div>` : ''}
           ${l.Welcome_Pack_Date ? `<div class="q-recap-ligne"><span>Welcome Pack</span><strong>${l.Welcome_Pack_Date}</strong></div>` : ''}
           ${l.Date_Integration ? `<div class="q-recap-ligne"><span>Intégré le</span><strong>${l.Date_Integration}</strong></div>` : ''}
-          ${l.Motif_Archive ? `<div class="q-recap-ligne"><span>Motif de perte</span><strong style="color:var(--c-danger)">${(this.MOTIFS_ARCHIVE.find(m => m.id === l.Motif_Archive)?.lbl || l.Motif_Archive)}${l.Motif_Archive_Detail ? ' — ' + l.Motif_Archive_Detail : ''}</strong></div>` : ''}
-          <div class="q-recap-ligne"><span>Créé le</span><strong>${l.Date_Import ? dateRelative(l.Date_Import) : '—'}</strong></div>
+          ${l.Motif_Archive ? `<div class="q-recap-ligne"><span>Motif de perte</span><strong style="color:var(--c-danger)">${(this.MOTIFS_ARCHIVE.find(m => m.id === l.Motif_Archive)?.lbl || l.Motif_Archive)}${l.Motif_Archive_Detail ? ', ' + l.Motif_Archive_Detail : ''}</strong></div>` : ''}
+          <div class="q-recap-ligne"><span>Créé le</span><strong>${l.Date_Import ? dateRelative(l.Date_Import) : 'n.c.'}</strong></div>
         </div>
 
         <!-- Mise à jour suivi (édition réservée : ADMIN ou CDS propriétaire) -->
@@ -1391,7 +1391,7 @@ window.VuePipeline = {
           ${l.Commande_Manuelle ? `
           <button class="btn-secondaire" style="width:100%;margin-bottom:10px;font-size:12px;color:var(--c-success);border-color:var(--c-success)"
                   onclick="VuePipeline.declarerCommande('${l.ID_Prospect}', false)">
-            ✍️ Commande déclarée${l.Date_Commande_Manuelle ? ' le ' + new Date(l.Date_Commande_Manuelle).toLocaleDateString('fr-FR') : ''} — annuler
+            ✍️ Commande déclarée${l.Date_Commande_Manuelle ? ' le ' + new Date(l.Date_Commande_Manuelle).toLocaleDateString('fr-FR') : ''}, annuler
           </button>` : `
           <button class="btn-secondaire" style="width:100%;margin-bottom:10px;font-size:12px"
                   onclick="VuePipeline.declarerCommande('${l.ID_Prospect}', true)">
@@ -1427,11 +1427,11 @@ window.VuePipeline = {
           <!-- BLOC — "aucune possibilité depuis le tracker d'ajouter le
                prospect au compte une fois onboarding effectué" : le
                mécanisme existe déjà (_creerCompteDepuisLead, déclenché au
-               changement de Statut ci-dessus) mais rien ne le disait — un
+               changement de Statut ci-dessus) mais rien ne le disait, un
                simple select "Statut" ne laisse pas deviner qu'il crée
                réellement la fiche compte. Rendu explicite. -->
           <div style="font-size:11px;color:var(--c-primary);background:color-mix(in srgb,var(--c-primary) 8%,transparent);border:1px solid color-mix(in srgb,var(--c-primary) 25%,transparent);border-radius:var(--radius-sm);padding:7px 9px;margin:-2px 0 8px;line-height:1.4">
-            💡 Onboarding terminé ? Passe le Statut ci-dessus à <strong>"Compte créé"</strong> ou <strong>"Intégré"</strong> puis enregistre — la fiche compte EMPOWER correspondante est créée automatiquement.
+            💡 Onboarding terminé ? Passe le Statut ci-dessus à <strong>"Compte créé"</strong> ou <strong>"Intégré"</strong> puis enregistre, la fiche compte EMPOWER correspondante est créée automatiquement.
           </div>` : ''}
 
           <label style="font-size:12px;color:var(--c-text-2)">Prochaine action
@@ -1471,7 +1471,7 @@ window.VuePipeline = {
         ${peutAssigner ? `
         <label style="margin-bottom:8px">Attribuer à un CDS
           <select id="attr-cds" onchange="VuePipeline.attribuer('${l.ID_Prospect}', this.value)">
-            <option value="">— choisir —</option>
+            <option value="">choisir</option>
             ${cdsList.map(c => `<option value="${c.pin}" ${Number(l.PIN_CDS_Assigne) === c.pin ? 'selected' : ''}>${this._nomCDS(c.pin)}</option>`).join('')}
           </select>
         </label>` : ''}
@@ -1505,7 +1505,7 @@ window.VuePipeline = {
 
         <div class="modal-btns" style="flex-wrap:wrap;gap:8px">
           <button type="button" onclick="VuePipeline.fermerModal()">Fermer</button>
-          ${/* BLOC 4.2 — bouton suppression avec contrôle d'accès */
+          ${/* BLOC 4.2, bouton suppression avec contrôle d'accès */
             (Session.estManager() || Session.estChannel() || Number(l.PIN_CDS_Assigne) === Session.pin)
             ? `<button type="button"
                 style="background:var(--c-danger,#e53935);color:#fff;border:none;border-radius:var(--radius-sm);padding:10px 18px;cursor:pointer;font-size:13px"
@@ -1531,7 +1531,7 @@ window.VuePipeline = {
 
     // Construire l'entrée de log datée
     const jourStr = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'2-digit' });
-    const entreeLog = `[${jourStr} — ${Session.nom}] ${this._labelFlag(flag)}${noteTexte ? ' : ' + noteTexte : ''}`;
+    const entreeLog = `[${jourStr}, ${Session.nom}] ${this._labelFlag(flag)}${noteTexte ? ' : ' + noteTexte : ''}`;
     const noteFinale = entreeLog + (lead.Note_initiale ? '\n---\n' + lead.Note_initiale : '');
 
     const champs = {
@@ -1686,7 +1686,7 @@ window.VuePipeline = {
     await SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES');
 
     // Notifs pour Tadjidine (1000) et Alexandra (5000)
-    const msg = `🏢 Nouveau compte pipeline : ${lead.Nom_Compte}${lead.Ville ? ' — ' + lead.Ville : ''} (CDS : ${this._nomCDS(lead.PIN_CDS_Assigne)})`;
+    const msg = `🏢 Nouveau compte pipeline : ${lead.Nom_Compte}${lead.Ville ? ', ' + lead.Ville : ''} (CDS : ${this._nomCDS(lead.PIN_CDS_Assigne)})`;
     for (const pin of [1000, 5000]) {
       SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
         ID_Notif:         genId('NOTIF'),
@@ -1830,7 +1830,7 @@ window.VuePipeline = {
     return `
     <div class="modal-overlay" onclick="if(event.target===this)VuePipeline.fermerExport()">
       <div class="modal" style="max-width:440px">
-        <h3>Export Excel — EMPOWER Leads</h3>
+        <h3>Export Excel, EMPOWER Leads</h3>
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
           ${[
             ['Cette semaine', () => {

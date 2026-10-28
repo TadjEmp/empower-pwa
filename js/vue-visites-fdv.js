@@ -36,7 +36,7 @@ window.VueVisitesFDV = {
     // pas seulement ceux qui ont déjà au moins une ligne dans 🗺️_VISITES.
     this.state.cdsListe.forEach(c => {
       const pin = String(c.pin);
-      map.set(pin, { pin, nom: resolveCDS(c.pin) !== '—' ? resolveCDS(c.pin) : c.nom, visites: [] });
+      map.set(pin, { pin, nom: resolveCDS(c.pin) !== 'n.c.' ? resolveCDS(c.pin) : c.nom, visites: [] });
     });
     this.state.visites.forEach(v => {
       const pin = String(v.PIN_CDS || '');
@@ -114,7 +114,7 @@ window.VueVisitesFDV = {
     if (!g) return `<div class="vide-liste">Commercial introuvable.</div>`;
     const tri = [...g.visites].sort((a, b) => new Date(b.Date || 0) - new Date(a.Date || 0));
     return `
-      <p style="font-size:13px;color:var(--c-text-2);margin-bottom:10px">${g.nom} — ${tri.length} visite(s), classées par jour</p>
+      <p style="font-size:13px;color:var(--c-text-2);margin-bottom:10px">${g.nom}, ${tri.length} visite(s), classées par jour</p>
       ${tri.map(v => this._renderVisiteDetail(v)).join('')}
     `;
   },
@@ -135,15 +135,15 @@ window.VueVisitesFDV = {
       <details style="border:1.5px solid var(--c-border);border-radius:var(--radius-sm);margin-bottom:10px;overflow:hidden">
         <summary style="padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;color:var(--c-title);
                         list-style:none;background:var(--c-surface);display:flex;justify-content:space-between;gap:8px;align-items:center">
-          <span>${v.Nom_Compte || (v.ID_Cible === 'HORS_BASE' ? '❄️ Visite à froid' : '—')}</span>
-          <span style="font-size:11px;color:var(--c-text-2);font-weight:400;white-space:nowrap">${v.Date || '—'} · ${v.Heure || ''}</span>
+          <span>${v.Nom_Compte || (v.ID_Cible === 'HORS_BASE' ? '❄️ Visite à froid' : 'n.c.')}</span>
+          <span style="font-size:11px;color:var(--c-text-2);font-weight:400;white-space:nowrap">${v.Date || 'n.c.'} · ${v.Heure || ''}</span>
         </summary>
         <div style="padding:10px 14px 14px">
-          <div class="id-ligne"><span>Statut</span><strong>${v.Statut_Visite || '—'}</strong></div>
-          <div class="id-ligne"><span>Type</span><strong>${v.Type_Visite || '—'}</strong></div>
-          <div class="id-ligne"><span>Résultat</span><strong>${v.Resultat_Visite || '—'}</strong></div>
-          <div class="id-ligne"><span>Interlocuteur</span><strong>${v.Interlocuteur_Nom || '—'}${v.Interlocuteur_Fonction ? ' (' + v.Interlocuteur_Fonction + ')' : ''}</strong></div>
-          <div class="id-ligne"><span>Réceptivité</span><strong>${v.Slider_Receptivite != null && v.Slider_Receptivite !== '' ? v.Slider_Receptivite + '/5' : '—'}</strong></div>
+          <div class="id-ligne"><span>Statut</span><strong>${v.Statut_Visite || 'n.c.'}</strong></div>
+          <div class="id-ligne"><span>Type</span><strong>${v.Type_Visite || 'n.c.'}</strong></div>
+          <div class="id-ligne"><span>Résultat</span><strong>${v.Resultat_Visite || 'n.c.'}</strong></div>
+          <div class="id-ligne"><span>Interlocuteur</span><strong>${v.Interlocuteur_Nom || 'n.c.'}${v.Interlocuteur_Fonction ? ' (' + v.Interlocuteur_Fonction + ')' : ''}</strong></div>
+          <div class="id-ligne"><span>Réceptivité</span><strong>${v.Slider_Receptivite != null && v.Slider_Receptivite !== '' ? v.Slider_Receptivite + '/5' : 'n.c.'}</strong></div>
           ${freins ? `<div class="id-ligne"><span>Freins</span><strong>${freins}</strong></div>` : ''}
           ${grossistes ? `<div class="id-ligne"><span>Grossistes</span><strong>${grossistes}</strong></div>` : ''}
           ${v.Prochaine_Action_Texte ? `<div class="id-ligne"><span>Prochaine action</span><strong>${v.Prochaine_Action_Texte}</strong></div>` : ''}

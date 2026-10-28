@@ -308,7 +308,7 @@ window.VueAdmin = {
 
       <div class="bloc-fiche">
         <div class="bloc-titre">Matrice des permissions (lecture seule)</div>
-        <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">Définie dans <code>js/permissions.js</code> — accès par rôle aux sections de l'app.</p>
+        <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">Définie dans <code>js/permissions.js</code>, accès par rôle aux sections de l'app.</p>
         <div class="desktop-table-wrap">
           <table class="desktop-table-data-view">
             <thead><tr><th>Section</th>${ROLES.map(r => `<th style="text-align:center">${r}</th>`).join('')}</tr></thead>
@@ -316,7 +316,7 @@ window.VueAdmin = {
               ${this._TOUS_TABS().map(tab => `
                 <tr>
                   <td style="font-size:12px">${tab}</td>
-                  ${ROLES.map(r => `<td style="text-align:center">${Permissions.MATRICE[r].includes(tab) ? '✅' : '—'}</td>`).join('')}
+                  ${ROLES.map(r => `<td style="text-align:center">${Permissions.MATRICE[r].includes(tab) ? '✅' : 'n.c.'}</td>`).join('')}
                 </tr>`).join('')}
             </tbody>
           </table>
@@ -410,7 +410,7 @@ window.VueAdmin = {
     return `
       <div class="modal-overlay" onclick="if(event.target===this) VueAdmin.fermerModalReset()">
         <div class="modal">
-          <h3>Réinitialiser le mot de passe — ${us.resetTarget.nom}</h3>
+          <h3>Réinitialiser le mot de passe, ${us.resetTarget.nom}</h3>
           <label>Nouveau mot de passe (12 caractères min)
             <input type="password" class="q-input" value="${us.resetMdp}" oninput="VueAdmin.state.usersState.resetMdp=this.value"/></label>
           <div style="display:flex;gap:8px;margin-top:14px">
@@ -572,7 +572,7 @@ window.VueAdmin = {
         <!-- Liste -->
         ${leads.map(l => {
           const st = STATUTS.find(s => s.id === l.STATUT_EMPOWER) || STATUTS[0];
-          const cdsNom = CDS_NOMS[Number(l.PIN_CDS_Assigne)] || l.PIN_CDS_Assigne || '—';
+          const cdsNom = CDS_NOMS[Number(l.PIN_CDS_Assigne)] || l.PIN_CDS_Assigne || 'n.c.';
           const dateP  = l.Date_prochaine_action ? String(l.Date_prochaine_action).slice(0,10) : null;
           const retard = dateP && new Date(dateP) < new Date();
           // Extraire la première ligne du log (entrée la plus récente)
@@ -699,7 +699,7 @@ window.VueAdmin = {
       }
       await this._logExport(`LEAD_CREE:${f.nom}`, 1);
       const _cdsLbl = window.resolveCDS ? resolveCDS(f.cdsAssigne) : f.cdsAssigne;
-      Toast.afficher(`Lead créé — ${f.nom}${f.cdsAssigne ? ` → assigné à ${_cdsLbl}` : ' (à traiter)'}`, 'succes', 5000);
+      Toast.afficher(`Lead créé, ${f.nom}${f.cdsAssigne ? ` → assigné à ${_cdsLbl}` : ' (à traiter)'}`, 'succes', 5000);
       this.state.formLead = this._initFormLead();
     } catch(err) {
       Toast.afficher('' + err.message, 'erreur');
@@ -776,11 +776,11 @@ window.VueAdmin = {
           <div style="display:flex;gap:10px">
             <label style="flex:1">Potentiel estimé
               <select onchange="VueAdmin.state.formLead.potentiel=this.value">
-                <option value="1" ${f.potentiel==='1'?'selected':''}>1 — Faible</option>
-                <option value="2" ${f.potentiel==='2'?'selected':''}>2 — Faible+</option>
-                <option value="3" ${f.potentiel==='3'?'selected':''}>3 — Moyen</option>
-                <option value="4" ${f.potentiel==='4'?'selected':''}>4 — Fort</option>
-                <option value="5" ${f.potentiel==='5'?'selected':''}>5 — Fort+</option>
+                <option value="1" ${f.potentiel==='1'?'selected':''}>1, Faible</option>
+                <option value="2" ${f.potentiel==='2'?'selected':''}>2, Faible+</option>
+                <option value="3" ${f.potentiel==='3'?'selected':''}>3, Moyen</option>
+                <option value="4" ${f.potentiel==='4'?'selected':''}>4, Fort</option>
+                <option value="5" ${f.potentiel==='5'?'selected':''}>5, Fort+</option>
               </select>
             </label>
             <label style="flex:2">Source
@@ -808,7 +808,7 @@ window.VueAdmin = {
           <label style="border:2px solid var(--c-primary);padding:10px;border-radius:var(--radius-sm);background:var(--c-bg)">
             <span style="font-weight:700;color:var(--c-primary)">CDS à assigner *</span>
             <select required onchange="VueAdmin.state.formLead.cdsAssigne=this.value;VueAdmin.render()" style="margin-top:6px">
-              <option value="">— choisir un commercial —</option>
+              <option value="">choisir un commercial</option>
               ${cdsList.map(o =>
                 `<option value="${o.PIN_CDS}" ${f.cdsAssigne == o.PIN_CDS ? 'selected' : ''}>${o.Nom_CDS}</option>`
               ).join('')}
@@ -897,7 +897,7 @@ window.VueAdmin = {
       this.state.syncSellInResultat   = { ok: true, matched, crees, nonMatch: nonMatch.length, ts };
       this.state.syncSellInNonMatcher = nonMatch;
       Toast.afficher(
-        `"${file.name}" importé — ${data.revendeurs} revendeur(s) · ${matched} compte(s) mis à jour` +
+        `"${file.name}" importé, ${data.revendeurs} revendeur(s) · ${matched} compte(s) mis à jour` +
         (crees ? ` · ${crees} créé(s) (non attribués)` : '') +
         (nonMatch.length ? ` · ${nonMatch.length} à valider` : ''),
         'succes', 7000
@@ -926,7 +926,7 @@ window.VueAdmin = {
   async _importerSemaines(wb, nomFichier, force = false) {
     const onglets = wb.SheetNames.filter(n => /REVENDEURS\s+AU\s+DETAIL\s+Q[1-4]\b/i.test(n));
     if (!onglets.length) {
-      this.state.syncSemainesResultat = { ok: false, message: 'Aucun onglet « REVENDEURS AU DETAIL Qn » dans ce fichier — signal semaine non mis à jour.' };
+      this.state.syncSemainesResultat = { ok: false, message: 'Aucun onglet « REVENDEURS AU DETAIL Qn » dans ce fichier, signal semaine non mis à jour.' };
       return;
     }
     try {
@@ -975,7 +975,7 @@ window.VueAdmin = {
       const res = this.state.syncSemainesResultat;
       if (res?.nonMatcher) res.nonMatcher = res.nonMatcher.filter(n => n.reseller !== nom);
       await SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES');
-      Toast.afficher(`« ${nom} » rattaché — alias mémorisé`, 'succes');
+      Toast.afficher(`« ${nom} » rattaché, alias mémorisé`, 'succes');
       this.render();
     } catch (e) { Toast.afficher('' + (e.message || e), 'erreur'); }
   },
@@ -993,7 +993,7 @@ window.VueAdmin = {
     const eur = n => Number(n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
     if (!r.ok) return `
       <div class="bloc-fiche" style="border-left:3px solid var(--c-danger)">
-        <div class="bloc-titre">SELL IN par semaine — non importé</div>
+        <div class="bloc-titre">SELL IN par semaine, non importé</div>
         <p style="font-size:12px;margin:0 0 8px">${E(r.message)}</p>
         ${r.ancien ? `<button class="btn-secondaire" style="width:auto;padding:8px 14px" onclick="VueAdmin.forcerImportSemaines()">Importer quand même</button>` : ''}
       </div>`;
@@ -1004,14 +1004,14 @@ window.VueAdmin = {
     const idSel = n => 'alias-' + String(n.norm || n.reseller).replace(/[^A-Za-z0-9]/g, '_');
     return `
       <div class="bloc-fiche">
-        <div class="bloc-titre">SELL IN par semaine — ${r.comptes_flagues} compte(s) flaggé(s) · ${E(r.ts || '')}</div>
+        <div class="bloc-titre">SELL IN par semaine, ${r.comptes_flagues} compte(s) flaggé(s) · ${E(r.ts || '')}</div>
         <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:8px">
           <thead><tr style="text-align:left;color:var(--c-text-2)"><th>Trimestre</th><th>Dernière sem.</th><th style="text-align:right">Revendeurs</th><th style="text-align:right">CA importé</th><th style="text-align:right">dont non rattaché</th></tr></thead>
           <tbody>${lignes}</tbody>
         </table>
         <p style="font-size:11px;color:var(--c-text-2);margin:0 0 8px">Contrôle : « CA importé » doit égaler la somme de la colonne <em>Local Value</em> de l'onglet. « Non rattaché » = CA de revendeurs sans compte (à traiter ci-dessous).</p>
         ${(r.nonMatcher || []).length ? `
-        <div style="font-size:12px;font-weight:700;color:var(--c-warning);margin-bottom:6px">À rattacher (${r.nonMatcher.length}) — aucun compte créé automatiquement</div>
+        <div style="font-size:12px;font-weight:700;color:var(--c-warning);margin-bottom:6px">À rattacher (${r.nonMatcher.length}), aucun compte créé automatiquement</div>
         ${r.nonMatcher.map(n => `
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px;padding:6px 0;border-bottom:1px solid var(--c-border)">
             <strong style="min-width:140px">${E(n.reseller)}</strong>
@@ -1021,7 +1021,7 @@ window.VueAdmin = {
               </select>
               <button class="btn-secondaire" style="width:auto;padding:6px 10px;font-size:12px"
                       data-nom="${E(n.reseller)}" onclick="VueAdmin.rattacherDepuisListe('${idSel(n)}', this.dataset.nom)">Rattacher</button>`
-            : `<span style="color:var(--c-text-2)">compte introuvable — créer le compte puis réimporter</span>`}
+            : `<span style="color:var(--c-text-2)">compte introuvable, créer le compte puis réimporter</span>`}
           </div>`).join('')}` : '<span style="font-size:12px">Tous les revendeurs sont rattachés</span>'}
       </div>`;
   },
@@ -1060,7 +1060,7 @@ window.VueAdmin = {
       this.state.syncSellInResultat   = { ok: true, matched, crees, nonMatch: nonMatch.length, ts };
       this.state.syncSellInNonMatcher = nonMatch;
       Toast.afficher(
-        `Sell-In synchronisé — ${matched} compte(s) mis à jour` +
+        `Sell-In synchronisé, ${matched} compte(s) mis à jour` +
         (crees ? ` · ${crees} créé(s) (non attribués)` : '') +
         (nonMatch.length ? ` · ${nonMatch.length} à valider` : ''),
         'succes', 7000
@@ -1114,7 +1114,7 @@ window.VueAdmin = {
   async sauverCleGroq() {
     const v = document.getElementById('admin-groq-key').value.trim();
     // Ne pas écraser une clé existante si le champ est vide
-    if (!v) { Toast.afficher('Champ vide — la clé existante est conservée', 'warning'); return; }
+    if (!v) { Toast.afficher('Champ vide, la clé existante est conservée', 'warning'); return; }
     // Validation format Groq (préfixe gsk_) avant envoi
     if (!v.startsWith('gsk_')) {
       Toast.afficher('Format invalide : une clé Groq commence par « gsk_ »', 'warning');
@@ -1136,7 +1136,7 @@ window.VueAdmin = {
   async sauverCleGemini() {
     const v = document.getElementById('admin-gemini-key').value.trim();
     // Ne pas écraser une clé existante si le champ est vide
-    if (!v) { Toast.afficher('Champ vide — la clé existante est conservée', 'warning'); return; }
+    if (!v) { Toast.afficher('Champ vide, la clé existante est conservée', 'warning'); return; }
     // Validation format Gemini (préfixe AIza ou Aq — v5.0) avant envoi
     if (!v.startsWith('AIza') && !v.startsWith('Aq')) {
       Toast.afficher('Format invalide : une clé Gemini commence par « AIza » ou « Aq »', 'warning');
@@ -1167,7 +1167,7 @@ window.VueAdmin = {
         [{ role: 'user', content: 'Réponds exactement: OK' }], false
       );
       const ms = Date.now() - t0;
-      if (out) { out.style.color = 'var(--c-success, #1a9e5c)'; out.textContent = `✅ Groq répond (${ms} ms) — « ${String(rep).slice(0, 40)} »`; }
+      if (out) { out.style.color = 'var(--c-success, #1a9e5c)'; out.textContent = `✅ Groq répond (${ms} ms), « ${String(rep).slice(0, 40)} »`; }
       Toast.afficher('Clé Groq fonctionnelle', 'succes');
     } catch(e) {
       if (out) { out.style.color = 'var(--c-cta, #0400F5)'; out.textContent = '❌ ' + e.message; }
@@ -1184,7 +1184,7 @@ window.VueAdmin = {
       const t0 = Date.now();
       const rep = await GeminiAPI._appeler('Réponds exactement: OK', '');
       const ms = Date.now() - t0;
-      if (out) { out.style.color = 'var(--c-success, #1a9e5c)'; out.textContent = `✅ Gemini répond (${ms} ms) — « ${String(rep).trim().slice(0, 40)} »`; }
+      if (out) { out.style.color = 'var(--c-success, #1a9e5c)'; out.textContent = `✅ Gemini répond (${ms} ms), « ${String(rep).trim().slice(0, 40)} »`; }
       Toast.afficher('Clé Gemini fonctionnelle', 'succes');
     } catch(e) {
       if (out) { out.style.color = 'var(--c-cta, #0400F5)'; out.textContent = '❌ ' + e.message; }
@@ -1194,13 +1194,13 @@ window.VueAdmin = {
 
   async viderCache() {
     await SheetsAPI.viderCache();
-    Toast.afficher('Cache local vidé — données rechargées au prochain écran', 'succes');
+    Toast.afficher('Cache local vidé, données rechargées au prochain écran', 'succes');
   },
 
   confirmerPurgeCDS(pinCDS, nomCDS) {
     ConfirmModal.demander({
       titre: `Purger TOUTES les données de ${nomCDS} ?`,
-      detail: 'Appels et visites de ce commercial — action irréversible.',
+      detail: 'Appels et visites de ce commercial, action irréversible.',
       labelConfirmer: 'Purger', danger: true,
       onConfirm: () => this.purgerDonneesCDS(pinCDS),
     });
@@ -1277,7 +1277,7 @@ window.VueAdmin = {
       titre: '📋 Prospects & Pipeline',
       exports: [
         { id: 'prospects', label: 'Pipeline complet (tous statuts)',    fichier: 'EMPOWER_MDB', onglet: '📋_PROSPECTS',          desc: 'Tous les prospects avec statut EMPOWER, potentiel, assignation CDS', dateChamp: 'Date_Import' },
-        { id: 'comptes',   label: 'Comptes actifs',                      fichier: 'EMPOWER_MDB', onglet: '🏢_COMPTES',             desc: 'Base clients avec CA FY25/FY26/Q1FY27, statuts, CDS assignés — extrait complet (roster, non filtré par période)' },
+        { id: 'comptes',   label: 'Comptes actifs',                      fichier: 'EMPOWER_MDB', onglet: '🏢_COMPTES',             desc: 'Base clients avec CA FY25/FY26/Q1FY27, statuts, CDS assignés, extrait complet (roster, non filtré par période)' },
       ],
     },
     {
@@ -1291,8 +1291,8 @@ window.VueAdmin = {
     {
       titre: '🏆 Financier & Objectifs',
       exports: [
-        { id: 'objectifs', label: 'Objectifs & Primes FY27',             fichier: 'EMPOWER_MDB', onglet: '🎯_OBJECTIFS_PRIMES',   desc: 'Objectifs Q1-Q4 révisés, CA réalisé, primes par CDS — extrait complet (non filtré par période)' },
-        { id: 'sell_in',   label: 'Sell-In historique (FY25-FY26-FY27)', fichier: 'EMPOWER_MDB', onglet: '📉_SELL_IN_HISTORIQUE', desc: 'CA trimestriel historique par compte, canal, secteur — extrait complet (non filtré par période)' },
+        { id: 'objectifs', label: 'Objectifs & Primes FY27',             fichier: 'EMPOWER_MDB', onglet: '🎯_OBJECTIFS_PRIMES',   desc: 'Objectifs Q1-Q4 révisés, CA réalisé, primes par CDS, extrait complet (non filtré par période)' },
+        { id: 'sell_in',   label: 'Sell-In historique (FY25-FY26-FY27)', fichier: 'EMPOWER_MDB', onglet: '📉_SELL_IN_HISTORIQUE', desc: 'CA trimestriel historique par compte, canal, secteur, extrait complet (non filtré par période)' },
       ],
     },
   ],
@@ -1325,7 +1325,7 @@ window.VueAdmin = {
       const date = dateISOLocale();
       this._telechargerCSV(csv, `ESI_${exp.id}_${date}.csv`);
       await this._logExport(exp.label, rows.length);
-      Toast.afficher(`Export ${exp.label} — ${rows.length} lignes`, 'succes');
+      Toast.afficher(`Export ${exp.label}, ${rows.length} lignes`, 'succes');
     } catch(e) {
       Toast.afficher('Export échoué : ' + e.message, 'erreur');
     } finally {
@@ -1440,7 +1440,7 @@ window.VueAdmin = {
       const date = dateISOLocale();
       this._telechargerCSV(csv, `ESI_TRACKER_EMPOWER_${date}.csv`);
       await this._logExport('TRACKER_EMPOWER', rows.length);
-      Toast.afficher(`Tracker EMPOWER — ${rows.length} lead(s) exportés`, 'succes');
+      Toast.afficher(`Tracker EMPOWER, ${rows.length} lead(s) exportés`, 'succes');
     } catch(e) {
       Toast.afficher('Export Tracker : ' + e.message, 'erreur');
     } finally {
@@ -1478,7 +1478,7 @@ window.VueAdmin = {
         <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:8px 0;gap:12px">
           <div style="flex:1;min-width:0">
             <div style="font-size:13px;font-weight:600">Export Tracker EMPOWER (pipeline)</div>
-            <div style="font-size:11px;color:var(--c-text-2);margin-top:1px">Leads ESI_PIPELINE — colonnes métier : Statut, CDS, Welcome Pack, Prochaine action, POTENTIEL, ORIGINE</div>
+            <div style="font-size:11px;color:var(--c-text-2);margin-top:1px">Leads ESI_PIPELINE, colonnes métier : Statut, CDS, Welcome Pack, Prochaine action, POTENTIEL, ORIGINE</div>
           </div>
           <button id="btn-export-tracker" class="btn-secondaire" style="padding:8px 14px;width:auto;flex-shrink:0"
                   onclick="VueAdmin.exporterTracker()">CSV</button>
@@ -1527,7 +1527,7 @@ window.VueAdmin = {
           ${tab === 'suivi' ? this._renderSuivi()
           : tab === 'exports' ? `
             <div class="bloc-fiche">
-              <div class="bloc-titre">Exports CSV — Reporting thématique</div>
+              <div class="bloc-titre">Exports CSV, Reporting thématique</div>
               <p style="font-size:12px;color:var(--c-text-2);margin-bottom:14px">
                 Données en temps réel. Chaque export est tracé dans 📊_ACTIONS.
               </p>
@@ -1586,7 +1586,7 @@ window.VueAdmin = {
                 ${['Q1', 'Q2', 'Q3', 'Q4'].map(q => `
                   <label style="flex:1;font-size:11px;color:var(--c-text-2)">${q}
                     <input id="obj-${o.PIN_CDS}-${q}" type="number" class="q-input" style="padding:6px 8px;font-size:13px"
-                           placeholder="${o[`${q}_Obj_Initial`] ?? '—'}" value="${o[`${q}_Obj_Revise`] || ''}"/>
+                           placeholder="${o[`${q}_Obj_Initial`] ?? 'n.c.'}" value="${o[`${q}_Obj_Revise`] || ''}"/>
                   </label>`).join('')}
               </div>
               <button class="btn-secondaire" style="margin-top:8px;padding:8px"
@@ -1612,7 +1612,7 @@ window.VueAdmin = {
           </div>
           <div id="groq-test-res" style="font-size:12px;margin-top:8px;min-height:16px"></div>
           <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">
-            Stockée <strong>côté Apps Script</strong> (PropertiesService) — jamais exposée au navigateur.
+            Stockée <strong>côté Apps Script</strong> (PropertiesService), jamais exposée au navigateur.
           </p>
         </div>
 
@@ -1637,7 +1637,7 @@ window.VueAdmin = {
 
         <!-- PARAMÈTRES SYSTÈME -->
         <div class="bloc-fiche">
-          <div class="bloc-titre">Paramètres système (⚙️_PARAMS — lecture)</div>
+          <div class="bloc-titre">Paramètres système (⚙️_PARAMS, lecture)</div>
           <div class="grille-identite">
             ${this.state.params.map(p => `
               <div class="id-ligne"><span>${p.Parametre}</span><strong>${p.Valeur}</strong></div>`).join('')}
@@ -1648,7 +1648,7 @@ window.VueAdmin = {
         ${adminTab === 'exports' ? `
         <!-- EXPORTS CSV — REPORTING THÉMATIQUE -->
         <div class="bloc-fiche">
-          <div class="bloc-titre">Exports CSV — Reporting thématique</div>
+          <div class="bloc-titre">Exports CSV, Reporting thématique</div>
           <p style="font-size:12px;color:var(--c-text-2);margin-bottom:14px">
             7 exports organisés par thème. Données en temps réel depuis Google Sheets.
             Chaque export est tracé dans 📊_ACTIONS avec l'identité de l'exporteur.
@@ -1663,7 +1663,7 @@ window.VueAdmin = {
           <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">
             Importe les revendeurs de l'onglet <strong>1 - Saisie</strong> du fichier EMPOWER TRACKER (Google Drive)
             dans la base <code>📋_PROSPECTS</code> avec <code>Source_Import=ESI_PIPELINE</code>.<br>
-            <strong>Non destructif</strong> — les doublons existants sont ignorés.
+            <strong>Non destructif</strong>, les doublons existants sont ignorés.
             Statuts mappés automatiquement : Actif→INTEGRE, Compte créé→COMPTE_CREE, En cours→EN_COURS, etc.
           </p>
           ${this.state.importResultat ? `
@@ -1720,11 +1720,11 @@ window.VueAdmin = {
                   <div style="font-size:12px;padding:4px 0;color:var(--c-text-2);border-bottom:1px solid var(--c-border)">
                     • <strong>${n.reseller}</strong>
                     ${n.raison === 'QUASI_DOUBLON'
-                      ? ` — ressemble à un compte déjà existant (${(n.candidats || []).length} candidat(s)) : à vérifier/fusionner manuellement dans Comptes`
-                      : ` — ${n.raison}`}
+                      ? `, ressemble à un compte déjà existant (${(n.candidats || []).length} candidat(s)) : à vérifier/fusionner manuellement dans Comptes`
+                      : `, ${n.raison}`}
                   </div>`).join('')}
                 </div>
-                <p style="font-size:11px;color:var(--c-text-2);margin-top:4px">Aucune création automatique n'a été faite pour ces revendeurs (risque de doublon) — à traiter à la main dans l'onglet Comptes.</p>
+                <p style="font-size:11px;color:var(--c-text-2);margin-top:4px">Aucune création automatique n'a été faite pour ces revendeurs (risque de doublon), à traiter à la main dans l'onglet Comptes.</p>
               </div>` : ''}`;
           })() : ''}
 
@@ -1745,7 +1745,7 @@ window.VueAdmin = {
             ${this.state.syncSellInEnCours ? '⏳ Import en cours…' : '📂 Importer un fichier Sell-In (.xlsx)'}
           </button>
           <p style="font-size:11px;color:var(--c-text-2);margin-bottom:12px">
-            Choisis le fichier "SELL IN Qx FYxx DASHBOARD.xlsx" le plus récent — l'onglet <code>DATA FY25-FY26-FY27</code> est lu automatiquement, tous les quarters présents sont pris en compte. Peut être refait chaque semaine avec le fichier mis à jour (aucun doublon : les lignes existantes sont remplacées).
+            Choisis le fichier "SELL IN Qx FYxx DASHBOARD.xlsx" le plus récent, l'onglet <code>DATA FY25-FY26-FY27</code> est lu automatiquement, tous les quarters présents sont pris en compte. Peut être refait chaque semaine avec le fichier mis à jour (aucun doublon : les lignes existantes sont remplacées).
           </p>
           <button class="btn-secondaire"
                   style="padding:8px 16px;width:100%"
@@ -1761,11 +1761,11 @@ window.VueAdmin = {
         ${adminTab === 'rgpd' ? `
         <!-- RGPD -->
         <div class="bloc-fiche">
-          <div class="bloc-titre">RGPD — Purge des données personnelles</div>
+          <div class="bloc-titre">RGPD, Purge des données personnelles</div>
           <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">
             Supprime définitivement les appels (📞_PHONING) et visites (🗺️_VISITES) d'un CDS.
             Les comptes et prospects ne sont pas affectés.<br>
-            <strong>Audio : jamais stocké côté serveur</strong> — seule la transcription texte est conservée.
+            <strong>Audio : jamais stocké côté serveur</strong>, seule la transcription texte est conservée.
           </p>
           ${this.state.objectifs.map(o => `
             <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--c-border)">
@@ -1821,7 +1821,7 @@ window.VueAdmin = {
           <button class="btn-lien" style="margin-left:auto;font-size:12px" onclick="VueAdmin.state.qualite=null;VueAdmin._chargerQualiteDonnees()">↻ Réanalyser</button>
         </div>
         <p style="font-size:11px;color:var(--c-text-2);margin:-4px 0 12px">
-          Détection à la demande — comparaison par similarité de nom (Levenshtein, seuil 85%). Un score élevé signale une paire à vérifier manuellement, pas une certitude.
+          Détection à la demande, comparaison par similarité de nom (Levenshtein, seuil 85%). Un score élevé signale une paire à vérifier manuellement, pas une certitude.
         </p>
 
         <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;margin-bottom:6px">
@@ -1829,18 +1829,18 @@ window.VueAdmin = {
         </div>
         ${q.leadsSansId.length ? `
         <div class="tableau-equipe" style="margin-bottom:16px">
-          ${q.leadsSansId.map(l => `<div class="te-ligne">${l.Nom_Compte || '—'} <span style="color:var(--c-text-2);font-size:11px">— statut ${l.STATUT_EMPOWER || '—'}</span></div>`).join('')}
-        </div>` : '<div class="pas-de-donnees" style="margin-bottom:16px">Aucun — tous les leads ont un identifiant.</div>'}
+          ${q.leadsSansId.map(l => `<div class="te-ligne">${l.Nom_Compte || 'n.c.'} <span style="color:var(--c-text-2);font-size:11px">statut ${l.STATUT_EMPOWER || 'n.c.'}</span></div>`).join('')}
+        </div>` : '<div class="pas-de-donnees" style="margin-bottom:16px">Aucun, tous les leads ont un identifiant.</div>'}
 
         <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;margin-bottom:6px">
-          DOUBLONS PROBABLES — LEADS TRACKER (${q.doublonsLeads.length})
+          DOUBLONS PROBABLES, LEADS TRACKER (${q.doublonsLeads.length})
         </div>
         ${q.doublonsLeads.length ? `
         <div class="tableau-equipe" style="margin-bottom:16px">${q.doublonsLeads.map(p => ligneDoublon(p, '#/empower-tracker')).join('')}</div>`
           : '<div class="pas-de-donnees" style="margin-bottom:16px">Aucun doublon probable détecté.</div>'}
 
         <div style="font-size:11px;font-weight:700;color:var(--c-text-2);letter-spacing:.05em;margin-bottom:6px">
-          DOUBLONS PROBABLES — COMPTES (${q.doublonsComptes.length})
+          DOUBLONS PROBABLES, COMPTES (${q.doublonsComptes.length})
         </div>
         ${q.doublonsComptes.length ? `
         <div class="tableau-equipe">${q.doublonsComptes.map(p => ligneDoublon(p, '#/compte/')).join('')}</div>`
@@ -1867,11 +1867,11 @@ window.VueAdmin = {
             <tbody>
               ${rows.map(a => `
                 <tr>
-                  <td style="font-size:12px;white-space:nowrap">${a.Date_Action ? new Date(a.Date_Action).toLocaleString('fr-FR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—'}</td>
-                  <td style="font-size:12px">${a.Type_Action || '—'}</td>
-                  <td style="font-size:12px">${window.resolveCDS(a.PIN_CDS) || '—'}</td>
-                  <td style="font-size:12px">${a.Nom_Compte || '—'}</td>
-                  <td style="font-size:11px;color:var(--c-text-2)">${a.Statut_Avant || '—'} → ${a.Statut_Apres || '—'}</td>
+                  <td style="font-size:12px;white-space:nowrap">${a.Date_Action ? new Date(a.Date_Action).toLocaleString('fr-FR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : 'n.c.'}</td>
+                  <td style="font-size:12px">${a.Type_Action || 'n.c.'}</td>
+                  <td style="font-size:12px">${window.resolveCDS(a.PIN_CDS) || 'n.c.'}</td>
+                  <td style="font-size:12px">${a.Nom_Compte || 'n.c.'}</td>
+                  <td style="font-size:11px;color:var(--c-text-2)">${a.Statut_Avant || 'n.c.'} → ${a.Statut_Apres || 'n.c.'}</td>
                 </tr>`).join('')}
             </tbody>
           </table>
