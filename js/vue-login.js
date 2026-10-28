@@ -9,7 +9,7 @@ window.VueLogin = {
   init() {
     if (Session.estConnecte()) { Router.aller('#/dashboard'); return; }
     // BLOC 9 — détecter token de reset dans l'URL (#/reset-password?token=xxx)
-    const hash = location.hash || '';
+    const hash = Router.hashCourant();
     if (hash.includes('reset-password')) {
       const m = hash.match(/[?&]token=([a-f0-9]+)/i);
       if (m) { this.state.mode = 'nouveau-mdp'; this.state.resetToken = m[1]; }

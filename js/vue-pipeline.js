@@ -244,7 +244,7 @@ window.VuePipeline = {
       const lead = (VuePipeline.state.leads || []).find(l => String(l.ID_Prospect) === String(idProspect));
       if (!lead) return; // pas (encore) chargé dans ce Tracker — rien à patcher
       Object.assign(lead, maj);
-      if (window.location.hash.startsWith('#/empower-tracker')) VuePipeline.render();
+      if (Router.hashCourant().startsWith('#/empower-tracker')) VuePipeline.render();
     });
   },
 

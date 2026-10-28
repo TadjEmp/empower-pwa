@@ -16,7 +16,7 @@ window.VueDashboardManager = {
     // complète (identique à ADMIN, CA/objectifs inclus) — niveau quasi-admin
     // explicitement demandé, remplace l'ancienne restriction "lecture seule
     // onboarding uniquement" qui la redirigeait ici quel que soit le hash.
-    const veutCopil = window.location.hash.includes('/manager');
+    const veutCopil = Router.hashCourant().includes('/manager');
     if (Session.estChannel && Session.estChannel() && !veutCopil) { return this.initChannel(); }
     this.state = { chargement: true, d: null };
     this.render();
@@ -617,7 +617,7 @@ window.VueDashboardManager = {
   // ── Section 10 cahier des charges : Accueil (activité) vs Reporting (chiffres) ──
   // Un seul jeu de données (dc), deux rendus distincts selon l'onglet emprunté —
   // évite la duplication où Accueil et Reporting affichaient exactement le même écran.
-  _contexteReporting() { return window.location.hash.includes('/manager'); },
+  _contexteReporting() { return Router.hashCourant().includes('/manager'); },
 
   // Section thématique repliable, couleur distincte par thème (section 10 cahier des charges).
   _sectionThematique(titre, couleur, corps, ouvert = true) {

@@ -137,8 +137,8 @@ window.NavWeb = (function () {
   // Route visée par un élément : lien #/..., onclick="Router.aller('#/...')" ou ouvrirFiche('ID').
   function routeDe(el) {
     if (!el) return null;
-    const a = el.closest && el.closest('a[href^="#/"]');
-    if (a) return a.getAttribute('href');
+    const a = el.closest && el.closest('a[href^="#/"], a[href^="/"]');
+    if (a) { const h = a.getAttribute('href'); return h.startsWith('#') ? h : '#' + h; }
     const c = el.closest && el.closest('[onclick]');
     if (!c) return null;
     const oc = c.getAttribute('onclick') || '';
@@ -160,7 +160,7 @@ window.NavWeb = (function () {
 
     // Un clic sur un lien de navigation est une navigation en avant (pas un retour)
     document.addEventListener('click', e => {
-      if (!e.metaKey && !e.ctrlKey && e.button === 0 && e.target.closest && e.target.closest('a[href^="#/"]')) viaAller = true;
+      if (!e.metaKey && !e.ctrlKey && e.button === 0 && e.target.closest && e.target.closest('a[href^="#/"], a[href^="/"]')) viaAller = true;
     }, true);
 
     // Cmd/Ctrl-clic et clic molette : nouvel onglet
@@ -170,7 +170,7 @@ window.NavWeb = (function () {
       const ouvrir = e.type === 'auxclick' ? e.button === 1 : (e.metaKey || e.ctrlKey);
       if (!ouvrir) return;
       e.preventDefault(); e.stopImmediatePropagation();
-      window.open(location.href.split('#')[0] + route, '_blank', 'noopener');
+      window.open(location.origin + route.replace(/^#/, ''), '_blank', 'noopener');
     };
     document.addEventListener('click', nouvelOnglet, true);
     document.addEventListener('auxclick', nouvelOnglet, true);

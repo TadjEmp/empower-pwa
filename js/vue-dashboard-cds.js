@@ -47,7 +47,7 @@ window.VueDashboardCDS = {
     return Session.voitTout() || Number(pinChamp) === Session.pin;
   },
 
-  _contexteReporting() { return window.location.hash.includes('/reporting-cds'); },
+  _contexteReporting() { return Router.hashCourant().includes('/reporting-cds'); },
 
   // ── Bloc 2 §1 — Reporting personnel : comparatif Q1→Q4 (CA réalisé vs
   //    objectif, par trimestre), que l'Accueil ne montre pas (il n'affiche

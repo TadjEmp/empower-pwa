@@ -11,7 +11,7 @@ t('push affiche titre',shown&&shown.t==='Rappel');t('tag+url',shown.o.tag==='rec
 shown=null;L.push({data:null,waitUntil:p=>p});t('push sans data → notif par défaut',!!shown);
 const n={close(){closed=true},data:{url:'#/a-contacter'}};
 L.notificationclick({notification:n,waitUntil:p=>p});await_=0;
-setTimeout(()=>{t('clic sans fenêtre → openWindow',/app\/#\/a-contacter/.test(opened||''));
+setTimeout(()=>{t('clic sans fenêtre → openWindow',/app\/a-contacter$/.test(opened||''));
 CL=[{url:'https://x.test/app/',focus:async()=>{focused=1},navigate:async()=>{}}];opened=null;
 L.notificationclick({notification:n,waitUntil:p=>p});
 setTimeout(()=>{t('clic avec fenêtre → focus',focused===1&&!opened);console.log(ok+'/'+(ok+ko));process.exit(ko?1:0)},50)},50);
