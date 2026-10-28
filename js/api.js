@@ -179,6 +179,7 @@ const SheetsAPI = {
       photo_url: 'Photo_URL', note: 'Note_Privee',
       gps_lat: 'GPS_Lat', gps_lng: 'GPS_Lng',
       created_at: 'Timestamp',       // vue utilise v.Timestamp pour calculs délais
+      saisie_retroactive: 'Saisie_Retroactive',   // visite planifiée a posteriori (date passée)
       // Données terrain questionnaire
       type_revendeur: 'Type_Revendeur', contact_direct: 'Contact_Direct',
       concurrent_actuel: 'Concurrent_Actuel', arbre_empower_statut: 'Arbre_EMPOWER_Statut',
@@ -220,6 +221,7 @@ const SheetsAPI = {
       date_planifiee: 'Date_Planifiee',
       objectif_appel: 'Objectif_Appel',
       note_preparation: 'Note_Preparation',
+      saisie_retroactive: 'Saisie_Retroactive',
       id_action_origine: 'ID_Action_Origine',
       // Appel à froid (champs contact direct)
       nom_enseigne: 'Nom_Enseigne', departement: 'Departement',
@@ -391,6 +393,7 @@ const SheetsAPI = {
       'Decideur_Rencontre': 'decideur_rencontre', 'Decideur_Nom': 'decideur_nom',
       'Decideur_Fonction': 'decideur_fonction', 'Concurrents_JSON': 'concurrents_json',
       'Norton_Reference': 'produits_norton',
+      'Saisie_Retroactive': 'saisie_retroactive',
       'ID_Action_Origine': 'id_action_origine',
       'Duree_Prevue': 'duree_estimee', 'Nb_Employes': 'nb_employes',
       'Signature_URL': 'signature_url',
@@ -409,6 +412,7 @@ const SheetsAPI = {
       'Date_Planifiee': 'date_planifiee',
       'Objectif_Appel': 'objectif_appel',
       'Note_Preparation': 'note_preparation',
+      'Saisie_Retroactive': 'saisie_retroactive',
       'ID_Action_Origine': 'id_action_origine',
       // Appel à froid
       'Nom_Enseigne': 'nom_enseigne', 'Departement': 'departement',
