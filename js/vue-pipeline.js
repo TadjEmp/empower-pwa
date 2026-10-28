@@ -13,7 +13,7 @@ window.VuePipeline = {
     { id: 'ASSIGNE',     lbl: 'Assigné',      coul: 'var(--c-accent)' },
     { id: 'EN_COURS',    lbl: 'En cours',     coul: 'var(--c-warning)' },
     { id: 'COMPTE_CREE', lbl: 'Compte créé',  coul: '#9333ea' },
-    { id: 'INTEGRE',     lbl: 'Intégré ✅',   coul: 'var(--c-success)' },
+    { id: 'INTEGRE',     lbl: 'Intégré ',   coul: 'var(--c-success)' },
     { id: 'ARCHIVE',     lbl: 'Archivé',      coul: 'var(--c-text-2)' },
   ],
 
@@ -101,15 +101,15 @@ window.VuePipeline = {
         // (CDS, Admin, Channel) sur des appareils différents — le cache IndexedDB
         // partagé (TTL 30 min, api.js) masquait jusqu'à 30 min les leads ajoutés
         // ailleurs. Même pattern déjà utilisé pour 🔔_NOTIFS (app.js).
-        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS', { nocache: true }),
-        SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
-        SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
+        SheetsAPI.lire('EMPOWER_MDB', 'LEADS', { nocache: true }),
+        SheetsAPI.lire('EMPOWER_MDB', 'PARAMS'),
+        SheetsAPI.lire('EMPOWER_MDB', 'OBJECTIFS_PRIMES'),
         SheetsAPI.lireCDS(), // liste CDS dynamique — Alexandra filtrée dans _chargerCDS (Bloc D2)
         // BLOC 09 — Suivi activation Tracker ↔ Sell-In (BLOC 04 §3, jamais
         // branché jusqu'ici) : rapprochement par nom normalisé, même source
         // que _creerCompteDepuisLead. Règle validée : CA > 0 sur n'importe
         // quel trimestre FY27 (pas seulement le trimestre actif).
-        SheetsAPI.lire('EMPOWER_MDB', '📋 COMPTES HISTORIQUES').catch(() => []),
+        SheetsAPI.lire('EMPOWER_MDB', 'COMPTES_HISTORIQUES').catch(() => []),
         VuesFiltres.lister('tracker'),
         // BLOC — dernier appel + note par lead (cf. demande utilisateur : la
         // carte du prospect n'affichait jamais la note d'appel après la
@@ -117,9 +117,9 @@ window.VuePipeline = {
         // un appel peut être édité/supprimé après coup (R5), une copie
         // figée sur le lead se serait désynchronisée. Même principe que
         // VuePhoning._dernierAppelCompte.
-        SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING').catch(() => []),
+        SheetsAPI.lire('EMPOWER_MDB', 'PHONING').catch(() => []),
         // Lot 2 — flag SELL IN « Qx · Sy » retrouvé par nom (les leads ne portent pas le flag)
-        SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES').catch(() => []),
+        SheetsAPI.lire('EMPOWER_MDB', 'COMPTES').catch(() => []),
       ]);
       SellInFlag.indexer(comptesSI);
       this.state.vuesFiltres = vuesFiltres;
@@ -302,15 +302,15 @@ window.VuePipeline = {
   _labelFlag(flag) {
     const MAP = {
       'SAISIE':               '🆕 Nouveau',
-      'A_RELANCER':           '🔔 À relancer',
+      'A_RELANCER':           'À relancer',
       'EN_COURS':             '▶️ En cours',
-      'A_RAPPELER':           '📅 À rappeler',
-      'INTERESSE':            '✅ Intéressé',
-      'WELCOME_PACK_ENVOYE':  '📦 WP envoyé',
-      'COMPTE_CREE':          '🏢 Compte créé',
-      'NON_INTERESSE':        '❌ Non intéressé',
-      'PERDU':                '🗄 Perdu',
-      'A_VISITER':            '📍 À visiter',
+      'A_RAPPELER':           'À rappeler',
+      'INTERESSE':            'Intéressé',
+      'WELCOME_PACK_ENVOYE':  'WP envoyé',
+      'COMPTE_CREE':          'Compte créé',
+      'NON_INTERESSE':        'Non intéressé',
+      'PERDU':                'Perdu',
+      'A_VISITER':            'À visiter',
     };
     return MAP[String(flag || '').toUpperCase()] || flag || 'n.c.';
   },
@@ -392,10 +392,10 @@ window.VuePipeline = {
     if (!lead) return;
     const zone = document.getElementById('ia-zone');
     if (!zone) return;
-    const LABELS = { T01: '🔍 Analyse', T02: '📋 Préparation visite', T04: '✉️ Email', T05: '📝 Résumé CR' };
+    const LABELS = { T01: 'Analyse', T02: 'Préparation visite', T04: 'Email', T05: 'Résumé CR' };
     zone.style.display = 'block';
     zone.style.color = 'var(--c-text-2)';
-    zone.textContent = `⏳ ${LABELS[slot] || slot} en cours…`;
+    zone.textContent = `${LABELS[slot] || slot} en cours…`;
     try {
       let texte;
       if (slot === 'T01') texte = await GeminiAPI.t01_analyser(lead);
@@ -406,7 +406,7 @@ window.VuePipeline = {
       zone.textContent = texte || '(réponse vide)';
     } catch (e) {
       zone.style.color = 'var(--c-danger)';
-      zone.textContent = '❌ ' + e.message;
+      zone.textContent = '' + e.message;
     }
   },
 
@@ -431,7 +431,7 @@ window.VuePipeline = {
     const doCreerCompte = statut === 'COMPTE_CREE' || statut === 'INTEGRE';
     const statutAvant = lead._statut;
     try {
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', id, champs);
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', 'LEADS', id, champs);
       Object.assign(lead, champs, { _statut: statut });
       // BLOC 09 — historise chaque transition (📊_ACTIONS) : fondation pour
       // un futur rapport de vélocité pipeline (temps moyen par étape).
@@ -441,7 +441,7 @@ window.VuePipeline = {
       // le rapport ne sera exploitable qu'une fois assez de transitions
       // accumulées (à ne pas construire prématurément sur trop peu de données).
       if (statutAvant && statutAvant !== statut) {
-        SheetsAPI.ecrire('EMPOWER_MDB', '📊_ACTIONS', {
+        SheetsAPI.ecrire('EMPOWER_MDB', 'ACTIONS', {
           ID_Action: genId('ACT'),
           Date_Action: new Date().toISOString(),
           Type_Action: 'CHANGEMENT_STATUT',
@@ -471,13 +471,13 @@ window.VuePipeline = {
     const pin = Number(lead.PIN_CDS_Assigne);
     if (!pin || !Session.voitTout() || pin === Number(Session.pin)) return;
     const MSGS = {
-      EN_COURS: `🔵 ${lead.Nom_Compte} passé en cours de traitement`,
-      INTEGRE:  `✅ ${lead.Nom_Compte} intégré, bravo !`,
-      ARCHIVE:  `🗄 ${lead.Nom_Compte} archivé`,
+      EN_COURS: `${lead.Nom_Compte} passé en cours de traitement`,
+      INTEGRE:  `${lead.Nom_Compte} intégré, bravo !`,
+      ARCHIVE:  `${lead.Nom_Compte} archivé`,
     };
     const TYPES = { EN_COURS: 'STATUT_EN_COURS', INTEGRE: 'STATUT_INTEGRE', ARCHIVE: 'STATUT_ARCHIVE' };
     if (!MSGS[statut]) return;
-    SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
+    SheetsAPI.ecrire('EMPOWER_MDB', 'NOTIFS', {
       ID_Notif:         genId('NOTIF'),
       PIN_Destinataire: pin,
       Type_Notif:       TYPES[statut],
@@ -492,21 +492,21 @@ window.VuePipeline = {
     const lead = this.state.leads.find(l => String(l.ID_Prospect) === String(id));
     if (!lead || !pin) return;
     try {
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', lead.ID_Prospect, {
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', 'LEADS', lead.ID_Prospect, {
         PIN_CDS_Assigne: Number(pin),
         STATUT_EMPOWER: 'ASSIGNE',
         FLAG_ACTION: 'ASSIGNE',
         Date_Statut_Change: dateISOLocale(),
       });
-      await SheetsAPI.viderCache('EMPOWER_MDB', '📋_PROSPECTS');
+      await SheetsAPI.viderCache('EMPOWER_MDB', 'LEADS');
       Object.assign(lead, { PIN_CDS_Assigne: Number(pin), STATUT_EMPOWER: 'ASSIGNE', _statut: 'ASSIGNE', Date_Statut_Change: dateISOLocale() });
       // Bloc 3 §4 — l'assignation a posteriori notifie le CDS comme la création
       // (même payload que saisirLead) ; avant : écriture silencieuse.
-      SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
+      SheetsAPI.ecrire('EMPOWER_MDB', 'NOTIFS', {
         ID_Notif:         genId('NOTIF'),
         PIN_Destinataire: Number(pin),
         Type_Notif:       'LEAD_ASSIGNE',
-        Message:          `🎯 Lead assigné : ${lead.Nom_Compte}${lead.Ville ? ', ' + lead.Ville : ''}, Potentiel : ${lead.POTENTIEL || '?'}`,
+        Message:          `Lead assigné : ${lead.Nom_Compte}${lead.Ville ? ', ' + lead.Ville : ''}, Potentiel : ${lead.POTENTIEL || '?'}`,
         ID_Cible:         lead.ID_Prospect,
         Statut_Lu:        false,
         Date_Envoi:       new Date().toISOString(),
@@ -585,15 +585,15 @@ window.VuePipeline = {
     this.render();
 
     try {
-      await SheetsAPI.ecrire('EMPOWER_MDB', '📋_PROSPECTS', lead);
+      await SheetsAPI.ecrire('EMPOWER_MDB', 'LEADS', lead);
       this.state.leads.unshift({ ...lead, _statut: statutInit });
       // BLOC 4.3 — notif in-app au CDS assigné
       if (cdsAssignePin) {
-        SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
+        SheetsAPI.ecrire('EMPOWER_MDB', 'NOTIFS', {
           ID_Notif:         genId('NOTIF'),
           PIN_Destinataire: Number(cdsAssignePin),
           Type_Notif:       'LEAD_ASSIGNE',
-          Message:          `🎯 Lead assigné : ${lead.Nom_Compte}${lead.Ville ? ', ' + lead.Ville : ''}, Potentiel : ${lead.POTENTIEL || '?'}`,
+          Message:          `Lead assigné : ${lead.Nom_Compte}${lead.Ville ? ', ' + lead.Ville : ''}, Potentiel : ${lead.POTENTIEL || '?'}`,
           ID_Cible:         lead.ID_Prospect,
           Statut_Lu:        false,
           Date_Envoi:       new Date().toISOString(),
@@ -612,7 +612,7 @@ window.VuePipeline = {
         if (enrichi.type_revendeur_probable)             maj.Type_Revendeur = enrichi.type_revendeur_probable;
         if (enrichi.angle_approche)                      maj.Note_initiale = (lead.Note_initiale ? lead.Note_initiale + '\n' : '') + '[IA] ' + enrichi.angle_approche;
         if (Object.keys(maj).length) {
-          SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', lead.ID_Prospect, maj).then(() => {
+          SheetsAPI.mettreAJour('EMPOWER_MDB', 'LEADS', lead.ID_Prospect, maj).then(() => {
             Object.assign(lead, maj);
             const local = this.state.leads.find(l => l.ID_Prospect === lead.ID_Prospect);
             if (local) Object.assign(local, maj);
@@ -822,17 +822,17 @@ window.VuePipeline = {
         <div class="tabs-premium">
           <button class="tab-btn-premium ${this.modeAffichage === 'kanban' ? 'actif' : ''}"
                   onclick="VuePipeline.setMode('kanban')">
-            📋 Kanban <span class="tab-num">${leads.length}</span>
+            Kanban <span class="tab-num">${leads.length}</span>
           </button>
           <button class="tab-btn-premium tab-tableau-desktop ${this.modeAffichage === 'table' ? 'actif' : ''}"
                   onclick="VuePipeline.setMode('table')">
-            ☰ Tableau
+            Tableau
           </button>
         </div>
       </div>
 
       <div class="barre-filtres">
-        <input type="search" placeholder="🔍 Nom, ville, contact, tél, email, notes…" value="${this.state.recherche}"
+        <input type="search" placeholder="Nom, ville, contact, tél, email, notes…" value="${this.state.recherche}"
                style="border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:8px 12px;font-size:14px;width:100%"
                oninput="VuePipeline.setRecherche(this.value)"/>
         <div class="filtres-statut">
@@ -967,7 +967,7 @@ window.VuePipeline = {
                   ${l.CANAL ? `<span style="font-size:11px;color:var(--c-text-2);white-space:nowrap">${l.CANAL}</span>` : ''}
                 </div>
                 <div class="kanban-carte-meta" style="margin-top:3px">
-                  <span style="color:var(--c-text-2);font-size:11px">👤 ${this._nomCDS(l.PIN_CDS_Assigne)}</span>
+                  <span style="color:var(--c-text-2);font-size:11px">${this._nomCDS(l.PIN_CDS_Assigne)}</span>
                   ${l.FLAG_ACTION && l.FLAG_ACTION !== 'SAISIE' ? `<span style="font-size:10px;color:var(--c-primary);font-weight:700">${this._labelFlag(l.FLAG_ACTION)}</span>` : ''}
                 </div>
                 ${(() => {
@@ -979,9 +979,9 @@ window.VuePipeline = {
                   // aucun appel n'a encore été loggé pour ce lead.
                   const da = this._dernierAppelLead(l.ID_Prospect);
                   const note = da?.Note || l.Note_initiale;
-                  return note ? `<div class="kanban-carte-note">${da?.Note ? '📞 ' : ''}${String(note).slice(0, 60)}</div>` : '';
+                  return note ? `<div class="kanban-carte-note">${da?.Note ? '' : ''}${String(note).slice(0, 60)}</div>` : '';
                 })()}
-                ${l._activationSellIn || l._activationSellInFlou || l.Commande_Manuelle ? `<div class="kanban-carte-note" style="color:var(--c-success);font-weight:700">💰 ${
+                ${l._activationSellIn || l._activationSellInFlou || l.Commande_Manuelle ? `<div class="kanban-carte-note" style="color:var(--c-success);font-weight:700">${
                   l._activationSellIn && l.Commande_Manuelle ? `Commande (Sell-In + déclarée)${this._sellInFraicheur()}`
                   : l._activationSellIn ? `Commande détectée (Sell-In)${this._sellInFraicheur()}`
                   : l.Commande_Manuelle ? 'Commande déclarée'
@@ -993,8 +993,8 @@ window.VuePipeline = {
                 ${this._alerte45jSansContact(l) ? '<div class="kanban-carte-note" style="color:var(--c-danger);font-weight:600">Sans contact +45j</div>' : this._alerteSansActivite(l) ? '<div class="kanban-carte-note" style="color:var(--c-warning);font-weight:600">Sans activité >7j</div>' : ''}
                 <div class="kanban-carte-pied" style="display:flex;align-items:center;gap:4px">
                   ${l.Date_prochaine_action
-                    ? `<span style="color:${estDepassee(l.Date_prochaine_action) ? 'var(--c-danger)' : 'var(--c-text-2)'}">⏰ ${dateRelative(l.Date_prochaine_action)}</span>`
-                    : `<span>🕐 ${dateRelative(l.Timestamp || l.Date_Import)}</span>`}
+                    ? `<span style="color:${estDepassee(l.Date_prochaine_action) ? 'var(--c-danger)' : 'var(--c-text-2)'}">${dateRelative(l.Date_prochaine_action)}</span>`
+                    : `<span>${dateRelative(l.Timestamp || l.Date_Import)}</span>`}
                   <span class="kanban-voir" style="margin-left:auto">Voir →</span>
                 </div>
               </div>`).join('')}
@@ -1163,14 +1163,14 @@ window.VuePipeline = {
   // (levier sales ops : sans motif, impossible d'identifier un pattern de
   // perte récurrent — concurrent, prix, timing — sur l'ensemble du pipeline).
   MOTIFS_ARCHIVE: [
-    { id: 'PRIX',        lbl: '💰 Prix trop élevé' },
-    { id: 'CONCURRENT',  lbl: '⚔️ Parti chez un concurrent' },
-    { id: 'BUDGET',      lbl: '🚫 Pas de budget' },
-    { id: 'PAS_BESOIN',  lbl: '🤷 Pas de besoin / pas intéressé' },
-    { id: 'TIMING',      lbl: '⏳ Mauvais moment' },
-    { id: 'INJOIGNABLE', lbl: '📵 Injoignable / sans retour' },
-    { id: 'DOUBLON',     lbl: '🔁 Doublon / erreur de saisie' },
-    { id: 'AUTRE',       lbl: '❔ Autre' },
+    { id: 'PRIX',        lbl: 'Prix trop élevé' },
+    { id: 'CONCURRENT',  lbl: 'Parti chez un concurrent' },
+    { id: 'BUDGET',      lbl: 'Pas de budget' },
+    { id: 'PAS_BESOIN',  lbl: 'Pas de besoin / pas intéressé' },
+    { id: 'TIMING',      lbl: 'Mauvais moment' },
+    { id: 'INJOIGNABLE', lbl: 'Injoignable / sans retour' },
+    { id: 'DOUBLON',     lbl: 'Doublon / erreur de saisie' },
+    { id: 'AUTRE',       lbl: 'Autre' },
   ],
   demanderMotifArchive(id) {
     const lead = this.state.leads.find(l => String(l.ID_Prospect) === String(id));
@@ -1313,7 +1313,7 @@ window.VuePipeline = {
             <div class="modal-btns">
               <button type="button" onclick="VuePipeline.fermerModal()">Annuler</button>
               <button type="submit" class="btn-primaire" ${this.state.envoiEnCours ? 'disabled' : ''}>
-                ${this.state.envoiEnCours ? '⏳ Création en cours…' : '✅ Créer le lead'}</button>
+                ${this.state.envoiEnCours ? 'Création en cours…' : 'Créer le lead'}</button>
             </div>
           </form>
         </div>
@@ -1336,7 +1336,7 @@ window.VuePipeline = {
              panneau occupe la quasi-totalité de l'écran (max-height:90dvh) et
              le seul autre moyen de fermer était le bouton "Fermer" tout en bas
              du formulaire (après édition + IA), ou un tap hors-panneau non
-             évident. Corrigé : ✕ toujours visible, même pattern que les autres
+             évident. Corrigé : toujours visible, même pattern que les autres
              modaux de l'app (ex. VueDashboardManager.fermerExportDir). -->
         <div style="position:sticky;top:-24px;margin:-24px -24px 12px;padding:14px 24px 10px;
                     background:var(--bg-warm-white);z-index:2;border-bottom:1px solid var(--c-border);
@@ -1380,10 +1380,10 @@ window.VuePipeline = {
           ${l._statut === 'COMPTE_CREE' && !l.Welcome_Pack_Date ? `
           <button class="btn-primaire" style="width:100%;margin-bottom:10px;font-size:12px;background:var(--c-success)"
                   onclick="VuePipeline.marquerWPEnvoye('${l.ID_Prospect}')">
-            📦 Marquer Welcome Pack envoyé
+            Marquer Welcome Pack envoyé
           </button>` : l.Welcome_Pack_Date ? `
           <div style="font-size:12px;color:var(--c-success);margin-bottom:8px;padding:6px 10px;background:var(--c-success-10,#e6f9f0);border-radius:var(--radius-sm)">
-            ✅ Welcome Pack envoyé le ${String(l.Welcome_Pack_Date).slice(0,10)}
+            Welcome Pack envoyé le ${String(l.Welcome_Pack_Date).slice(0,10)}
           </div>` : ''}
 
           <!-- BLOC 09 — déclaration manuelle "a commandé", complémentaire au
@@ -1391,11 +1391,11 @@ window.VuePipeline = {
           ${l.Commande_Manuelle ? `
           <button class="btn-secondaire" style="width:100%;margin-bottom:10px;font-size:12px;color:var(--c-success);border-color:var(--c-success)"
                   onclick="VuePipeline.declarerCommande('${l.ID_Prospect}', false)">
-            ✍️ Commande déclarée${l.Date_Commande_Manuelle ? ' le ' + new Date(l.Date_Commande_Manuelle).toLocaleDateString('fr-FR') : ''}, annuler
+            Commande déclarée${l.Date_Commande_Manuelle ? ' le ' + new Date(l.Date_Commande_Manuelle).toLocaleDateString('fr-FR') : ''}, annuler
           </button>` : `
           <button class="btn-secondaire" style="width:100%;margin-bottom:10px;font-size:12px"
                   onclick="VuePipeline.declarerCommande('${l.ID_Prospect}', true)">
-            🛒 Indiquer que ce compte a commandé
+            Indiquer que ce compte a commandé
           </button>`}
 
           <label style="font-size:12px;color:var(--c-text-2);margin-bottom:8px;display:block">Adresse postale
@@ -1431,7 +1431,7 @@ window.VuePipeline = {
                simple select "Statut" ne laisse pas deviner qu'il crée
                réellement la fiche compte. Rendu explicite. -->
           <div style="font-size:11px;color:var(--c-primary);background:color-mix(in srgb,var(--c-primary) 8%,transparent);border:1px solid color-mix(in srgb,var(--c-primary) 25%,transparent);border-radius:var(--radius-sm);padding:7px 9px;margin:-2px 0 8px;line-height:1.4">
-            💡 Onboarding terminé ? Passe le Statut ci-dessus à <strong>"Compte créé"</strong> ou <strong>"Intégré"</strong> puis enregistre, la fiche compte EMPOWER correspondante est créée automatiquement.
+            Onboarding terminé ? Passe le Statut ci-dessus à <strong>"Compte créé"</strong> ou <strong>"Intégré"</strong> puis enregistre, la fiche compte EMPOWER correspondante est créée automatiquement.
           </div>` : ''}
 
           <label style="font-size:12px;color:var(--c-text-2)">Prochaine action
@@ -1559,7 +1559,7 @@ window.VuePipeline = {
     }
 
     try {
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', id, champs);
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', 'LEADS', id, champs);
       Object.assign(lead, champs);
       if (nouveauStatut) lead._statut = nouveauStatut;
       this.state.modal = null;
@@ -1599,7 +1599,7 @@ window.VuePipeline = {
       // Retirer du state local immédiatement
       this.state.leads = this.state.leads.filter(l => String(l.ID_Prospect) !== String(id));
       this.state.modal = null;
-      await SheetsAPI.viderCache('EMPOWER_MDB', '📋_PROSPECTS');
+      await SheetsAPI.viderCache('EMPOWER_MDB', 'LEADS');
       Toast.afficher(`${lead.Nom_Compte} supprimé`, 'succes');
       this.render();
     } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
@@ -1609,7 +1609,7 @@ window.VuePipeline = {
     // Anti-doublon : si le compte existe déjà, on rebascule juste son flag Empower
     // (BUG-01 fix : avant, on s'arrêtait ici sans jamais corriger Has_EMPOWER)
     try {
-      const comptes = await SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES');
+      const comptes = await SheetsAPI.lire('EMPOWER_MDB', 'COMPTES');
       const nomNorm = normaliserNom(lead.Nom_Compte || '');
       const existant = (comptes || []).find(c => normaliserNom(c.Nom_Compte || '') === nomNorm);
       if (existant) {
@@ -1630,8 +1630,8 @@ window.VuePipeline = {
         if (!existant.Contact_Nom && lead.CONTACT_NOM)   maj.Contact_Nom = lead.CONTACT_NOM;
         if (!existant.Contact_Fonction && lead.CONTACT_FONCTION) maj.Contact_Fonction = lead.CONTACT_FONCTION;
         if (Object.keys(maj).length) {
-          await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', existant._uuid, maj);
-          await SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES');
+          await SheetsAPI.mettreAJour('EMPOWER_MDB', 'COMPTES', existant._uuid, maj);
+          await SheetsAPI.viderCache('EMPOWER_MDB', 'COMPTES');
         }
         return;
       }
@@ -1648,12 +1648,12 @@ window.VuePipeline = {
     // aujourd'hui, cf. cadrage BLOC 04 — option A acceptée avec cette marge).
     let caSellIn = null;
     try {
-      const agregats = await SheetsAPI.lire('EMPOWER_MDB', '📋 COMPTES HISTORIQUES');
+      const agregats = await SheetsAPI.lire('EMPOWER_MDB', 'COMPTES_HISTORIQUES');
       const nomNormLead = normaliserNom(lead.Nom_Compte || '');
       caSellIn = (agregats || []).find(a => normaliserNom(a.RESELLER || '') === nomNormLead) || null;
     } catch { /* si la lecture échoue, on crée quand même le compte sans CA */ }
 
-    await SheetsAPI.ecrire('EMPOWER_MDB', '🏢_COMPTES', {
+    await SheetsAPI.ecrire('EMPOWER_MDB', 'COMPTES', {
       ID_Compte:       idCompte,
       Nom_Compte:      lead.Nom_Compte || '',
       Ville:           lead.Ville || '',
@@ -1683,12 +1683,12 @@ window.VuePipeline = {
       } : {}),
     });
 
-    await SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES');
+    await SheetsAPI.viderCache('EMPOWER_MDB', 'COMPTES');
 
     // Notifs pour Tadjidine (1000) et Alexandra (5000)
-    const msg = `🏢 Nouveau compte pipeline : ${lead.Nom_Compte}${lead.Ville ? ', ' + lead.Ville : ''} (CDS : ${this._nomCDS(lead.PIN_CDS_Assigne)})`;
+    const msg = `Nouveau compte pipeline : ${lead.Nom_Compte}${lead.Ville ? ', ' + lead.Ville : ''} (CDS : ${this._nomCDS(lead.PIN_CDS_Assigne)})`;
     for (const pin of [1000, 5000]) {
-      SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
+      SheetsAPI.ecrire('EMPOWER_MDB', 'NOTIFS', {
         ID_Notif:         genId('NOTIF'),
         PIN_Destinataire: pin,
         Type_Notif:       'COMPTE_CREE',
@@ -1737,7 +1737,7 @@ window.VuePipeline = {
     if (!lead) return;
     try {
       const champs = { Welcome_Pack_Date: dateISOLocale(), Welcome_Pack_Envoye: 'OUI' };
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', id, champs);
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', 'LEADS', id, champs);
       Object.assign(lead, champs);
       Toast.afficher('Welcome Pack marqué envoyé', 'succes');
       this.render();
@@ -1752,9 +1752,9 @@ window.VuePipeline = {
     if (!lead) return;
     try {
       const champs = { Commande_Manuelle: valeur, Date_Commande_Manuelle: valeur ? dateISOLocale() : null };
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', id, champs);
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', 'LEADS', id, champs);
       Object.assign(lead, champs);
-      Toast.afficher(valeur ? '🛒 Commande déclarée' : 'Déclaration annulée', 'succes');
+      Toast.afficher(valeur ? 'Commande déclarée' : 'Déclaration annulée', 'succes');
       this.render();
     } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
   },

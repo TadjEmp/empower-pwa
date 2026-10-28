@@ -187,7 +187,7 @@ function renderBlocCamemberts(f, raw, ns) {
         ${(raw.objectifs || []).map(o => `<option value="${o.PIN_CDS}" ${Number(f.filtres.pinCommercial) === Number(o.PIN_CDS) ? 'selected' : ''}>${window.resolveCDS(o.PIN_CDS)}</option>`).join('')}
       </select>` : ''}
     </div>
-    ${f.filtres.pinCommercial ? `<div class="dash-camembert-actif-pin">👤 ${window.resolveCDS(f.filtres.pinCommercial)}<button onclick="${ns}.setCommercialCamembert('')">retirer</button></div>` : ''}
+    ${f.filtres.pinCommercial ? `<div class="dash-camembert-actif-pin">${window.resolveCDS(f.filtres.pinCommercial)}<button onclick="${ns}.setCommercialCamembert('')">retirer</button></div>` : ''}
     <div class="dash-camemberts-grid">
       <div class="dash-camembert-bloc">
         ${window.svgDonut(camembertVisites, { centreValeur: camembertVisites.reduce((s,x)=>s+x.value,0), centreLabel: 'Visites' })}

@@ -34,8 +34,8 @@ window.VueMailing = {
     this.render();
     try {
       const [comptes, prospects, cdsApi] = await Promise.all([
-        SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
-        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS'),
+        SheetsAPI.lire('EMPOWER_MDB', 'COMPTES'),
+        SheetsAPI.lire('EMPOWER_MDB', 'LEADS'),
         SheetsAPI.lireCDS(),
       ]);
       this.state.comptes = comptes.filter(c => Session.voitTout() || Number(c.PIN_CDS_Assigne) === Session.pin);
@@ -140,7 +140,7 @@ window.VueMailing = {
     const resum = s.motifs.join(', ') + (s.note.trim() ? ', ' + s.note.trim() : '');
     try {
       // 1. Log 📊_ACTIONS — même convention que valider() de vue-phoning.js
-      await SheetsAPI.ecrire('EMPOWER_MDB', '📊_ACTIONS', {
+      await SheetsAPI.ecrire('EMPOWER_MDB', 'ACTIONS', {
         ID_Action: genId('ACT'), Date_Action: new Date().toISOString(),
         Type_Action: 'Mailing', Source: 'ESI', PIN_CDS: Session.pin,
         Nom_Compte: s.cible.nom,
@@ -153,11 +153,11 @@ window.VueMailing = {
       // 2. Mise à jour dernière action sur la cible (comptes OU leads)
       const maj = { Date_Derniere_Action: dateISOLocale(), Type_Derniere_Action: 'Mailing' };
       if (s.cible.type === 'compte') {
-        await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', s.cible.id, maj);
+        await SheetsAPI.mettreAJour('EMPOWER_MDB', 'COMPTES', s.cible.id, maj);
         const local = s.comptes.find(x => String(x.ID_Compte) === String(s.cible.id));
         if (local) Object.assign(local, maj);
       } else {
-        await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', s.cible.id, maj);
+        await SheetsAPI.mettreAJour('EMPOWER_MDB', 'LEADS', s.cible.id, maj);
         const local = s.prospects.find(x => String(x.ID_Prospect) === String(s.cible.id));
         if (local) Object.assign(local, maj);
       }
@@ -182,7 +182,7 @@ window.VueMailing = {
     this.state.journalChargement = true;
     this.render();
     try {
-      const data = await SheetsAPI.lire('EMPOWER_MDB', '📊_ACTIONS');
+      const data = await SheetsAPI.lire('EMPOWER_MDB', 'ACTIONS');
       this.state.journal = data
         .filter(a => a.Type_Action === 'Mailing')
         .filter(a => Session.voitTout() || Number(a.PIN_CDS) === Session.pin)
@@ -270,7 +270,7 @@ window.VueMailing = {
         ${this._renderPastillesType()}
       </div>
       <div style="display:flex;gap:8px;margin-bottom:12px">
-        <input class="q-input" placeholder="🔍 Rechercher un compte ou un lead…" value="${s.recherche || ''}"
+        <input class="q-input" placeholder="Rechercher un compte ou un lead…" value="${s.recherche || ''}"
                oninput="VueMailing.setRecherche(this.value)" style="flex:2"/>
         ${Session.voitTout() ? `
         <select class="q-input" style="flex:1" onchange="VueMailing.setFiltreCDS(this.value)">
@@ -316,7 +316,7 @@ window.VueMailing = {
         <div style="display:flex;gap:8px;margin-top:14px">
           <button type="button" class="btn-secondaire" style="flex:1" onclick="VueMailing.fermerCible()">Annuler</button>
           <button type="button" class="btn-primaire" style="flex:2" onclick="VueMailing.valider()" ${s.envoiEnCours ? 'disabled' : ''}>
-            ${s.envoiEnCours ? 'Envoi…' : '✅ Enregistrer le mailing'}
+            ${s.envoiEnCours ? 'Envoi…' : 'Enregistrer le mailing'}
           </button>
         </div>
       </div>`;
@@ -327,7 +327,7 @@ window.VueMailing = {
     if (s.journalChargement) return '<div style="padding:32px;text-align:center;color:var(--c-text-2)">Chargement du journal…</div>';
     return `
       <div style="display:flex;gap:8px;margin-bottom:12px">
-        <input class="q-input" placeholder="🔍 Filtrer par compte…" value="${s.journalRecherche || ''}"
+        <input class="q-input" placeholder="Filtrer par compte…" value="${s.journalRecherche || ''}"
                oninput="VueMailing.setJournalRecherche(this.value)" style="flex:2"/>
         ${Session.voitTout() ? `
         <select class="q-input" style="flex:1" onchange="VueMailing.setJournalFiltreCDS(this.value)">

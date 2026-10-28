@@ -13,7 +13,7 @@ window.VueVisitesFDV = {
     this.render();
     try {
       const [visites, cdsApi] = await Promise.all([
-        SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES'),
+        SheetsAPI.lire('EMPOWER_MDB', 'VISITES'),
         SheetsAPI.lireCDS(),
       ]);
       this.state.visites = (visites || []).filter(v => String(v.deleted || '').toUpperCase() !== 'TRUE');
@@ -141,7 +141,7 @@ window.VueVisitesFDV = {
         <div style="padding:10px 14px 14px">
           <div class="id-ligne"><span>Statut</span><strong>${v.Statut_Visite || 'n.c.'}</strong></div>
           <div class="id-ligne"><span>Type</span><strong>${v.Type_Visite || 'n.c.'}</strong></div>
-          <div class="id-ligne"><span>Résultat</span><strong>${v.Resultat_Visite || 'n.c.'}</strong></div>
+          <div class="id-ligne"><span>Résultat</span><strong>${sansEmoji(v.Resultat_Visite) || 'n.c.'}</strong></div>
           <div class="id-ligne"><span>Interlocuteur</span><strong>${v.Interlocuteur_Nom || 'n.c.'}${v.Interlocuteur_Fonction ? ' (' + v.Interlocuteur_Fonction + ')' : ''}</strong></div>
           <div class="id-ligne"><span>Réceptivité</span><strong>${v.Slider_Receptivite != null && v.Slider_Receptivite !== '' ? v.Slider_Receptivite + '/5' : 'n.c.'}</strong></div>
           ${freins ? `<div class="id-ligne"><span>Freins</span><strong>${freins}</strong></div>` : ''}

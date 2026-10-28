@@ -149,12 +149,12 @@ window.VueComptes = {
     this.render();
     try {
       const [raw, objectifs, cdsApi, visites, appels, params, vuesFiltres] = await Promise.all([
-        SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
-        SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
+        SheetsAPI.lire('EMPOWER_MDB', 'COMPTES'),
+        SheetsAPI.lire('EMPOWER_MDB', 'OBJECTIFS_PRIMES'),
         SheetsAPI.lireCDS(), // V5 BUG1 — liste CDS dynamique (inclut Alexandra)
-        SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES').catch(() => []),
-        SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING').catch(() => []),
-        SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS').catch(() => []),
+        SheetsAPI.lire('EMPOWER_MDB', 'VISITES').catch(() => []),
+        SheetsAPI.lire('EMPOWER_MDB', 'PHONING').catch(() => []),
+        SheetsAPI.lire('EMPOWER_MDB', 'PARAMS').catch(() => []),
         VuesFiltres.lister('comptes'),
       ]);
       this.state.vuesFiltres = vuesFiltres;
@@ -346,7 +346,7 @@ window.VueComptes = {
       </div>
 
       <div class="barre-filtres">
-        <input type="search" id="recherche-comptes" placeholder="🔍 Compte, ville, CP, département…"
+        <input type="search" id="recherche-comptes" placeholder="Compte, ville, CP, département…"
                value="${this.state.recherche}"
                style="border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:8px 12px;font-size:14px;width:100%"
                oninput="VueComptes.setRecherche(this.value)"/>
@@ -476,7 +476,7 @@ window.VueComptes = {
               ? Math.max(0, Math.floor((Date.now() - new Date(dernierAppelDate).getTime()) / 86400000))
               : null;
             const badgeDernierAppel = dernierAppelDate
-              ? `<span class="v7-statut" style="color:var(--c-text-2);font-size:11px" title="Dernier appel : ${new Date(dernierAppelDate).toLocaleDateString('fr-FR')}">📞 ${
+              ? `<span class="v7-statut" style="color:var(--c-text-2);font-size:11px" title="Dernier appel : ${new Date(dernierAppelDate).toLocaleDateString('fr-FR')}">${
                   dernierAppelJours === 0 ? "aujourd'hui" : dernierAppelJours === 1 ? 'hier' : `il y a ${dernierAppelJours}j`
                 }</span>`
               : '';
@@ -504,7 +504,7 @@ window.VueComptes = {
             <div class="cc-infos" onclick="VueComptes.ouvrirFiche('${c.ID_Compte}')">
               <span><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> ${c.Ville || 'n.c.'}</span>
               <span>${c.CANAL || 'n.c.'}</span>
-              ${live.dernierAppel ? `<span title="Dernier appel">📞 ${dateRelative(live.dernierAppel)}</span>` : ''}
+              ${live.dernierAppel ? `<span title="Dernier appel">${dateRelative(live.dernierAppel)}</span>` : ''}
               ${prochaineVisite ? `
                 <span class="${estDepassee(prochaineVisite) ? 'prochaine-action alerte' : ''}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${dateRelative(prochaineVisite)}</span>` : ''}
             </div>
@@ -555,8 +555,8 @@ window.VueComptes = {
                 const liveRow = this.state.datesLive.get(String(c.ID_Compte || '')) || {};
                 const prochaineVisiteRow = this._prochaineVisite(c);
                 const pa = prochaineVisiteRow
-                  ? `<span class="${estDepassee(prochaineVisiteRow) ? 'prochaine-action alerte' : ''}">⏰ ${dateRelative(prochaineVisiteRow)}</span>${liveRow.dernierAppel ? `<br><span style="font-size:10px;color:var(--c-muted)">📞 ${dateRelative(liveRow.dernierAppel)}</span>` : ''}`
-                  : (liveRow.dernierAppel ? `<span style="font-size:11px;color:var(--c-muted)">📞 ${dateRelative(liveRow.dernierAppel)}</span>` : 'n.c.');
+                  ? `<span class="${estDepassee(prochaineVisiteRow) ? 'prochaine-action alerte' : ''}">${dateRelative(prochaineVisiteRow)}</span>${liveRow.dernierAppel ? `<br><span style="font-size:10px;color:var(--c-muted)">${dateRelative(liveRow.dernierAppel)}</span>` : ''}`
+                  : (liveRow.dernierAppel ? `<span style="font-size:11px;color:var(--c-muted)">${dateRelative(liveRow.dernierAppel)}</span>` : 'n.c.');
                 const dteDA = this._dernierContact(c) || '';
                 const joursDA = dteDA ? Math.max(0, Math.floor((Date.now() - new Date(dteDA).getTime()) / 86400000)) : null;
                 const rowStyle = (joursDA !== null && joursDA > 45) ? 'border-left:3px solid var(--c-danger);background:rgba(217,48,37,.04)' : '';
@@ -582,7 +582,7 @@ window.VueComptes = {
                   <td>${Session.estManager() ? `
                     <select style="border:1px solid var(--c-border);border-radius:4px;padding:3px 6px;font-size:12px"
                             onchange="VueComptes.attribuer('${c.ID_Compte}', this.value)">
-                      <option value="">${nomCDS ? '👤 ' + nomCDS : '⚠️ attribuer'}</option>
+                      <option value="">${nomCDS ? '' + nomCDS : 'attribuer'}</option>
                       ${cdsList.map(x => `<option value="${x.pin}" ${Number(c.PIN_CDS_Assigne) === x.pin ? 'selected' : ''}>${x.nom}</option>`).join('')}
                     </select>` : (nomCDS || 'n.c.')}</td>
                   <td>${estLectureSeule ? 'n.c.' : `

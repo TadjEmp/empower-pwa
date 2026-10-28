@@ -135,8 +135,8 @@ window.VueVisites = {
     try {
       // R1 : on ne charge plus 📋_PROSPECTS — uniquement 🏢_COMPTES
       const [visites, comptes, fiches] = await Promise.all([
-        SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES'),
-        SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
+        SheetsAPI.lire('EMPOWER_MDB', 'VISITES'),
+        SheetsAPI.lire('EMPOWER_MDB', 'COMPTES'),
         FichesFroides.charger().catch(() => []),   // Lot 1 — jamais bloquant
       ]);
       this.state.fiches = FichesFroides.visibles(fiches);
@@ -208,7 +208,7 @@ window.VueVisites = {
     });
     enRetard.forEach(v => {
       v.Statut_Visite = 'manquée'; // reflet local immédiat, avant confirmation serveur
-      SheetsAPI.mettreAJour('EMPOWER_MDB', '🗺️_VISITES', v.ID_Visite, { Statut_Visite: 'manquée' }).catch(() => {});
+      SheetsAPI.mettreAJour('EMPOWER_MDB', 'VISITES', v.ID_Visite, { Statut_Visite: 'manquée' }).catch(() => {});
     });
   },
 
@@ -401,7 +401,7 @@ window.VueVisites = {
           ${Session.voitTout() && x.Nom_CDS ? ` · ${E(x.Nom_CDS)}` : ''}
         </div>
         ${x.Prochaine_Action || x.Date_Relance ? `<div style="font-size:12px;margin-top:4px;${retard ? 'color:var(--c-danger);font-weight:700' : ''}">
-          🎯 ${E(x.Prochaine_Action || 'Relance')}${x.Date_Relance ? `, ${String(x.Date_Relance).slice(0, 10)}${retard ? ' (en retard)' : ''}` : ''}</div>` : ''}
+          ${E(x.Prochaine_Action || 'Relance')}${x.Date_Relance ? `, ${String(x.Date_Relance).slice(0, 10)}${retard ? ' (en retard)' : ''}` : ''}</div>` : ''}
         ${FichesFroides._estConverti(x) ? '' : `
         <div class="cv-actions" style="gap:6px;flex-wrap:wrap;margin-top:8px">
           <button class="btn-primaire" style="padding:8px 14px;font-size:13px;width:auto" onclick="VueVisites.revoirFiche('${x.ID_Fiche}')">Revoir</button>
@@ -465,7 +465,7 @@ window.VueVisites = {
     try {
       const idCompte = genId('CPT');
       const aujourd = dateISOLocale();
-      await SheetsAPI.ecrire('EMPOWER_MDB', '🏢_COMPTES', {
+      await SheetsAPI.ecrire('EMPOWER_MDB', 'COMPTES', {
         ID_Compte:      idCompte,
         Nom_Compte:     m.nomCompte,
         Departement:    m.departement,
@@ -487,7 +487,7 @@ window.VueVisites = {
       });
       // Marquer la visite comme convertie (absente si la conversion part d'une fiche sans visite)
       if (m.idVisite) {
-        await SheetsAPI.mettreAJour('EMPOWER_MDB', '🗺️_VISITES', m.idVisite, {
+        await SheetsAPI.mettreAJour('EMPOWER_MDB', 'VISITES', m.idVisite, {
           Flag_Converti: 'TRUE',
           ID_Cible: idCompte,
         });
@@ -504,7 +504,7 @@ window.VueVisites = {
       }
       // Notifications PIN 1000 (Tadjidine) + PIN 5000 (Alexandra)
       for (const dest of [1000, 5000]) {
-        SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
+        SheetsAPI.ecrire('EMPOWER_MDB', 'NOTIFS', {
           ID_Notif: genId('NOTIF'), Date_Envoi: new Date().toISOString(),
           PIN_Destinataire: dest, Type_Notif: 'CONVERSION_FROID',
           Message: `Nouveau compte actif créé depuis visite à froid : ${m.nomCompte}`,
@@ -668,7 +668,7 @@ window.VueVisites = {
       <div class="pg-cell"${onClick ? ` onclick="${onClick}"` : ''}>
         <span class="pg-cell-n">${r.n}</span>
         <span class="pg-cell-dots">${dots}</span>
-        ${r.photos ? `<span class="pg-cell-photo" title="${r.photos} photo(s)">📷${r.photos}</span>` : ''}
+        ${r.photos ? `<span class="pg-cell-photo" title="${r.photos} photo(s)">${r.photos}</span>` : ''}
       </div>`;
   },
 
@@ -793,7 +793,7 @@ window.VueVisites = {
       Toast.afficher('Vous ne pouvez démarrer que vos propres visites', 'warning'); return;
     }
     try {
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '🗺️_VISITES', idVisite, { Statut_Visite: 'en cours' });
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', 'VISITES', idVisite, { Statut_Visite: 'en cours' });
       v.Statut_Visite = 'en cours';
       Toast.afficher('▶️ Visite en cours, questionnaire déverrouillé', 'succes');
       this.render();
@@ -908,7 +908,7 @@ window.VueVisites = {
     // BUG2 — désactivation du bouton + état de chargement jusqu'à résolution
     const btn = e.submitter || (e.target && e.target.querySelector('button[type="submit"]'));
     this._enCours = true;
-    if (btn) { btn.disabled = true; btn.dataset._lbl = btn.textContent; btn.textContent = '⏳ Enregistrement…'; }
+    if (btn) { btn.disabled = true; btn.dataset._lbl = btn.textContent; btn.textContent = 'Enregistrement…'; }
 
     try {
       // M6/P6-5 — prospect à froid : mémorisé en localStorage UNIQUEMENT,
@@ -967,7 +967,7 @@ window.VueVisites = {
         ID_Fiche_Froide:        idFicheFroide || f.idFicheFroide || '',
         Timestamp:              new Date().toISOString(),
       };
-      await SheetsAPI.ecrire('EMPOWER_MDB', '🗺️_VISITES', visite);
+      await SheetsAPI.ecrire('EMPOWER_MDB', 'VISITES', visite);
       this.state.visites.unshift(visite);
       // BUG3 — la cible devient un vrai compte sélectionné (sans perdre la saisie)
       f.horsBase = false;
@@ -979,8 +979,8 @@ window.VueVisites = {
       this.state.modalPlanif = false;
       Toast.afficher(
         sourceVisite === 'ESI_VISITE_FROID'
-          ? `✅ Visite à froid planifiée, ${nomFinal} le ${f.date}`
-          : `✅ Visite planifiée, ${nomFinal} le ${f.date}`,
+          ? `Visite à froid planifiée, ${nomFinal} le ${f.date}`
+          : `Visite planifiée, ${nomFinal} le ${f.date}`,
         'succes'
       );
       this.render();
@@ -1046,7 +1046,7 @@ window.VueVisites = {
       email:           v.Email || '',
       interlocuteurNom:      v.Interlocuteur_Nom || v.Interlocuteur || '',
       interlocuteurFonction: v.Interlocuteur_Fonction || '',
-      resultatVisite:  v.Resultat_Visite || '',
+      resultatVisite:  sansEmoji(v.Resultat_Visite),
       score:           Number(v.Slider_Receptivite) || 3,
       typeRevendeur:   this._parseListeVirgule(v.Type_Revendeur),
       objectifsVisite: this._parseJSONListe(v.Objectifs_Visite),
@@ -1156,7 +1156,7 @@ window.VueVisites = {
         Concurrents_JSON:       JSON.stringify(m.concurrents),
         Grossistes_JSON:        JSON.stringify(m.grossistes),
       };
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '🗺️_VISITES', m.id, maj);
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', 'VISITES', m.id, maj);
       const local = this.state.visites.find(v => v.ID_Visite === m.id);
       if (local) Object.assign(local, maj);
       this.state.modalEdition = null;
@@ -1185,7 +1185,7 @@ window.VueVisites = {
     const id = this.state.confirmDeleteId;
     if (!id) return;
     try {
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '🗺️_VISITES', id, {
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', 'VISITES', id, {
         deleted:    true,
         deleted_at: new Date().toISOString(),
         deleted_by: Session.pin,
@@ -1236,7 +1236,7 @@ window.VueVisites = {
       Timestamp:              new Date().toISOString(),
     };
     try {
-      await SheetsAPI.ecrire('EMPOWER_MDB', '🗺️_VISITES', dup);
+      await SheetsAPI.ecrire('EMPOWER_MDB', 'VISITES', dup);
       this.state.visites.unshift(dup);
       this.state.dateVue = dateDup;
       Toast.afficher(`Visite dupliquée → ${dateDup}`, 'succes');
@@ -1303,7 +1303,7 @@ window.VueVisites = {
   async synchroniser() {
     Toast.afficher('Synchronisation…', 'info', 3000);
     try {
-      await SheetsAPI.viderCache('EMPOWER_MDB', '🗺️_VISITES');
+      await SheetsAPI.viderCache('EMPOWER_MDB', 'VISITES');
       await this.init(this.state.sousVue);
       Toast.afficher('Visites synchronisées', 'succes');
     } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
@@ -1336,7 +1336,7 @@ window.VueVisites = {
     // Auto-fetch si appelé hors de la vue Visites (ex: depuis le dashboard manager)
     if (!this.state.visites || !this.state.visites.length) {
       Toast.afficher('Chargement des visites…', 'info', 2000);
-      const raw = await SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES');
+      const raw = await SheetsAPI.lire('EMPOWER_MDB', 'VISITES');
       this.state.visites = (raw || [])
         .filter(v => String(v.deleted || '').toUpperCase() !== 'TRUE')
         .filter(v => Session.voitTout() || Number(v.PIN_CDS) === Session.pin);
@@ -1431,8 +1431,8 @@ window.VueVisites = {
     const champs = [
       { lbl: 'Interlocuteur',    val: v.Interlocuteur || v.Interlocuteur_Nom },
       { lbl: 'Fonction',         val: v.Interlocuteur_Fonction },
-      { lbl: 'Objectif',         val: v.Objectifs_Visite || v.Objectif_Visite },
-      { lbl: 'Résultat',         val: v.Resultat_Visite },
+      { lbl: 'Objectif',         val: sansEmoji(v.Objectifs_Visite || v.Objectif_Visite) },
+      { lbl: 'Résultat',         val: sansEmoji(v.Resultat_Visite) },
       { lbl: 'Type revendeur',   val: v.Type_Revendeur },
       { lbl: 'Arbre EMPOWER',    val: v.Arbre_EMPOWER_Statut },
       { lbl: 'Concurrent',       val: v.Concurrent_Actuel },
@@ -1664,7 +1664,7 @@ window.VueVisites = {
         const boutonProximite = nbGeocodees >= 2 ? `
           <button class="btn-filtre ${this.state.triProximiteActif ? 'actif' : ''}" style="margin-bottom:10px"
                   onclick="VueVisites.toggleTriProximite()">
-            🧭 ${this.state.triProximiteActif ? 'Tri proximité activé' : 'Trier par proximité'}
+            ${this.state.triProximiteActif ? 'Tri proximité activé' : 'Trier par proximité'}
           </button>` : '';
         contenu = vjFiltre.length === 0
           ? `<div style="padding:32px;text-align:center;color:var(--c-text-2)">
@@ -1701,7 +1701,7 @@ window.VueVisites = {
             <div class="planning-jour ${j.iso === today ? 'planning-jour-today' : ''}"
                  onclick="VueVisites.state.dateVue='${j.iso}';VueVisites.state.modeVue='jour';VueVisites.render()">
               <div class="pj-label">${j.label}</div>
-              <div class="pj-count">${j.visites.length ? j.visites.length + 'v' : ''}${this._resumeJour(j.visites).photos ? ` 📷${this._resumeJour(j.visites).photos}` : ''}</div>
+              <div class="pj-count">${j.visites.length ? j.visites.length + 'v' : ''}${this._resumeJour(j.visites).photos ? ` ${this._resumeJour(j.visites).photos}` : ''}</div>
               ${j.visites.slice(0, maxParJour).map(v => `
                 <div class="pj-item" style="border-left:3px solid ${this.STATUT_COULEURS[this._statutEffectif(v)] || 'var(--c-text-2)'}">
                   <span class="pj-heure">${v.Heure || 'n.c.'}</span>
@@ -1804,7 +1804,7 @@ window.VueVisites = {
        Aucun compte dans ce département.
        <button type="button" class="btn-secondaire" style="font-size:11px;padding:4px 8px;margin-left:6px;width:auto"
                onclick="VueVisites.state.formPlanif.horsBase=true;VueVisites.render()">
-         ❄️ Créer une visite à froid
+         Créer une visite à froid
        </button>
      </div>` : ''}
      <label>Compte * <span style="font-size:11px;color:var(--c-text-2);font-weight:400">${actif ? comptesFiltres.length + ' résultat(s)' : 'trié par nom'}</span>
@@ -1850,7 +1850,7 @@ window.VueVisites = {
             </button>
             <button type="button" class="btn-filtre ${f.horsBase ? 'actif' : ''}"
                     onclick="VueVisites.state.formPlanif.horsBase=true;VueVisites.render()">
-              ❄️ À froid / Hors base
+              À froid / Hors base
             </button>
           </div>
           ${f.horsBase
@@ -2028,7 +2028,7 @@ window.VueVisites = {
           <label>Résultat de la visite
             <select onchange="VueVisites.state.modalEdition.resultatVisite=this.value">
               <option value="">n.c.</option>
-              ${['✅ Positif', '🟡 Mitigé', '❌ Négatif'].map(o =>
+              ${['Positif', 'Mitigé', 'Négatif'].map(o =>
                 `<option value="${o}" ${m.resultatVisite === o ? 'selected' : ''}>${o}</option>`
               ).join('')}
             </select>
@@ -2244,7 +2244,7 @@ window.VueVisites = {
     if (!Session.voitTout()) { Toast.afficher('Accès réservé Direction/Admin', 'warning'); return; }
     Toast.afficher('Récupération du Tracker…', 'info');
     try {
-      const data = await SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS');
+      const data = await SheetsAPI.lire('EMPOWER_MDB', 'LEADS');
       if (!data || !data.length) { Toast.afficher('Aucune donnée Tracker', 'warning'); return; }
       const f = this.state.extractFiltres;
       const rows = data
@@ -2289,7 +2289,7 @@ window.VueVisites = {
     if (!Session.voitTout()) { Toast.afficher('Accès réservé Direction/Admin', 'warning'); return; }
     Toast.afficher('Récupération des comptes archivés…', 'info');
     try {
-      const data = await SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES');
+      const data = await SheetsAPI.lire('EMPOWER_MDB', 'COMPTES');
       const archives = (data || []).filter(c =>
         (c.Statut || c.statut_compte || '').toLowerCase().startsWith('archiv')
       );

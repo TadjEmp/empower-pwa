@@ -35,10 +35,10 @@ window.VueObjectifs = {
     this.render();
     try {
       const [objectifs, params, nsb, prospects] = await Promise.all([
-        SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
-        SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
-        SheetsAPI.lire('EMPOWER_MDB', '🛒_NSB_COMMANDES').catch(() => []),
-        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS').catch(() => []),
+        SheetsAPI.lire('EMPOWER_MDB', 'OBJECTIFS_PRIMES'),
+        SheetsAPI.lire('EMPOWER_MDB', 'PARAMS'),
+        SheetsAPI.lire('EMPOWER_MDB', 'NSB_COMMANDES').catch(() => []),
+        SheetsAPI.lire('EMPOWER_MDB', 'LEADS').catch(() => []),
       ]);
       const paramMap = Object.fromEntries(params.map(p => [p.Parametre, p.Valeur]));
       this.state.objectifs  = objectifs;
@@ -168,7 +168,7 @@ window.VueObjectifs = {
     this.render();
     try {
       await SheetsAPI.mettreAJourCA(`${quarter}FY27`, val);
-      SheetsAPI.viderCache('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES');
+      SheetsAPI.viderCache('EMPOWER_MDB', 'OBJECTIFS_PRIMES');
       Toast.afficher('CA déclaré avec succès', 'succes');
       this.state.modalCA = false;
       await this.init();
@@ -199,15 +199,15 @@ window.VueObjectifs = {
         // Ne garder que les champs non-undefined
         Object.keys(maj).forEach(k => maj[k] === undefined && delete maj[k]);
         try {
-          await SheetsAPI.mettreAJour('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES', id, maj);
+          await SheetsAPI.mettreAJour('EMPOWER_MDB', 'OBJECTIFS_PRIMES', id, maj);
           const ligne = this.state.objectifs.find(o => o.ID_Objectif === id);
           if (ligne) Object.assign(ligne, maj);
           ok++;
         } catch { err++; }
       }
       Toast.afficher(err === 0
-        ? `✅ ${ok} objectif(s) mis à jour`
-        : `⚠️ ${ok} OK · ${err} erreur(s)`,
+        ? `${ok} objectif(s) mis à jour`
+        : `${ok} OK · ${err} erreur(s)`,
         err === 0 ? 'succes' : 'warning');
     } finally {
       this.state.saving      = false;
@@ -316,7 +316,7 @@ window.VueObjectifs = {
 
     const renderCDS = (pin, nomBrut) => {
       const d = this._donneesCDS(pin);
-      const PACE_LBL = { ON_TRACK: '🟢 ON TRACK', WATCH: '🟡 WATCH', AT_RISK: '🔴 AT RISK' };
+      const PACE_LBL = { ON_TRACK: 'ON TRACK', WATCH: 'WATCH', AT_RISK: 'AT RISK' };
       const a2 = this._axe2CDS(pin);
       const a3 = this._axe3CDS(pin);
       // Résolution du nom : priorité resolveCDS(pin) — jamais de PIN brut dans l'UI
@@ -401,7 +401,7 @@ window.VueObjectifs = {
           <div class="bloc-titre">Équipe, ${q}
             <span class="pace-badge ${paceTotal === 'ON_TRACK' ? 'pace-ok' : paceTotal === 'WATCH' ? 'pace-watch' : 'pace-risk'}">${pctTotal}%</span>
             <button class="btn-lien" style="margin-left:auto;font-size:13px" onclick="VueObjectifs.ouvrirModalSaisie()">
-              📥 Saisir / Modifier Objectifs
+              Saisir / Modifier Objectifs
             </button>
           </div>
           <div class="pace-chiffres"><strong>${fmtEUR(totalCA)}</strong><span>/ ${fmtEUR(totalObj)}</span></div>
@@ -426,7 +426,7 @@ window.VueObjectifs = {
       corps += `
         <div style="margin-top:12px">
           <button class="btn-primaire" style="width:100%" onclick="VueObjectifs.ouvrirModalCA()">
-            📝 Déclarer mon CA
+            Déclarer mon CA
           </button>
         </div>`;
     }
@@ -484,7 +484,7 @@ window.VueObjectifs = {
           <div class="modal-btns">
             <button type="button" onclick="VueObjectifs.fermerModalCA()">Annuler</button>
             <button type="submit" class="btn-primaire" ${this.state.savingCA ? 'disabled' : ''}>
-              ${this.state.savingCA ? '⏳ Envoi…' : '💾 Enregistrer'}
+              ${this.state.savingCA ? 'Envoi…' : 'Enregistrer'}
             </button>
           </div>
         </form>
@@ -536,7 +536,7 @@ window.VueObjectifs = {
           <div class="modal-btns">
             <button type="button" onclick="VueObjectifs.fermerModalSaisie()">Annuler</button>
             <button type="submit" class="btn-primaire" ${this.state.saving ? 'disabled' : ''}>
-              ${this.state.saving ? '⏳ Enregistrement…' : '💾 Enregistrer'}
+              ${this.state.saving ? 'Enregistrement…' : 'Enregistrer'}
             </button>
           </div>
         </form>

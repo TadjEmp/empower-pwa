@@ -42,8 +42,8 @@ window.VueAdmin = {
     this.render();
     try {
       const [objectifs, params] = await Promise.all([
-        SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
-        SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
+        SheetsAPI.lire('EMPOWER_MDB', 'OBJECTIFS_PRIMES'),
+        SheetsAPI.lire('EMPOWER_MDB', 'PARAMS'),
       ]);
       this.state.objectifs = objectifs;
       this.state.params    = params;
@@ -235,7 +235,7 @@ window.VueAdmin = {
       });
       const data = await r.json();
       if (!data.ok) throw new Error(data.erreur);
-      Toast.afficher(nouvelEtat ? '✅ Compte réactivé' : '✅ Compte désactivé', 'succes');
+      Toast.afficher(nouvelEtat ? 'Compte réactivé' : 'Compte désactivé', 'succes');
       await this._chargerUtilisateurs();
     } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
   },
@@ -297,7 +297,7 @@ window.VueAdmin = {
                     <button class="btn-lien" style="font-size:12px" onclick="VueAdmin.ouvrirModalReset(${u.pin}, '${(u.nom || '').replace(/'/g, "\\'")}')">Reset mdp</button>
                     <button class="btn-lien" style="font-size:12px;color:${u.actif ? 'var(--c-danger)' : 'var(--c-success,#1a9e5c)'}"
                             ${u.pin === Session.pin ? 'disabled title="Impossible de modifier son propre compte"' : ''}
-                            onclick="VueAdmin.toggleActifUtilisateur(${u.pin}, ${u.actif})">${u.actif ? '🚫 Désactiver' : '✅ Réactiver'}</button>
+                            onclick="VueAdmin.toggleActifUtilisateur(${u.pin}, ${u.actif})">${u.actif ? 'Désactiver' : 'Réactiver'}</button>
                   </td>
                 </tr>`).join('')}
             </tbody>
@@ -425,7 +425,7 @@ window.VueAdmin = {
     this.state.journalChargement = true;
     this.render();
     try {
-      const rows = await SheetsAPI.lire('EMPOWER_MDB', '📊_ACTIONS');
+      const rows = await SheetsAPI.lire('EMPOWER_MDB', 'ACTIONS');
       this.state.journal = (rows || [])
         .sort((a, b) => new Date(b.Date_Action || b.Timestamp || 0) - new Date(a.Date_Action || a.Timestamp || 0))
         .slice(0, 200);
@@ -445,8 +445,8 @@ window.VueAdmin = {
     this.render();
     try {
       const [leads, comptes] = await Promise.all([
-        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS'),
-        SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
+        SheetsAPI.lire('EMPOWER_MDB', 'LEADS'),
+        SheetsAPI.lire('EMPOWER_MDB', 'COMPTES'),
       ]);
       this.state.qualite = {
         leadsSansId: (leads || []).filter(l => !l.ID_Prospect),
@@ -482,7 +482,7 @@ window.VueAdmin = {
     this.state.suivi.chargement = true;
     this.render();
     try {
-      const raw = await SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS');
+      const raw = await SheetsAPI.lire('EMPOWER_MDB', 'LEADS');
       this.state.suivi.leads = raw.filter(p =>
         String(p.deleted || '').toUpperCase() !== 'TRUE' &&
         String(p.Source_Import || '') === 'ESI_PIPELINE'
@@ -501,7 +501,7 @@ window.VueAdmin = {
       { id: 'ASSIGNE',     lbl: 'Assigné',     coul: 'var(--c-accent,#0099cc)' },
       { id: 'EN_COURS',    lbl: 'En cours',    coul: 'var(--c-warning,#f59e0b)' },
       { id: 'COMPTE_CREE', lbl: 'Compte créé', coul: '#9333ea' },
-      { id: 'INTEGRE',     lbl: 'Intégré ✅',  coul: 'var(--c-success,#1a9e5c)' },
+      { id: 'INTEGRE',     lbl: 'Intégré ',  coul: 'var(--c-success,#1a9e5c)' },
       { id: 'ARCHIVE',     lbl: 'Archivé',     coul: 'var(--c-text-2)' },
     ];
     const CDS_NOMS = { 1000:'Tadjidine', 4001:'Lyes', 4002:'Mehdi', 4003:'Johanne' }; // BLOC 1 : 4004 Anthony supprimé
@@ -549,7 +549,7 @@ window.VueAdmin = {
           </div>
           <div style="padding:10px;border-radius:8px;background:rgba(26,158,92,.08);text-align:center">
             <div style="font-size:24px;font-weight:800;color:var(--c-success,#1a9e5c)">${integres}</div>
-            <div style="font-size:10px;color:var(--c-text-2);margin-top:2px">Intégrés ✅</div>
+            <div style="font-size:10px;color:var(--c-text-2);margin-top:2px">Intégrés </div>
           </div>
         </div>
 
@@ -588,16 +588,16 @@ window.VueAdmin = {
                   <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;margin-bottom:4px">
                     <span class="v7-statut" style="color:${st.coul};font-size:11px">${st.lbl}</span>
                     ${l.POTENTIEL ? `<span style="font-size:11px;color:var(--c-text-2)">${l.POTENTIEL}</span>` : ''}
-                    <span style="font-size:11px;color:var(--c-text-2)">👤 ${cdsNom}</span>
+                    <span style="font-size:11px;color:var(--c-text-2)">${cdsNom}</span>
                   </div>
                   ${noteRecente ? `<div style="font-size:11px;color:var(--c-text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${noteRecente}</div>` : ''}
                 </div>
                 <div style="text-align:right;flex-shrink:0;min-width:64px">
                   ${dateP ? `<div style="font-size:11px;font-weight:${retard?'700':'400'};color:${retard?'var(--c-danger)':'var(--c-text-2)'}">
-                    ${retard ? '⚠️ ' : '⏰ '}${dateRelative(dateP)}
+                    ${retard ? '' : ''}${dateRelative(dateP)}
                   </div>` : ''}
-                  ${packOk ? `<div style="font-size:10px;color:var(--c-success,#1a9e5c)">Pack ✅</div>`
-                           : packAttend ? `<div style="font-size:10px;color:var(--c-warning,#f59e0b)">Pack ⏳</div>` : ''}
+                  ${packOk ? `<div style="font-size:10px;color:var(--c-success,#1a9e5c)">Pack </div>`
+                           : packAttend ? `<div style="font-size:10px;color:var(--c-warning,#f59e0b)">Pack </div>` : ''}
                 </div>
               </div>
             </div>`;
@@ -630,7 +630,7 @@ window.VueAdmin = {
 
     try {
       // Vérification doublon
-      const existants = await SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS');
+      const existants = await SheetsAPI.lire('EMPOWER_MDB', 'LEADS');
       const nomNorm = normaliserNom(f.nom);
       const doublons = existants.filter(p =>
         normaliserNom(p.Nom_Compte).includes(nomNorm.slice(0, 5)) &&
@@ -687,7 +687,7 @@ window.VueAdmin = {
         created_by:        Session.nom,
       };
 
-      await SheetsAPI.ecrire('EMPOWER_MDB', '📋_PROSPECTS', lead);
+      await SheetsAPI.ecrire('EMPOWER_MDB', 'LEADS', lead);
       // Bloc 4 : si un CDS est assigné, déclencher l'action backend attribuerLead
       // → émet la notif J0 (LEAD_ASSIGNE) au CDS. Sans CDS, le lead reste "à traiter".
       if (f.cdsAssigne) {
@@ -817,7 +817,7 @@ window.VueAdmin = {
 
           <button type="submit" class="btn-primaire" style="margin-top:16px"
                   ${this.state.leadEnvoi ? 'disabled' : ''}>
-            ${this.state.leadEnvoi ? '⏳ Création en cours…' : '✅ Créer et assigner le lead'}
+            ${this.state.leadEnvoi ? 'Création en cours…' : 'Créer et assigner le lead'}
           </button>
         </form>
       </div>`;
@@ -849,7 +849,7 @@ window.VueAdmin = {
       }
       this.state.importResultat = { ok: true, message: data.message };
       Toast.afficher(`${data.upserted} lead(s) importés depuis l'onglet '${data.tab}'`, 'succes', 6000);
-      await SheetsAPI.viderCache('EMPOWER_MDB', '📋_PROSPECTS');
+      await SheetsAPI.viderCache('EMPOWER_MDB', 'LEADS');
       this.state.suivi.leads = [];
       await this._chargerSuivi();
     } catch(e) {
@@ -906,10 +906,10 @@ window.VueAdmin = {
       await this._importerSemaines(wb, file.name);
       await Promise.all([
         SheetsAPI.viderCache('EMPOWER_MDB', 'SELLIN_SEMAINES'),
-        SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES'),
-        SheetsAPI.viderCache('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
-        SheetsAPI.viderCache('EMPOWER_MDB', '📋 COMPTES HISTORIQUES'),
-        SheetsAPI.viderCache('EMPOWER_MDB', '⚙️_PARAMS'),
+        SheetsAPI.viderCache('EMPOWER_MDB', 'COMPTES'),
+        SheetsAPI.viderCache('EMPOWER_MDB', 'OBJECTIFS_PRIMES'),
+        SheetsAPI.viderCache('EMPOWER_MDB', 'COMPTES_HISTORIQUES'),
+        SheetsAPI.viderCache('EMPOWER_MDB', 'PARAMS'),
       ]);
     } catch(e) {
       this.state.syncSellInResultat = { ok: false, message: e.message || String(e) };
@@ -957,7 +957,7 @@ window.VueAdmin = {
     if (!att) return;
     this.state.syncSellInEnCours = true; this.render();
     await this._importerSemaines(att.wb, att.nomFichier, true);
-    await SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES');
+    await SheetsAPI.viderCache('EMPOWER_MDB', 'COMPTES');
     this.state.syncSellInEnCours = false; this.render();
   },
 
@@ -974,7 +974,7 @@ window.VueAdmin = {
       if (!r.ok || !data.ok) throw new Error(data.erreur || `HTTP ${r.status}`);
       const res = this.state.syncSemainesResultat;
       if (res?.nonMatcher) res.nonMatcher = res.nonMatcher.filter(n => n.reseller !== nom);
-      await SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES');
+      await SheetsAPI.viderCache('EMPOWER_MDB', 'COMPTES');
       Toast.afficher(`« ${nom} » rattaché, alias mémorisé`, 'succes');
       this.render();
     } catch (e) { Toast.afficher('' + (e.message || e), 'erreur'); }
@@ -1071,10 +1071,10 @@ window.VueAdmin = {
       // seul 🏢_COMPTES était invalidé ici, laissant le Reporting figé jusqu'à
       // 30 min (TTL cache IndexedDB) après une synchro.
       await Promise.all([
-        SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES'),
-        SheetsAPI.viderCache('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
-        SheetsAPI.viderCache('EMPOWER_MDB', '📋 COMPTES HISTORIQUES'),
-        SheetsAPI.viderCache('EMPOWER_MDB', '⚙️_PARAMS'),
+        SheetsAPI.viderCache('EMPOWER_MDB', 'COMPTES'),
+        SheetsAPI.viderCache('EMPOWER_MDB', 'OBJECTIFS_PRIMES'),
+        SheetsAPI.viderCache('EMPOWER_MDB', 'COMPTES_HISTORIQUES'),
+        SheetsAPI.viderCache('EMPOWER_MDB', 'PARAMS'),
       ]);
     } catch(e) {
       this.state.syncSellInResultat = { ok: false, message: e.message || String(e) };
@@ -1093,7 +1093,7 @@ window.VueAdmin = {
       if (el && el.value !== '') champs[`${q}_Obj_Revise`] = Number(el.value);
     });
     try {
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES', idObjectif, champs);
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', 'OBJECTIFS_PRIMES', idObjectif, champs);
       Toast.afficher('Objectifs révisés enregistrés', 'succes');
       const o = this.state.objectifs.find(x => String(x.PIN_CDS) === String(idObjectif));
       if (o) Object.assign(o, champs);
@@ -1108,7 +1108,7 @@ window.VueAdmin = {
     if (!inp) return;
     const visible = inp.type === 'text';
     inp.type = visible ? 'password' : 'text';
-    if (btn) btn.textContent = visible ? '👁️ Afficher' : '🙈 Masquer';
+    if (btn) btn.textContent = visible ? 'Afficher' : 'Masquer';
   },
 
   async sauverCleGroq() {
@@ -1121,7 +1121,7 @@ window.VueAdmin = {
       return;
     }
     const btn = document.getElementById('btn-groq-save');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Envoi…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Envoi…'; }
     try {
       await GroqAPI.sauverCle(v);
       document.getElementById('admin-groq-key').value = '';
@@ -1130,7 +1130,7 @@ window.VueAdmin = {
       // Message EXACT renvoyé par le backend (pas "failed")
       Toast.afficher('' + (e && e.message ? e.message : 'Erreur inconnue'), 'erreur');
     }
-    finally { if (btn) { btn.disabled = false; btn.textContent = '💾 Enregistrer la clé Groq'; } }
+    finally { if (btn) { btn.disabled = false; btn.textContent = 'Enregistrer la clé Groq'; } }
   },
 
   async sauverCleGemini() {
@@ -1143,7 +1143,7 @@ window.VueAdmin = {
       return;
     }
     const btn = document.getElementById('btn-gemini-save');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Envoi…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Envoi…'; }
     try {
       await GeminiAPI.sauverCle(v);
       document.getElementById('admin-gemini-key').value = '';
@@ -1152,14 +1152,14 @@ window.VueAdmin = {
       // Message EXACT renvoyé par le backend (pas "failed")
       Toast.afficher('' + (e && e.message ? e.message : 'Erreur inconnue'), 'erreur');
     }
-    finally { if (btn) { btn.disabled = false; btn.textContent = '💾 Enregistrer la clé Gemini'; } }
+    finally { if (btn) { btn.disabled = false; btn.textContent = 'Enregistrer la clé Gemini'; } }
   },
 
   // ── Test réel des clés IA (appel léger via proxy Apps Script) ──
   async testerCleGroq() {
     const btn = document.getElementById('btn-groq-test');
     const out = document.getElementById('groq-test-res');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Test…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Test…'; }
     if (out) { out.textContent = ''; out.style.color = 'var(--c-text-2)'; }
     try {
       const t0 = Date.now();
@@ -1167,29 +1167,29 @@ window.VueAdmin = {
         [{ role: 'user', content: 'Réponds exactement: OK' }], false
       );
       const ms = Date.now() - t0;
-      if (out) { out.style.color = 'var(--c-success, #1a9e5c)'; out.textContent = `✅ Groq répond (${ms} ms), « ${String(rep).slice(0, 40)} »`; }
+      if (out) { out.style.color = 'var(--c-success, #1a9e5c)'; out.textContent = `Groq répond (${ms} ms), « ${String(rep).slice(0, 40)} »`; }
       Toast.afficher('Clé Groq fonctionnelle', 'succes');
     } catch(e) {
-      if (out) { out.style.color = 'var(--c-cta, #0400F5)'; out.textContent = '❌ ' + e.message; }
+      if (out) { out.style.color = 'var(--c-cta, #0400F5)'; out.textContent = '' + e.message; }
       Toast.afficher('Groq : ' + e.message, 'erreur');
-    } finally { if (btn) { btn.disabled = false; btn.textContent = '🧪 Tester la clé Groq'; } }
+    } finally { if (btn) { btn.disabled = false; btn.textContent = 'Tester la clé Groq'; } }
   },
 
   async testerCleGemini() {
     const btn = document.getElementById('btn-gemini-test');
     const out = document.getElementById('gemini-test-res');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Test…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Test…'; }
     if (out) { out.textContent = ''; out.style.color = 'var(--c-text-2)'; }
     try {
       const t0 = Date.now();
       const rep = await GeminiAPI._appeler('Réponds exactement: OK', '');
       const ms = Date.now() - t0;
-      if (out) { out.style.color = 'var(--c-success, #1a9e5c)'; out.textContent = `✅ Gemini répond (${ms} ms), « ${String(rep).trim().slice(0, 40)} »`; }
+      if (out) { out.style.color = 'var(--c-success, #1a9e5c)'; out.textContent = `Gemini répond (${ms} ms), « ${String(rep).trim().slice(0, 40)} »`; }
       Toast.afficher('Clé Gemini fonctionnelle', 'succes');
     } catch(e) {
-      if (out) { out.style.color = 'var(--c-cta, #0400F5)'; out.textContent = '❌ ' + e.message; }
+      if (out) { out.style.color = 'var(--c-cta, #0400F5)'; out.textContent = '' + e.message; }
       Toast.afficher('Gemini : ' + e.message, 'erreur');
-    } finally { if (btn) { btn.disabled = false; btn.textContent = '🧪 Tester la clé Gemini'; } }
+    } finally { if (btn) { btn.disabled = false; btn.textContent = 'Tester la clé Gemini'; } }
   },
 
   async viderCache() {
@@ -1212,7 +1212,7 @@ window.VueAdmin = {
       ? (this.state.objectifs.find(o => Number(o.PIN_CDS) === Number(pinCDS))?.Nom_CDS || `PIN ${pinCDS}`)
       : Session.nom;
     const btn = document.getElementById(`btn-purge-${cible}`);
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Purge…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Purge…'; }
     try {
       const r = await fetch(SheetsAPI.BASE_URL, {
         method: 'POST', redirect: 'follow',
@@ -1222,10 +1222,10 @@ window.VueAdmin = {
       const data = await r.json();
       if (!data.ok) throw new Error(data.erreur);
       Toast.afficher(`${data.lignesSupprimees} ligne(s) supprimée(s) pour ${nomCDS}`, 'succes');
-      await SheetsAPI.viderCache('EMPOWER_MDB', '📞_PHONING');
-      await SheetsAPI.viderCache('EMPOWER_MDB', '🗺️_VISITES');
+      await SheetsAPI.viderCache('EMPOWER_MDB', 'PHONING');
+      await SheetsAPI.viderCache('EMPOWER_MDB', 'VISITES');
     } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
-    finally { if (btn) { btn.disabled = false; btn.textContent = '🗑️ Purger'; } }
+    finally { if (btn) { btn.disabled = false; btn.textContent = 'Purger'; } }
   },
 
   // ── Exports CSV thématiques ──
@@ -1254,7 +1254,7 @@ window.VueAdmin = {
 
   async _logExport(type, nbLignes) {
     try {
-      await SheetsAPI.ecrire('EMPOWER_MDB', '📊_ACTIONS', {
+      await SheetsAPI.ecrire('EMPOWER_MDB', 'ACTIONS', {
         ID_Action:   genId('EXP'),
         Date_Action: new Date().toISOString(),
         Type_Action: 'EXPORT_CSV',
@@ -1274,25 +1274,25 @@ window.VueAdmin = {
   // car la donnée n'a pas de notion de période (roster, config).
   EXPORT_GROUPES: [
     {
-      titre: '📋 Prospects & Pipeline',
+      titre: 'Prospects & Pipeline',
       exports: [
-        { id: 'prospects', label: 'Pipeline complet (tous statuts)',    fichier: 'EMPOWER_MDB', onglet: '📋_PROSPECTS',          desc: 'Tous les prospects avec statut EMPOWER, potentiel, assignation CDS', dateChamp: 'Date_Import' },
-        { id: 'comptes',   label: 'Comptes actifs',                      fichier: 'EMPOWER_MDB', onglet: '🏢_COMPTES',             desc: 'Base clients avec CA FY25/FY26/Q1FY27, statuts, CDS assignés, extrait complet (roster, non filtré par période)' },
+        { id: 'prospects', label: 'Pipeline complet (tous statuts)',    fichier: 'EMPOWER_MDB', onglet: 'LEADS',          desc: 'Tous les prospects avec statut EMPOWER, potentiel, assignation CDS', dateChamp: 'Date_Import' },
+        { id: 'comptes',   label: 'Comptes actifs',                      fichier: 'EMPOWER_MDB', onglet: 'COMPTES',             desc: 'Base clients avec CA FY25/FY26/Q1FY27, statuts, CDS assignés, extrait complet (roster, non filtré par période)' },
       ],
     },
     {
-      titre: '📞 Activité terrain',
+      titre: 'Activité terrain',
       exports: [
-        { id: 'visites',   label: 'Visites terrain',                     fichier: 'EMPOWER_MDB', onglet: '🗺️_VISITES',            desc: 'Toutes les visites planifiées et réalisées avec CR, questionnaire, GPS', dateChamp: 'Date' },
-        { id: 'phoning',   label: 'Activité phoning',                    fichier: 'EMPOWER_MDB', onglet: '📞_PHONING',             desc: 'Historique des appels : statut, intérêt EMPOWER, freins, rappels', dateChamp: 'Date' },
-        { id: 'actions',   label: 'Journal des actions (📊_ACTIONS)',    fichier: 'EMPOWER_MDB', onglet: '📊_ACTIONS',             desc: 'Toutes les actions logguées : alertes, exports, avancement pipeline', dateChamp: 'Date_Action' },
+        { id: 'visites',   label: 'Visites terrain',                     fichier: 'EMPOWER_MDB', onglet: 'VISITES',            desc: 'Toutes les visites planifiées et réalisées avec CR, questionnaire, GPS', dateChamp: 'Date' },
+        { id: 'phoning',   label: 'Activité phoning',                    fichier: 'EMPOWER_MDB', onglet: 'PHONING',             desc: 'Historique des appels : statut, intérêt EMPOWER, freins, rappels', dateChamp: 'Date' },
+        { id: 'actions',   label: 'Journal des actions (_ACTIONS)',    fichier: 'EMPOWER_MDB', onglet: 'ACTIONS',             desc: 'Toutes les actions logguées : alertes, exports, avancement pipeline', dateChamp: 'Date_Action' },
       ],
     },
     {
-      titre: '🏆 Financier & Objectifs',
+      titre: 'Financier & Objectifs',
       exports: [
-        { id: 'objectifs', label: 'Objectifs & Primes FY27',             fichier: 'EMPOWER_MDB', onglet: '🎯_OBJECTIFS_PRIMES',   desc: 'Objectifs Q1-Q4 révisés, CA réalisé, primes par CDS, extrait complet (non filtré par période)' },
-        { id: 'sell_in',   label: 'Sell-In historique (FY25-FY26-FY27)', fichier: 'EMPOWER_MDB', onglet: '📉_SELL_IN_HISTORIQUE', desc: 'CA trimestriel historique par compte, canal, secteur, extrait complet (non filtré par période)' },
+        { id: 'objectifs', label: 'Objectifs & Primes FY27',             fichier: 'EMPOWER_MDB', onglet: 'OBJECTIFS_PRIMES',   desc: 'Objectifs Q1-Q4 révisés, CA réalisé, primes par CDS, extrait complet (non filtré par période)' },
+        { id: 'sell_in',   label: 'Sell-In historique (FY25-FY26-FY27)', fichier: 'EMPOWER_MDB', onglet: 'SELL_IN_HISTORIQUE', desc: 'CA trimestriel historique par compte, canal, secteur, extrait complet (non filtré par période)' },
       ],
     },
   ],
@@ -1306,7 +1306,7 @@ window.VueAdmin = {
     const exp = this.EXPORTS.find(e => e.id === id);
     if (!exp) return;
     const btn = document.getElementById(`btn-export-${id}`);
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Chargement…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Chargement…'; }
     try {
       let data = await SheetsAPI.lire(exp.fichier, exp.onglet);
       // Audit UX 2026-07 — le filtre "Pickup Date" n'était appliqué qu'à l'export
@@ -1329,7 +1329,7 @@ window.VueAdmin = {
     } catch(e) {
       Toast.afficher('Export échoué : ' + e.message, 'erreur');
     } finally {
-      if (btn) { btn.disabled = false; btn.textContent = `📥 Exporter`; }
+      if (btn) { btn.disabled = false; btn.textContent = `Exporter`; }
     }
   },
 
@@ -1404,9 +1404,9 @@ window.VueAdmin = {
   // BLOC 10 — Export Tracker EMPOWER avec colonnes métier + filtre Pickup Date
   async exporterTracker() {
     const btn = document.getElementById('btn-export-tracker');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Chargement…'; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Chargement…'; }
     try {
-      const leads = await SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS');
+      const leads = await SheetsAPI.lire('EMPOWER_MDB', 'LEADS');
       const de  = this.state.filtrePickupDe ? new Date(this.state.filtrePickupDe).getTime() : 0;
       const au  = this.state.filtrePickupA  ? new Date(this.state.filtrePickupA + 'T23:59:59').getTime() : Infinity;
       const rows = leads
@@ -1444,7 +1444,7 @@ window.VueAdmin = {
     } catch(e) {
       Toast.afficher('Export Tracker : ' + e.message, 'erreur');
     } finally {
-      if (btn) { btn.disabled = false; btn.textContent = '📥 CSV'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'CSV'; }
     }
   },
 
@@ -1516,7 +1516,7 @@ window.VueAdmin = {
         </header>
         <!-- Onglets -->
         <div style="display:flex;border-bottom:2px solid var(--c-border);background:var(--c-surface)">
-          ${[['exports','📥 Exports'],['leads','➕ Leads'],['suivi','📊 Suivi']].map(([t, l]) => `
+          ${[['exports','Exports'],['leads','Leads'],['suivi','Suivi']].map(([t, l]) => `
             <button onclick="VueAdmin.setAlexTab('${t}')"
                     style="flex:1;padding:12px 6px;border:none;border-bottom:${tab===t?'3px solid var(--c-primary)':'3px solid transparent'};
                            background:transparent;font-weight:${tab===t?'700':'400'};font-size:13px;
@@ -1529,7 +1529,7 @@ window.VueAdmin = {
             <div class="bloc-fiche">
               <div class="bloc-titre">Exports CSV, Reporting thématique</div>
               <p style="font-size:12px;color:var(--c-text-2);margin-bottom:14px">
-                Données en temps réel. Chaque export est tracé dans 📊_ACTIONS.
+                Données en temps réel. Chaque export est tracé dans _ACTIONS.
               </p>
               ${this._renderExports()}
             </div>` : this._renderFormLead()}
@@ -1541,14 +1541,14 @@ window.VueAdmin = {
 
     const adminTab = this.state.adminTab || 'objectifs';
     const ADMIN_TABS = [
-      ['objectifs',    '🎯 Objectifs'],
-      ['utilisateurs', '👥 Utilisateurs'],
-      ['integrations', '🔑 Intégrations'],
-      ['sync',         '🔄 Synchronisation'],
-      ['exports',      '📥 Exports'],
-      ['rgpd',         '🔒 RGPD'],
-      ['journal',      '📊 Journal'],
-      ['maintenance',  '🧹 Maintenance'],
+      ['objectifs',    'Objectifs'],
+      ['utilisateurs', 'Utilisateurs'],
+      ['integrations', 'Intégrations'],
+      ['sync',         'Synchronisation'],
+      ['exports',      'Exports'],
+      ['rgpd',         'RGPD'],
+      ['journal',      'Journal'],
+      ['maintenance',  'Maintenance'],
     ];
 
     // Bloc 8 refonte desktop : le libellé de l'onglet interne actif est exposé
@@ -1637,7 +1637,7 @@ window.VueAdmin = {
 
         <!-- PARAMÈTRES SYSTÈME -->
         <div class="bloc-fiche">
-          <div class="bloc-titre">Paramètres système (⚙️_PARAMS, lecture)</div>
+          <div class="bloc-titre">Paramètres système (_PARAMS, lecture)</div>
           <div class="grille-identite">
             ${this.state.params.map(p => `
               <div class="id-ligne"><span>${p.Parametre}</span><strong>${p.Valeur}</strong></div>`).join('')}
@@ -1651,7 +1651,7 @@ window.VueAdmin = {
           <div class="bloc-titre">Exports CSV, Reporting thématique</div>
           <p style="font-size:12px;color:var(--c-text-2);margin-bottom:14px">
             7 exports organisés par thème. Données en temps réel depuis Google Sheets.
-            Chaque export est tracé dans 📊_ACTIONS avec l'identité de l'exporteur.
+            Chaque export est tracé dans _ACTIONS avec l'identité de l'exporteur.
           </p>
           ${this._renderExports()}
         </div>` : ''}
@@ -1662,7 +1662,7 @@ window.VueAdmin = {
           <div class="bloc-titre">Synchroniser EMPOWER TRACKER</div>
           <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">
             Importe les revendeurs de l'onglet <strong>1 - Saisie</strong> du fichier EMPOWER TRACKER (Google Drive)
-            dans la base <code>📋_PROSPECTS</code> avec <code>Source_Import=ESI_PIPELINE</code>.<br>
+            dans la base <code>_PROSPECTS</code> avec <code>Source_Import=ESI_PIPELINE</code>.<br>
             <strong>Non destructif</strong>, les doublons existants sont ignorés.
             Statuts mappés automatiquement : Actif→INTEGRE, Compte créé→COMPTE_CREE, En cours→EN_COURS, etc.
           </p>
@@ -1671,14 +1671,14 @@ window.VueAdmin = {
               background:${this.state.importResultat.ok ? 'rgba(26,158,92,.1)' : 'rgba(4,0,245,.1)'};
               border:1px solid ${this.state.importResultat.ok ? 'var(--c-success,#1a9e5c)' : 'var(--c-cta,#0400F5)'}">
               <span style="font-size:13px;font-weight:600">
-                ${this.state.importResultat.ok ? '✅' : '❌'} ${this.state.importResultat.message}
+                ${this.state.importResultat.ok ? '' : ''} ${this.state.importResultat.message}
               </span>
             </div>` : ''}
           <button class="btn-secondaire"
                   style="background:var(--c-primary);color:#fff;border-color:var(--c-primary);padding:10px 16px"
                   ${this.state.importEnCours ? 'disabled' : ''}
                   onclick="VueAdmin.importerDepuisTracker()">
-            ${this.state.importEnCours ? '⏳ Import en cours…' : '🔄 Importer depuis EMPOWER TRACKER Drive'}
+            ${this.state.importEnCours ? 'Import en cours…' : 'Importer depuis EMPOWER TRACKER Drive'}
           </button>
           <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">
             Source : Google Sheet Drive "EMPOWER TRACKER" · Onglet "1 - Saisie" (81 revendeurs actifs).
@@ -1698,7 +1698,7 @@ window.VueAdmin = {
             if (!r.ok) return `
               <div style="padding:10px 14px;border-radius:8px;margin-bottom:12px;font-size:13px;
                 background:rgba(4,0,245,.1);border:1px solid var(--c-danger,#ef4444)">
-                ❌ ${r.message}
+                ${r.message}
               </div>`;
             return `
               <div style="padding:10px 14px;border-radius:8px;margin-bottom:12px;font-size:13px;
@@ -1713,7 +1713,7 @@ window.VueAdmin = {
               ${this.state.syncSellInNonMatcher.length > 0 ? `
               <div style="margin-bottom:12px">
                 <div style="font-size:12px;font-weight:700;color:var(--c-warning);margin-bottom:6px">
-                  ⚠️ Revendeurs Sell-In à valider manuellement (${this.state.syncSellInNonMatcher.length})
+                  Revendeurs Sell-In à valider manuellement (${this.state.syncSellInNonMatcher.length})
                 </div>
                 <div style="max-height:180px;overflow-y:auto;background:var(--c-bg);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:8px">
                   ${this.state.syncSellInNonMatcher.map(n => `
@@ -1742,7 +1742,7 @@ window.VueAdmin = {
                   style="background:var(--c-success,#1a9e5c);color:#fff;border-color:var(--c-success,#1a9e5c);padding:10px 16px;width:100%;margin-bottom:8px"
                   ${this.state.syncSellInEnCours ? 'disabled' : ''}
                   onclick="document.getElementById('sellin-file-input').click()">
-            ${this.state.syncSellInEnCours ? '⏳ Import en cours…' : '📂 Importer un fichier Sell-In (.xlsx)'}
+            ${this.state.syncSellInEnCours ? 'Import en cours…' : 'Importer un fichier Sell-In (.xlsx)'}
           </button>
           <p style="font-size:11px;color:var(--c-text-2);margin-bottom:12px">
             Choisis le fichier "SELL IN Qx FYxx DASHBOARD.xlsx" le plus récent, l'onglet <code>DATA FY25-FY26-FY27</code> est lu automatiquement, tous les quarters présents sont pris en compte. Peut être refait chaque semaine avec le fichier mis à jour (aucun doublon : les lignes existantes sont remplacées).
@@ -1751,7 +1751,7 @@ window.VueAdmin = {
                   style="padding:8px 16px;width:100%"
                   ${this.state.syncSellInEnCours ? 'disabled' : ''}
                   onclick="VueAdmin.syncSellIn()">
-            ${this.state.syncSellInEnCours ? '⏳ Synchronisation en cours…' : '🔄 Repli : synchroniser depuis Google Drive'}
+            ${this.state.syncSellInEnCours ? 'Synchronisation en cours…' : 'Repli : synchroniser depuis Google Drive'}
           </button>
           <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">
             Repli : Google Sheet fixe (ID en dur côté serveur, pas de secret <code>SELLIN_SHEET_ID</code> à jour) · Edge Function <code>sync-sellin</code>
@@ -1763,7 +1763,7 @@ window.VueAdmin = {
         <div class="bloc-fiche">
           <div class="bloc-titre">RGPD, Purge des données personnelles</div>
           <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">
-            Supprime définitivement les appels (📞_PHONING) et visites (🗺️_VISITES) d'un CDS.
+            Supprime définitivement les appels (_PHONING) et visites (_VISITES) d'un CDS.
             Les comptes et prospects ne sont pas affectés.<br>
             <strong>Audio : jamais stocké côté serveur</strong>, seule la transcription texte est conservée.
           </p>
@@ -1771,12 +1771,12 @@ window.VueAdmin = {
             <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--c-border)">
               <div>
                 <div style="font-size:14px;font-weight:600">${o.Nom_CDS}</div>
-                <div style="font-size:11px;color:var(--c-text-2)">appels + 🗺️ visites</div>
+                <div style="font-size:11px;color:var(--c-text-2)">appels + visites</div>
               </div>
               <button id="btn-purge-${o.PIN_CDS}" class="btn-secondaire"
                       style="padding:8px 14px;width:auto;color:var(--c-danger);border-color:var(--c-danger)"
                       onclick="VueAdmin.confirmerPurgeCDS('${o.PIN_CDS}', '${(o.Nom_CDS || '').replace(/'/g, "\\'")}')">
-                🗑️ Purger
+                Purger
               </button>
             </div>`).join('')}
         </div>` : ''}

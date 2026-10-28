@@ -19,7 +19,7 @@ global.SheetsAPI = {
   lire: async () => JSON.parse(JSON.stringify(fiches)),
   ecrire: async (_f, _o, row) => { fiches.push({ ...row }); return { ok: true }; },
   mettreAJour: async (_f, onglet, id, champs) => {
-    if (onglet === '🗺️_VISITES') { visitesMaj.push({ id, champs }); return { ok: true }; }
+    if (onglet === 'VISITES') { visitesMaj.push({ id, champs }); return { ok: true }; }
     const f = fiches.find(x => x.ID_Fiche === id); if (!f) throw new Error('fiche introuvable ' + id);
     Object.assign(f, champs); return { ok: true };
   },

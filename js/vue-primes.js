@@ -49,10 +49,10 @@ window.VuePrimes = {
     this.render();
     try {
       const [objectifs, nsb, prospects, params, cdsApi] = await Promise.all([
-        SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES'),
-        SheetsAPI.lire('EMPOWER_MDB', '🛒_NSB_COMMANDES'),
-        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS'),
-        SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
+        SheetsAPI.lire('EMPOWER_MDB', 'OBJECTIFS_PRIMES'),
+        SheetsAPI.lire('EMPOWER_MDB', 'NSB_COMMANDES'),
+        SheetsAPI.lire('EMPOWER_MDB', 'LEADS'),
+        SheetsAPI.lire('EMPOWER_MDB', 'PARAMS'),
         SheetsAPI.lireCDS(),
       ]);
       const paramMap = Object.fromEntries((params || []).map(p => [p.Parametre, p.Valeur]));
@@ -250,11 +250,11 @@ window.VuePrimes = {
           Date_Validation: '',
           Notes: v('nsb-note'),
         };
-        promises.push(SheetsAPI.ecrire('EMPOWER_MDB', '🛒_NSB_COMMANDES', ligne));
+        promises.push(SheetsAPI.ecrire('EMPOWER_MDB', 'NSB_COMMANDES', ligne));
       }
       await Promise.all(promises);
       // Recharger depuis DB pour avoir les _uuid Supabase réels
-      this.state.nsb = await SheetsAPI.lire('EMPOWER_MDB', '🛒_NSB_COMMANDES');
+      this.state.nsb = await SheetsAPI.lire('EMPOWER_MDB', 'NSB_COMMANDES');
       this.state.modalNSB = false;
       Toast.afficher(`${qte} commande(s) NSB déclarée(s), en attente de validation`, 'succes');
     } catch(err) { Toast.afficher('Erreur : ' + (err.message || err), 'erreur'); }
@@ -265,7 +265,7 @@ window.VuePrimes = {
   // ── Validation NSB ou Onboarding (manager) ──
   async validerDeclaration(id) {
     try {
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '🛒_NSB_COMMANDES', id, {
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', 'NSB_COMMANDES', id, {
         Valid_Manager: 'OUI',
         Statut: 'VALIDE',
         Date_Validation: dateISOLocale(),
@@ -585,7 +585,7 @@ window.VuePrimes = {
           Date_Validation: '',
           Notes: v('ob-note'),
         };
-        promises.push(SheetsAPI.ecrire('EMPOWER_MDB', '🛒_NSB_COMMANDES', ligne)
+        promises.push(SheetsAPI.ecrire('EMPOWER_MDB', 'NSB_COMMANDES', ligne)
           .then(() => this.state.nsb.push(ligne)));
       }
       await Promise.all(promises);

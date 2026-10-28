@@ -126,7 +126,7 @@ window.VueAContacter = {
         ${chip('TOUS', `Tous (${tout.length})`)}${chip('P1', `P1 · Onboardés sans commande (${n('P1')})`)}${chip('P2', `P2 · Ont commandé, non EMPOWER (${n('P2')})`)}${selCds}
       </div>
       <p style="font-size:12px;color:var(--c-text-2);margin:0 0 10px">Un compte sort de cette liste dès qu'un appel, une visite ou un mailing est enregistré (30 derniers jours), ou si vous le reportez.</p>
-      ${l.length ? l.map(r => this._carte(r)).join('') : `<div style="padding:32px;text-align:center;color:var(--c-text-2)">Rien à contacter pour l'instant 🎉</div>`}`;
+      ${l.length ? l.map(r => this._carte(r)).join('') : `<div style="padding:32px;text-align:center;color:var(--c-text-2)">Rien à contacter pour l'instant </div>`}`;
   },
 
   render() {

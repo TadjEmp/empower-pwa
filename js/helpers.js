@@ -66,9 +66,9 @@ function getStatutCompte(c) {
 function badgeStatutCompte(c) {
   const s = getStatutCompte(c);
   const map = {
-    actif:       { lbl: '🟢 Actif',       cls: 'badge-actif' },
-    a_reactiver: { lbl: '🟡 À réactiver', cls: 'badge-reactiver' },
-    silencieux:  { lbl: '🔴 Silencieux',  cls: 'badge-silencieux' },
+    actif:       { lbl: 'Actif',       cls: 'badge-actif' },
+    a_reactiver: { lbl: 'À réactiver', cls: 'badge-reactiver' },
+    silencieux:  { lbl: 'Silencieux',  cls: 'badge-silencieux' },
   };
   const { lbl, cls } = map[s];
   return `<span class="badge-statut-compte ${cls}">${lbl}</span>`;

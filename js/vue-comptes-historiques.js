@@ -46,9 +46,9 @@ window.VueComptesHistoriques = {
     this.render();
     try {
       const [rawV17, rawMDB, params] = await Promise.all([
-        SheetsAPI.lire('V17', '📋 COMPTES HISTORIQUES'),
-        SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
-        SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS').catch(() => []),
+        SheetsAPI.lire('V17', 'COMPTES_HISTORIQUES'),
+        SheetsAPI.lire('EMPOWER_MDB', 'COMPTES'),
+        SheetsAPI.lire('EMPOWER_MDB', 'PARAMS').catch(() => []),
       ]);
       const mapMDB = new Map(rawMDB.map(c => [normaliserNom(c.Nom_Compte), c]));
       // BLOC 07 §8 — quarter FY27 actif, même pattern que vue-dashboard-manager.js
@@ -169,7 +169,7 @@ window.VueComptesHistoriques = {
 
       <!-- Filtres -->
       <div class="barre-filtres">
-        <input id="ch-recherche" type="search" placeholder="🔍 Rechercher un compte…" value="${this.state.recherche.replace(/"/g,'&quot;')}"
+        <input id="ch-recherche" type="search" placeholder="Rechercher un compte…" value="${this.state.recherche.replace(/"/g,'&quot;')}"
                style="border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:8px 12px;font-size:14px;width:100%"
                oninput="VueComptesHistoriques.setRecherche(this.value)"/>
         <div class="filtres-flags">
@@ -225,7 +225,7 @@ window.VueComptesHistoriques = {
             ${c.statut && c.statut !== 'n.c.' ? `
             <div class="cc-infos" style="margin-top:4px">
               <span class="statut-pill statut-${slugify(c.statut).replace(/-/g,'_')}">${c.statut}</span>
-              ${c.dateNextAction ? `<span class="${estDepassee(c.dateNextAction)?'prochaine-action alerte':''}">⏰ ${dateRelative(c.dateNextAction)}</span>` : ''}
+              ${c.dateNextAction ? `<span class="${estDepassee(c.dateNextAction)?'prochaine-action alerte':''}">${dateRelative(c.dateNextAction)}</span>` : ''}
             </div>` : ''}
             <div class="cc-actions">
               <button class="btn-visiter" onclick="Router.aller('#/visites?compte=${encodeURIComponent(c.id||c.nom)}')">Planifier visite</button>

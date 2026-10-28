@@ -22,10 +22,10 @@ const QuestionnaireBranching = (function () {
   // Dérive le type d'interaction pour une VISITE à partir des objectifs cochés
   // — remplace le calcul local dupliqué dans vue-questionnaire.js.
   function deriverTypeVisite(objectifsVisite) {
-    const o = objectifsVisite || [];
-    if (o.includes('🚀 Intégration EMPOWER'))        return TYPES.ONBOARDING_EMPOWER;
-    if (o.includes('❄️ Prospection à froid'))         return TYPES.PROSPECTION_FROIDE;
-    if (o.includes('🔄 Renouvellement partenariat'))  return TYPES.SUIVI_ACTIF;
+    const o = Array.isArray(objectifsVisite) ? objectifsVisite : (objectifsVisite ? [String(objectifsVisite)] : []);
+    if (o.some(x => String(x).includes('Intégration EMPOWER')))        return TYPES.ONBOARDING_EMPOWER;
+    if (o.some(x => String(x).includes('Prospection à froid')))         return TYPES.PROSPECTION_FROIDE;
+    if (o.some(x => String(x).includes('Renouvellement partenariat')))  return TYPES.SUIVI_ACTIF;
     return TYPES.SUIVI_ACTIF;
   }
 

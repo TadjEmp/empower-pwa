@@ -26,18 +26,18 @@ window.VueDashboardManager = {
         // Sell-In (sync-sellin) depuis le poste ADMIN — sans nocache, le
         // Reporting (ADMIN Vue équipe + Channel) pouvait rester figé jusqu'à
         // 30 min après une synchro faite ailleurs (07/2026).
-        SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES', { nocache: true }),
+        SheetsAPI.lire('EMPOWER_MDB', 'OBJECTIFS_PRIMES', { nocache: true }),
         // Bloc B (07/2026) — nocache : cards KPI Accueil (visites/appels/statuts
         // comptes) restaient jusqu'à 30 min périmées après une activité terrain
         // (même défaut que celui déjà corrigé pour objectifs_primes ci-dessus).
-        SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES', { nocache: true }),
-        SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING', { nocache: true }),
+        SheetsAPI.lire('EMPOWER_MDB', 'VISITES', { nocache: true }),
+        SheetsAPI.lire('EMPOWER_MDB', 'PHONING', { nocache: true }),
         // nocache : même correctif que initChannel() ci-dessous et le Tracker
         // (vue-pipeline.js) — sans ça, la Vue équipe ADMIN affichait des
         // compteurs de leads périmés jusqu'à 30 min après une action terrain.
-        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS', { nocache: true }),
-        SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES', { nocache: true }),
-        SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
+        SheetsAPI.lire('EMPOWER_MDB', 'LEADS', { nocache: true }),
+        SheetsAPI.lire('EMPOWER_MDB', 'COMPTES', { nocache: true }),
+        SheetsAPI.lire('EMPOWER_MDB', 'PARAMS'),
       ]);
       this.state.d = this._calculer({ objectifs, visites, appels, prospects, comptes, params });
       this.state.chargement = false;
@@ -59,19 +59,19 @@ window.VueDashboardManager = {
       const [prospects, objectifs, params, visites, appels, comptes] = await Promise.all([
         // nocache : même correctif que le Tracker (vue-pipeline.js) — la home
         // Channel affichait des compteurs de leads périmés jusqu'à 30 min.
-        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS', { nocache: true }),
+        SheetsAPI.lire('EMPOWER_MDB', 'LEADS', { nocache: true }),
         // nocache : objectifs_primes.Qx_CA_Realise est mis à jour par la synchro
         // Sell-In (sync-sellin) depuis le poste ADMIN — sans nocache, le
         // Reporting (ADMIN Vue équipe + Channel) pouvait rester figé jusqu'à
         // 30 min après une synchro faite ailleurs (07/2026).
-        SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES', { nocache: true }),
-        SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
+        SheetsAPI.lire('EMPOWER_MDB', 'OBJECTIFS_PRIMES', { nocache: true }),
+        SheetsAPI.lire('EMPOWER_MDB', 'PARAMS'),
         // Bloc 1 §2 — camemberts visites/appels, mêmes règles de visibilité que
         // l'Accueil Admin (Session.voitTout() couvre déjà CHANNEL_MANAGER).
         // Bloc B (07/2026) — nocache, même correctif que ci-dessus.
-        SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES', { nocache: true }),
-        SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING', { nocache: true }),
-        SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES', { nocache: true }),
+        SheetsAPI.lire('EMPOWER_MDB', 'VISITES', { nocache: true }),
+        SheetsAPI.lire('EMPOWER_MDB', 'PHONING', { nocache: true }),
+        SheetsAPI.lire('EMPOWER_MDB', 'COMPTES', { nocache: true }),
       ]);
       // BUG-07 : peuple le registre CDS avant le calcul des taux par CDS
       if (typeof initCDSRegistry === 'function') initCDSRegistry(objectifs);
@@ -101,7 +101,7 @@ window.VueDashboardManager = {
       if (document.visibilityState !== 'visible') return;
       if (!this.state || !this.state.dc) return;   // vue Channel plus montée
       if (this._contexteReporting()) return;        // widget affiché uniquement sur l'Accueil
-      SheetsAPI.viderCache('EMPOWER_MDB', '📋_PROSPECTS').then(() => this.initChannel());
+      SheetsAPI.viderCache('EMPOWER_MDB', 'LEADS').then(() => this.initChannel());
     }, 90000);
   },
 
@@ -480,31 +480,31 @@ window.VueDashboardManager = {
     const note    = document.getElementById('saisie-ca-note')?.value || '';
     const fb      = document.getElementById('saisie-ca-feedback');
     if (!pin || !quarter || !valStr) {
-      if (fb) { fb.style.color = 'var(--c-danger)'; fb.textContent = '⚠️ Remplissez CDS, quarter et CA.'; }
+      if (fb) { fb.style.color = 'var(--c-danger)'; fb.textContent = 'Remplissez CDS, quarter et CA.'; }
       return;
     }
     const val = parseAmount(valStr);
     if (val > 500000) {
-      if (fb) { fb.style.color = 'var(--c-danger)'; fb.textContent = '⚠️ Montant aberrant (> 500 000 €).'; }
+      if (fb) { fb.style.color = 'var(--c-danger)'; fb.textContent = 'Montant aberrant (> 500 000 €).'; }
       return;
     }
-    if (fb) { fb.style.color = 'var(--c-text-2)'; fb.textContent = '⏳ Enregistrement…'; }
+    if (fb) { fb.style.color = 'var(--c-text-2)'; fb.textContent = 'Enregistrement…'; }
     try {
-      const objectifs = await SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES');
+      const objectifs = await SheetsAPI.lire('EMPOWER_MDB', 'OBJECTIFS_PRIMES');
       const ligne = objectifs.find(o => Number(o.PIN_CDS) === pin);
       if (!ligne) throw new Error('CDS introuvable dans objectifs');
       const champ = `${quarter}_CA_Realise`;
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES', String(ligne.PIN_CDS), {
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', 'OBJECTIFS_PRIMES', String(ligne.PIN_CDS), {
         [champ]: val,
         ...(note ? { [`${quarter}_Note_Saisie`]: `[Manuel] ${note}` } : {}),
       });
-      await SheetsAPI.viderCache('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES');
-      if (fb) { fb.style.color = 'var(--c-success)'; fb.textContent = `✅ CA ${quarter} de ${resolveCDS(pin)} mis à jour : ${formatEuro(val)}`; }
+      await SheetsAPI.viderCache('EMPOWER_MDB', 'OBJECTIFS_PRIMES');
+      if (fb) { fb.style.color = 'var(--c-success)'; fb.textContent = `CA ${quarter} de ${resolveCDS(pin)} mis à jour : ${formatEuro(val)}`; }
       Toast.afficher(`CA ${quarter}, ${resolveCDS(pin)} : ${formatEuro(val)}`, 'succes');
       // Rafraîchit le dashboard après 1.5s
       setTimeout(() => this.init(), 1500);
     } catch(e) {
-      if (fb) { fb.style.color = 'var(--c-danger)'; fb.textContent = '❌ ' + e.message; }
+      if (fb) { fb.style.color = 'var(--c-danger)'; fb.textContent = '' + e.message; }
     }
   },
 
@@ -512,9 +512,9 @@ window.VueDashboardManager = {
     const btn = document.getElementById('btn-gem07');
     const zone = document.getElementById('gem07-zone');
     if (!btn || !zone) return;
-    btn.disabled = true; btn.textContent = '⏳ Gemini génère…';
+    btn.disabled = true; btn.textContent = 'Gemini génère…';
     zone.style.display = 'block';
-    zone.textContent = '⏳ Analyse de la semaine en cours…';
+    zone.textContent = 'Analyse de la semaine en cours…';
     try {
       const texte = await GeminiAPI.gem07_syntheseHebdo(this.state.d);
       zone.style.color = 'var(--c-text)';
@@ -522,9 +522,9 @@ window.VueDashboardManager = {
       Toast.afficher('Synthèse hebdo générée', 'succes');
     } catch(e) {
       zone.style.color = 'var(--c-danger)';
-      zone.textContent = '❌ ' + e.message;
+      zone.textContent = '' + e.message;
     } finally {
-      btn.disabled = false; btn.textContent = '✨ Synthèse hebdo IA';
+      btn.disabled = false; btn.textContent = 'Synthèse hebdo IA';
     }
   },
 
@@ -651,7 +651,7 @@ window.VueDashboardManager = {
         <h1>${modeReporting ? 'Reporting' : 'Onboarding EMPOWER'}</h1>
         <div style="display:flex;gap:6px">
           <button class="btn-retour" title="Actualiser"
-                  onclick="SheetsAPI.viderCache('EMPOWER_MDB','📋_PROSPECTS').then(()=>VueDashboardManager.initChannel())"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></button>
+                  onclick="SheetsAPI.viderCache('EMPOWER_MDB','LEADS').then(()=>VueDashboardManager.initChannel())"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></button>
           <button class="btn-retour" title="Export XLSX" onclick="VueDashboardManager.ouvrirExportDir()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
           <button class="btn-deco" onclick="Session.deconnecter();Router.aller('#/login')" title="Déconnexion"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></button>
         </div>
@@ -701,7 +701,7 @@ window.VueDashboardManager = {
                 <div class="alerte-ligne" onclick="Router.aller('#/empower-tracker')" style="cursor:pointer">
                   <strong>${l.nom}</strong>, ${l.cds} · <span style="color:var(--c-danger);font-weight:700">${l.jours} j sans WP</span>
                 </div>`).join('')}
-            </div>` : '<div class="pas-de-donnees">Aucun lead en alerte Welcome Pack 🎉</div>'}
+            </div>` : '<div class="pas-de-donnees">Aucun lead en alerte Welcome Pack </div>'}
           </div>
 
           <div class="bloc-fiche">
@@ -716,7 +716,7 @@ window.VueDashboardManager = {
                   · <span style="color:var(--c-danger);font-weight:700">${l.jours} j</span>
                   · <span style="font-size:11px;color:var(--c-text-2)">${l.statut}</span>
                 </div>`).join('')}
-            </div>` : '<div class="pas-de-donnees">Aucun lead sans contact +45j 🎉</div>'}
+            </div>` : '<div class="pas-de-donnees">Aucun lead sans contact +45j </div>'}
           </div>
 
           ${dc.comptesNonAttribues.length ? `
@@ -812,17 +812,17 @@ window.VueDashboardManager = {
         <div class="dash-col-main">
         <p class="dash-date" style="color:var(--c-text-2);font-family:Montserrat,sans-serif;font-size:13px">${dateFr} · Suivi FY27</p>
 
-        ${section('🟣 Pipeline', '#9333ea', pipelineCorps)}
+        ${section('Pipeline', '#9333ea', pipelineCorps)}
         <!-- Bloc E (07/2026) — grille 2 colonnes desktop (≥1200px) au lieu
              d'un empilement plein-largeur, pour désencombrer le Reporting. -->
         <div class="dash-grid-2col">
-          ${section('🟢 Performance par CDS', '#00b27e', performanceCorps)}
-          ${section('🔵 CA', '#0050FF', caCorps)}
+          ${section('Performance par CDS', '#00b27e', performanceCorps)}
+          ${section('CA', '#0050FF', caCorps)}
         </div>
         </div><!-- /dash-col-main -->
 
         <div class="dash-col-side">
-        ${section('⚪ Historique', '#626264', historiqueCorps, false)}
+        ${section('Historique', '#626264', historiqueCorps, false)}
         </div><!-- /dash-col-side -->
       </div>
       ${NavBar('reporting')}
@@ -891,7 +891,7 @@ window.VueDashboardManager = {
         <!-- Bloc E (07/2026) — grille 2 colonnes desktop (≥1200px) au lieu
              d'un empilement plein-largeur, pour désencombrer le Reporting. -->
         <div class="dash-grid-2col">
-        ${this._sectionThematique('🔵 CA', '#0050FF', `
+        ${this._sectionThematique('CA', '#0050FF', `
           <div class="bloc-fiche dash-pace" style="margin-bottom:12px">
             <div class="bloc-titre">Équipe, Pace CA ${d.quarter}
               <span class="pace-badge ${d.pctTotal >= 100 ? 'pace-ok' : d.pctTotal >= 80 ? 'pace-watch' : 'pace-risk'}">${d.pctTotal}%</span>
@@ -912,7 +912,7 @@ window.VueDashboardManager = {
           </div>
         `)}
 
-        ${this._sectionThematique('🟣 Pipeline', '#9333ea', `
+        ${this._sectionThematique('Pipeline', '#9333ea', `
           ${this._svgFunnel(d.pipelineStages)}
           <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
             <button class="btn-lien" onclick="Router.aller('#/empower-tracker')" style="font-size:12px">Voir le Tracker →</button>
@@ -957,11 +957,11 @@ window.VueDashboardManager = {
               </div>`).join('')}
             </div>` : ''}
           `;
-          return this._sectionThematique('🧊 Pipeline froid', '#0EA5E9', pfCorps);
+          return this._sectionThematique('Pipeline froid', '#0EA5E9', pfCorps);
         })()}
 
         <div class="dash-grid-2col">
-        ${this._sectionThematique('🟦 Activité terrain', '#0EA5E9', `
+        ${this._sectionThematique('Activité terrain', '#0EA5E9', `
           <p style="font-size:13px;color:var(--c-text-2);margin:0 0 10px">
             Cette semaine : <strong style="color:var(--c-text)">${d.equipe.reduce((s,e)=>s+e.visitesSem,0)} visite(s)</strong> ·
             <strong style="color:var(--c-text)">${d.equipe.reduce((s,e)=>s+e.appelsSem,0)} appel(s)</strong>
@@ -970,7 +970,7 @@ window.VueDashboardManager = {
           ${this._svgActiviteEquipe(d.activiteEquipe)}
         `)}
 
-        ${this._sectionThematique('🟠 Objectifs', '#f59e0b', `
+        ${this._sectionThematique('Objectifs', '#f59e0b', `
           <div class="tableau-equipe">
             <div class="te-ligne te-head" style="grid-template-columns:1.2fr 1.4fr 0.6fr 0.8fr 0.4fr 0.4fr 0.4fr 0.6fr">
               <span>CDS</span><span>CA / OBJ</span><span>%</span><span style="color:#9333ea">FY26/trim</span><span>Vis.</span><span>App.</span><span>Leads</span><span title="Visites réalisées transformées en intérêt/commande, ce trimestre">Transfo.</span>

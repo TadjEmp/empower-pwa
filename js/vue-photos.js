@@ -26,7 +26,7 @@ window.VuePhotos = {
     this.render();
     try {
       const [visites, cdsListe, marketing] = await Promise.all([
-        SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES'),
+        SheetsAPI.lire('EMPOWER_MDB', 'VISITES'),
         SheetsAPI.lireCDS(),
         // Feuille de route Phase 3 — tags par photo (vitrine/rayon/PLV/concurrent),
         // écrits par vue-questionnaire.js depuis cette version ; les photos
@@ -235,7 +235,7 @@ window.VuePhotos = {
       </header>
 
       <div style="padding:10px 12px 0 12px">
-        <input type="search" id="photos-filtre-q" placeholder="🔍 Filtrer par compte…"
+        <input type="search" id="photos-filtre-q" placeholder="Filtrer par compte…"
                value="${this.state.filtreQ}"
                style="width:100%;box-sizing:border-box;padding:11px 14px;border:1.5px solid var(--c-border);border-radius:var(--radius);font-size:14px;background:var(--c-surface);color:var(--c-text)"
                oninput="VuePhotos.setFiltreQ(this.value)"/>

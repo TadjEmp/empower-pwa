@@ -153,7 +153,7 @@ window.FichesFroides = {
 
     await SheetsAPI.mettreAJour(this.FICHIER, this.ONGLET, idFiche, champs);
     if (!visite.ID_Fiche_Froide && !idFicheExistante && visite.ID_Visite) {
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '🗺️_VISITES', visite.ID_Visite, { ID_Fiche_Froide: idFiche });
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', 'VISITES', visite.ID_Visite, { ID_Fiche_Froide: idFiche });
     }
     return idFiche;
   },

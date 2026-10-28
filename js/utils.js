@@ -154,7 +154,7 @@ function condenserVisite(v) {
   if (!v) return '';
   const dateStr = v.Date ? new Date(v.Date).toLocaleDateString('fr-FR') : 'n.c.';
   const parts = [`↳ Suite de la visite du ${dateStr}`];
-  if (v.Resultat_Visite) parts.push(`Résultat : ${v.Resultat_Visite}`);
+  if (v.Resultat_Visite) parts.push(`Résultat : ${sansEmoji(v.Resultat_Visite)}`);
   let freins = '';
   if (v.Freins_JSON) {
     try {
@@ -547,6 +547,14 @@ FusionTabs.performance = () => FusionTabs([
 //  Couleur STABLE par commercial (jamais re-calculée par position) ;
 //  contraste V7 : blanc sur navy/cobalt, ink sur accent/magenta (cf. v7.css).
 // ═══════════════════════════════════════
+// Retire les emojis (valeurs historiques stockées avec emoji : « ✅ Positif », objectifs de visite).
+// Les nouvelles saisies sont enregistrées sans emoji ; cette fonction rend les deux formes équivalentes.
+window.sansEmoji = function (v) {
+  return String(v == null ? '' : v)
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{2612}\u{2614}-\u{27BF}\u{2B50}\u{2B55}\u{FE0F}\u{200D}]\s?/gu, '')
+    .trim();
+};
+
 function avatarCDS(pinOuNom, taille) {
   const nom = (typeof resolveCDS === 'function' ? resolveCDS(pinOuNom) : String(pinOuNom || '')) || 'n.c.';
   if (nom === 'n.c.') return '';

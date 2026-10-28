@@ -81,11 +81,11 @@ window.VueFicheCompte = {
     this.state.suppressionEnCours = false;
     await NonSuivis.charger();   // Lot 3 — état « non suivi » (vue SQL)
     const [comptes, rawV17, visites, appels, params, sellinSem] = await Promise.all([
-      SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
-      SheetsAPI.lire('V17', '📋 COMPTES HISTORIQUES'),
-      SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES'),
-      SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING'),
-      SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS').catch(() => []),
+      SheetsAPI.lire('EMPOWER_MDB', 'COMPTES'),
+      SheetsAPI.lire('V17', 'COMPTES_HISTORIQUES'),
+      SheetsAPI.lire('EMPOWER_MDB', 'VISITES'),
+      SheetsAPI.lire('EMPOWER_MDB', 'PHONING'),
+      SheetsAPI.lire('EMPOWER_MDB', 'PARAMS').catch(() => []),
       SheetsAPI.lire('EMPOWER_MDB', 'SELLIN_SEMAINES').catch(() => []),   // Lot 2 — jamais bloquant
     ]);
     // BLOC 07 §8 — quarter FY27 actif, même pattern que vue-dashboard-manager.js
@@ -174,7 +174,7 @@ window.VueFicheCompte = {
     this.state.sauvegardeEnCours = true;
     this._rerender();
     try {
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', c.ID_Compte, champs);
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', 'COMPTES', c.ID_Compte, champs);
       // Update local state
       Object.assign(this.state.compte, champs);
       this.state.editCoord = false;
@@ -225,9 +225,9 @@ window.VueFicheCompte = {
       if (devenirEmpower && !this.state.compte.Date_Onboarding_Empower) {
         champs.Date_Onboarding_Empower = dateISOLocale();
       }
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', idCompte, champs);
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', 'COMPTES', idCompte, champs);
       Object.assign(this.state.compte, champs);
-      Toast.afficher(devenirEmpower ? '⭐ Compte marqué EMPOWER' : '⚡ Compte repassé Grossiste', 'succes');
+      Toast.afficher(devenirEmpower ? 'Compte marqué EMPOWER' : 'Compte repassé Grossiste', 'succes');
     } catch(e) {
       Toast.afficher('' + e.message, 'erreur');
     }
@@ -263,7 +263,7 @@ window.VueFicheCompte = {
     this._rerender();
     try {
       // Anti-doublon : jamais deux fois le même compte dans le Tracker.
-      const prospects = await SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS');
+      const prospects = await SheetsAPI.lire('EMPOWER_MDB', 'LEADS');
       const nomNorm = normaliserNom(c.Nom_Compte || '');
       const dejaLead = (prospects || []).find(p => normaliserNom(p.Nom_Compte || '') === nomNorm
         && !['ARCHIVE'].includes(String(p.STATUT_EMPOWER || '').toUpperCase()));
@@ -290,7 +290,7 @@ window.VueFicheCompte = {
         Date_Import: dateISOLocale(),
         Timestamp: new Date().toISOString(),
       };
-      await SheetsAPI.ecrire('EMPOWER_MDB', '📋_PROSPECTS', lead);
+      await SheetsAPI.ecrire('EMPOWER_MDB', 'LEADS', lead);
       // Notifs ADMIN + CHANNEL_MANAGER — même roster dynamique que
       // vue-questionnaire.js._destinatairesAlerteTracker (jamais de pins en dur).
       const roster = await SheetsAPI.lireCDS().catch(() => null);
@@ -298,10 +298,10 @@ window.VueFicheCompte = {
         (roster || []).filter(u => ['ADMIN', 'CHANNEL_MANAGER'].includes(String(u.role).toUpperCase())).map(u => Number(u.pin))
       )];
       for (const dest of (dests.length ? dests : [1000, 5000])) {
-        SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
+        SheetsAPI.ecrire('EMPOWER_MDB', 'NOTIFS', {
           ID_Notif: genId('NOTIF'), Date_Envoi: new Date().toISOString(),
           PIN_Destinataire: dest, Type_Notif: 'NOUVEAU_LEAD',
-          Message: `🎯 Nouveau lead depuis fiche compte (${Session.nom}) : ${c.Nom_Compte}, Grossiste à onboarder`,
+          Message: `Nouveau lead depuis fiche compte (${Session.nom}) : ${c.Nom_Compte}, Grossiste à onboarder`,
           ID_Cible: lead.ID_Prospect, Statut_Lu: false, Timestamp: new Date().toISOString(),
         }).catch(() => {});
       }
@@ -339,10 +339,10 @@ window.VueFicheCompte = {
     this.state.suppressionEnCours = true;
     this._rerender();
     try {
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', idCompte, {
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', 'COMPTES', idCompte, {
         deleted: 'TRUE', deleted_at: dateISOLocale(), deleted_by: Session.nom,
       });
-      await SheetsAPI.viderCache('EMPOWER_MDB', '🏢_COMPTES');
+      await SheetsAPI.viderCache('EMPOWER_MDB', 'COMPTES');
       Toast.afficher('Compte supprimé', 'succes');
       if (window.VueComptes && VueComptes.state.ficheDockee) {
         VueComptes.fermerFicheDockee();
@@ -381,7 +381,7 @@ window.VueFicheCompte = {
               <div class="appel-resultat">${a.Statut_Appel || 'n.c.'} · Intérêt EMPOWER : ${a.Interet_EMPOWER || 'n.c.'}${a.Interet_Score ? ' (' + a.Interet_Score + '/5)' : ''}</div>
               ${a.Frein_Principal ? `<div class="appel-frein">Frein : ${a.Frein_Principal}</div>` : ''}
               ${a.Prochaine_Action ? `<div class="appel-frein">→ ${a.Prochaine_Action}${a.Date_Rappel ? ' (' + a.Date_Rappel + ')' : ''}</div>` : ''}
-              ${a.Note ? `<div class="pa-note">📝 ${a.Note}</div>` : ''}
+              ${a.Note ? `<div class="pa-note">${a.Note}</div>` : ''}
             </div>`).join('')}
           `}
           <button class="btn-secondaire" style="margin-top:8px" onclick="VueFicheCompte.fermerRapportPhoning()">Fermer</button>
@@ -467,7 +467,7 @@ window.VueFicheCompte = {
             <button class="btn-primaire" style="margin-top:4px"
                     onclick="VueFicheCompte.sauvegarderCoordonnees()"
                     ${this.state.sauvegardeEnCours ? 'disabled' : ''}>
-              ${this.state.sauvegardeEnCours ? '⏳ Enregistrement…' : '💾 Enregistrer les coordonnées'}
+              ${this.state.sauvegardeEnCours ? 'Enregistrement…' : 'Enregistrer les coordonnées'}
             </button>
           </div>
         </div>`;
@@ -486,7 +486,7 @@ window.VueFicheCompte = {
         </div>
         ${coordManquantes ? `
         <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:10px;border-radius:var(--radius-sm);background:color-mix(in srgb,var(--c-warning) 10%,transparent);border:1px solid color-mix(in srgb,var(--c-warning) 30%,transparent);font-size:12px;color:var(--c-warning)">
-          ⚠️ Coordonnées manquantes
+          Coordonnées manquantes
           <button class="btn-lien" style="font-size:12px;color:var(--c-primary);font-weight:600"
                   onclick="VueFicheCompte.ouvrirEditionCoordonnees()">Saisir maintenant →</button>
         </div>` : ''}
@@ -513,14 +513,14 @@ window.VueFicheCompte = {
               <button class="btn-lien" style="font-size:12px"
                       onclick="VueFicheCompte.basculerEmpower('${c.ID_Compte}', ${window.estEmpower(c) ? 'false' : 'true'})"
                       ${this.state.empowerEnCours ? 'disabled' : ''}>
-                ${window.estEmpower(c) ? '↩︎ Repasser Grossiste' : '⭐ Marquer Empower'}
+                ${window.estEmpower(c) ? '↩︎ Repasser Grossiste' : 'Marquer Empower'}
               </button>
               ${!window.estEmpower(c) && this._peutAjouterAuTracker(c) ? `
               <button class="btn-lien" style="font-size:12px;color:var(--c-primary)"
                       title="Démarre le suivi d'onboarding EMPOWER dans le Tracker"
                       onclick="VueFicheCompte.ouvrirAjoutTrackerDepuisCompte()"
                       ${this.state.ajoutTrackerEnCours || this._trackerAjouteDepuisFiche ? 'disabled' : ''}>
-                ${this._trackerAjouteDepuisFiche ? '✅ Dans le Tracker' : '🎯 Ajouter au Tracker'}
+                ${this._trackerAjouteDepuisFiche ? 'Dans le Tracker' : 'Ajouter au Tracker'}
               </button>` : ''}
             </span>
           </div>
@@ -543,7 +543,7 @@ window.VueFicheCompte = {
         </div>` : ''}
         ${c.Source_Import === 'VISITE_FROID_CONVERTI' ? `
         <div style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:5px 10px;border-radius:20px;font-size:12px;font-weight:600;background:color-mix(in srgb,var(--c-primary) 12%,transparent);color:var(--c-primary);border:1px solid color-mix(in srgb,var(--c-primary) 30%,transparent)">
-          ❄️ Créé depuis visite à froid
+          Créé depuis visite à froid
         </div>` : ''}
         <div class="statut-fy27">${c.STATUT_COMPTE || 'n.c.'} · Priorité ${c.Priorite || 'n.c.'}</div>
         <div style="margin-top:10px;text-align:right">
@@ -551,7 +551,7 @@ window.VueFicheCompte = {
                   title="Compte en double, supprime ce compte, conserve l'historique lié"
                   onclick="VueFicheCompte.supprimerCompte('${c.ID_Compte}', '${(c.Nom_Compte || '').replace(/'/g, "\\'")}')"
                   ${this.state.suppressionEnCours ? 'disabled' : ''}>
-            🗑 Compte en double ? Supprimer
+            Compte en double ? Supprimer
           </button>
         </div>
       </div>`;
@@ -599,9 +599,9 @@ window.VueFicheCompte = {
           <div class="prochaine-action-detail">
             <div class="pa-type">${c.Prochaine_Action}</div>
             <div class="pa-date ${estDepassee(c.Date_Prochaine_Action) ? 'date-depassee' : ''}">
-              📅 ${dateRelative(c.Date_Prochaine_Action)}
+              ${dateRelative(c.Date_Prochaine_Action)}
             </div>
-            ${c.Note_initiale ? `<div class="pa-note">📝 ${c.Note_initiale}</div>` : ''}
+            ${c.Note_initiale ? `<div class="pa-note">${c.Note_initiale}</div>` : ''}
           </div>` : '<div class="pas-de-donnees">Aucune action planifiée</div>'}
       </div>
 
@@ -630,8 +630,8 @@ window.VueFicheCompte = {
         const v = ev.item;
         return `
           <div class="carte-visite">
-            <div class="visite-date">🗺️ ${v.Date || 'n.c.'} · ${v.Heure || ''} · ${window.resolveCDS(v.PIN_CDS || v.Nom_CDS)}</div>
-            <div class="visite-resultat">${v.Resultat_Visite || v.Type_Visite || 'n.c.'}</div>
+            <div class="visite-date">${v.Date || 'n.c.'} · ${v.Heure || ''} · ${window.resolveCDS(v.PIN_CDS || v.Nom_CDS)}</div>
+            <div class="visite-resultat">${sansEmoji(v.Resultat_Visite) || v.Type_Visite || 'n.c.'}</div>
             <div class="visite-score">Réceptivité ${v.Slider_Receptivite != null && v.Slider_Receptivite !== '' ? v.Slider_Receptivite : 'n.c.'}/5${v.Prochaine_Action_Texte ? ` · → ${v.Prochaine_Action_Texte}` : ''}</div>
             ${this._libelleSuite(v.ID_Action_Origine)}
           </div>`;
@@ -639,7 +639,7 @@ window.VueFicheCompte = {
       const a = ev.item;
       return `
           <div class="carte-appel">
-            <div class="appel-date">📞 ${a.Date || 'n.c.'} · ${window.resolveCDS(a.PIN_CDS || a.Nom_CDS)}</div>
+            <div class="appel-date">${a.Date || 'n.c.'} · ${window.resolveCDS(a.PIN_CDS || a.Nom_CDS)}</div>
             <div class="appel-resultat">${a.Statut_Appel || 'n.c.'} · Intérêt EMPOWER : ${a.Interet_EMPOWER || 'n.c.'}</div>
             <div class="appel-frein">${a.Frein_Principal ? `Frein : ${a.Frein_Principal}` : ''}${a.Prochaine_Action ? ` · → ${a.Prochaine_Action}` : ''}</div>
             ${this._libelleSuite(a.ID_Action_Origine)}

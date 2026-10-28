@@ -16,52 +16,52 @@ window.VueQuestionnaire = {
   ],
 
   TYPES_REVENDEUR: [
-    '🖥️ MSP', '🔧 Intégrateur / SSII', '🛠️ Réparateur informatique',
-    '🏪 Généraliste informatique', '📦 VAR', '🏬 Boutique indépendante',
-    '☁️ Prestataire Cloud / SaaS', '🔒 Cybersécurité spécialisé',
+    'MSP', 'Intégrateur / SSII', 'Réparateur informatique',
+    'Généraliste informatique', 'VAR', 'Boutique indépendante',
+    'Prestataire Cloud / SaaS', 'Cybersécurité spécialisé',
   ],
 
   CLIENTELES: [
-    '👤 Particuliers / Grand public', '🏢 TPE/PME (1-50 sal.)',
-    '🏛️ Collectivités / Secteur public', '💼 Grandes entreprises / ETI',
-    '🖥️ Sociétés IT / ESN', '🏥 Santé / médical',
-    '🎓 Éducation', '🏗️ BTP / Industrie',
+    'Particuliers / Grand public', 'TPE/PME (1-50 sal.)',
+    'Collectivités / Secteur public', 'Grandes entreprises / ETI',
+    'Sociétés IT / ESN', 'Santé / médical',
+    'Éducation', 'BTP / Industrie',
   ],
 
   CANAUX_VENTE: [
-    '🏪 Vente physique en boutique', '🌐 Site internet / e-commerce',
-    '🛒 Marketplace (Amazon, Fnac…)', '🤝 Vente directe chez client',
-    '📧 Vente à distance (tél/email)', '🔗 Portail partenaire / revendeur',
+    'Vente physique en boutique', 'Site internet / e-commerce',
+    'Marketplace (Amazon, Fnac…)', 'Vente directe chez client',
+    'Vente à distance (tél/email)', 'Portail partenaire / revendeur',
   ],
 
   ACTIVITES: [
-    '🖥️ Vente de matériel informatique', '🔧 Services et entretien',
-    '🛠️ Réparation / dépannage', '💡 Conseil et audit',
-    '📋 Abonnements / contrats récurrents', '☁️ Infogérance / cloud géré',
-    '🔒 Cybersécurité managée (SOC/EDR)', '🖨️ Reprographie / bureautique',
-    '📱 Téléphonie / mobilité',
+    'Vente de matériel informatique', 'Services et entretien',
+    'Réparation / dépannage', 'Conseil et audit',
+    'Abonnements / contrats récurrents', 'Infogérance / cloud géré',
+    'Cybersécurité managée (SOC/EDR)', 'Reprographie / bureautique',
+    'Téléphonie / mobilité',
   ],
 
   SITUATIONS_GEO: [
-    '🏙️ Centre-ville', '🏭 Zone Industrielle (ZI)',
-    '🏘️ Zone commerciale / périphérie', '🏠 Domicile / télétravail',
-    '🌐 100% numérique',
+    'Centre-ville', 'Zone Industrielle (ZI)',
+    'Zone commerciale / périphérie', 'Domicile / télétravail',
+    '100% numérique',
   ],
 
   OBJECTIFS_VISITE: [
-    '🎓 Formation vendeurs sur gamme Norton', '🚀 Intégration EMPOWER',
-    '🤝 Conclusion de l\'accord', '📅 Visite suivie / RDV planifié',
-    '❄️ Prospection à froid', '🔄 Renouvellement partenariat',
+    'Formation vendeurs sur gamme Norton', 'Intégration EMPOWER',
+    'Conclusion de l\'accord', 'Visite suivie / RDV planifié',
+    'Prospection à froid', 'Renouvellement partenariat',
   ],
 
   FREINS: [
-    { id: '❌ Norton ne correspond pas à la cible', argu: '<strong>Gamme NSB dédiée TPE/PME</strong>, 1 à 20 postes, clé en main. Non substituable aux solutions entreprise.' },
-    { id: '💰 Tarifs perçus comme excessifs',       argu: '<strong>Revenus récurrents +25% sur 3 ans via EMPOWER.</strong> ROI revendeur prouvé. Portail EMPOWER : calcul marge en temps réel.' },
-    { id: '🔄 Travaille déjà avec un autre éditeur', argu: '<strong>Complémentaire, non substituable.</strong> Norton = grand public + TPE, pas concurrentiel. Proposez un run parallèle.' },
-    { id: '📉 Mauvais historique Norton',            argu: '<strong>Nouveau programme EMPOWER 2025.</strong> Support dédié + formation incluse + accompagnement CDS personnalisé.' },
-    { id: '⏳ Pas le temps de former les équipes',   argu: '<strong>Formation EMPOWER 30 min à distance.</strong> Sans contrainte horaire. Norton s\'occupe de l\'essentiel de l\'intégration.' },
-    { id: '🤷 Manque de visibilité sur les marges',  argu: '<strong>Portail EMPOWER, calcul marge en temps réel.</strong> Offres enregistrées, accès immédiat. ESD zéro rupture.' },
-    { id: '📦 Problème de stock / approvisionnement', argu: '<strong>ESD disponible immédiatement.</strong> Zéro rupture sur le numérique, livraison instantanée à la commande.' },
+    { id: 'Norton ne correspond pas à la cible', argu: '<strong>Gamme NSB dédiée TPE/PME</strong>, 1 à 20 postes, clé en main. Non substituable aux solutions entreprise.' },
+    { id: 'Tarifs perçus comme excessifs',       argu: '<strong>Revenus récurrents +25% sur 3 ans via EMPOWER.</strong> ROI revendeur prouvé. Portail EMPOWER : calcul marge en temps réel.' },
+    { id: 'Travaille déjà avec un autre éditeur', argu: '<strong>Complémentaire, non substituable.</strong> Norton = grand public + TPE, pas concurrentiel. Proposez un run parallèle.' },
+    { id: 'Mauvais historique Norton',            argu: '<strong>Nouveau programme EMPOWER 2025.</strong> Support dédié + formation incluse + accompagnement CDS personnalisé.' },
+    { id: 'Pas le temps de former les équipes',   argu: '<strong>Formation EMPOWER 30 min à distance.</strong> Sans contrainte horaire. Norton s\'occupe de l\'essentiel de l\'intégration.' },
+    { id: 'Manque de visibilité sur les marges',  argu: '<strong>Portail EMPOWER, calcul marge en temps réel.</strong> Offres enregistrées, accès immédiat. ESD zéro rupture.' },
+    { id: 'Problème de stock / approvisionnement', argu: '<strong>ESD disponible immédiatement.</strong> Zéro rupture sur le numérique, livraison instantanée à la commande.' },
   ],
 
   CONCURRENTS: [
@@ -71,7 +71,7 @@ window.VueQuestionnaire = {
   ],
 
   GROSSISTES: [
-    '⭐ TD Synnex', '⭐ Ingram Micro', 'Also', 'BeMSP', 'Cris Réseaux',
+    'TD Synnex', 'Ingram Micro', 'Also', 'BeMSP', 'Cris Réseaux',
     'Acadie', 'Distribution DS', 'Asialand', 'Exertis Connect',
     'Réseaux exclusifs', 'Watsoft', 'Autre',
   ],
@@ -235,8 +235,8 @@ window.VueQuestionnaire = {
     this.render();
     try {
       const [comptes, prospects, roster] = await Promise.all([
-        SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
-        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS'),
+        SheetsAPI.lire('EMPOWER_MDB', 'COMPTES'),
+        SheetsAPI.lire('EMPOWER_MDB', 'LEADS'),
         SheetsAPI.lireCDS(),
       ]);
       this.state.comptes   = comptes.filter(c => Session.voitTout() || Number(c.PIN_CDS_Assigne) === Session.pin);
@@ -417,16 +417,16 @@ window.VueQuestionnaire = {
         Date_Import: dateISOLocale(),
         Timestamp: new Date().toISOString(),
       };
-      await SheetsAPI.ecrire('EMPOWER_MDB', '📋_PROSPECTS', lead);
+      await SheetsAPI.ecrire('EMPOWER_MDB', 'LEADS', lead);
       this.state.prospects.unshift(lead);
       // Notifications dynamiques : Alexandra + tous les Channels actifs (routage
       // par rôle, plus par secteur/enseigne — aucune table de mapping secteur→Channel
       // n'existe aujourd'hui ; à affiner si un tel mapping est créé).
       for (const dest of this._destinatairesAlerteTracker()) {
-        SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
+        SheetsAPI.ecrire('EMPOWER_MDB', 'NOTIFS', {
           ID_Notif: genId('NOTIF'), Date_Envoi: new Date().toISOString(),
           PIN_Destinataire: dest, Type_Notif: 'NOUVEAU_LEAD',
-          Message: `🎯 Nouveau lead depuis visite terrain (${Session.nom}) : ${m.nomCompte}`,
+          Message: `Nouveau lead depuis visite terrain (${Session.nom}) : ${m.nomCompte}`,
           ID_Cible: lead.ID_Prospect, Statut_Lu: false, Timestamp: new Date().toISOString(),
         }).catch(() => {});
       }
@@ -507,7 +507,7 @@ window.VueQuestionnaire = {
     if (!s.cible) { s.dernieresVisites = []; return; }
     const idCible = s.typeSource === 'PROSPECT' ? s.cible.ID_Prospect : s.cible.ID_Compte;
     try {
-      const visites = await SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES');
+      const visites = await SheetsAPI.lire('EMPOWER_MDB', 'VISITES');
       s.dernieresVisites = visites
         .filter(v => String(v.ID_Cible) === String(idCible))
         .sort((a, b) => new Date(b.Timestamp || b.Date) - new Date(a.Timestamp || a.Date))
@@ -593,7 +593,7 @@ window.VueQuestionnaire = {
     try {
       this._enregistre = true;
       const btn = document.getElementById('btn-dictee');
-      if (btn) btn.textContent = '⏹ Arrêter (30s max)';
+      if (btn) btn.textContent = 'Arrêter (30s max)';
       await GroqAPI.demarrerEnregistrement(async blob => {
         this._enregistre = false;
         Toast.afficher('Transcription en cours…', 'info');
@@ -757,18 +757,18 @@ window.VueQuestionnaire = {
       };
       // BLOC 3 — Si visite planifiée existante : mettre à jour plutôt que créer un doublon
       if (this._visitePlanifiee?.ID_Visite) {
-        await SheetsAPI.mettreAJour('EMPOWER_MDB', '🗺️_VISITES', this._visitePlanifiee.ID_Visite, {
+        await SheetsAPI.mettreAJour('EMPOWER_MDB', 'VISITES', this._visitePlanifiee.ID_Visite, {
           ...visite,
           ID_Visite: this._visitePlanifiee.ID_Visite, // conserver l'ID original
           Statut_Visite: 'réalisée',
         });
       } else {
-        await SheetsAPI.ecrire('EMPOWER_MDB', '🗺️_VISITES', visite);
+        await SheetsAPI.ecrire('EMPOWER_MDB', 'VISITES', visite);
       }
 
       // Vider le cache dashboard pour que les vues amont reflètent la visite immédiatement
-      SheetsAPI.viderCache('EMPOWER_MDB', '🗺️_VISITES').catch(() => {});
-      SheetsAPI.viderCache('EMPOWER_MDB', '📊_ACTIONS').catch(() => {});
+      SheetsAPI.viderCache('EMPOWER_MDB', 'VISITES').catch(() => {});
+      SheetsAPI.viderCache('EMPOWER_MDB', 'ACTIONS').catch(() => {});
 
       // Feuille de route Phase 3 — brancher la table `marketing`, construite
       // depuis la migration d'origine mais jamais utilisée (0 ligne) : photos
@@ -824,11 +824,11 @@ window.VueQuestionnaire = {
             majProspect.STATUT_EMPOWER = 'EN_COURS';
             majProspect.FLAG_ACTION = 'EN_COURS';
           }
-          await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', idCible, majProspect);
+          await SheetsAPI.mettreAJour('EMPOWER_MDB', 'LEADS', idCible, majProspect);
           // Bloc 6 — Kanban live (même mécanisme que le phoning)
           EmpowerBus.emit('contact-prospect', { idProspect: idCible, ...majProspect });
         } else {
-          await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', idCible, {
+          await SheetsAPI.mettreAJour('EMPOWER_MDB', 'COMPTES', idCible, {
             ...majContact,
             Date_Prochaine_Action: d.prochaineActionDate,
             Flag_Traite:           'TRUE',
@@ -842,7 +842,7 @@ window.VueQuestionnaire = {
       }
 
       // Log 📊_ACTIONS
-      await SheetsAPI.ecrire('EMPOWER_MDB', '📊_ACTIONS', {
+      await SheetsAPI.ecrire('EMPOWER_MDB', 'ACTIONS', {
         ID_Action:    genId('ACT'),
         Date_Action:  new Date().toISOString(),
         Type_Action:  'Visite',
@@ -859,7 +859,7 @@ window.VueQuestionnaire = {
 
       // Alerte Alexandra si EMPOWER détecté
       if (empowerAlerte) {
-        await SheetsAPI.ecrire('EMPOWER_MDB', '📊_ACTIONS', {
+        await SheetsAPI.ecrire('EMPOWER_MDB', 'ACTIONS', {
           ID_Action:    genId('ALR'),
           Date_Action:  new Date().toISOString(),
           Type_Action:  'ALERTE_EMPOWER_ALEXANDRA',
@@ -878,10 +878,10 @@ window.VueQuestionnaire = {
         // une alerte envoyée à Alexandra qui n'existait nulle part. Écrit désormais
         // une vraie notification, routée dynamiquement (Alexandra + Channels actifs).
         for (const dest of this._destinatairesAlerteTracker()) {
-          SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
+          SheetsAPI.ecrire('EMPOWER_MDB', 'NOTIFS', {
             ID_Notif: genId('NOTIF'), Date_Envoi: new Date().toISOString(),
             PIN_Destinataire: dest, Type_Notif: 'ALERTE_EMPOWER',
-            Message: `🔔 Intérêt EMPOWER détecté en visite (${Session.nom}) : ${s.cible.Nom_Compte}`,
+            Message: `Intérêt EMPOWER détecté en visite (${Session.nom}) : ${s.cible.Nom_Compte}`,
             ID_Cible: idCible !== 'HORS_BASE' ? idCible : null, Statut_Lu: false, Timestamp: new Date().toISOString(),
           }).catch(() => {});
         }
@@ -921,7 +921,7 @@ window.VueQuestionnaire = {
     if (!nom) { Toast.afficher('Nom du compte manquant', 'warning'); return; }
     try {
       // Vérifier s'il existe déjà (anti-doublon par nom normalisé)
-      const existants = await SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS');
+      const existants = await SheetsAPI.lire('EMPOWER_MDB', 'LEADS');
       const dejaDans = existants.find(p =>
         normaliserNom(p.Nom_Compte) === normaliserNom(nom) &&
         Number(p.PIN_CDS_Assigne) === Session.pin
@@ -931,7 +931,7 @@ window.VueQuestionnaire = {
         return;
       }
       const idProspectNouveau = genId('PROS');
-      await SheetsAPI.ecrire('EMPOWER_MDB', '📋_PROSPECTS', {
+      await SheetsAPI.ecrire('EMPOWER_MDB', 'LEADS', {
         ID_Prospect:     idProspectNouveau,
         Nom_Compte:      nom,
         // Bug audit (compte-rendu) — Adresse/Département/Ville/Tel/Email
@@ -972,9 +972,9 @@ window.VueQuestionnaire = {
         <p class="succes-duree">${this.state.cible.Nom_Compte} · ${dureeMin} min</p>
         <div class="succes-recap">
           <div>${d.resultatVisite || 'n.c.'} · Réceptivité : ${d.score}/5</div>
-          ${d.prochaineAction ? `<div>🎯 ${d.prochaineAction}${d.prochaineActionDate?', '+dateRelative(d.prochaineActionDate):''}</div>` : ''}
+          ${d.prochaineAction ? `<div>${d.prochaineAction}${d.prochaineActionDate?', '+dateRelative(d.prochaineActionDate):''}</div>` : ''}
           ${empowerAlerte ? '<div>Alerte EMPOWER envoyée à Alexandra</div>' : ''}
-          ${d.resumeIA ? `<div>🤖 ${d.resumeIA}</div>` : ''}
+          ${d.resumeIA ? `<div>${d.resumeIA}</div>` : ''}
         </div>
         <div class="succes-btns">
           <button class="btn-primaire" onclick="Router.aller('#/dashboard')">← Dashboard</button>
@@ -1020,7 +1020,7 @@ window.VueQuestionnaire = {
         ${s.etape < this.ETAPES.length - 1
           ? `<button class="btn-q-nav btn-q-suivant" onclick="VueQuestionnaire.suivant()">Suivant →</button>`
           : `<button class="btn-q-nav btn-q-terminer" onclick="VueQuestionnaire.valider()"
-               ${s.envoiEnCours ? 'disabled' : ''}>${s.envoiEnCours ? 'Enregistrement…' : '✓ VALIDER LA VISITE'}</button>`}
+               ${s.envoiEnCours ? 'disabled' : ''}>${s.envoiEnCours ? 'Enregistrement…' : 'VALIDER LA VISITE'}</button>`}
       </div>
 
       ${this._renderModalAjoutTracker()}
@@ -1084,7 +1084,7 @@ window.VueQuestionnaire = {
                  oninput="VueQuestionnaire.setContactChamp('Email',this.value)"/></label>
       </div>` : verrouille ? '' : `
       <label class="q-label">Compte ${s.typeSource==='EXISTANT'?'(base historique)':'(base prospects)'}
-        <input class="q-input" placeholder="🔍 Rechercher…" value="${s.recherche}"
+        <input class="q-input" placeholder="Rechercher…" value="${s.recherche}"
                oninput="VueQuestionnaire.setRecherche(this.value)" autocomplete="off"/>
       </label>
       <div id="q-suggestions"></div>`;
@@ -1093,7 +1093,7 @@ window.VueQuestionnaire = {
       ${!verrouille ? `
       <label class="q-label">Statut du compte
         <div style="display:flex;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:4px;background:var(--c-surface)">
-          ${[['EXISTANT','✅ Existant'],['PROSPECT','❄️ Prospect'],['FROID','🆕 Visite à froid']].map(([v,l]) => `
+          ${[['EXISTANT','Existant'],['PROSPECT','Prospect'],['FROID','🆕 Visite à froid']].map(([v,l]) => `
             <button type="button" style="flex:1;padding:9px;border:none;border-radius:4px;font-weight:600;font-size:14px;cursor:pointer;
               ${s.typeSource===v?'background:var(--c-title);color:#fff':'background:transparent;color:var(--c-text-2)'}"
               onclick="VueQuestionnaire.setSource('${v}')">${l}</button>`).join('')}
@@ -1134,8 +1134,8 @@ window.VueQuestionnaire = {
         <div style="border-bottom:1px solid var(--c-border);padding:6px 0;font-size:13px">
           <div style="display:flex;justify-content:space-between">
             <strong>${v.Date||'n.c.'}</strong>
-            <span style="color:${v.Resultat_Visite==='Positif'||v.Resultat_Visite==='✅ Positif'?'var(--c-success)':v.Resultat_Visite==='Négatif'||v.Resultat_Visite==='❌ Négatif'?'var(--c-danger)':'var(--c-warning)'}">${v.Resultat_Visite||'n.c.'}</span>
-            <span style="color:var(--c-text-2)">⭐ ${v.Slider_Receptivite||'?'}/5</span>
+            <span style="color:${sansEmoji(v.Resultat_Visite)==='Positif'?'var(--c-success)':sansEmoji(v.Resultat_Visite)==='Négatif'?'var(--c-danger)':'var(--c-warning)'}">${sansEmoji(v.Resultat_Visite)||'n.c.'}</span>
+            <span style="color:var(--c-text-2)">${v.Slider_Receptivite||'?'}/5</span>
           </div>
           ${v.Prochaine_Action_Texte ? `<div style="font-size:11px;color:var(--c-primary);margin-top:2px">→ ${v.Prochaine_Action_Texte}</div>` : ''}
         </div>`).join('')}
@@ -1202,7 +1202,7 @@ window.VueQuestionnaire = {
         ${this._radios('empowerInteresse', ['OUI', 'NON'])}
         ${d.empowerInteresse === 'OUI' ? `
         <div style="font-size:12px;color:var(--c-primary);margin-top:8px;font-weight:600">
-          🔔 Une alerte sera envoyée à Alexandra au moment de la validation.
+          Une alerte sera envoyée à Alexandra au moment de la validation.
         </div>` : d.empowerInteresse === 'NON' ? `
         <div style="font-size:12px;color:var(--c-text-2);margin-top:6px">Compte archivé "Non intéressé" EMPOWER.</div>` : ''}
       </div>` : ''}
@@ -1238,7 +1238,7 @@ window.VueQuestionnaire = {
           <div style="border:1.5px solid ${actif?'var(--c-cta)':'var(--c-border)'};border-radius:var(--radius);overflow:hidden;background:var(--c-surface)">
             <button type="button" class="q-arbre-btn" style="border:none;border-radius:0;width:100%;${actif?'background:#fff5f4':''}"
                     onclick="VueQuestionnaire.toggleListe('freins','${f.id.replace(/'/g, "\\'")}')" >
-              ${actif?'☑':'☐'} ${f.id}
+              ${actif?'':''} ${f.id}
             </button>
             ${actif?`<div style="padding:12px 16px;border-top:1px solid var(--c-border);font-size:13px;line-height:1.5">
               <span style="color:var(--c-cta);font-weight:700;font-size:11px;text-transform:uppercase">Argumentaire recommandé</span><br>${f.argu}
@@ -1278,7 +1278,7 @@ window.VueQuestionnaire = {
     const d = this.state.d;
     return `<div class="q-champs">
       <label class="q-label">Résultat de la visite *
-        ${this._radios('resultatVisite', ['✅ Positif', '🟡 Mitigé', '❌ Négatif'])}</label>
+        ${this._radios('resultatVisite', ['Positif', 'Mitigé', 'Négatif'])}</label>
       <label class="q-label">Commentaire libre
         <textarea class="q-textarea" rows="3" placeholder="Observations, points clés, contexte…"
           oninput="VueQuestionnaire.set('commentaireLibre',this.value)">${d.commentaireLibre}</textarea></label>
@@ -1298,7 +1298,7 @@ window.VueQuestionnaire = {
         <textarea class="q-textarea" rows="3" placeholder="Observations supplémentaires…"
           oninput="VueQuestionnaire.set('note',this.value)">${d.note}</textarea></label>
       <button type="button" id="btn-dictee" class="btn-secondaire" onclick="VueQuestionnaire.dicter()">
-        🎙️ Dictée vocale 30s → Résumé IA Groq
+        Dictée vocale 30s → Résumé IA Groq
       </button>
       ${d.resumeIA ? `<div class="q-recap"><h3>Résumé IA</h3><p style="font-size:13px">${d.resumeIA}</p></div>` : ''}
     </div>`;
@@ -1322,13 +1322,13 @@ window.VueQuestionnaire = {
         <div class="q-recap-ligne"><span>Score</span><strong>${d.score}/5</strong></div>
         <div class="q-recap-ligne"><span>Prochaine action</span><strong>${d.prochaineAction||'n.c.'}${d.prochaineActionDate?', '+dateRelative(d.prochaineActionDate):''}</strong></div>
         ${empowerAlerte ? '<div style="font-size:12px;color:var(--c-primary);font-weight:600;padding:6px 0">Alerte EMPOWER → Alexandra sera envoyée</div>' : ''}
-        <div class="q-recap-ligne"><span>GPS</span><strong>${s.gps.lat?'📍 capturé':'n.c.'}</strong></div>
+        <div class="q-recap-ligne"><span>GPS</span><strong>${s.gps.lat?'capturé':'n.c.'}</strong></div>
       </div>
 
       ${d.empowerInteresse === 'OUI' ? `
         <button type="button" class="btn-primaire" style="margin-top:4px"
                 onclick="VueQuestionnaire.ouvrirAjoutTracker()" ${this._trackerAjoute ? 'disabled' : ''}>
-          ${this._trackerAjoute ? '✅ Ajouté au Tracker Empower' : '➕ Ajouter au Tracker Empower'}
+          ${this._trackerAjoute ? 'Ajouté au Tracker Empower' : 'Ajouter au Tracker Empower'}
         </button>` : ''}
 
       <div class="q-photo-zone">

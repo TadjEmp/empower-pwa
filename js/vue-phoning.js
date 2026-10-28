@@ -122,10 +122,10 @@ window.VuePhoning = {
     this.render();
     try {
       const [comptes, planning, cdsApi, prospects] = await Promise.all([
-        SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES'),
-        SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING'),
+        SheetsAPI.lire('EMPOWER_MDB', 'COMPTES'),
+        SheetsAPI.lire('EMPOWER_MDB', 'PHONING'),
         SheetsAPI.lireCDS(),
-        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS'),
+        SheetsAPI.lire('EMPOWER_MDB', 'LEADS'),
       ]);
       // Base des prospects pour l'appel (sourceListe/suggestions PROSPECT) —
       // manquait jusqu'ici : state.prospects restait toujours vide.
@@ -494,13 +494,13 @@ window.VuePhoning = {
         Date_Import: dateISOLocale(),
         Timestamp: new Date().toISOString(),
       };
-      await SheetsAPI.ecrire('EMPOWER_MDB', '📋_PROSPECTS', lead);
+      await SheetsAPI.ecrire('EMPOWER_MDB', 'LEADS', lead);
       this.state.prospects.unshift(lead);
       for (const dest of this._destinatairesAlerteTracker()) {
-        SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
+        SheetsAPI.ecrire('EMPOWER_MDB', 'NOTIFS', {
           ID_Notif: genId('NOTIF'), Date_Envoi: new Date().toISOString(),
           PIN_Destinataire: dest, Type_Notif: 'NOUVEAU_LEAD',
-          Message: `🎯 Nouveau lead depuis appel téléphonique (${Session.nom}) : ${m.nomCompte}`,
+          Message: `Nouveau lead depuis appel téléphonique (${Session.nom}) : ${m.nomCompte}`,
           ID_Cible: lead.ID_Prospect, Statut_Lu: false, Timestamp: new Date().toISOString(),
         }).catch(() => {});
       }
@@ -523,7 +523,7 @@ window.VuePhoning = {
     return `
       <button type="button" class="btn-primaire" style="margin-top:10px;width:100%"
               onclick="VuePhoning.ouvrirAjoutTracker()" ${this._trackerAjoute ? 'disabled' : ''}>
-        ${this._trackerAjoute ? '✅ Ajouté au Tracker Empower' : '➕ Ajouter au Tracker Empower'}
+        ${this._trackerAjoute ? 'Ajouté au Tracker Empower' : 'Ajouter au Tracker Empower'}
       </button>
       ${this._renderModalAjoutTracker()}`;
   },
@@ -796,7 +796,7 @@ window.VuePhoning = {
 
     try {
       // 1. Ligne 📞_PHONING
-      await SheetsAPI.ecrire('EMPOWER_MDB', '📞_PHONING', {
+      await SheetsAPI.ecrire('EMPOWER_MDB', 'PHONING', {
         ID_Appel: genId('APPEL'),
         Date: dateISOLocale(),
         Semaine_ISO: FiscalWeeks.codeDe(),
@@ -832,7 +832,7 @@ window.VuePhoning = {
 
       // 1b. BLOC 6 — alertes score Groq (post-appel)
       const _score = Number(s.qualif?.score) || 0;
-      const _notif = (dest, type, msg) => SheetsAPI.ecrire('EMPOWER_MDB', '🔔_NOTIFS', {
+      const _notif = (dest, type, msg) => SheetsAPI.ecrire('EMPOWER_MDB', 'NOTIFS', {
         ID_Notif: genId('NOTIF'), Date_Envoi: new Date().toISOString(),
         PIN_Destinataire: dest, Type_Notif: type,
         Message: msg, ID_Cible: idCible, Statut_Lu: false,
@@ -884,7 +884,7 @@ window.VuePhoning = {
           maj.Flag_traite = 'FALSE';
         }
 
-        await SheetsAPI.mettreAJour('EMPOWER_MDB', '📋_PROSPECTS', idCible, maj);
+        await SheetsAPI.mettreAJour('EMPOWER_MDB', 'LEADS', idCible, maj);
         // Sync état local
         const local = s.prospects.find(p => p.ID_Prospect === idCible);
         if (local) Object.assign(local, maj);
@@ -907,7 +907,7 @@ window.VuePhoning = {
         if (['EN_COURS', 'INTEGRE', 'ARCHIVE'].includes(d.statutFinal)) {
           majCompte.STATUT_COMPTE = d.statutFinal;
         }
-        await SheetsAPI.mettreAJour('EMPOWER_MDB', '🏢_COMPTES', idCible, majCompte);
+        await SheetsAPI.mettreAJour('EMPOWER_MDB', 'COMPTES', idCible, majCompte);
         // Sync état local
         const localC = s.comptes.find(x => String(x.ID_Compte) === String(idCible));
         if (localC) Object.assign(localC, majCompte);
@@ -921,7 +921,7 @@ window.VuePhoning = {
           // rafraîchies : un appel planifié S+2 puis réalisé en S+2 restait
           // compté sur la semaine de saisie S. Alignées ici sur le moment réel
           // de réalisation, même logique que la création d'un appel à chaud.
-          await SheetsAPI.mettreAJour('EMPOWER_MDB', '📞_PHONING', s.idPlanifEnCours, {
+          await SheetsAPI.mettreAJour('EMPOWER_MDB', 'PHONING', s.idPlanifEnCours, {
             Statut_Appel: 'réalisé',
             Date: dateISOLocale(),
             Semaine_ISO: FiscalWeeks.codeDe(),
@@ -930,7 +930,7 @@ window.VuePhoning = {
       }
 
       // 3. Log 📊_ACTIONS
-      await SheetsAPI.ecrire('EMPOWER_MDB', '📊_ACTIONS', {
+      await SheetsAPI.ecrire('EMPOWER_MDB', 'ACTIONS', {
         ID_Action: genId('ACT'), Date_Action: new Date().toISOString(),
         Type_Action: 'Appel', Source: 'ESI', PIN_CDS: Session.pin,
         Nom_Compte: c.Nom_Compte,
@@ -958,7 +958,7 @@ window.VuePhoning = {
           <div class="succes-icone"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
           <h2>Appel enregistré</h2>
           <p class="succes-duree">${c.Nom_Compte}</p>
-          <p class="succes-duree">📞 ${this.sessionAppels} appel${this.sessionAppels > 1 ? 's' : ''} cette session</p>
+          <p class="succes-duree">${this.sessionAppels} appel${this.sessionAppels > 1 ? 's' : ''} cette session</p>
           <div class="succes-recap">
             <div>${d.statutAppel} · Intérêt EMPOWER : ${d.interetEmpower || 'n.c.'}</div>
             ${msgResultat ? `<div>${msgResultat}</div>` : ''}
@@ -1029,7 +1029,7 @@ window.VuePhoning = {
       ${_tabs()}
       ${this._renderKpiBase()}
       <div style="display:flex;gap:8px;margin-bottom:12px">
-        <input class="q-input" placeholder="🔍 Filtrer mes comptes…" value="${s.rechercheBase || ''}"
+        <input class="q-input" placeholder="Filtrer mes comptes…" value="${s.rechercheBase || ''}"
                oninput="VuePhoning.setRechercheBase(this.value)" style="flex:2"/>
         ${Session.voitTout() ? `
         <select class="q-input" style="flex:1" onchange="VuePhoning.setFiltreCDSBase(this.value)">
@@ -1094,7 +1094,7 @@ window.VuePhoning = {
         ${statut !== 'n.c.' ? ` · ${statut}` : ''}
         ${silence !== null ? ` · <span style="color:${silence > 4 ? 'var(--c-danger)' : 'var(--c-text-2)'}">📞 ${silence === 0 ? "cette sem." : `${silence}s silence`}</span>` : ''}
       </div>
-      ${dernierAppel?.Note ? `<div style="font-size:11px;color:var(--c-text-2);background:var(--c-bg);border-radius:6px;padding:5px 8px;margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${String(dernierAppel.Note).replace(/"/g,'&quot;')}">💬 ${dernierAppel.Note}</div>` : ''}
+      ${dernierAppel?.Note ? `<div style="font-size:11px;color:var(--c-text-2);background:var(--c-bg);border-radius:6px;padding:5px 8px;margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${String(dernierAppel.Note).replace(/"/g,'&quot;')}">${dernierAppel.Note}</div>` : ''}
       <div style="display:flex;gap:8px">
         ${c.Tel ? `<a class="btn-secondaire" style="flex:1;font-size:12px;text-decoration:none;text-align:center;padding:8px" href="tel:${String(c.Tel).replace(/\s/g,'')}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>${c.Tel}</a>` : ''}
         <button class="btn-primaire" style="flex:2;font-size:12px;padding:8px"
@@ -1113,7 +1113,7 @@ window.VuePhoning = {
     this.state.journalChargement = true;
     this.render();
     try {
-      const data = await SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING');
+      const data = await SheetsAPI.lire('EMPOWER_MDB', 'PHONING');
       this.state.journal = data
         .filter(a => String(a.deleted || '').toUpperCase() !== 'TRUE')
         // Bloc Phoning (07/2026) — une réservation planifiée/fermée n'est pas
@@ -1163,7 +1163,7 @@ window.VuePhoning = {
         Date_Rappel:      m.dateRappel,
         Note:             m.note,
       };
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '📞_PHONING', m.id, maj);
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', 'PHONING', m.id, maj);
       const local = this.state.journal.find(a => a.ID_Appel === m.id);
       if (local) Object.assign(local, maj);
       this.state.modalEditAppel = null;
@@ -1187,7 +1187,7 @@ window.VuePhoning = {
     const id = this.state.confirmDeleteAppelId;
     if (!id) return;
     try {
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '📞_PHONING', id, {
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', 'PHONING', id, {
         deleted:    'TRUE',
         deleted_at: new Date().toISOString(),
         deleted_by: Session.nom,
@@ -1745,7 +1745,7 @@ window.VuePhoning = {
           <input class="q-input" placeholder="12 rue de la Paix, 75001 Paris" value="${s.froidsFields.adresse}"
                  oninput="VuePhoning.state.froidsFields.adresse=this.value;VuePhoning._sauvegarderBrouillon()"/></label>
         <div style="font-size:11px;color:var(--c-text-2);margin:-4px 0 10px;padding:6px;background:var(--c-bg);border-radius:var(--radius-sm)">
-          ❄️ Appel à froid : non enregistré dans la base prospects. Enregistré uniquement dans le journal phoning.
+          Appel à froid : non enregistré dans la base prospects. Enregistré uniquement dans le journal phoning.
         </div>
       ` : `
       ${s.idPlanifEnCours && s.cible ? `
@@ -1757,7 +1757,7 @@ window.VuePhoning = {
         </div>
       </div>` : ''}
       <label class="q-label">Compte à appeler
-        <input class="q-input" placeholder="🔍 Rechercher…" value="${s.recherche}"
+        <input class="q-input" placeholder="Rechercher…" value="${s.recherche}"
                oninput="VuePhoning.setRecherche(this.value)" autocomplete="off"/>
       </label>
       <div id="ph-suggestions"></div>
@@ -1778,7 +1778,7 @@ window.VuePhoning = {
       ${!s.froidsMode ? `
       <button type="button" class="btn-secondaire" onclick="VuePhoning.genererScript()"
               ${s.scriptEnCours ? 'disabled' : ''}>
-        ${s.scriptEnCours ? '🤖 Génération…' : '🤖 Générer un script d\'accroche IA'}
+        ${s.scriptEnCours ? 'Génération…' : 'Générer un script d\'accroche IA'}
       </button>
       ${s.script ? '<div class="q-recap"><h3>Script suggéré</h3>' +
         '<p style="font-size:13px;line-height:1.6;white-space:pre-wrap">' + s.script + '</p></div>' : ''}
@@ -1898,37 +1898,37 @@ window.VuePhoning = {
     const maturite = dejaOnboarde
       ? (eqScore <= 2 ? { lbl: 'À RÉACTIVER', col: 'var(--c-text-2)', bg: 'rgba(154,171,184,.12)' }
        : eqScore <= 5 ? { lbl: 'ENGAGÉ',      col: '#f59e0b',          bg: 'rgba(245,158,11,.10)'  }
-       :                { lbl: 'AMBASSADEUR 🌟', col: 'var(--c-success)', bg: 'rgba(45,158,107,.10)' })
+       :                { lbl: 'AMBASSADEUR ', col: 'var(--c-success)', bg: 'rgba(45,158,107,.10)' })
       : (eqScore <= 2 ? { lbl: 'FROID',    col: 'var(--c-text-2)', bg: 'rgba(154,171,184,.12)' }
        : eqScore <= 5 ? { lbl: 'CHAUD',    col: '#f59e0b',          bg: 'rgba(245,158,11,.10)'  }
-       :                { lbl: 'BRÛLANT 🔥', col: 'var(--c-danger)',  bg: 'rgba(186,26,26,.08)'   });
+       :                { lbl: 'BRÛLANT ', col: 'var(--c-danger)',  bg: 'rgba(186,26,26,.08)'   });
 
     const OBJECTIONS = [
-      { cat: '🎯 Image & Positionnement', col: 'var(--c-danger)', items: [
+      { cat: 'Image & Positionnement', col: 'var(--c-danger)', items: [
         { q: 'Norton c\'est grand public, pas pour les professionnels', r: 'Norton protège 500 millions d\'appareils dont de très nombreuses TPE/PME. La suite 360 couvre VPN, dark web monitoring et gestionnaire de mots de passe. C\'est une marque que vos clients reconnaissent déjà, ce qui réduit votre temps de vente.' },
         { q: 'On propose déjà Kaspersky / ESET / Bitdefender', r: 'Empower ne vous demande pas d\'abandonner votre gamme, c\'est une ligne de revenus complémentaire. La différence clé : 25% de revshare sur 3 ans de renouvellements automatiques, sans action de votre part.' },
         { q: 'Nos clients sont trop petits pour ce type de produit', r: 'C\'est exactement le cœur de cible Empower, les TPE avec 1 à 10 postes, souvent non équipés. Norton 360 démarre à moins de 30€/an par poste, s\'installe en 5 minutes, et le client renouvelle en ligne tout seul.' },
       ]},
-      { cat: '💰 Concurrence & Prix', col: '#b45309', items: [
+      { cat: 'Concurrence & Prix', col: '#b45309', items: [
         { q: 'D\'autres concurrents sont moins chers à l\'achat', r: 'Le prix d\'achat n\'est que la première ligne. Sur 50 clients à 40€/an, vous touchez 1 500€/an de revenus passifs sans stock ni relance, aucun concurrent low-cost ne propose ça.' },
         { q: 'D\'autres concurrents proposent aussi du revshare', r: 'Le revshare Empower est 100% automatique, Norton traque les renouvellements et vous crédite directement sur le portail, même sur les upgrades. Pas de déclaration manuelle, pas de paperasse, pas de condition cachée.' },
       ]},
-      { cat: '🔧 Expérience & Technique', col: '#3b82f6', items: [
+      { cat: 'Expérience & Technique', col: '#3b82f6', items: [
         { q: 'Norton ralentit les PC, mes clients se plaignent', r: 'C\'est une réputation des années 2010, depuis le rachat par Gen Digital, le moteur a été entièrement refondu. AV-Test le place parmi les moins gourmands du marché. Si un client a un problème, les revendeurs Empower ont un support technique prioritaire.' },
         { q: 'On installe du gratuit, Windows Defender, Avast…', r: 'Windows Defender ne couvre ni VPN, ni dark web, ni gestionnaire de mots de passe. Avec Norton Empower vous touchez 25% récurrents et intervenez moins souvent en urgence sur des incidents d\'infection.' },
         { q: 'Nos clients utilisent déjà Microsoft 365 Defender', r: 'Microsoft Defender couvre uniquement les appareils Windows gérés en entreprise, pas les postes persos, pas les Macs, pas les mobiles. Norton couvre tous les appareils avec un seul abonnement. C\'est complémentaire, et vous êtes payé sur ce complément.' },
       ]},
-      { cat: '⚙️ Friction & Process', col: 'var(--c-primary)', items: [
+      { cat: 'Friction & Process', col: 'var(--c-primary)', items: [
         { q: 'Obliger le client à créer un compte, trop contraignant', r: 'La création de compte prend moins de 2 minutes, email + mot de passe. Et c\'est ce compte qui déclenche votre revshare sur 3 ans : sans compte client, pas de commission récurrente.' },
         { q: 'Pas le temps de se former à un nouveau programme', r: 'L\'inscription Empower prend moins de 2 minutes en ligne, le portail est en français. Je vous envoie le lien maintenant, vous avez votre premier accès dans l\'heure, sans engagement.' },
         { q: 'On n\'a pas de technicien dédié pour déployer ça', r: 'Empower ne nécessite aucun déploiement centralisé, chaque client installe lui-même en quelques clics avec un lien que vous lui envoyez par email. Pas de serveur, pas de mise à jour manuelle.' },
         { q: 'Besoin de valider avec notre DSI / responsable IT', r: 'Je vous envoie une fiche technique et un argumentaire DSI prêts à l\'emploi. Donnez-moi votre email et je vous l\'envoie dans l\'heure. On planifie un point de suivi dans 15 jours.' },
       ]},
-      { cat: '📊 Marché & Demande', col: 'var(--c-success)', items: [
+      { cat: 'Marché & Demande', col: 'var(--c-success)', items: [
         { q: 'On n\'a pas de demande client pour ce type de produit', r: 'La demande n\'existe pas parce qu\'elle n\'est pas encore activée, aucun client ne demande spontanément un antivirus. Norton fournit des outils marketing prêts à l\'emploi pour créer cette demande.' },
         { q: 'Clients dans des secteurs réglementés (santé, juridique)', r: 'Norton 360 intègre nativement le chiffrement des fichiers sensibles, le VPN et la surveillance des fuites, des fonctions utiles en environnement médical ou juridique. La conformité RGPD est documentée et certifiable.' },
       ]},
-      { cat: '🕐 Confiance & Timing', col: '#6b7e8c', items: [
+      { cat: 'Confiance & Timing', col: '#6b7e8c', items: [
         { q: 'Norton a été racheté, je ne sais pas si la marque tient', r: 'Gen Digital est l\'une des plus grandes entreprises de cybersécurité au monde avec 500M de clients actifs, Norton, Avast, AVG et LifeLock sont tous sous le même toit. Le portail Empower est maintenu et mis à jour activement.' },
         { q: 'On est en pleine restructuration, mauvais timing', r: 'C\'est justement en période de restructuration qu\'une ligne de revenus passifs est la plus précieuse, elle rentre sans générer de charge supplémentaire. L\'inscription prend 2 minutes et ne vous engage à rien.' },
         { q: 'Mes clients associent Norton à des popups intrusives', r: 'Cette image date des versions packagées avec les PC dans les années 2000. Le Norton actuel n\'a plus aucun modèle publicitaire intrusif. Une démonstration de 5 minutes suffit à changer la perception.' },
@@ -2015,7 +2015,7 @@ window.VuePhoning = {
                 <div style="padding:10px 12px;background:var(--c-surface);border-left:3px solid var(--c-primary)">
                   <p style="font-size:12px;line-height:1.65;color:var(--c-text);margin:0 0 8px">${obj.r}</p>
                   <button type="button"
-                          onclick="(function(btn,txt){navigator.clipboard.writeText(txt).then(()=>{btn.textContent='✓ Copié';btn.style.color='var(--c-success)';setTimeout(()=>{btn.textContent='Copier';btn.style.color=''},1500)})})(this,'${obj.r.replace(/'/g, '’').replace(/"/g, '“')}')"
+                          onclick="(function(btn,txt){navigator.clipboard.writeText(txt).then(()=>{btn.textContent='Copié';btn.style.color='var(--c-success)';setTimeout(()=>{btn.textContent='Copier';btn.style.color=''},1500)})})(this,'${obj.r.replace(/'/g, '’').replace(/"/g, '“')}')"
                           style="font-size:11px;color:var(--c-text-2);background:none;border:none;cursor:pointer;padding:0">Copier</button>
                 </div>
               </details>`).join('')}
@@ -2028,7 +2028,7 @@ window.VuePhoning = {
         <button type="button" class="${s.enregistre ? 'btn-primaire' : 'btn-secondaire'}"
                 style="${s.enregistre ? 'background:var(--c-danger);border-color:var(--c-danger)' : ''}"
                 onclick="VuePhoning.toggleEnregistrement()">
-          ${s.enregistre ? '⏹ Arrêter l\'enregistrement (IA)' : '⏺ Enregistrer résumé vocal (IA, 30s)'}
+          ${s.enregistre ? 'Arrêter l\'enregistrement (IA)' : 'Enregistrer résumé vocal (IA, 30s)'}
         </button>
         ${s.enregistre ? '<p style="font-size:11px;color:var(--c-text-2);text-align:center;margin:0">Résumez l\'échange à voix haute, l\'IA transcrira et qualifiera automatiquement.</p>' : ''}
       </div>`;
@@ -2056,15 +2056,15 @@ window.VuePhoning = {
           <div style="display:flex;gap:6px;align-items:center">
             <input class="q-input" type="tel" style="flex:1;font-size:13px;padding:6px 8px"
                    value="${(d.coordTel !== undefined ? d.coordTel : c?.Tel) || ''}"
-                   placeholder="📞 Téléphone, manquant"
+                   placeholder="Téléphone, manquant"
                    oninput="VuePhoning.state.d.coordTel=this.value"/>
             ${(d.coordTel !== undefined ? d.coordTel : c?.Tel) ? `<a class="btn-lien" style="flex-shrink:0;padding:6px 8px" href="tel:${String(d.coordTel !== undefined ? d.coordTel : c.Tel).replace(/\s/g,'')}"><span class="material-symbols-outlined" aria-hidden="true">call</span></a>` : ''}
           </div>
           <input class="q-input" type="email" style="font-size:13px;padding:6px 8px"
                  value="${(d.coordEmail !== undefined ? d.coordEmail : c?.Email) || ''}"
-                 placeholder="✉ Email, manquant"
+                 placeholder="Email, manquant"
                  oninput="VuePhoning.state.d.coordEmail=this.value"/>
-          ${(c?.Adresse || c?.Ville) ? `<span style="font-size:12px;color:var(--c-text-2)">📍 ${[c.Adresse, c.Ville].filter(Boolean).join(' · ')}</span>` : ''}
+          ${(c?.Adresse || c?.Ville) ? `<span style="font-size:12px;color:var(--c-text-2)">${[c.Adresse, c.Ville].filter(Boolean).join(' · ')}</span>` : ''}
           ${(c?.CANAL || c?.CA_FY26) ? `<span style="font-size:11px;color:var(--c-text-2)">${[c?.CANAL, c?.CA_FY26 ? 'CA FY26 : ' + fmtCA(c.CA_FY26) + ' €' : ''].filter(Boolean).join(' · ')}</span>` : ''}
         </div>
       </div>
@@ -2203,7 +2203,7 @@ window.VuePhoning = {
 
       <button type="button" class="btn-primaire" onclick="VuePhoning.valider()"
               ${s.envoiEnCours ? 'disabled' : ''}>
-        ${s.envoiEnCours ? 'Enregistrement…' : '✓ Enregistrer l\'appel'}
+        ${s.envoiEnCours ? 'Enregistrement…' : 'Enregistrer l\'appel'}
       </button>
     </div>`;
   },
@@ -2427,7 +2427,7 @@ window.VuePhoning = {
                  <button type="button" onclick="VuePhoning.state.formPlanif.idCompte=null;VuePhoning.state.formPlanif.nomCompte='';VuePhoning.render()"
                          style="float:right;background:none;border:none;cursor:pointer;color:var(--c-text-2)"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
                </div>`
-            : `<input class="q-input" placeholder="🔍 Rechercher un compte…" id="planif-recherche"
+            : `<input class="q-input" placeholder="Rechercher un compte…" id="planif-recherche"
                      value="${f.rechercheCompte || ''}"
                      oninput="VuePhoning._rechercherPlanif(this.value)" autocomplete="off"/>
                <div id="planif-suggestions"></div>`
@@ -2655,7 +2655,7 @@ window.VuePhoning = {
         if (f.tel && f.tel.trim() && (ecraserCoordonnees || !c.Tel))     majCoord.Tel   = f.tel.trim();
         if (f.email && f.email.trim() && (ecraserCoordonnees || !c.Email)) majCoord.Email = f.email.trim();
         if (Object.keys(majCoord).length) {
-          const onglet = f.typeCible === 'PROSPECT' ? '📋_PROSPECTS' : '🏢_COMPTES';
+          const onglet = f.typeCible === 'PROSPECT' ? 'LEADS' : 'COMPTES';
           const id     = f.typeCible === 'PROSPECT' ? c.ID_Prospect  : c.ID_Compte;
           await SheetsAPI.mettreAJour('EMPOWER_MDB', onglet, id, majCoord);
           Object.assign(c, majCoord);
@@ -2685,7 +2685,7 @@ window.VuePhoning = {
           Email_Contact: f.froidEmail,
         } : {}),
       };
-      await SheetsAPI.ecrire('EMPOWER_MDB', '📞_PHONING', record);
+      await SheetsAPI.ecrire('EMPOWER_MDB', 'PHONING', record);
       this.state.planning.push(record);
       this.state.planning.sort((a, b) => (a.Date_Planifiee || '').localeCompare(b.Date_Planifiee || ''));
       this.state.formPlanif = null;
@@ -2745,7 +2745,7 @@ window.VuePhoning = {
 
   async _supprimerPlanifConfirme(id) {
     try {
-      await SheetsAPI.mettreAJour('EMPOWER_MDB', '📞_PHONING', id, {
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', 'PHONING', id, {
         deleted: 'TRUE', deleted_at: dateISOLocale(), deleted_by: Session.nom,
       });
       this.state.planning = this.state.planning.filter(a => a.ID_Appel !== id);

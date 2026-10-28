@@ -65,7 +65,7 @@ const SheetsAPI = {
   // ── TABLE MAPPING : onglet GAS → table Supabase ──────
   _tableMap: {
     '🏢_COMPTES': 'comptes', 'COMPTES': 'comptes',
-    '📋 COMPTES HISTORIQUES': 'sellin_agregats', 'COMPTES HISTORIQUES': 'sellin_agregats', 'COMPTES_HISTORIQUES': 'sellin_agregats',
+    'COMPTES HISTORIQUES': 'sellin_agregats', 'COMPTES HISTORIQUES': 'sellin_agregats', 'COMPTES_HISTORIQUES': 'sellin_agregats',
     '📉_SELL_IN_HISTORIQUE': 'sellin_agregats', 'SELL_IN_HISTORIQUE': 'sellin_agregats',
     '🎯_OBJECTIFS_PRIMES': 'objectifs_primes', 'OBJECTIFS_PRIMES': 'objectifs_primes',
     '📊_PARAMS': 'params', '⚙️_PARAMS': 'params', 'PARAMS': 'params',

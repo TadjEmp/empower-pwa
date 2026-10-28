@@ -187,13 +187,13 @@ async function _submitDeclareCA(codeClient, fy) {
 
   const res = await SheetsAPI.declareCA(fy, codeClient, periode, montant);
   if (res.success) {
-    status.textContent = `✓ CA ${periode} de ${montant.toLocaleString('fr-FR')}€ synchronisé dans le Sheet`;
+    status.textContent = `CA ${periode} de ${montant.toLocaleString('fr-FR')}€ synchronisé dans le Sheet`;
     status.style.color = '#2D9E6B';
     status.classList.remove('hidden');
     btn.innerHTML = '<span class="material-symbols-outlined text-sm">check_circle</span> Validé !';
     setTimeout(() => document.getElementById('declare-ca-modal')?.remove(), 2000);
   } else {
-    status.textContent = `✗ Erreur : ${res.error}`;
+    status.textContent = `Erreur : ${res.error}`;
     status.style.color = '#ba1a1a';
     status.classList.remove('hidden');
     btn.innerHTML = 'Réessayer';
@@ -311,12 +311,12 @@ async function _submitAddLead(fy) {
 
   const res = await SheetsAPI.addLead(fy, lead);
   if (res.success) {
-    status.textContent = `✓ ${raison} ajouté dans le Sheet ${fy}`;
+    status.textContent = `${raison} ajouté dans le Sheet ${fy}`;
     status.style.color = '#2D9E6B';
     status.classList.remove('hidden');
     setTimeout(() => document.getElementById('add-lead-modal')?.remove(), 1800);
   } else {
-    status.textContent = `✗ Erreur : ${res.error}`;
+    status.textContent = `Erreur : ${res.error}`;
     status.style.color = '#ba1a1a';
     status.classList.remove('hidden');
     btn.innerHTML = 'Réessayer';
@@ -343,8 +343,8 @@ async function syncCallToSheet(codeClient, fy = 'FY27') {
   const toast = document.getElementById('save-toast');
   if (toast) {
     toast.textContent = res.success
-      ? '✓ Compte-rendu enregistré & synchronisé dans Google Sheets'
-      : `✗ Erreur Sheets : ${res.error}`;
+      ? 'Compte-rendu enregistré & synchronisé dans Google Sheets'
+      : `Erreur Sheets : ${res.error}`;
     toast.style.color = res.success ? '#2D9E6B' : '#ba1a1a';
     toast.classList.remove('hidden');
     setTimeout(() => toast.classList.add('hidden'), 3500);

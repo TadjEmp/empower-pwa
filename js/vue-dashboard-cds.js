@@ -15,20 +15,20 @@ window.VueDashboardCDS = {
       const [comptes, visites, appels, objectifs, prospects, params, notifs] = await Promise.all([
         // Bloc B (07/2026) — nocache : cards KPI Accueil (visites/appels/statuts
         // comptes) restaient jusqu'à 30 min périmées après une activité terrain.
-        SheetsAPI.lire('EMPOWER_MDB', '🏢_COMPTES', { nocache: true }),
-        SheetsAPI.lire('EMPOWER_MDB', '🗺️_VISITES', { nocache: true }),
-        SheetsAPI.lire('EMPOWER_MDB', '📞_PHONING', { nocache: true }),
+        SheetsAPI.lire('EMPOWER_MDB', 'COMPTES', { nocache: true }),
+        SheetsAPI.lire('EMPOWER_MDB', 'VISITES', { nocache: true }),
+        SheetsAPI.lire('EMPOWER_MDB', 'PHONING', { nocache: true }),
         // nocache : objectifs_primes.Qx_CA_Realise est mis à jour par la synchro
         // Sell-In (sync-sellin) depuis le poste ADMIN — sans nocache, le
         // Reporting CDS pouvait rester figé jusqu'à 30 min après une synchro
         // faite ailleurs (07/2026).
-        SheetsAPI.lire('EMPOWER_MDB', '🎯_OBJECTIFS_PRIMES', { nocache: true }),
+        SheetsAPI.lire('EMPOWER_MDB', 'OBJECTIFS_PRIMES', { nocache: true }),
         // nocache : même correctif que VueDashboardManager.initChannel() et le
         // Tracker (vue-pipeline.js) — sans ça, "Leads actifs" pouvait rester
         // périmé jusqu'à 30 min après une action terrain (Tracker, conversion).
-        SheetsAPI.lire('EMPOWER_MDB', '📋_PROSPECTS', { nocache: true }),
-        SheetsAPI.lire('EMPOWER_MDB', '⚙️_PARAMS'),
-        SheetsAPI.lire('EMPOWER_MDB', '🔔_NOTIFS').catch(() => []),
+        SheetsAPI.lire('EMPOWER_MDB', 'LEADS', { nocache: true }),
+        SheetsAPI.lire('EMPOWER_MDB', 'PARAMS'),
+        SheetsAPI.lire('EMPOWER_MDB', 'NOTIFS').catch(() => []),
       ]);
       // Conservé brut pour recalculer les camemberts/CA cumulé au changement de
       // filtre (Quarter/commercial) sans re-fetch réseau — cf. _donneesFiltrables.
