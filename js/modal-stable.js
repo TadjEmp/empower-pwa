@@ -8,7 +8,7 @@
 // ═══════════════════════════════════════
 window.ModalStable = (function () {
   const OVERLAYS = '.modal-overlay:not(.modal-docked), .drawer-overlay.ouvert, .nc-overlay';
-  let verrou = false, yPage = 0;
+  let verrou = false, yPage = 0, minuteur = null;
   let memo = null;            // { scrollTop, champ:{index, debut, fin}, ts }
   let dernierModal = null;
   let figeJusque = 0;          // pendant la restitution, on ne réécrit pas la mémoire avec une position transitoire
@@ -21,6 +21,9 @@ window.ModalStable = (function () {
     const b = document.body;
     b.style.position = 'fixed'; b.style.top = (-yPage) + 'px'; b.style.left = '0'; b.style.right = '0'; b.style.width = '100%';
     document.documentElement.classList.add('scroll-lock');
+    // Les événements de défilement ne partent qu'à l'image suivante du navigateur : un relevé régulier
+    // garantit que la position est connue même si la vue se redessine juste après.
+    clearInterval(minuteur); minuteur = setInterval(memoriser, 150);
   }
   function deverrouiller() {
     if (!verrou) return;
@@ -28,6 +31,7 @@ window.ModalStable = (function () {
     const b = document.body;
     b.style.position = b.style.top = b.style.left = b.style.right = b.style.width = '';
     document.documentElement.classList.remove('scroll-lock');
+    clearInterval(minuteur); minuteur = null; memo = null; dernierModal = null;
     window.scrollTo(0, yPage);
   }
 

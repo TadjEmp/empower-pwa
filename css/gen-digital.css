@@ -516,5 +516,5 @@ html { background: var(--c-bg); }
   background-size: 200% 100%;
   border-radius: var(--radius-md);
 }
-::view-transition-old(root) { animation-duration: 90ms; animation-timing-function: ease-in; }
+::view-transition-old(root) { animation: none; opacity: 0; }   /* l'ancienne vue disparaît tout de suite, jamais en fondu */
 ::view-transition-new(root) { animation-duration: 150ms; animation-timing-function: cubic-bezier(.16, 1, .3, 1); }
