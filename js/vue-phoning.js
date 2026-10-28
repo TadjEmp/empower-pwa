@@ -2024,7 +2024,7 @@ window.VuePhoning = {
       </details>
 
       <!-- Enregistrement vocal IA -->
-      <div style="border-top:1px solid var(--c-border);padding-top:12px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px">
+      <div style="padding-top:12px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px">
         <button type="button" class="${s.enregistre ? 'btn-primaire' : 'btn-secondaire'}"
                 style="${s.enregistre ? 'background:var(--c-danger);border-color:var(--c-danger)' : ''}"
                 onclick="VuePhoning.toggleEnregistrement()">

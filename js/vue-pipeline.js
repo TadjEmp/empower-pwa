@@ -818,7 +818,7 @@ window.VuePipeline = {
       </header>
 
       <!-- Toggle Kanban / Table — tabs premium -->
-      <div style="padding:10px 12px 0;background:var(--c-surface);border-bottom:1px solid var(--c-border)">
+      <div style="padding:10px 12px 0;background:var(--c-surface);">
         <div class="tabs-premium">
           <button class="tab-btn-premium ${this.modeAffichage === 'kanban' ? 'actif' : ''}"
                   onclick="VuePipeline.setMode('kanban')">
@@ -1339,7 +1339,7 @@ window.VuePipeline = {
              évident. Corrigé : toujours visible, même pattern que les autres
              modaux de l'app (ex. VueDashboardManager.fermerExportDir). -->
         <div style="position:sticky;top:-24px;margin:-24px -24px 12px;padding:14px 24px 10px;
-                    background:var(--bg-warm-white);z-index:2;border-bottom:1px solid var(--c-border);
+                    background:var(--bg-warm-white);z-index:2;
                     display:flex;align-items:flex-start;gap:10px">
           <div style="flex:1;min-width:0">
             <h3 style="margin:0 0 4px">${l.Nom_Compte}</h3>
@@ -1485,7 +1485,7 @@ window.VuePipeline = {
         </div>` : ''}
 
         <!-- IA Gemini — slots T01/T02/T04/T05 -->
-        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--c-border)">
+        <div style="margin-top:12px;padding-top:12px;">
           <div style="font-size:11px;color:var(--c-text-2);margin-bottom:6px;font-weight:700;letter-spacing:.04em">ASSISTANT IA GEMINI</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
             <button class="btn-secondaire" style="font-size:12px;padding:8px;text-align:left"

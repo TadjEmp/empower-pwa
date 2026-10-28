@@ -227,3 +227,21 @@ button, [onclick], .btn-filtre, .tab-btn-premium { touch-action: manipulation; }
   vertical-align: -0.2em; -webkit-font-smoothing: antialiased;
   font-feature-settings: 'liga';
 }
+
+/* ═══ Plus de filets décoratifs ═══
+   Les séparations viennent de l'espace et du contraste de surface. Les alertes ne portent plus
+   de barre colorée à gauche : un fond teinté et un point de couleur suffisent. */
+.stat-tuile, .alerte-ligne, .kanban-carte, .carte-visite, .carte-compte-alerte { border: 0; }
+.alerte-ligne {
+  display: flex; align-items: center; gap: 10px;
+  border-radius: var(--radius-md); padding: 12px 16px;
+  background: rgba(217, 48, 37, .06);
+}
+.alerte-ligne::before {
+  content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--c-danger);
+}
+.carte-compte-alerte, .kanban-carte.kanban-alerte { border-left: 0 !important; background: rgba(217, 48, 37, .06); }
+.kanban-carte { border-radius: var(--radius-md); }
+.id-ligne { padding: 10px 0; }
+.v7-signal { border: 0; border-radius: var(--radius-lg); padding: 20px 24px; margin: 0 0 24px; background: var(--c-surface); }
+.v7-signal.vide { color: var(--c-text-2); }

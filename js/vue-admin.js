@@ -581,7 +581,7 @@ window.VueAdmin = {
           const packOk = l.Welcome_Pack_Date;
           const packAttend = !packOk && ['COMPTE_CREE','INTEGRE'].includes(l.STATUT_EMPOWER);
           return `
-            <div style="padding:10px 0;border-bottom:1px solid var(--c-border)">
+            <div style="padding:10px 0;">
               <div style="display:flex;align-items:flex-start;gap:8px">
                 <div style="flex:1;min-width:0">
                   <div style="font-size:13px;font-weight:700;margin-bottom:4px">${l.Nom_Compte}</div>
@@ -1013,7 +1013,7 @@ window.VueAdmin = {
         ${(r.nonMatcher || []).length ? `
         <div style="font-size:12px;font-weight:700;color:var(--c-warning);margin-bottom:6px">À rattacher (${r.nonMatcher.length}), aucun compte créé automatiquement</div>
         ${r.nonMatcher.map(n => `
-          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px;padding:6px 0;border-bottom:1px solid var(--c-border)">
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px;padding:6px 0;">
             <strong style="min-width:140px">${E(n.reseller)}</strong>
             ${(n.candidats || []).length ? `
               <select id="${idSel(n)}" style="flex:1;min-width:140px">
@@ -1474,7 +1474,7 @@ window.VueAdmin = {
     `;
     const trackerExportHtml = `
       <div style="margin-bottom:18px">
-        <div style="font-size:12px;font-weight:700;color:var(--c-title);letter-spacing:.04em;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--c-border)">Tracker EMPOWER</div>
+        <div style="font-size:12px;font-weight:700;color:var(--c-title);letter-spacing:.04em;margin-bottom:8px;padding-bottom:6px;">Tracker EMPOWER</div>
         <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:8px 0;gap:12px">
           <div style="flex:1;min-width:0">
             <div style="font-size:13px;font-weight:600">Export Tracker EMPOWER (pipeline)</div>
@@ -1486,9 +1486,9 @@ window.VueAdmin = {
       </div>`;
     return filtrePickupHtml + trackerExportHtml + this.EXPORT_GROUPES.map(groupe => `
       <div style="margin-bottom:18px">
-        <div style="font-size:12px;font-weight:700;color:var(--c-title);letter-spacing:.04em;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--c-border)">${groupe.titre}</div>
+        <div style="font-size:12px;font-weight:700;color:var(--c-title);letter-spacing:.04em;margin-bottom:8px;padding-bottom:6px;">${groupe.titre}</div>
         ${groupe.exports.map(e => `
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--c-bg);gap:12px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:8px 0;gap:12px">
             <div style="flex:1;min-width:0">
               <div style="font-size:13px;font-weight:600">${e.label}</div>
               <div style="font-size:11px;color:var(--c-text-2);margin-top:1px">${e.desc}</div>
@@ -1565,7 +1565,7 @@ window.VueAdmin = {
       </header>
 
       <!-- Bloc 8 refonte desktop : sous-navigation par onglets au lieu d'un scroll unique -->
-      <div class="tabs-premium" style="padding:10px 12px;background:var(--c-surface);border-bottom:1px solid var(--c-border);overflow-x:auto">
+      <div class="tabs-premium" style="padding:10px 12px;background:var(--c-surface);overflow-x:auto">
         ${ADMIN_TABS.map(([t, l]) => `
           <button class="tab-btn-premium ${adminTab === t ? 'actif' : ''}" onclick="VueAdmin.setAdminTab('${t}')">${l}</button>`).join('')}
       </div>
@@ -1578,7 +1578,7 @@ window.VueAdmin = {
         <div class="bloc-fiche">
           <div class="bloc-titre">Objectifs FY27 par CDS (€ révisés)</div>
           ${this.state.objectifs.map(o => `
-            <div style="border-bottom:1px solid var(--c-border);padding:10px 0">
+            <div style="padding:10px 0">
               <strong style="font-size:14px">${o.Nom_CDS}
                 <span style="color:var(--c-text-2);font-weight:400"> · FY27 : ${formatEuro(['Q1','Q2','Q3','Q4'].reduce((s,q) => s + parseAmount(o[`${q}_Obj_Revise`]||o[`${q}_Obj_Initial`]||0), 0))}</span>
               </strong>
@@ -1717,7 +1717,7 @@ window.VueAdmin = {
                 </div>
                 <div style="max-height:180px;overflow-y:auto;background:var(--c-bg);border:1px solid var(--c-border);border-radius:var(--radius-sm);padding:8px">
                   ${this.state.syncSellInNonMatcher.map(n => `
-                  <div style="font-size:12px;padding:4px 0;color:var(--c-text-2);border-bottom:1px solid var(--c-border)">
+                  <div style="font-size:12px;padding:4px 0;color:var(--c-text-2);">
                     • <strong>${n.reseller}</strong>
                     ${n.raison === 'QUASI_DOUBLON'
                       ? `, ressemble à un compte déjà existant (${(n.candidats || []).length} candidat(s)) : à vérifier/fusionner manuellement dans Comptes`
@@ -1768,7 +1768,7 @@ window.VueAdmin = {
             <strong>Audio : jamais stocké côté serveur</strong>, seule la transcription texte est conservée.
           </p>
           ${this.state.objectifs.map(o => `
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--c-border)">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;">
               <div>
                 <div style="font-size:14px;font-weight:600">${o.Nom_CDS}</div>
                 <div style="font-size:11px;color:var(--c-text-2)">appels + visites</div>

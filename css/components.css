@@ -92,7 +92,6 @@
 /* ── Offline banner PHONE OS §4.8 ── */
 .offline-banner {
   background: var(--sync-offline-bg);
-  border-bottom: 1px solid rgba(138,155,176,0.20);
   padding: 8px var(--space-4);
   font: 500 13px/1 var(--font-ui);
   color: var(--text-secondary);
@@ -179,7 +178,6 @@
 /* ── Barre filtres ── */
 .barre-filtres {
   padding: 10px 12px; background: var(--c-surface);
-  border-bottom: 1px solid var(--c-border);
   display: flex; flex-direction: column; gap: 8px;
 }
 .filtres-flags { display: flex; gap: 6px; overflow-x: auto; }
@@ -239,7 +237,6 @@
   display: flex; gap: 8px; padding: 12px 16px;
   padding-bottom: calc(12px + var(--safe-bottom));
   background: var(--c-surface);
-  border-top: 1px solid var(--c-border);
   box-shadow: 0 -2px 12px rgba(26,26,46,.08); z-index: 100;
 }
 .btn-action {
@@ -281,7 +278,7 @@
 @keyframes nc-slide { from { transform: translateY(12px); opacity: .6; } to { transform: none; opacity: 1; } }
 .nc-head {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 14px; border-bottom: 1px solid var(--c-border); font-size: 15px;
+  padding: 12px 14px; font-size: 15px;
   color: var(--c-title);
 }
 .nc-tout {
@@ -291,7 +288,7 @@
 .nc-liste { overflow-y: auto; }
 .nc-vide  { padding: 28px 16px; text-align: center; color: var(--c-text-2); font-size: 14px; }
 .nc-item  {
-  padding: 11px 14px; border-bottom: 1px solid var(--c-border); cursor: pointer;
+  padding: 11px 14px; cursor: pointer;
   transition: background .1s ease;
 }
 .nc-item:hover { background: var(--bg-surface); }
@@ -337,7 +334,7 @@
 .drawer-badge { margin-left:auto; min-width:20px; padding:1px 7px; border-radius:99px; background:var(--c-primary,#2563EB); color:#fff; font-size:11px; font-weight:700; text-align:center; }
 
 /* Lot 6 — interrupteur push dans le panneau de notifications */
-.nc-push { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 12px; font-size:12px; background:var(--c-surface-alt); border-bottom:1px solid var(--c-border); }
+.nc-push { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 12px; font-size:12px; background:var(--c-surface-alt); }
 .nc-push-info { color:var(--c-text-2); justify-content:flex-start; }
 
 /* Création d'accès : droits cochables et récapitulatif */

@@ -11,7 +11,7 @@
 /* Barre de progression */
 .q-progress-bar {
   display: flex; align-items: center; padding: 10px 16px;
-  background: var(--c-surface); border-bottom: 1px solid var(--c-border);
+  background: var(--c-surface);
 }
 .q-step { display: flex; align-items: center; }
 .q-step-dot {
@@ -113,7 +113,7 @@
 /* Récap */
 .q-recap { background: var(--c-bg); border-radius: var(--radius); padding: 14px; margin-top: 8px; }
 .q-recap h3 { font-size: 14px; font-weight: 700; margin-bottom: 10px; }
-.q-recap-ligne { display: flex; justify-content: space-between; font-size: 13px; padding: 5px 0; border-bottom: 1px solid var(--c-border); }
+.q-recap-ligne { display: flex; justify-content: space-between; font-size: 13px; padding: 5px 0; }
 .q-recap-ligne:last-child { border-bottom: none; }
 .q-recap-ligne span  { color: var(--c-text-2); }
 .q-recap-ligne strong{ color: var(--c-text); }

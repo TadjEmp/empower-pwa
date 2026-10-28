@@ -1735,7 +1735,7 @@ window.VueVisites = {
            rendant scrollable horizontalement de bout en bout, cartes coupées des
            deux côtés en swipant. flex-wrap:wrap : la nav date passe à la ligne
            plutôt que de pousser la page hors de son viewport. -->
-      <div style="display:flex;align-items:center;gap:8px;row-gap:6px;flex-wrap:wrap;padding:10px 14px;background:var(--c-surface);border-bottom:1px solid var(--c-border)">
+      <div style="display:flex;align-items:center;gap:8px;row-gap:6px;flex-wrap:wrap;padding:10px 14px;background:var(--c-surface);">
         <button class="btn-filtre ${this.state.modeVue === 'jour' ? 'actif' : ''}" onclick="VueVisites.setModeVue('jour')">Jour</button>
         <button class="btn-filtre ${this.state.modeVue === 'semaine' ? 'actif' : ''}" onclick="VueVisites.setModeVue('semaine')">Semaine</button>
         <button class="btn-filtre ${this.state.modeVue === 'historique' ? 'actif' : ''}" onclick="VueVisites.setModeVue('historique')">Historique</button>

@@ -245,7 +245,6 @@ body {
   display: flex; align-items: center; gap: 12px;
   padding: var(--safe-top) 16px 0;
   background: var(--bg-anchor);
-  border-bottom: 1px solid var(--border-anchor);
   box-shadow: 0 1px 8px rgba(26,26,46,0.12);
 }
 /* Quand brand bar présente, le header est déjà décalé — annule le double padding */
@@ -415,7 +414,6 @@ body {
   position: fixed; top: 0; left: 0; right: 0; z-index: 200;
   height: calc(44px + var(--safe-top));
   background: var(--bg-anchor);
-  border-bottom: 1px solid var(--border-anchor);
   display: flex; align-items: center; gap: 8px;
   padding: var(--safe-top) 14px 0;
   box-shadow: 0 1px 6px rgba(26,26,46,.10);
@@ -453,7 +451,6 @@ body {
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   background: var(--bg-anchor);
-  border-top: 1px solid var(--border-anchor);
   padding: 5px 6px calc(5px + var(--safe-bottom));
   gap: 2px;
   box-shadow: 0 -2px 12px rgba(26,26,46,.08);
@@ -526,8 +523,7 @@ body {
   /* Logo bloc */
   .nav-logo {
     display: flex; align-items: center; gap: 10px;
-    color: var(--text-on-anchor); padding: 14px 4px 14px 2px; width: 100%;
-    border-bottom: 1px solid var(--border-anchor); margin-bottom: 6px;
+    color: var(--text-on-anchor); padding: 14px 4px 14px 2px; width: 100%; margin-bottom: 6px;
     flex-shrink: 0; overflow: hidden; min-width: 0;
   }
   .nav-logo .norton-mark { width: 30px; height: 30px; flex-shrink: 0; }
@@ -562,7 +558,6 @@ body {
   }
   .nav-section + .nav-section {
     margin-top: 4px; padding-top: 8px;
-    border-top: 1px solid var(--border-anchor);
   }
   .nav-section-lbl {
     display: block;
@@ -608,7 +603,6 @@ body {
   .nav-sidebar-footer {
     display: flex; flex-direction: column; gap: 1px;
     margin-top: auto; padding: 8px 0 14px;
-    border-top: 1px solid var(--border-anchor);
     flex-shrink: 0; width: 100%;
   }
   .nav-sidebar-user {
@@ -700,7 +694,6 @@ body {
     position: fixed; top: 0; left: 240px; right: 0; height: 56px;
     padding: 0 28px;
     background: var(--bg-warm-white);
-    border-bottom: 1px solid var(--border-medium);
     z-index: 120;
     transition: left .22s cubic-bezier(.4,0,.2,1);
   }
@@ -812,7 +805,7 @@ details[open] > .cv-rapport-toggle::before { transform: rotate(90deg); }
 .ch-stats {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(74px, 1fr));
   gap: 8px; padding: 10px 12px;
-  background: var(--c-surface); border-bottom: 1px solid var(--c-border);
+  background: var(--c-surface);
 }
 .ch-stat {
   display: flex; flex-direction: column; align-items: center;
@@ -921,7 +914,7 @@ details[open] > .cv-rapport-toggle::before { transform: rotate(90deg); }
   box-shadow: var(--shadow-card); margin-bottom: 16px;
 }
 .section-card-head {
-  padding: 14px 18px; border-bottom: 1px solid var(--c-border);
+  padding: 14px 18px;
   background: rgba(26,26,46,.03);
   font-size: 11px; font-weight: 900; text-transform: uppercase;
   letter-spacing: .08em; color: var(--c-title);
@@ -1008,7 +1001,6 @@ details[open] > .cv-rapport-toggle::before { transform: rotate(90deg); }
   .desktop-table-data-view td {
     padding: 12px 18px;
     text-align: left;
-    border-bottom: 1px solid var(--c-border);
     white-space: nowrap;
   }
   .desktop-table-data-view tbody tr:last-child td { border-bottom: none; }
@@ -1116,7 +1108,6 @@ html {
 .drawer-header {
   padding: calc(var(--safe-top, 0px) + 20px) 18px 18px;
   background: var(--bg-anchor);
-  border-bottom: 1px solid var(--border-anchor);
   display: flex; align-items: center; gap: 14px; flex-shrink: 0;
 }
 .drawer-header-avatar {
@@ -1165,7 +1156,7 @@ html {
 .drawer-item-danger .drawer-item-ico { background: color-mix(in srgb,var(--c-danger) 10%,transparent); }
 
 /* Footer */
-.drawer-footer { flex-shrink: 0; padding-bottom: calc(var(--safe-bottom, 0px) + 12px); border-top: 1px solid var(--c-border); }
+.drawer-footer { flex-shrink: 0; padding-bottom: calc(var(--safe-bottom, 0px) + 12px); }
 
 /* Hamburger bouton dans brand bar */
 .brand-hamburger {
@@ -1215,7 +1206,7 @@ html {
 .photo-group-header {
   font-size: 11px; font-weight: 800; color: var(--c-text-2);
   text-transform: uppercase; letter-spacing: .06em;
-  padding: 16px 0 8px; border-bottom: 1px solid var(--c-border);
+  padding: 16px 0 8px;
   margin-bottom: 10px;
 }
 

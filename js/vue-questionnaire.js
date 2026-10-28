@@ -1131,7 +1131,7 @@ window.VueQuestionnaire = {
       <div class="q-recap" style="margin-top:8px">
         <div style="font-size:12px;font-weight:700;color:var(--c-text-2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Dernières visites</div>
         ${s.dernieresVisites.map(v => `
-        <div style="border-bottom:1px solid var(--c-border);padding:6px 0;font-size:13px">
+        <div style="padding:6px 0;font-size:13px">
           <div style="display:flex;justify-content:space-between">
             <strong>${v.Date||'n.c.'}</strong>
             <span style="color:${sansEmoji(v.Resultat_Visite)==='Positif'?'var(--c-success)':sansEmoji(v.Resultat_Visite)==='Négatif'?'var(--c-danger)':'var(--c-warning)'}">${sansEmoji(v.Resultat_Visite)||'n.c.'}</span>
@@ -1240,7 +1240,7 @@ window.VueQuestionnaire = {
                     onclick="VueQuestionnaire.toggleListe('freins','${f.id.replace(/'/g, "\\'")}')" >
               ${actif?'':''} ${f.id}
             </button>
-            ${actif?`<div style="padding:12px 16px;border-top:1px solid var(--c-border);font-size:13px;line-height:1.5">
+            ${actif?`<div style="padding:12px 16px;font-size:13px;line-height:1.5">
               <span style="color:var(--c-cta);font-weight:700;font-size:11px;text-transform:uppercase">Argumentaire recommandé</span><br>${f.argu}
             </div>`:''}
           </div>`;

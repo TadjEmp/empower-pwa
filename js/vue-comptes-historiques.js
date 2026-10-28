@@ -156,7 +156,7 @@ window.VueComptesHistoriques = {
       </header>
 
       <!-- Onglets Comptes actifs / Historique CA — cf. vue-comptes.js -->
-      <div class="tabs-premium" style="padding:10px 12px;background:var(--c-surface);border-bottom:1px solid var(--c-border)">
+      <div class="tabs-premium" style="padding:10px 12px;background:var(--c-surface);">
         <button class="tab-btn-premium" onclick="Router.aller('#/comptes')">Comptes actifs</button>
         <button class="tab-btn-premium actif">Historique CA</button>
       </div>

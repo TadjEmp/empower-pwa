@@ -413,7 +413,7 @@ window.VuePrimes = {
         <details style="margin-top:10px">
           <summary style="font-size:12px;color:var(--c-text-2);cursor:pointer">Mes déclarations NSB ${q} (${mesNSBQ.length})</summary>
           ${mesNSBQ.map(n => `
-          <div class="relance-ligne" style="align-items:center;padding:6px 0;border-bottom:1px solid var(--c-border,#eee)">
+          <div class="relance-ligne" style="align-items:center;padding:6px 0;">
             <div style="flex:1">
               <div style="font-size:13px;font-weight:600">${n.Nom_Compte || 'n.c.'}</div>
               <div style="font-size:11px;color:var(--c-text-2)">${n.Date || 'n.c.'} · ${n.Produit || 'n.c.'} · ${n.Montant_EUR ? fmtCA(n.Montant_EUR) + ' €' : 'n.c.'}${n.Notes ? ' · ' + n.Notes : ''}</div>
@@ -450,7 +450,7 @@ window.VuePrimes = {
           ${mesEmpowerQ.map(n => {
             const typeLabel = String(n.Produit || '').toUpperCase().startsWith('EMPOWER_FLAVIE') ? 'Via Alexandra' : 'Terrain';
             return `
-          <div class="relance-ligne" style="align-items:center;padding:6px 0;border-bottom:1px solid var(--c-border,#eee)">
+          <div class="relance-ligne" style="align-items:center;padding:6px 0;">
             <div style="flex:1">
               <div style="font-size:13px;font-weight:600">${n.Nom_Compte || 'n.c.'} <span style="font-size:11px;color:var(--c-text-2)">(${typeLabel})</span></div>
               <div style="font-size:11px;color:var(--c-text-2)">${n.Date || 'n.c.'}${n.Notes ? ' · ' + n.Notes : ''}</div>
