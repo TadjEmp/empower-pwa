@@ -126,6 +126,15 @@ Deno.serve(async (req) => {
     if (req.method !== 'POST' && req.method !== 'GET') return jres({ error: 'Method not allowed' }, 405)
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
+    // Authentification (ajoutée 10/2026) : sans elle, n'importe qui possédant la clé publique pouvait déclencher
+    // l'import ou envoyer ses propres lignes de CA. Session valide + rôle ADMIN ou CHANNEL_MANAGER obligatoires.
+    let corpsAuth: any = {}
+    if (req.method === 'POST') { try { corpsAuth = await req.clone().json() } catch { /* corps vide */ } }
+    const { data: sess } = await supabase.rpc('esi_session_info', { p_token: String(corpsAuth?.token || '') })
+    const su = sess?.[0]
+    if (!su || !su.actif || !su.token_expiry || Number(su.token_expiry) < Date.now()) return jres({ ok: false, error: 'Session invalide ou expirée' }, 403)
+    if (!['ADMIN', 'CHANNEL_MANAGER'].includes(su.role)) return jres({ ok: false, error: 'Accès réservé aux administrateurs et channel managers' }, 403)
+
     let rows: string[][]
     let sourceLabel: string
     let bodyRows: string[][] | null = null

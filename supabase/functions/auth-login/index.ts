@@ -21,9 +21,20 @@ function randomHex() {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS })
 
-  let body = {}
+  let body: any = {}
   try { body = await req.json() } catch {
     return Response.json({ ok: false, erreur: 'JSON invalide' }, { headers: CORS, status: 400 })
+  }
+
+  const sbService = createClient(
+    Deno.env.get('SUPABASE_URL'),
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
+  )
+
+  // Déconnexion : supprime la session de CET appareil (les autres restent connectés).
+  if (body.action === 'logout') {
+    await sbService.rpc('esi_fermer_session', { p_token: String(body.token || '') })
+    return Response.json({ ok: true }, { headers: CORS })
   }
 
   const { email, motdepasse } = body
@@ -64,7 +75,12 @@ Deno.serve(async (req) => {
 
     const token  = randomHex()
     const expiry = Date.now() + 8 * 3600 * 1000
-    await sb.from('utilisateurs').update({ token, token_expiry: expiry, failed_attempts: 0, locked_until: null }).eq('email', emailNorm)
+    // Une session par appareil (jeton haché côté base) : se connecter ici ne déconnecte plus les autres appareils.
+    const { error: errSession } = await sb.rpc('esi_creer_session', {
+      p_pin: Number(u.pin), p_token: token, p_expire: expiry, p_ua: req.headers.get('user-agent') || '',
+    })
+    if (errSession) return Response.json({ ok: false, erreur: 'Session non créée' }, { headers: CORS, status: 500 })
+    await sb.from('utilisateurs').update({ failed_attempts: 0, locked_until: null }).eq('email', emailNorm)
 
     return Response.json({
       ok: true, token, expiry,

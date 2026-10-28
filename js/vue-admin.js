@@ -841,6 +841,7 @@ window.VueAdmin = {
       const _r2 = await fetch(`${SUPABASE_URL}/functions/v1/sync-tracker`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+        body: JSON.stringify({ token: Session.token }),
       });
       const data = await _r2.json();
       if (!data?.ok) {
@@ -886,7 +887,7 @@ window.VueAdmin = {
       const _r1 = await fetch(`${SUPABASE_URL}/functions/v1/sync-sellin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
-        body: JSON.stringify({ rows }),
+        body: JSON.stringify({ rows, token: Session.token }),
       });
       const data = await _r1.json();
       if (!_r1.ok || !data?.ok) throw new Error(data?.error || `HTTP ${_r1.status}`);
@@ -1045,6 +1046,7 @@ window.VueAdmin = {
       const _r1 = await fetch(`${SUPABASE_URL}/functions/v1/sync-sellin`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+        body: JSON.stringify({ token: Session.token }),
       });
       const data = await _r1.json();
       if (!_r1.ok || !data?.ok) throw new Error(data?.error || `HTTP ${_r1.status}`);

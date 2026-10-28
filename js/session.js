@@ -52,6 +52,17 @@ const Session = {
   },
 
   deconnecter() {
+    // Ferme la session de CET appareil côté serveur (les autres appareils restent connectés).
+    // Sans attente ni erreur visible : la déconnexion locale ne dépend pas du réseau.
+    if (this.token && typeof SUPABASE_URL !== 'undefined') {
+      try {
+        fetch(`${SUPABASE_URL}/functions/v1/auth-login`, {
+          method: 'POST', keepalive: true,
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+          body: JSON.stringify({ action: 'logout', token: this.token }),
+        }).catch(() => {});
+      } catch (e) { /* hors ligne : le jeton expirera seul */ }
+    }
     this.token = this.expiry = this.email = null;
     this.pin = this.nom = this.role = this.droits = null;
     SheetsAPI.TOKEN = null;
