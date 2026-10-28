@@ -6,7 +6,7 @@
 //  Le cache ne sert plus que de secours hors-ligne.
 // ═══════════════════════════════════════
 
-const CACHE_NAME  = 'esi-v5-134';
+const CACHE_NAME  = 'esi-v5-135';
 // Assets immuables (jamais modifiés après publication) → cache-first.
 const STATIC_RE = /\.(png|jpe?g|svg|webp|gif|ico|woff2?|ttf)$/i;
 // Chemins relatifs : fonctionne à la racine d'un domaine comme en sous-dossier GitHub Pages
@@ -94,6 +94,19 @@ async function networkFirst(request) {
   }
 }
 
+async function navigation(request) {
+  try {
+    const resp = await fetch(request, { cache: 'no-store' });
+    if (resp && resp.status === 200) {
+      const c = await caches.open(CACHE_NAME);
+      c.put('./index.html', resp.clone());
+    }
+    return resp;
+  } catch (e) {
+    return (await caches.match('./index.html')) || (await caches.match('./')) || Response.error();
+  }
+}
+
 // Assets immuables : cache d'abord, réseau seulement si absent du cache.
 async function cacheFirst(request) {
   const cached = await caches.match(request);
@@ -118,8 +131,10 @@ self.addEventListener('push', e => {
 // Clic : ouvre (ou réutilise) l'app sur la route associée (#/a-contacter, #/compte/…, #/empower-tracker…).
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  const hash = (e.notification.data && e.notification.data.url) || '#/dashboard';
-  const cible = new URL('./' + hash, self.registration.scope).href;
+  // L'URL du payload peut être l'ancien format '#/compte/…' (push déjà envoyées) ou '/compte/…'.
+  const url = (e.notification.data && e.notification.data.url) || '/dashboard';
+  const chemin = url.startsWith('#') ? url.slice(1) : url;
+  const cible = new URL(chemin.replace(/^\//, ''), self.registration.scope).href;
   e.waitUntil((async () => {
     const fenetres = await clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const w of fenetres) {
@@ -136,6 +151,10 @@ self.addEventListener('fetch', e => {
   // Passer les requêtes vers les API externes (Google, Supabase) sans intercepter
   if (e.request.url.includes('script.google.com')) return;
   if (e.request.method !== 'GET') return; // ne jamais intercepter les écritures (POST/PATCH Supabase)
+
+  // Navigation vers /comptes, /compte/123… : le serveur renvoie toujours index.html (rewrite Vercel) ;
+  // hors-ligne, on sert la copie d'index.html du cache.
+  if (e.request.mode === 'navigate') { e.respondWith(navigation(e.request)); return; }
 
   e.respondWith(STATIC_RE.test(e.request.url) ? cacheFirst(e.request) : networkFirst(e.request));
 });

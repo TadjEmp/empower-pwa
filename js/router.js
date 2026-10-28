@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════
-//  router.js — Routeur hash-based SPA v2.1
+//  router.js — Routeur SPA v3 (History API, URLs propres /comptes)
 //  Navigation V2.1 (7 modules métier) :
 //    #/dashboard              → HOME
 //    #/empower-tracker        → EMPOWER TRACKER
@@ -10,6 +10,9 @@
 //    #/primes                 → SUIVI DES PRIMES
 //  Routes auxiliaires :
 //    #/compte/:id / #/comptes / #/questionnaire[/:id] / #/manager / #/admin
+//  Représentation interne : les routes restent écrites '#/comptes' (Permissions, appels
+//  Router.aller) ; l'URL réelle est '/comptes'. Les anciens liens '#/comptes' (notifications
+//  push déjà envoyées, favoris) sont convertis au chargement.
 //  Rétro-compat (redirects silencieux) :
 //    #/pipeline  → #/empower-tracker
 //    #/reactiver → #/comptes-historiques
@@ -55,13 +58,44 @@ const Router = {
   ],
 
   init() {
-    window.addEventListener('hashchange', () => this._resoudre());
+    window.addEventListener('popstate', () => this._resoudre());
+    // Les liens <a href="/comptes"> naviguent sans recharger la page (Cmd/Ctrl-clic et clic droit
+    // gardent leur comportement natif : nouvel onglet).
+    document.addEventListener('click', e => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = e.target.closest && e.target.closest('a[href]');
+      if (!a || (a.target && a.target !== '_self') || a.hasAttribute('download')) return;
+      const href = a.getAttribute('href') || '';
+      const h = /^#\//.test(href) ? href : (/^\/(?!\/)/.test(href) ? '#' + href : null);
+      if (!h) return;
+      e.preventDefault();
+      this.aller(h);
+    });
     this._resoudre();
+  },
+
+  // Route courante au format interne ('#/comptes?x=1'), '' à la racine.
+  // Un ancien lien '#/…' est lu tel quel (il sera converti par _resoudre).
+  hashCourant() {
+    const { hash, pathname, search } = window.location;
+    if (hash && hash.startsWith('#/')) return hash;
+    const chemin = pathname.replace(/\/+$/, '').replace(/^\/index\.html$/, '');
+    return chemin ? '#' + chemin + search : '';
   },
 
   aller(hash) {
     if (window.NavWeb) NavWeb.marquerAller();
-    window.location.hash = hash;
+    const url = String(hash).replace(/^#/, '');
+    if (url === window.location.pathname + window.location.search && !window.location.hash) return;
+    window.history.pushState(null, '', url);
+    this._resoudre();
+  },
+
+  // Redirection interne (garde d'accès, ancienne route) : remplace l'entrée d'historique
+  // au lieu d'en ajouter une, pour que le bouton retour ne piège pas l'utilisateur.
+  _rediriger(hash) {
+    window.history.replaceState(null, '', String(hash).replace(/^#/, ''));
+    this._resoudre();
   },
 
   // Bloc 3 §2 — retour à l'écran précédent (historique navigateur) ; repli
@@ -72,16 +106,20 @@ const Router = {
   },
 
   _resoudre() {
-    const hash = window.location.hash || '#/login';
+    // Ancien format '#/comptes' (push déjà envoyées, favoris) : converti en '/comptes' sans recharger.
+    if (window.location.hash && window.location.hash.startsWith('#/')) {
+      window.history.replaceState(null, '', window.location.hash.slice(1));
+    }
+    const hash = this.hashCourant() || '#/login';
 
     const route = this.routes.find(r => r.pattern.test(hash));
-    if (!route) { this.aller('#/login'); return; }
+    if (!route) { this._rediriger('#/login'); return; }
 
     // Redirect silencieux (rétro-compat)
-    if (route.redirect) { this.aller(route.redirect); return; }
+    if (route.redirect) { this._rediriger(route.redirect); return; }
 
     if (route.auth && !Session.estConnecte()) {
-      this.aller('#/login');
+      this._rediriger('#/login');
       return;
     }
 
@@ -89,7 +127,7 @@ const Router = {
     if (route.auth && typeof window.Permissions !== 'undefined') {
       if (!window.Permissions.routeAutorisee(Session.role, hash)) {
         const cible = window.Permissions.routeParDefaut(Session.role) || '#/login';
-        if (cible !== hash) { this.aller(cible); return; }
+        if (cible !== hash) { this._rediriger(cible); return; }
       }
     }
 

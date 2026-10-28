@@ -413,7 +413,7 @@ function NavBar(actif) {
       i.mobileNav ? '' : 'nav-sidebar-only',
       actif === i.id ? 'actif' : '',
     ].filter(Boolean).join(' ');
-    return `<a class="${cls}" href="${i.hash}" data-id="${i.id}" data-lbl="${i.lbl}">
+    return `<a class="${cls}" href="${String(i.hash).replace(/^#/, '')}" data-id="${i.id}" data-lbl="${i.lbl}">
       <span class="nav-icone">${i.icone}</span>
       <span class="nav-lbl">${i.lbl}</span>
       ${(() => { const n = (i.id === 'a_contacter' && window.AContacter) ? AContacter.nb() : 0;
@@ -505,7 +505,7 @@ function NavBar(actif) {
 //  defs : [{ hash, lbl, si }] — `si` optionnel (false = onglet masqué).
 // ═══════════════════════════════════════
 function FusionTabs(defs) {
-  const hashActuel = (window.location.hash || '').split('?')[0];
+  const hashActuel = (Router.hashCourant() || '').split('?')[0];
   const visibles = defs.filter(d => d.si !== false);
   if (visibles.length < 2) return '';
   return `
@@ -635,7 +635,7 @@ const DrawerMenu = (function () {
       <nav class="drawer-nav">
         <div class="drawer-section-lbl">Navigation</div>
         ${items.map(i => `
-          <a class="drawer-item" href="${i.hash}" onclick="DrawerMenu.fermer()">
+          <a class="drawer-item" href="${String(i.hash).replace(/^#/, '')}" onclick="DrawerMenu.fermer()">
             <div class="drawer-item-ico">${i.ico}</div>
             ${i.lbl}
             ${(i.id === 'a_contacter' && window.AContacter && AContacter.nb() > 0) ? `<span class="drawer-badge">${AContacter.nb() > 99 ? '99+' : AContacter.nb()}</span>` : ''}
@@ -987,7 +987,7 @@ const Topbar = (function () {
   // Retrouve la section de nav (Activité / Données / Admin / Comptes) de la route
   // courante pour construire "Section › Titre" — null si route de premier niveau.
   function _sourceSection() {
-    const hash = window.location.hash || '';
+    const hash = Router.hashCourant();
     const hit = SECTIONS_PAR_HASH.find(s => hash === s.base || hash.startsWith(s.base + '/'));
     return hit ? hit.section : null;
   }
