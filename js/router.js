@@ -60,6 +60,7 @@ const Router = {
   },
 
   aller(hash) {
+    if (window.NavWeb) NavWeb.marquerAller();
     window.location.hash = hash;
   },
 
@@ -110,6 +111,8 @@ const Router = {
     const vue = window[vueNom];
     if (!vue) { console.error('[Router] Vue introuvable :', vueNom); return; }
 
+    if (window.NavWeb) NavWeb.avant(hash);
+
     const afficherVue = () => {
       if (typeof vue.init === 'function') {
         if (sousVue === 'planning') vue.init('planning');
@@ -148,7 +151,12 @@ const Router = {
       if (this._transitionEnCours) {
         try { this._transitionEnCours.skipTransition(); } catch {}
       }
-      const t = document.startViewTransition(afficherVue);
+      // Filet de sécurité : la transition attend une image du navigateur pour exécuter le rendu
+      // (onglet en arrière-plan, volet masqué). Au-delà de 400 ms on rend directement, une seule fois.
+      let rendu = false;
+      const unSeulRendu = () => { if (rendu) return; rendu = true; afficherVue(); };
+      const t = document.startViewTransition(unSeulRendu);
+      setTimeout(unSeulRendu, 400);
       this._transitionEnCours = t;
       // Une transition sautée (skipTransition, ou une nouvelle qui la
       // remplace) rejette updateCallbackDone/ready/finished — les 3 doivent
@@ -161,5 +169,6 @@ const Router = {
     } else {
       afficherVue();
     }
+    if (window.NavWeb) NavWeb.apres(hash);
   },
 };

@@ -415,6 +415,7 @@ window.VueComptes = {
       champ.focus();
       champ.setSelectionRange(champ.value.length, champ.value.length);
     }
+    this._observerSuite();
   },
 
   // BLOC 11 — extrait de render() : la liste/le tableau, seule partie qui
@@ -435,7 +436,19 @@ window.VueComptes = {
       { pin: 1000, nom: 'Tadjidine' }, { pin: 4001, nom: 'Lyes' },
       { pin: 4002, nom: 'Mehdi' },     { pin: 4003, nom: 'Johanne' },
     ]);
-    return `${liste.length === 0 ? '<div class="vide">Aucun compte pour ces critères</div>' : `
+    // Rendu progressif : 60 comptes d'abord, la suite à l'approche du bas de page (le DOM
+    // passe de 2 x 322 lignes à 2 x 60, l'affichage de la page est quasi immédiat).
+    const cle = [this.state.recherche, this.state.filtreStatut, this.state.filtreEmpower, this.state.filtreCDSPin,
+                 this.state.triPar, this.state.triCol, liste.length].join('|');
+    if (this._limiteCle !== cle) { this._limiteCle = cle; this._limite = 60; }
+    const total = liste.length;
+    const toutes = liste;
+    liste = liste.slice(0, this._limite);
+    const reste = total - liste.length;
+    const suite = reste > 0
+      ? `<div class="liste-plus" id="comptes-plus"><button class="btn-secondaire" onclick="VueComptes.afficherPlus()">Afficher les ${Math.min(reste, 100)} suivants (${reste} restants)</button></div>`
+      : '';
+    return `${toutes.length === 0 ? '<div class="vide">Aucun compte pour ces critères</div>' : `
         <!-- MOBILE : fiches empilées -->
         <div class="mobile-card-list-view">
           ${liste.map(c => {
@@ -592,7 +605,8 @@ window.VueComptes = {
               }).join('')}
             </tbody>
           </table>
-        </div>`}`;
+        </div>
+        ${suite}`}`;
   },
 
   // Lot 3/4 — réattribution manager via reattribuer_compte() : historisée, notifiée, CA par commercial recalculé.
@@ -613,6 +627,21 @@ window.VueComptes = {
     if (c) NonSuivis.reprendre(c, () => this.init());
   },
 
+  // Affiche les comptes suivants (bouton ou approche du bas de page) sans toucher aux filtres.
+  afficherPlus() {
+    this._limite = (this._limite || 60) + 100;
+    const zone = document.getElementById('comptes-liste-zone');
+    if (zone) zone.innerHTML = this._renderListeZone();
+    this._observerSuite();
+  },
+  _observerSuite() {
+    if (this._obs) { this._obs.disconnect(); this._obs = null; }
+    const cible = document.getElementById('comptes-plus');
+    if (!cible || !('IntersectionObserver' in window)) return;
+    this._obs = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) this.afficherPlus(); }, { rootMargin: '600px' });
+    this._obs.observe(cible);
+  },
+
   // BLOC 11 — patch ciblé de la zone liste au lieu d'un render() complet (cf.
   // commentaire sur _renderListeZone) : garde le champ de saisie intact.
   setRecherche: debounce(function(v) {
@@ -622,6 +651,7 @@ window.VueComptes = {
       zone.innerHTML = VueComptes._renderListeZone();
       const compteur = document.getElementById('comptes-compteur');
       if (compteur) compteur.textContent = `${VueComptes.listeFiltree.length}/${VueComptes.state.comptes.length}`;
+      VueComptes._observerSuite();
     } else VueComptes.render(); // repli si la zone n'est pas encore montée
   }, 250),
   setFiltre(s)    { this.state.filtreStatut = s; this.render(); },
