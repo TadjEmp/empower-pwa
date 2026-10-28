@@ -501,3 +501,4 @@ input::placeholder, textarea::placeholder { color: var(--c-text-2); opacity: 1; 
   .fab.fab-export { bottom: calc(90px + 72px); }
 }
 @media (min-width: 900px) { .v7-signal { margin: 0 0 24px !important; } }
+.login-info { font-size: 13px; color: var(--c-text-2); background: var(--c-primary-10); padding: 10px 14px; border-radius: var(--radius-md); }
