@@ -155,6 +155,7 @@ const SheetsAPI = {
       // jamais exposées côté frontend jusqu'ici.
       ca_q2fy27: 'CA_Q2FY27', ca_q3fy27: 'CA_Q3FY27', ca_q4fy27: 'CA_Q4FY27',
       // CA par canal de commande : part Empower (grossiste = total - Empower), cf. js/ca-canal.js
+      ca_q1fy26: 'CA_Q1FY26', ca_q2fy26: 'CA_Q2FY26', ca_q3fy26: 'CA_Q3FY26', ca_q4fy26: 'CA_Q4FY26',
       ca_emp_fy25: 'CA_EMP_FY25', ca_emp_fy26: 'CA_EMP_FY26', ca_emp_q1fy27: 'CA_EMP_Q1FY27',
       ca_emp_q2fy27: 'CA_EMP_Q2FY27', ca_emp_q3fy27: 'CA_EMP_Q3FY27', ca_emp_q4fy27: 'CA_EMP_Q4FY27',
       date_derniere_action: 'Date_Derniere_Action', type_derniere_action: 'Type_Derniere_Action',
@@ -398,6 +399,7 @@ const SheetsAPI = {
       'Flag_Action': 'flag_action', 'Priorite': 'priorite', 'Statut': 'statut_compte',
       'CA_FY25': 'ca_fy25', 'CA_FY26': 'ca_fy26', 'CA_Q1FY27': 'ca_q1fy27',
       'CA_Q2FY27': 'ca_q2fy27', 'CA_Q3FY27': 'ca_q3fy27', 'CA_Q4FY27': 'ca_q4fy27',
+      'CA_Q1FY26': 'ca_q1fy26', 'CA_Q2FY26': 'ca_q2fy26', 'CA_Q3FY26': 'ca_q3fy26', 'CA_Q4FY26': 'ca_q4fy26',
       'CA_EMP_FY25': 'ca_emp_fy25', 'CA_EMP_FY26': 'ca_emp_fy26', 'CA_EMP_Q1FY27': 'ca_emp_q1fy27',
       'CA_EMP_Q2FY27': 'ca_emp_q2fy27', 'CA_EMP_Q3FY27': 'ca_emp_q3fy27', 'CA_EMP_Q4FY27': 'ca_emp_q4fy27',
       'Date_Derniere_Action': 'date_derniere_action', 'Type_Derniere_Action': 'type_derniere_action',

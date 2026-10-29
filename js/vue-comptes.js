@@ -9,6 +9,7 @@ window.VueComptes = {
     // BLOC 07 §8 (09/2026) — quarter FY27 réellement actif (params.QuarterActif),
     // au lieu du Q1 hardcodé historique. Défaut Q1 tant que le fetch n'a pas répondu.
     quarter: 'Q1',
+    filtreStatutCA: 'TOUS', // statut commercial (js/statuts-ca.js) : TOUS | A_RELANCER | EN_BAISSE | ... | RENOUVELLEMENT
     filtreEmpower: 'TOUS', // TOUS | EMPOWER | GROSSISTE — dérivé de has_empower (cf. décisions Bloc 1 §6.4)
     filtreCDSPin: 'TOUS',  // BUG-06 : filtre Manager par CDS
     triPar: 'PRIORITE', chargement: true,
@@ -229,6 +230,13 @@ window.VueComptes = {
       l = l.filter(c => !window.estEmpower(c));
     }
 
+    // Statut commercial intelligent (CA par trimestre, dernière commande, renouvellement à 12 mois)
+    if (window.StatutsCA) {
+      const ctx = this._ctxCA();
+      const f = this.state.filtreStatutCA;
+      if (f !== 'TOUS') l = l.filter(c => { const r = StatutsCA.calculer(c, ctx); return r.code === f || r.signaux.some(s => s.code === f); });
+    }
+
     // Filtre statut calculé dynamiquement (parseCA — résistant aux dates corrompues)
     if (this.state.filtreStatut === 'actif') {
       l = l.filter(c => this._statutCompte(c) === 'actif');
@@ -389,6 +397,17 @@ window.VueComptes = {
                   onclick="VueComptes.setFiltreEmpower('GROSSISTE')">Grossiste</button>
         </div>
 
+        ${window.StatutsCA ? `
+        <div class="filtres-statut" style="display:flex;gap:8px;flex-wrap:wrap">
+          <select aria-label="Statut commercial" onchange="VueComptes.setFiltreStatutCA(this.value)">
+            <option value="TOUS">Tous les statuts</option>
+            ${Object.entries(StatutsCA.STATUTS).sort((a, b) => a[1].rang - b[1].rang).map(([k, s]) => `<option value="${k}" ${this.state.filtreStatutCA === k ? 'selected' : ''}>${s.libelle}</option>`).join('')}
+            <option value="RENOUVELLEMENT" ${this.state.filtreStatutCA === 'RENOUVELLEMENT' ? 'selected' : ''}>Renouvellement à prévoir</option>
+            <option value="CONVERTIR_EMPOWER" ${this.state.filtreStatutCA === 'CONVERTIR_EMPOWER' ? 'selected' : ''}>À convertir Empower</option>
+            <option value="ACTIVER_EMPOWER" ${this.state.filtreStatutCA === 'ACTIVER_EMPOWER' ? 'selected' : ''}>À activer Empower</option>
+          </select>
+        </div>` : ''}
+
         <div class="filtres-statut" style="display:flex;gap:8px;flex-wrap:wrap">
           <select onchange="VueComptes.setTri(this.value)">
             <option value="PRIORITE" ${this.state.triPar === 'PRIORITE' ? 'selected' : ''}>Priorité</option>
@@ -438,7 +457,7 @@ window.VueComptes = {
     ]);
     // Rendu progressif : 60 comptes d'abord, la suite à l'approche du bas de page (le DOM
     // passe de 2 x 322 lignes à 2 x 60, l'affichage de la page est quasi immédiat).
-    const cle = [this.state.recherche, this.state.filtreStatut, this.state.filtreEmpower, this.state.filtreCDSPin,
+    const cle = [this.state.recherche, this.state.filtreStatut, this.state.filtreStatutCA, this.state.filtreEmpower, this.state.filtreCDSPin,
                  this.state.triPar, this.state.triCol, liste.length].join('|');
     if (this._limiteCle !== cle) { this._limiteCle = cle; this._limite = 60; }
     const total = liste.length;
@@ -514,6 +533,7 @@ window.VueComptes = {
               <span style="font-size:13px;font-weight:700;color:var(--c-title)">FY27 ${this.state.quarter} ${caQ1 !== 'n.c.' ? caQ1 : 'n.c.'}</span>
             </div>
             <div class="cc-nom" onclick="VueComptes.ouvrirFiche('${c.ID_Compte}')">${c.Nom_Compte || 'n.c.'}</div>
+            ${window.StatutsCA ? StatutsCA.pastille(StatutsCA.calculer(c, this._ctxCA())) : ''}
             <div class="cc-infos" onclick="VueComptes.ouvrirFiche('${c.ID_Compte}')">
               <span><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> ${c.Ville || 'n.c.'}</span>
               <span>${c.CANAL || 'n.c.'}</span>
@@ -585,7 +605,7 @@ window.VueComptes = {
                 const estDoublonRow = doublons.has(normaliserNom(c.Nom_Compte || ''));
                 return `<tr style="${rowStyle}">
                   <td>${badgeStatutCompte(c)} ${this._badgeEmpower(c)}${estDoublonRow ? `<br><span style="font-size:10px;font-weight:700;color:var(--c-warning)" title="Un autre compte porte le même nom">Doublon</span>` : ''}${joursDA !== null && joursDA > 45 ? `<br><span style="font-size:10px;font-weight:700;color:var(--c-danger)">⚠ ${joursDA}j</span>` : ''}</td>
-                  <td class="compte-nom" onclick="VueComptes.ouvrirFiche('${c.ID_Compte}')">${c.Nom_Compte || 'n.c.'}</td>
+                  <td class="compte-nom" onclick="VueComptes.ouvrirFiche('${c.ID_Compte}')">${c.Nom_Compte || 'n.c.'} ${window.StatutsCA ? StatutsCA.pastille(StatutsCA.calculer(c, this._ctxCA())) : ''}</td>
                   <td>${c.Ville || 'n.c.'}</td>
                   <td>${c.CANAL || 'n.c.'}</td>
                   <td class="num" style="color:var(--c-muted)">${caFY25}</td>
@@ -656,6 +676,12 @@ window.VueComptes = {
   }, 250),
   setFiltre(s)    { this.state.filtreStatut = s; this.render(); },
   setFiltreEmpower(c) { this.state.filtreEmpower = c; this.render(); },
+  setFiltreStatutCA(v) { this.state.filtreStatutCA = v; this.render(); },
+  _ctxCA() {
+    const base = this.state.tousComptes || this.state.comptes;
+    if (!this._ctxCache || this._ctxCache.n !== base.length) this._ctxCache = { n: base.length, ctx: StatutsCA.contexte(base) };
+    return this._ctxCache.ctx;
+  },
   setFiltreCDS(p) { this.state.filtreCDSPin = p; this.render(); },
   setTri(t)       { this.state.triPar = t; this.state.triCol = null; this.render(); },
 

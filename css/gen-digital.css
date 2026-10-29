@@ -551,3 +551,19 @@ html { background: var(--c-bg); }
 .plan-liste a { color: var(--c-primary); font-weight: 600; text-decoration: none; }
 .plan-detail { color: var(--c-text-2); font-size: 12px; text-align: right; }
 .plan-suite { color: var(--c-text-2); font-size: 12px; }
+
+
+/* Statuts commerciaux (comptes) */
+.statuts-ca { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-left: 6px; vertical-align: middle; }
+.pastille-statut { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.pastille-danger  { background: rgba(217, 48, 37, .14); color: #b3261e; }
+.pastille-warning { background: rgba(217, 119, 6, .16); color: #b45309; }
+.pastille-info    { background: rgba(37, 99, 235, .12); color: #1d4ed8; }
+.pastille-success { background: rgba(30, 122, 70, .14); color: #1e7a46; }
+.pastille-muted   { background: rgba(107, 114, 128, .16); color: #4b5563; }
+:root[data-theme="dark"] .pastille-danger  { background: rgba(248, 113, 113, .22); color: #fca5a5; }
+:root[data-theme="dark"] .pastille-warning { background: rgba(251, 191, 36, .2);  color: #fcd34d; }
+:root[data-theme="dark"] .pastille-info    { background: rgba(96, 165, 250, .22); color: #93c5fd; }
+:root[data-theme="dark"] .pastille-success { background: rgba(74, 222, 128, .18); color: #86efac; }
+:root[data-theme="dark"] .pastille-muted   { background: rgba(156, 163, 175, .2);  color: #d1d5db; }
+.derniere-cmde { font-size: 11px; color: var(--c-text-2); }

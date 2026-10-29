@@ -571,6 +571,22 @@ window.VueFicheCompte = {
     return `
       ${this._renderBlocIdentite(c)}
 
+      ${window.StatutsCA ? (() => {
+        const r = StatutsCA.calculer(c, StatutsCA.contexteGlobal(() => VueFicheCompte.render()) || StatutsCA.contexte([c]));
+        const fmt = v => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v);
+        const ligne = (lbl, v) => `<tr><td>${lbl}</td><td class="num">${fmt(v)}</td></tr>`;
+        const t = k => window.parseCA(c['CA_' + k]) || 0;
+        return `<section class="bloc-fiche">
+          <div class="bloc-titre">Statut commercial</div>
+          <div style="margin-bottom:8px">${StatutsCA.pastille(r)}</div>
+          <p style="margin:0 0 6px;font-size:13px"><strong>À faire :</strong> ${r.action}</p>
+          ${r.signaux.map(s => `<p style="margin:0 0 4px;font-size:12px;color:var(--c-text-2)">${s.libelle} : ${s.detail}</p>`).join('')}
+          <table class="sellin-table" style="margin-top:8px"><thead><tr><th>Période</th><th class="num">CA</th></tr></thead><tbody>
+            ${ligne('FY25', t('FY25'))}${ligne('Q1 FY26', t('Q1FY26'))}${ligne('Q2 FY26', t('Q2FY26'))}${ligne('Q3 FY26', t('Q3FY26'))}${ligne('Q4 FY26', t('Q4FY26'))}
+            ${ligne('Q1 FY27', t('Q1FY27'))}${ligne('Q2 FY27', t('Q2FY27'))}${ligne('Q3 FY27', t('Q3FY27'))}
+          </tbody></table>
+        </section>`;
+      })() : ''}
       ${SellInFlag.blocFiche(c, this.state.sellinSemaines)}
 
       ${NonSuivis.blocFiche(c, this.state.historiqueAttrib)}
