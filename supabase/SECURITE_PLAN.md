@@ -25,7 +25,8 @@ Chaque fichier de migration contient ses commandes de retour arrière en bas. Po
 ## État au 29/10/2026
 - `securite_1` : **appliquée** (écriture anonyme sur `utilisateurs` fermée).
 - `securite_2` + client `x-esi-token` : **appliqués** (accès aux données sur session valide).
-- `securite_3` (sessions multiples) : **préparée, non appliquée** (cette PR).
+- `securite_3` (sessions multiples) : **appliquée**, avec les edge functions `auth-login` v4, `admin-users` v4, `ai-proxy` v7, `sync-sellin-semaines` v3, `sync-sellin` v14 et `sync-tracker` v7 (appels sans jeton refusés en 403).
+- Reste à contrôler à la main : connexion sur deux appareils, déconnexion d'un seul, synchronisation, IA.
 
 ## Étape 3 : sessions multiples (securite_3)
 Constats supplémentaires pendant l'inventaire des consommateurs du jeton :
