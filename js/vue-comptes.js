@@ -461,7 +461,7 @@ window.VueComptes = {
               ? window.resolveCDS(c.PIN_CDS_Assigne)
               : (c.Nom_CDS ? window.resolveCDS(c.Nom_CDS) : null);
             // Alexandra (CHANNEL_MANAGER) : vue lecture seule — pas d'actions terrain
-            const estLectureSeule = Session.role === 'CHANNEL_MANAGER';
+            const estLectureSeule = Session.role === 'CHANNEL_MANAGER' || Session.role === 'EXTERNE';
             // D1 — Badge "Dernière visite" façon Marvin Sales (calcul live, cf. Bloc 1 §6.2)
             const live = this.state.datesLive.get(String(c.ID_Compte || '')) || {};
             const prochaineVisite = this._prochaineVisite(c);
@@ -564,7 +564,7 @@ window.VueComptes = {
                 const nomCDS = window.resolveCDS(c.PIN_CDS_Assigne) !== 'n.c.'
                   ? window.resolveCDS(c.PIN_CDS_Assigne)
                   : (c.Nom_CDS ? window.resolveCDS(c.Nom_CDS) : null);
-                const estLectureSeule = Session.role === 'CHANNEL_MANAGER';
+                const estLectureSeule = Session.role === 'CHANNEL_MANAGER' || Session.role === 'EXTERNE';
                 const liveRow = this.state.datesLive.get(String(c.ID_Compte || '')) || {};
                 const prochaineVisiteRow = this._prochaineVisite(c);
                 const pa = prochaineVisiteRow

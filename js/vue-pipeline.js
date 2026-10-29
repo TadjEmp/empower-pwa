@@ -65,7 +65,7 @@ window.VuePipeline = {
   // proche de l'admin sur le Tracker, pas une simple lecture seule).
   _peutAssigner(){ return Session.estManager() || Session.estChannel(); },
   // Saisir un nouveau lead : ADMIN + CHANNEL_MANAGER (Alexandra) + CDS (commercial terrain).
-  _peutSaisir()  { return Session.estManager() || Session.estChannel() || Session.estCDS(); },
+  _peutSaisir()  { return Session.estManager() || Session.estChannel() || Session.estCDS() || Session.estExterne(); },
 
   async init() {
     // BLOC — audit retour arrière : même défaut que VuePhoning — le routeur
@@ -281,6 +281,7 @@ window.VuePipeline = {
     if (this.state.filtreAlerte === 'WP_ENVOYE') l = l.filter(p => !!p.Welcome_Pack_Date);
     if (this.state.filtreAlerte === 'ACTION_DUE') l = l.filter(p => p.Date_prochaine_action && estDepassee(p.Date_prochaine_action));
     if (this.state.filtreAlerte === 'CONTACT_45J') l = l.filter(p => this._alerte45jSansContact(p));
+    if (this.state.filtreAlerte === 'ALERTE_48H') l = l.filter(p => !!this._alerte48h(p));
     // BLOC 09 — suivi activation Tracker ↔ Sell-In (BLOC 04 §3) + déclaration
     // manuelle commerciale (l'une ou l'autre suffit à considérer le compte actif).
     if (this.state.filtreAlerte === 'SELLIN_ACTIF') l = l.filter(p => p._activationSellIn || p._activationSellInFlou || p.Commande_Manuelle);
@@ -854,6 +855,7 @@ window.VuePipeline = {
             <option value="WP_RETARD" ${this.state.filtreAlerte==='WP_RETARD'?'selected':''}>WP J+14 dépassé</option>
             <option value="WP_ENVOYE" ${this.state.filtreAlerte==='WP_ENVOYE'?'selected':''}>Welcome Pack envoyé</option>
             <option value="ACTION_DUE" ${this.state.filtreAlerte==='ACTION_DUE'?'selected':''}>Action en retard</option>
+            <option value="ALERTE_48H" ${this.state.filtreAlerte==='ALERTE_48H'?'selected':''}>À rappeler sous 48 h</option>
             <option value="CONTACT_45J" ${this.state.filtreAlerte==='CONTACT_45J'?'selected':''}>Sans contact +45j</option>
             <option value="SELLIN_ACTIF" ${this.state.filtreAlerte==='SELLIN_ACTIF'?'selected':''}>A commandé (Sell-In ou déclaré)</option>
           </select>
@@ -956,13 +958,14 @@ window.VuePipeline = {
                 <span class="kanban-ligne-cds">${this._nomCDS(l.PIN_CDS_Assigne).slice(0, 1)}</span>
               </div>`;
             }).join('') : affichees.map(l => `
-              <div class="kanban-carte ${this._retardWelcomePack(l) ? 'kanban-alerte' : ''}" data-id="${l.ID_Prospect}"
+              <div class="kanban-carte ${this._retardWelcomePack(l) ? 'kanban-alerte' : ''} ${this._estFournisseur(l) ? 'kanban-fournisseur' : ''}" data-id="${l.ID_Prospect}"
                    onclick="VuePipeline.ouvrirLead('${l.ID_Prospect}')">
                 <div class="kanban-carte-nom" style="display:flex;align-items:baseline;justify-content:space-between;gap:6px">
                   <span>${l.Nom_Compte}</span>
                   ${st.id !== 'ARCHIVE' ? this._badgeAge(l) : ''}
                 </div>
                 <div class="kanban-carte-meta">
+                  ${this._pastilleFournisseur(l)}${this._badge48h(l)}
                   ${l.POTENTIEL ? `<span class="pot-pill pot-${(l.POTENTIEL||'').toLowerCase()}">${l.POTENTIEL}</span>` : ''}
                   ${l.CANAL ? `<span style="font-size:11px;color:var(--c-text-2);white-space:nowrap">${l.CANAL}</span>` : ''}
                 </div>
@@ -1120,7 +1123,7 @@ window.VuePipeline = {
               return `<tr style="${wpRetard || contact45j ? 'background:rgba(217,48,37,0.04)' : ''}">
               ${peutBatch ? `<td onclick="event.stopPropagation()"><input type="checkbox" ${selection.has(l.ID_Prospect) ? 'checked' : ''} onchange="VuePipeline.basculerSelection('${l.ID_Prospect}')"/></td>` : ''}
               <td class="compte-nom" onclick="VuePipeline.ouvrirLead('${l.ID_Prospect}')" style="cursor:pointer;font-weight:600">
-                ${l.Nom_Compte}
+                ${l.Nom_Compte} ${this._pastilleFournisseur(l)} ${this._badge48h(l)}
               </td>
               ${cc.canal ? `<td style="font-size:12px;color:var(--c-text-2)">${l.CANAL || 'n.c.'}</td>` : ''}
               <td>
@@ -1248,11 +1251,7 @@ window.VuePipeline = {
             </div>
             <label>Canal de vente
               <select id="nl-canal">
-                <option value="IT">IT Revendeur</option>
-                <option value="Grande Surface">Grande Surface / Drive</option>
-                <option value="Retail">Retail / Boutique</option>
-                <option value="Grossiste">Grossiste / Distributeur</option>
-                <option value="Autre">Autre</option>
+                ${Canaux.LISTE.map(c => `<option value="${c}">${c}</option>`).join('')}
               </select>
             </label>
 
@@ -1731,6 +1730,41 @@ window.VuePipeline = {
     const dates = [l.Date_Derniere_Action, base].map(d => d ? new Date(d).getTime() : NaN).filter(t => !isNaN(t));
     if (!dates.length) return false;
     return (Date.now() - Math.max(...dates)) / 86400000 > 45;
+  },
+
+  // ── Lead fourni par un fournisseur (Alexandra, Flavie ou autre) : repérable d'un coup d'œil par les commerciaux ──
+  _ORIGINES_INTERNES: ['', 'FDV', 'VISITE_TERRAIN', 'ESI_TRACKER'],
+  _estFournisseur(l) {
+    const o = String(l.ORIGINE || '').trim();
+    if (!o || this._ORIGINES_INTERNES.includes(o.toUpperCase()) || /^import_/i.test(o)) return false;
+    return true;
+  },
+  _nomFournisseur(l) { return String(l.ORIGINE || '').replace(/^(lead|import)_/i, '').replace(/_/g, ' ').trim(); },
+  _pastilleFournisseur(l) {
+    return this._estFournisseur(l)
+      ? `<span class="pastille-fournisseur" title="Lead fourni par ${this._nomFournisseur(l)}">Fournisseur · ${this._nomFournisseur(l)}</span>` : '';
+  },
+
+  // ── Alerte 48 h : un lead saisi doit être rappelé sous 48 h ──
+  // Orange dès 24 h, rouge à 48 h, tant qu'aucun contact (appel, visite, mailing) n'est enregistré depuis la saisie.
+  _alerte48h(l) {
+    if (!['SAISIE', 'ASSIGNE'].includes(l._statut)) return null;
+    const ref = l.Date_Import || l.Date_Saisie || l.Timestamp || l.Date_Attribution;
+    const t0 = ref ? new Date(ref).getTime() : NaN;
+    if (isNaN(t0)) return null;
+    const jour0 = new Date(t0); jour0.setHours(0, 0, 0, 0);
+    const dc = l.Date_Derniere_Action ? new Date(l.Date_Derniere_Action).getTime() : NaN;
+    if (!isNaN(dc) && dc >= jour0.getTime()) return null;      // déjà contacté depuis la saisie
+    const h = (Date.now() - t0) / 3600000;
+    if (h >= 48) return { niveau: 'rouge', h };
+    if (h >= 24) return { niveau: 'orange', h };
+    return null;
+  },
+  _badge48h(l) {
+    const a = this._alerte48h(l);
+    if (!a) return '';
+    const txt = a.niveau === 'rouge' ? `Rappel en retard (${Math.floor(a.h / 24)} j)` : `À rappeler avant 48 h (${Math.max(Math.round(48 - a.h), 0)} h)`;
+    return `<span class="badge-48h badge-48h-${a.niveau}" title="Aucun contact depuis la saisie">${txt}</span>`;
   },
 
   // ── Marquer le Welcome Pack comme envoyé manuellement ──

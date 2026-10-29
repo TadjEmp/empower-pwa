@@ -94,6 +94,18 @@ window.VueAdmin = {
   },
 
   // ── CRUD Utilisateurs (sécurisé via Edge Function admin-users, service_role) ──
+  // ── Mail d'accès : ouvre le client de messagerie avec le lien et les accès (le mot de passe part par un autre canal) ──
+  preparerMailAcces() {
+    const f = this.state.usersState.formCreation;
+    const droits = f.role === 'ADMIN' ? Object.keys(Permissions.LIBELLES) : [...f.droits];
+    const libs = droits.map(d => '- ' + (Permissions.LIBELLES[d] || d)).join('\n');
+    const role = ({ ADMIN: 'Administrateur', CDS: 'Commercial', CHANNEL_MANAGER: 'Manager', EXTERNE: 'Fournisseur de leads' })[f.role] || f.role;
+    const corps = `Bonjour ${f.nom.trim()},\n\nVotre accès à l'application ESI est créé.\n\n` +
+      `Lien : ${location.origin}/login\nIdentifiant : ${f.email.trim()}\nRôle : ${role}\n\nVos accès :\n${libs}\n\n` +
+      `Votre mot de passe vous est transmis séparément. Pensez à l'enregistrer dans votre gestionnaire de mots de passe.\n\nCordialement`;
+    window.location.href = `mailto:${encodeURIComponent(f.email.trim())}?subject=${encodeURIComponent('Votre accès à ESI')}&body=${encodeURIComponent(corps)}`;
+  },
+
   // ── Réglage « Afficher les magasins Leclerc » (comptes masqués par défaut) ──
   async chargerReglageLeclerc() {
     const affiche = await SheetsAPI.afficherLeclerc();
@@ -314,7 +326,7 @@ window.VueAdmin = {
                   <td style="font-size:12px">${u.email}</td>
                   <td>
                     <select style="font-size:12px;padding:4px 6px" onchange="VueAdmin.changerRole(${u.pin}, this.value)" ${u.pin === Session.pin ? 'disabled' : ''}>
-                      ${ROLES.map(r => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${r}</option>`).join('')}
+                      ${ROLES.map(r => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${({ ADMIN: 'Administrateur', CDS: 'Commercial', CHANNEL_MANAGER: 'Manager', EXTERNE: 'Fournisseur de leads' })[r] || r}</option>`).join('')}
                     </select>
                   </td>
                   <td>
@@ -338,7 +350,7 @@ window.VueAdmin = {
         <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">Définie dans <code>js/permissions.js</code>, accès par rôle aux sections de l'app.</p>
         <div class="desktop-table-wrap">
           <table class="desktop-table-data-view">
-            <thead><tr><th>Section</th>${ROLES.map(r => `<th style="text-align:center">${r}</th>`).join('')}</tr></thead>
+            <thead><tr><th>Section</th>${ROLES.map(r => `<th style="text-align:center">${({ ADMIN: 'Administrateur', CDS: 'Commercial', CHANNEL_MANAGER: 'Manager', EXTERNE: 'Fournisseur de leads' })[r] || r}</th>`).join('')}</tr></thead>
             <tbody>
               ${this._TOUS_TABS().map(tab => `
                 <tr>
@@ -373,6 +385,7 @@ window.VueAdmin = {
         <p style="font-size:12px;color:var(--c-text-2)">Transmettez-le par un canal sûr, puis demandez à la personne de le changer.</p>
         <div style="display:flex;gap:8px;margin-top:14px">
           <button type="button" class="btn-secondaire" onclick="navigator.clipboard && navigator.clipboard.writeText(VueAdmin.state.usersState.mdpCree).then(() => Toast.afficher('Mot de passe copié', 'succes'))">Copier</button>
+          <button type="button" class="btn-secondaire" onclick="VueAdmin.preparerMailAcces()">Préparer le mail d'accès</button>
           <button type="button" class="btn-primaire" onclick="VueAdmin.fermerModalCreation()">Terminer</button>
         </div>`;
     } else if (us.etapeCreation === 'recap') {
@@ -403,7 +416,7 @@ window.VueAdmin = {
             <input type="number" class="q-input" required value="${echap(f.pin)}" oninput="VueAdmin.state.usersState.formCreation.pin=this.value"/></label>
           <label>Rôle *
             <select onchange="VueAdmin.changerRoleCreation(this.value)">
-              ${ROLES.map(r => `<option value="${r}" ${f.role === r ? 'selected' : ''}>${r}</option>`).join('')}
+              ${ROLES.map(r => `<option value="${r}" ${f.role === r ? 'selected' : ''}>${({ ADMIN: 'Administrateur', CDS: 'Commercial', CHANNEL_MANAGER: 'Manager', EXTERNE: 'Fournisseur de leads' })[r] || r}</option>`).join('')}
             </select></label>
           <fieldset class="admin-droits" ${f.role === 'ADMIN' ? 'disabled' : ''}>
             <legend>Droits d'accès${f.role === 'ADMIN' ? ' (tous, non modifiables pour un administrateur)' : ''}</legend>
@@ -773,8 +786,8 @@ window.VueAdmin = {
           <div style="display:flex;gap:10px">
             <label style="flex:1">Canal probable
               <select onchange="VueAdmin.state.formLead.canal=this.value">
-                ${['EMPOWER','TD SYNNEX','INGRAM','Autre'].map(c =>
-                  `<option value="${c}" ${f.canal === c ? 'selected' : ''}>${c}</option>`
+                ${Canaux.LISTE.map(c =>
+                  `<option value="${c}" ${Canaux.normaliser(f.canal) === c ? 'selected' : ''}>${c}</option>`
                 ).join('')}
               </select>
             </label>

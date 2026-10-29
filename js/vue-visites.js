@@ -2138,8 +2138,8 @@ window.VueVisites = {
                  oninput="VueVisites._modalConversion.email=this.value"/></label>
         <label>Canal
           <select onchange="VueVisites._modalConversion.canal=this.value">
-            ${['REVENDEUR','VAR','RETAILER','DISTRIBUTEUR','AUTRE'].map(c =>
-              `<option value="${c}" ${m.canal===c?'selected':''}>${c}</option>`
+            ${Canaux.LISTE.map(c =>
+              `<option value="${c}" ${Canaux.normaliser(m.canal)===c?'selected':''}>${c}</option>`
             ).join('')}
           </select>
         </label>
