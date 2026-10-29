@@ -244,7 +244,9 @@ function estDepassee(isoStr) {
 // pour ne pas reproduire le bug de lecture trouvé dans vue-fiche-compte.js / vue-visites.js / vue-phoning.js.
 function estEmpower(compte) {
   const v = compte && (compte.Has_EMPOWER ?? compte.HAS_EMPOWER ?? compte.has_empower);
-  return String(v || '').trim().toLowerCase() === 'oui';
+  if (String(v || '').trim().toLowerCase() === 'oui') return true;
+  // Un compte qui a commandé par Empower l'est aussi, même si le drapeau n'a pas été mis à jour par la synchro.
+  return !!compte && ['FY25', 'FY26', 'Q1FY27', 'Q2FY27', 'Q3FY27', 'Q4FY27'].some(p => Number(compte['CA_EMP_' + p]) > 0);
 }
 window.estEmpower = estEmpower;
 
