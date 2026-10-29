@@ -26,6 +26,8 @@ Chaque fichier de migration contient ses commandes de retour arrière en bas. Po
 - `securite_1` : **appliquée** (écriture anonyme sur `utilisateurs` fermée).
 - `securite_2` + client `x-esi-token` : **appliqués** (accès aux données sur session valide).
 - `securite_3` (sessions multiples) : **appliquée**, avec les edge functions `auth-login` v4, `admin-users` v4, `ai-proxy` v7, `sync-sellin-semaines` v3, `sync-sellin` v14 et `sync-tracker` v7 (appels sans jeton refusés en 403).
+- `securite_4` : **appliquée** (envoi de photos réservé aux sessions, jetons en clair migrés puis purgés, droits `utilisateurs` resserrés) ; `auth-login` v5 et `admin-users` v5 : hachage PBKDF2, mise à niveau à la connexion.
+- À faire : visibilité par rôle et par commercial (règles à cadrer).
 - Reste à contrôler à la main : connexion sur deux appareils, déconnexion d'un seul, synchronisation, IA.
 
 ## Étape 3 : sessions multiples (securite_3)
