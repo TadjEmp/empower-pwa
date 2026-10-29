@@ -27,7 +27,8 @@ Chaque fichier de migration contient ses commandes de retour arrière en bas. Po
 - `securite_2` + client `x-esi-token` : **appliqués** (accès aux données sur session valide).
 - `securite_3` (sessions multiples) : **appliquée**, avec les edge functions `auth-login` v4, `admin-users` v4, `ai-proxy` v7, `sync-sellin-semaines` v3, `sync-sellin` v14 et `sync-tracker` v7 (appels sans jeton refusés en 403).
 - `securite_4` : **appliquée** (envoi de photos réservé aux sessions, jetons en clair migrés puis purgés, droits `utilisateurs` resserrés) ; `auth-login` v5 et `admin-users` v5 : hachage PBKDF2, mise à niveau à la connexion.
-- À faire : visibilité par rôle et par commercial (règles à cadrer).
+- `securite_5` (lot 1) : **appliquée** — visibilité par rôle sur `comptes` et `leads` (admin/channel manager : tout ; CDS : ses lignes + non attribuées). Testé : CDS 4001 voit 102 comptes (64 + 38 non attribués) et 25 leads ; channel manager 323 et 109 ; faux jeton 0.
+- À faire : lots 2 (visites, phoning, actions, fiches froides) et 3 (objectifs_primes, notifs, vues_filtres).
 - Reste à contrôler à la main : connexion sur deux appareils, déconnexion d'un seul, synchronisation, IA.
 
 ## Étape 3 : sessions multiples (securite_3)
