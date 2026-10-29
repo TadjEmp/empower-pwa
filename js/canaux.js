@@ -6,18 +6,15 @@
 // ═══════════════════════════════════════
 window.Canaux = (function () {
   const KEY = 'esi_canal_vente';
-  const LISTE = ['Revendeur IT', 'Grande Surface', 'Retail', 'Grossiste', 'Empower', 'Autre'];
+  const LISTE = ['Grossiste', 'Empower'];   // deux canaux : Grossiste (TD SYNNEX, INGRAM) et Empower
   const A_QUALIFIER = 'À qualifier';
 
   function normaliser(brut) {
     const v = String(brut || '').trim().toUpperCase();
     if (!v || v === 'INCONNU' || /^MAIL/.test(v) || /^RDV/.test(v)) return '';
-    if (['REVENDEUR', 'IT', 'IT REVENDEUR', 'REVENDEUR IT'].includes(v)) return 'Revendeur IT';
-    if (/^INGRAM|SYNNEX|^GROSSISTE|^DISTRIBUTEUR/.test(v)) return 'Grossiste';
     if (/^EMPOWER/.test(v)) return 'Empower';
-    if (/^GRANDE SURFACE|^GSS|^GSA/.test(v)) return 'Grande Surface';
-    if (/^RETAIL/.test(v)) return 'Retail';
-    return 'Autre';
+    if (['REVENDEUR', 'IT', 'IT REVENDEUR', 'REVENDEUR IT'].includes(v) || /^INGRAM|SYNNEX|^TD|^GROSSISTE|^DISTRIBUTEUR/.test(v)) return 'Grossiste';
+    return '';
   }
 
   function lire() {

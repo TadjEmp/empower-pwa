@@ -532,3 +532,22 @@ html { background: var(--c-bg); }
 .badge-48h-rouge { background: rgba(217, 48, 37, .16); color: #b3261e; }
 :root[data-theme="dark"] .badge-48h-orange { background: rgba(251, 191, 36, .2); color: #fcd34d; }
 :root[data-theme="dark"] .badge-48h-rouge { background: rgba(248, 113, 113, .22); color: #fca5a5; }
+
+
+/* Plan d'action du trimestre suivant (accueil commercial) */
+.plan-q3 .plan-obj { font-size: 13px; color: var(--c-text-2); margin: 0 0 10px; }
+.plan-groupe { border-top: 1px solid var(--c-border); padding: 10px 0; }
+.plan-groupe summary { display: flex; gap: 8px; align-items: center; cursor: pointer; list-style: none; }
+.plan-groupe summary::-webkit-details-marker { display: none; }
+.plan-niv { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.plan-niv-1 { background: rgba(217, 48, 37, .14); color: #b3261e; }
+.plan-niv-2 { background: rgba(217, 119, 6, .16); color: #b45309; }
+:root[data-theme="dark"] .plan-niv-1 { background: rgba(248, 113, 113, .22); color: #fca5a5; }
+:root[data-theme="dark"] .plan-niv-2 { background: rgba(251, 191, 36, .2); color: #fcd34d; }
+.plan-action, .plan-pourquoi { margin: 8px 0 0; font-size: 13px; }
+.plan-pourquoi { color: var(--c-text-2); }
+.plan-liste { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+.plan-liste li { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.plan-liste a { color: var(--c-primary); font-weight: 600; text-decoration: none; }
+.plan-detail { color: var(--c-text-2); font-size: 12px; text-align: right; }
+.plan-suite { color: var(--c-text-2); font-size: 12px; }

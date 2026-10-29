@@ -374,7 +374,18 @@ window.VueDashboardCDS = {
       .filter(p => !['ARCHIVE', 'INTEGRE'].includes(String(p.STATUT_EMPOWER || '').toUpperCase()))
       .sort((a, b) => (POT[a.POTENTIEL] ?? 1) - (POT[b.POTENTIEL] ?? 1));
 
+    // ── Plan d'action du trimestre suivant (priorités par commercial) ──
+    const qSuivant = 'Q' + Math.min(Number(String(quarter).replace(/\D/g, '') || 1) + 1, 4);
+    const qPrec = String(quarter).startsWith('Q') ? quarter : 'Q1';
+    const planQ3 = window.PlanQ3 ? PlanQ3.construire({
+      comptes: mesComptes,
+      prospects: prospects.filter(p => this._estMoi(p.PIN_CDS_Assigne)),
+      objectif: obj ? { obj: CA(obj[`${qSuivant}_Obj_Revise`]) || CA(obj[`${qSuivant}_Obj_Initial`]), caPrecedent: CA(obj[`${qPrec}_CA_Realise`]), qPrecedent: qPrec } : null,
+    }) : null;
+    planQ3 && (planQ3.libelle = qSuivant);
+
     return {
+      planQ3,
       semaine, quarter, caRealise, caObjectif, pct, pace,
       caFY27Obj, pctAnnuel, caRealiseFY27,
       caFY26Mes, caFY26Q, // BLOC 5 — référence FY26 pour comparaison
@@ -545,6 +556,8 @@ window.VueDashboardCDS = {
                 </div>
               </div>`).join('')}
         </div>
+
+        ${window.PlanQ3 ? PlanQ3.html(d.planQ3, d.planQ3 && d.planQ3.libelle) : ''}
 
         <!-- SIGNAUX — carte signal V7 (bordure corail si signal réel, hairline sinon) -->
         ${signaux.length ? `
