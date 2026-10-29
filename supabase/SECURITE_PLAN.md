@@ -29,7 +29,8 @@ Chaque fichier de migration contient ses commandes de retour arrière en bas. Po
 - `securite_4` : **appliquée** (envoi de photos réservé aux sessions, jetons en clair migrés puis purgés, droits `utilisateurs` resserrés) ; `auth-login` v5 et `admin-users` v5 : hachage PBKDF2, mise à niveau à la connexion.
 - `securite_5` (lot 1) : **appliquée** — visibilité par rôle sur `comptes` et `leads` (admin/channel manager : tout ; CDS : ses lignes + non attribuées). Testé : CDS 4001 voit 102 comptes (64 + 38 non attribués) et 25 leads ; channel manager 323 et 109 ; faux jeton 0.
 - `securite_6` (lot 2) : **appliquée** — visites, phoning, actions, fiches_froides. Testé : CDS 4001 voit 30 visites, 0 appel, 14 actions, 14 fiches ; channel manager voit tout (309 / 148 / 370 / 186) ; faux jeton 0.
-- À faire : lot 3 (objectifs_primes, notifs, vues_filtres).
+- `securite_7` (lot 3) : **appliquée** — objectifs_primes (lecture admin/CM/CDS pour sa ligne ; écriture admin et CDS pour sa ligne), notifs et vues_filtres (chacun les siennes, admin toutes). Testé : CDS 1 objectif et 3 notifs, ne peut modifier aucune ligne d'un autre ; CM 4 objectifs, 61 notifs, aucune modification ; faux jeton 0.
+- Non traité : `a_contacter_report`, `attributions_historique`, `params`, `sellin_agregats`, `sellin_imports`, `sellin_semaines` (lecture ouverte à toute session).
 - Reste à contrôler à la main : connexion sur deux appareils, déconnexion d'un seul, synchronisation, IA.
 
 ## Étape 3 : sessions multiples (securite_3)
