@@ -156,6 +156,17 @@ Deno.serve(async (req) => {
       return Response.json({ ok: true }, { headers: CORS })
     }
 
+    // Réglages partagés modifiables par l'admin (liste blanche : jamais les clés d'API ni les PIN).
+    if (action === 'setParam') {
+      const REGLAGES = { AFFICHER_LECLERC: 'Afficher les magasins Leclerc dans les comptes (true/false)' }
+      const { cle, valeur } = body
+      if (!REGLAGES[cle] || !['true', 'false'].includes(String(valeur)))
+        return Response.json({ ok: false, erreur: 'Réglage inconnu ou valeur invalide' }, { headers: CORS, status: 400 })
+      const { error } = await sb.from('params').upsert({ parametre: cle, valeur: String(valeur), description: REGLAGES[cle] }, { onConflict: 'parametre' })
+      if (error) return Response.json({ ok: false, erreur: error.message }, { headers: CORS, status: 500 })
+      return Response.json({ ok: true }, { headers: CORS })
+    }
+
     return Response.json({ ok: false, erreur: `Action inconnue: ${action}` }, { headers: CORS, status: 400 })
 
   } catch (e) {

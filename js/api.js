@@ -154,6 +154,9 @@ const SheetsAPI = {
       // BLOC 04 §3/§5 (09/2026) — colonnes migrées côté sync-sellin v11,
       // jamais exposées côté frontend jusqu'ici.
       ca_q2fy27: 'CA_Q2FY27', ca_q3fy27: 'CA_Q3FY27', ca_q4fy27: 'CA_Q4FY27',
+      // CA par canal de commande : part Empower (grossiste = total - Empower), cf. js/ca-canal.js
+      ca_emp_fy25: 'CA_EMP_FY25', ca_emp_fy26: 'CA_EMP_FY26', ca_emp_q1fy27: 'CA_EMP_Q1FY27',
+      ca_emp_q2fy27: 'CA_EMP_Q2FY27', ca_emp_q3fy27: 'CA_EMP_Q3FY27', ca_emp_q4fy27: 'CA_EMP_Q4FY27',
       date_derniere_action: 'Date_Derniere_Action', type_derniere_action: 'Type_Derniere_Action',
       prochaine_action: 'Prochaine_Action', date_prochaine_action: 'Date_Prochaine_Action',
       slider_receptivite: 'Slider_Receptivite', note_initiale: 'Note_Initiale',
@@ -395,6 +398,8 @@ const SheetsAPI = {
       'Flag_Action': 'flag_action', 'Priorite': 'priorite', 'Statut': 'statut_compte',
       'CA_FY25': 'ca_fy25', 'CA_FY26': 'ca_fy26', 'CA_Q1FY27': 'ca_q1fy27',
       'CA_Q2FY27': 'ca_q2fy27', 'CA_Q3FY27': 'ca_q3fy27', 'CA_Q4FY27': 'ca_q4fy27',
+      'CA_EMP_FY25': 'ca_emp_fy25', 'CA_EMP_FY26': 'ca_emp_fy26', 'CA_EMP_Q1FY27': 'ca_emp_q1fy27',
+      'CA_EMP_Q2FY27': 'ca_emp_q2fy27', 'CA_EMP_Q3FY27': 'ca_emp_q3fy27', 'CA_EMP_Q4FY27': 'ca_emp_q4fy27',
       'Date_Derniere_Action': 'date_derniere_action', 'Type_Derniere_Action': 'type_derniere_action',
       'Prochaine_Action': 'prochaine_action', 'Date_Prochaine_Action': 'date_prochaine_action',
       'Slider_Receptivite': 'slider_receptivite', 'Note_Initiale': 'note_initiale',
@@ -594,7 +599,47 @@ const SheetsAPI = {
     if (!limit && this._inflight.has(k)) return this._inflight.get(k)
     const p = this._lireAvecFallback(table, k, { limit, offset, nocache })
     if (!limit) { this._inflight.set(k, p); p.finally(() => this._inflight.delete(k)) }
+    if (table === 'comptes') return this._sansMasques(p)
+    if (table === 'objectifs_primes' && window.CACanal && CACanal.actif()) return this._objectifsParCanal(p)
     return p
+  },
+
+  // Magasins Leclerc : masqués des comptes par défaut ; l'admin les réaffiche en cochant
+  // « Afficher les magasins Leclerc » (Administration, paramètre AFFICHER_LECLERC).
+  estLeclerc(nom) { return /leclerc/i.test(String(nom || '')) },
+  async afficherLeclerc() {
+    try {
+      const ps = await this.lire(null, 'params')
+      const p = (ps || []).find(x => x.Parametre === 'AFFICHER_LECLERC')
+      return !!p && String(p.Valeur).toLowerCase() === 'true'
+    } catch { return false }
+  },
+  async _sansMasques(promesse) {
+    const res = await promesse
+    if (await this.afficherLeclerc()) return res
+    const garde = c => !this.estLeclerc(c.Nom_Compte)
+    const proj = c => (window.CACanal ? CACanal.projeter(c) : c)
+    if (Array.isArray(res)) return res.filter(garde).map(proj)
+    if (res && Array.isArray(res.data)) return { ...res, data: res.data.filter(garde).map(proj) }
+    return res
+  },
+
+  // CA réalisé des objectifs selon le canal choisi : même calcul que la synchro (somme des comptes du CDS par trimestre),
+  // sur les comptes d'origine (Leclerc compris, comme le total serveur).
+  async _objectifsParCanal(promesse) {
+    const lignes = await promesse
+    if (!Array.isArray(lignes)) return lignes
+    let comptes = []
+    try { comptes = await this._lireAvecFallback('comptes', 'comptes') } catch { return lignes }
+    return lignes.map(o => {
+      const mine = comptes.filter(c => String(c.PIN_CDS_Assigne) === String(o.PIN_CDS))
+      const out = { ...o }
+      ;['Q1', 'Q2', 'Q3', 'Q4'].forEach(q => {
+        out['Q' + q.slice(1) + '_CA_Realise_Total'] = o['Q' + q.slice(1) + '_CA_Realise']
+        out['Q' + q.slice(1) + '_CA_Realise'] = Math.round(mine.reduce((t, c) => t + CACanal.valeur(c, q + 'FY27'), 0) * 100) / 100
+      })
+      return out
+    })
   },
 
   async _lireAvecFallback(table, cacheKey, opts = {}) {

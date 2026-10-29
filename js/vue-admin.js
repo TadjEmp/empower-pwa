@@ -83,6 +83,9 @@ window.VueAdmin = {
       this._chargerJournal();
     } else if (tab === 'utilisateurs' && !this.state.usersState.liste.length && !this.state.usersState.chargement) {
       this._chargerUtilisateurs();
+    } else if (tab === 'integrations' && !this.state.leclerc) {
+      this.render();
+      this.chargerReglageLeclerc();
     } else if (tab === 'maintenance' && !this.state.qualite && !this.state.qualiteChargement) {
       this._chargerQualiteDonnees();
     } else {
@@ -91,6 +94,30 @@ window.VueAdmin = {
   },
 
   // ── CRUD Utilisateurs (sécurisé via Edge Function admin-users, service_role) ──
+  // ── Réglage « Afficher les magasins Leclerc » (comptes masqués par défaut) ──
+  async chargerReglageLeclerc() {
+    const affiche = await SheetsAPI.afficherLeclerc();
+    const { count } = await SheetsAPI._sb.from('comptes').select('id', { count: 'exact', head: true })
+      .ilike('nom_compte', '%leclerc%').neq('deleted', true);
+    this.state.leclerc = { affiche, nb: count || 0 };
+    this.render();
+  },
+  async basculerLeclerc(coche) {
+    try {
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/admin-users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+        body: JSON.stringify({ action: 'setParam', token: SheetsAPI.TOKEN, cle: 'AFFICHER_LECLERC', valeur: coche ? 'true' : 'false' }),
+      });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.erreur || 'Échec');
+      await SheetsAPI.viderCache('EMPOWER_MDB', 'PARAMS');
+      await SheetsAPI.viderCache('EMPOWER_MDB', 'COMPTES');
+      Toast.afficher(coche ? 'Magasins Leclerc affichés dans les comptes' : 'Magasins Leclerc masqués des comptes', 'succes');
+      await this.chargerReglageLeclerc();
+    } catch (e) { Toast.afficher('Erreur : ' + e.message, 'erreur'); this.render(); }
+  },
+
   async _chargerUtilisateurs() {
     this.state.usersState.chargement = true;
     this.render();
@@ -1598,6 +1625,19 @@ window.VueAdmin = {
         </div>` : ''}
 
         ${adminTab === 'integrations' ? `
+        <!-- COMPTES AFFICHÉS -->
+        <div class="bloc-fiche">
+          <div class="bloc-titre">Comptes affichés</div>
+          <label style="display:flex;gap:10px;align-items:center;cursor:pointer">
+            <input type="checkbox" ${this.state.leclerc?.affiche ? 'checked' : ''} ${this.state.leclerc ? '' : 'disabled'}
+                   onchange="VueAdmin.basculerLeclerc(this.checked)"/>
+            <span>Afficher les magasins Leclerc${this.state.leclerc ? ` (${this.state.leclerc.nb} comptes)` : ''}</span>
+          </label>
+          <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">
+            Décochés, les magasins Leclerc disparaissent de toutes les listes et totaux de comptes. Rien n'est supprimé : cocher les réaffiche.
+          </p>
+        </div>
+
         <!-- CLÉS API -->
         <div class="bloc-fiche">
           <div class="bloc-titre">Clé API Groq (transcription vocale + LLM)</div>

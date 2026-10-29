@@ -1,4 +1,4 @@
-// sync-sellin v12 — verify_jwt: false
+// sync-sellin v15 — verify_jwt: false ; v15 : CA par canal (part Empower séparée) ; v14 : authentification session ADMIN / CHANNEL_MANAGER
 // v11 : accepte des lignes envoyées par le navigateur (POST { rows: string[][] }, header en rows[0]),
 //       repli Google Sheets sans `rows`. Agrégation Q1→Q4 FY27.
 // v13 : alias manuels (sellin_alias) + CUMUL par compte (deux noms vers un même compte s'additionnent).
@@ -163,7 +163,7 @@ Deno.serve(async (req) => {
     if (colIdx.quarter < 0 || colIdx.reseller < 0 || colIdx.caEur < 0) throw new Error(`Colonnes manquantes. Headers: ${headers.join(', ')}`)
 
     // ── Pivot : clé = nom NORMALISÉ ; `display` = 1ʳᵉ graphie rencontrée dans le fichier ──
-    type ResellerData = { display: string; byQuarter: Record<string, number>; channel: string }
+    type ResellerData = { display: string; byQuarter: Record<string, number>; empByQuarter: Record<string, number>; channel: string }
     const pivot: Record<string, ResellerData> = {}
     const fileQuarters = new Set<string>()
     const caParTrimestre: Record<string, number> = {}
@@ -176,29 +176,34 @@ Deno.serve(async (req) => {
       if (!reseller || !quarter || ca === 0) continue
       const norm = normalizeName(reseller)
       if (!norm) continue
-      if (!pivot[norm]) pivot[norm] = { display: reseller, byQuarter: {}, channel }
+      if (!pivot[norm]) pivot[norm] = { display: reseller, byQuarter: {}, empByQuarter: {}, channel }
       pivot[norm].byQuarter[quarter] = (pivot[norm].byQuarter[quarter] || 0) + ca
+      // CA par canal de commande : la part Empower est suivie séparément (le grossiste = total - Empower)
+      if (/EMPOWER/i.test(channel)) pivot[norm].empByQuarter[quarter] = (pivot[norm].empByQuarter[quarter] || 0) + ca
       fileQuarters.add(quarter)
       caParTrimestre[quarter] = (caParTrimestre[quarter] || 0) + ca
     }
 
-    type AggRow = { norm: string; reseller: string; canal: string; caFy25: number; caFy26: number; caFy27ByQuarter: Record<string, number>; flagBrut: string }
+    type AggRow = { norm: string; reseller: string; canal: string; caFy25: number; caFy26: number; caFy27ByQuarter: Record<string, number>; empFy25: number; empFy26: number; empFy27ByQuarter: Record<string, number>; flagBrut: string }
     const agregats: AggRow[] = []
-    const sellinRows: Array<{ reseller: string; quarter: string; ca_eur: number; canal: string; semaine_sync: string }> = []
+    const sellinRows: Array<{ reseller: string; quarter: string; ca_eur: number; ca_empower: number; canal: string; semaine_sync: string }> = []
     const fileKeys = new Set<string>()          // `${reseller}|${quarter}` exacts écrits
     for (const [norm, data] of Object.entries(pivot)) {
-      let caFy25 = 0, caFy26 = 0
+      let caFy25 = 0, caFy26 = 0, empFy25 = 0, empFy26 = 0
       const caFy27ByQuarter: Record<string, number> = {}
+      const empFy27ByQuarter: Record<string, number> = {}
       for (const [quarter, ca] of Object.entries(data.byQuarter)) {
-        sellinRows.push({ reseller: data.display, quarter, ca_eur: Math.round(ca * 100) / 100, canal: data.channel, semaine_sync: semaine })
+        const emp = data.empByQuarter[quarter] || 0
+        sellinRows.push({ reseller: data.display, quarter, ca_eur: Math.round(ca * 100) / 100, ca_empower: Math.round(emp * 100) / 100, canal: data.channel, semaine_sync: semaine })
         fileKeys.add(`${data.display}|${quarter}`)
-        if (quarter.includes('FY25')) caFy25 += ca
-        else if (quarter.includes('FY26')) caFy26 += ca
-        else if ((FY27_QUARTERS as readonly string[]).includes(quarter)) caFy27ByQuarter[quarter] = (caFy27ByQuarter[quarter] || 0) + ca
+        if (quarter.includes('FY25')) { caFy25 += ca; empFy25 += emp }
+        else if (quarter.includes('FY26')) { caFy26 += ca; empFy26 += emp }
+        else if ((FY27_QUARTERS as readonly string[]).includes(quarter)) { caFy27ByQuarter[quarter] = (caFy27ByQuarter[quarter] || 0) + ca; empFy27ByQuarter[quarter] = (empFy27ByQuarter[quarter] || 0) + emp }
       }
       agregats.push({
         norm, reseller: data.display, canal: data.channel,
         caFy25: Math.round(caFy25 * 100) / 100, caFy26: Math.round(caFy26 * 100) / 100, caFy27ByQuarter,
+        empFy25: Math.round(empFy25 * 100) / 100, empFy26: Math.round(empFy26 * 100) / 100, empFy27ByQuarter,
         flagBrut: calcFlag(caFy25, caFy26, caFy27ByQuarter),
       })
     }
@@ -246,6 +251,9 @@ Deno.serve(async (req) => {
       reseller: a.reseller, canal: a.canal, ca_fy25: a.caFy25, ca_fy26: a.caFy26,
       ca_q1fy27: round2(a.caFy27ByQuarter['Q1FY27'] || 0), ca_q2fy27: round2(a.caFy27ByQuarter['Q2FY27'] || 0),
       ca_q3fy27: round2(a.caFy27ByQuarter['Q3FY27'] || 0), ca_q4fy27: round2(a.caFy27ByQuarter['Q4FY27'] || 0),
+      ca_emp_fy25: a.empFy25, ca_emp_fy26: a.empFy26,
+      ca_emp_q1fy27: round2(a.empFy27ByQuarter['Q1FY27'] || 0), ca_emp_q2fy27: round2(a.empFy27ByQuarter['Q2FY27'] || 0),
+      ca_emp_q3fy27: round2(a.empFy27ByQuarter['Q3FY27'] || 0), ca_emp_q4fy27: round2(a.empFy27ByQuarter['Q4FY27'] || 0),
       flag_brut: a.flagBrut, semaine_sync: semaine, updated_at: new Date().toISOString(),
     })), { onConflict: 'reseller' })
     if (aggErr) throw new Error(`sellin_agregats upsert: ${aggErr.message}`)
@@ -263,12 +271,14 @@ Deno.serve(async (req) => {
     type NonMatch = { reseller: string; raison: string; candidats?: string[] }
     const nonMatcher: NonMatch[] = []
     const comptesCrees: string[] = []
-    type Cumul = { caFy25: number; caFy26: number; q: Record<string, number>; aggs: AggRow[] }
+    type Cumul = { caFy25: number; caFy26: number; q: Record<string, number>; empFy25: number; empFy26: number; empQ: Record<string, number>; aggs: AggRow[] }
     const parCompte = new Map<string, Cumul>()
     const cumuler = (id: string, agg: AggRow) => {
-      const c = parCompte.get(id) || { caFy25: 0, caFy26: 0, q: {}, aggs: [] }
+      const c = parCompte.get(id) || { caFy25: 0, caFy26: 0, q: {}, empFy25: 0, empFy26: 0, empQ: {}, aggs: [] }
       c.caFy25 += agg.caFy25; c.caFy26 += agg.caFy26
+      c.empFy25 += agg.empFy25; c.empFy26 += agg.empFy26
       for (const [q, v] of Object.entries(agg.caFy27ByQuarter)) c.q[q] = (c.q[q] || 0) + v
+      for (const [q, v] of Object.entries(agg.empFy27ByQuarter)) c.empQ[q] = (c.empQ[q] || 0) + v
       c.aggs.push(agg); parCompte.set(id, c)
     }
     for (const agg of agregats) {
@@ -290,6 +300,9 @@ Deno.serve(async (req) => {
         ca_fy25: round2(c.caFy25), ca_fy26: round2(c.caFy26),
         ca_q1fy27: round2(c.q['Q1FY27'] || 0), ca_q2fy27: round2(c.q['Q2FY27'] || 0),
         ca_q3fy27: round2(c.q['Q3FY27'] || 0), ca_q4fy27: round2(c.q['Q4FY27'] || 0),
+        ca_emp_fy25: round2(c.empFy25), ca_emp_fy26: round2(c.empFy26),
+        ca_emp_q1fy27: round2(c.empQ['Q1FY27'] || 0), ca_emp_q2fy27: round2(c.empQ['Q2FY27'] || 0),
+        ca_emp_q3fy27: round2(c.empQ['Q3FY27'] || 0), ca_emp_q4fy27: round2(c.empQ['Q4FY27'] || 0),
         statut_compte: calcFlag(c.caFy25, c.caFy26, c.q), date_sync_sellin: new Date().toISOString(), semaine_sync: semaine,
       }
       const { error: cErr } = await supabase.from('comptes').update(majCA).eq('id', compteId)
