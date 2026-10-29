@@ -20,6 +20,24 @@ async function sha256(str) {
   return Array.from(new Uint8Array(buf)).map(b => ('0' + b.toString(16)).slice(-2)).join('')
 }
 
+// Hachage des mots de passe : PBKDF2-SHA256 (210 000 itérations), format « pbkdf2$<itérations>$<hex> ».
+// Les anciens hachages (SHA-256 simple, 64 caractères hexa) restent acceptés et sont remplacés à la connexion suivante.
+const PBKDF2_ITER = 210000
+async function pbkdf2(motdepasse, salt, iter = PBKDF2_ITER) {
+  const cle = await crypto.subtle.importKey('raw', new TextEncoder().encode(motdepasse), 'PBKDF2', false, ['deriveBits'])
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: new TextEncoder().encode(salt), iterations: iter }, cle, 256)
+  return Array.from(new Uint8Array(bits)).map(b => ('0' + b.toString(16)).slice(-2)).join('')
+}
+async function hasherMotdepasse(motdepasse, salt) {
+  return `pbkdf2$${PBKDF2_ITER}$${await pbkdf2(motdepasse, salt)}`
+}
+function egal(a, b) {
+  if (a.length !== b.length) return false
+  let r = 0
+  for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  return r === 0
+}
+
 function randomHex() {
   return (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, '')
 }
@@ -87,7 +105,7 @@ Deno.serve(async (req) => {
       if (existant && existant.length > 0)
         return Response.json({ ok: false, erreur: 'Email ou PIN déjà utilisé' }, { headers: CORS, status: 409 })
       const salt = randomHex()
-      const hash = await sha256(motdepasse + salt)
+      const hash = await hasherMotdepasse(motdepasse, salt)
       const { error } = await sb.from('utilisateurs').insert({
         email: emailNorm, hash, salt, pin, nom, role, actif: true, droits: d.valeur,
       })
@@ -132,7 +150,7 @@ Deno.serve(async (req) => {
       if (String(nouveauMotdepasse).length < MIN_MOTDEPASSE)
         return Response.json({ ok: false, erreur: `Mot de passe trop court (${MIN_MOTDEPASSE} caractères min)` }, { headers: CORS, status: 400 })
       const salt = randomHex()
-      const hash = await sha256(nouveauMotdepasse + salt)
+      const hash = await hasherMotdepasse(nouveauMotdepasse, salt)
       const { error } = await sb.from('utilisateurs').update({ hash, salt }).eq('pin', targetPin)
       if (error) return Response.json({ ok: false, erreur: error.message }, { headers: CORS, status: 500 })
       return Response.json({ ok: true }, { headers: CORS })

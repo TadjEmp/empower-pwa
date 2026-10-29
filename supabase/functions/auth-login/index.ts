@@ -14,6 +14,24 @@ async function sha256(str) {
   return Array.from(new Uint8Array(buf)).map(b => ('0' + b.toString(16)).slice(-2)).join('')
 }
 
+// Hachage des mots de passe : PBKDF2-SHA256 (210 000 itérations), format « pbkdf2$<itérations>$<hex> ».
+// Les anciens hachages (SHA-256 simple, 64 caractères hexa) restent acceptés et sont remplacés à la connexion suivante.
+const PBKDF2_ITER = 210000
+async function pbkdf2(motdepasse, salt, iter = PBKDF2_ITER) {
+  const cle = await crypto.subtle.importKey('raw', new TextEncoder().encode(motdepasse), 'PBKDF2', false, ['deriveBits'])
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: new TextEncoder().encode(salt), iterations: iter }, cle, 256)
+  return Array.from(new Uint8Array(bits)).map(b => ('0' + b.toString(16)).slice(-2)).join('')
+}
+async function hasherMotdepasse(motdepasse, salt) {
+  return `pbkdf2$${PBKDF2_ITER}$${await pbkdf2(motdepasse, salt)}`
+}
+function egal(a, b) {
+  if (a.length !== b.length) return false
+  let r = 0
+  for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  return r === 0
+}
+
 function randomHex() {
   return (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, '')
 }
@@ -64,8 +82,14 @@ Deno.serve(async (req) => {
       return Response.json({ ok: false, erreur: `Trop de tentatives échouées, réessayez dans ${minutes} min` }, { headers: CORS, status: 429 })
     }
 
-    const hash = await sha256(motdepasse + u.salt)
-    if (hash !== u.hash) {
+    let valide = false
+    if (typeof u.hash === 'string' && u.hash.startsWith('pbkdf2$')) {
+      const [, iter, attendu] = u.hash.split('$')
+      valide = egal(await pbkdf2(motdepasse, u.salt, Number(iter)), attendu)
+    } else {
+      valide = egal(await sha256(motdepasse + u.salt), String(u.hash))
+    }
+    if (!valide) {
       const tentatives = (u.failed_attempts || 0) + 1
       const patch = { failed_attempts: tentatives }
       if (tentatives >= MAX_TENTATIVES) patch.locked_until = Date.now() + VERROU_MS
@@ -80,7 +104,9 @@ Deno.serve(async (req) => {
       p_pin: Number(u.pin), p_token: token, p_expire: expiry, p_ua: req.headers.get('user-agent') || '',
     })
     if (errSession) return Response.json({ ok: false, erreur: 'Session non créée' }, { headers: CORS, status: 500 })
-    await sb.from('utilisateurs').update({ failed_attempts: 0, locked_until: null }).eq('email', emailNorm)
+    const patch2: any = { failed_attempts: 0, locked_until: null }
+    if (!String(u.hash).startsWith('pbkdf2$')) patch2.hash = await hasherMotdepasse(motdepasse, u.salt)   // mise à niveau du hachage
+    await sb.from('utilisateurs').update(patch2).eq('email', emailNorm)
 
     return Response.json({
       ok: true, token, expiry,
