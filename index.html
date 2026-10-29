@@ -49,7 +49,9 @@
   <link rel="stylesheet" href="css/dashboard.css?v=9c"/>
   <link rel="stylesheet" href="css/pipeline.css?v=14c"/>
   <link rel="stylesheet" href="css/v7.css?v=14"/>
-  <link rel="stylesheet" href="css/gen-digital.css?v=32"/>
+  <link rel="stylesheet" href="css/gen-digital.css?v=34"/>
+  <!-- Fond du nouveau design posé en dur, après les feuilles de style : si un ancien fichier en cache est lu un instant au démarrage, le fond ne repasse jamais par l'ancienne couleur -->
+  <style>html, body { background: #F0F5FF !important; } html[data-theme="dark"], html[data-theme="dark"] body { background: #0F151C !important; } .splash, .login-page { background: transparent !important; }</style>
   <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
   <!-- Feuille de route Phase 1 — piège de focus pour les modales/drawer (utils.js#ModalAccessibilite) -->
   <script src="https://cdn.jsdelivr.net/npm/tabbable@6.5.0/dist/index.umd.js"></script>
@@ -97,7 +99,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="js/ca-canal.js?v=1"></script>
   <script src="js/canaux.js?v=2"></script>
-  <script src="js/api.js?v=r15"></script>
+  <script src="js/api.js?v=r16"></script>
   <script src="js/groq.js?v=r2"></script>
   <script src="js/gemini.js?v=r2"></script>
   <script src="js/toast.js?v=r2"></script>
@@ -109,7 +111,8 @@
 
   <!-- Vues V2.1 — Navigation 7 modules -->
   <script src="js/vue-login.js?v=r11"></script>
-  <script src="js/plan-q3.js?v=1"></script>
+  <script src="js/statuts-ca.js?v=2"></script>
+  <script src="js/plan-q3.js?v=2"></script>
   <script src="js/vue-dashboard-cds.js?v=r8"></script>
   <!-- EMPOWER TRACKER (B3 : renommage complet) -->
   <script src="js/vue-pipeline.js?v=r11"></script>
@@ -133,8 +136,8 @@
   <!-- BLOC 11 Partie B — Mailing loggué comme action commerciale -->
   <script src="js/vue-mailing.js?v=r11"></script>
   <script src="js/vue-a-contacter.js?v=r8"></script>
-  <script src="js/vue-comptes.js?v=r10"></script>
-  <script src="js/vue-fiche-compte.js?v=r8"></script>
+  <script src="js/vue-comptes.js?v=r11"></script>
+  <script src="js/vue-fiche-compte.js?v=r10"></script>
   <script src="js/vue-questionnaire.js?v=r7"></script>
   <script src="js/vue-dashboard-manager.js?v=r7"></script>
   <script src="js/vue-admin.js?v=r15"></script>

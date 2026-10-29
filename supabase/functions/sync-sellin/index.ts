@@ -1,4 +1,4 @@
-// sync-sellin v15 — verify_jwt: false ; v15 : CA par canal (part Empower séparée) ; v14 : authentification session ADMIN / CHANNEL_MANAGER
+// sync-sellin v16 (CA par trimestre FY26 sur les comptes) — v15 — verify_jwt: false ; v15 : CA par canal (part Empower séparée) ; v14 : authentification session ADMIN / CHANNEL_MANAGER
 // v11 : accepte des lignes envoyées par le navigateur (POST { rows: string[][] }, header en rows[0]),
 //       repli Google Sheets sans `rows`. Agrégation Q1→Q4 FY27.
 // v13 : alias manuels (sellin_alias) + CUMUL par compte (deux noms vers un même compte s'additionnent).
@@ -184,7 +184,7 @@ Deno.serve(async (req) => {
       caParTrimestre[quarter] = (caParTrimestre[quarter] || 0) + ca
     }
 
-    type AggRow = { norm: string; reseller: string; canal: string; caFy25: number; caFy26: number; caFy27ByQuarter: Record<string, number>; empFy25: number; empFy26: number; empFy27ByQuarter: Record<string, number>; flagBrut: string }
+    type AggRow = { norm: string; reseller: string; canal: string; caFy25: number; caFy26: number; caFy27ByQuarter: Record<string, number>; empFy25: number; empFy26: number; empFy27ByQuarter: Record<string, number>; fy26ByQuarter: Record<string, number>; flagBrut: string }
     const agregats: AggRow[] = []
     const sellinRows: Array<{ reseller: string; quarter: string; ca_eur: number; ca_empower: number; canal: string; semaine_sync: string }> = []
     const fileKeys = new Set<string>()          // `${reseller}|${quarter}` exacts écrits
@@ -192,18 +192,19 @@ Deno.serve(async (req) => {
       let caFy25 = 0, caFy26 = 0, empFy25 = 0, empFy26 = 0
       const caFy27ByQuarter: Record<string, number> = {}
       const empFy27ByQuarter: Record<string, number> = {}
+      const fy26ByQuarter: Record<string, number> = {}
       for (const [quarter, ca] of Object.entries(data.byQuarter)) {
         const emp = data.empByQuarter[quarter] || 0
         sellinRows.push({ reseller: data.display, quarter, ca_eur: Math.round(ca * 100) / 100, ca_empower: Math.round(emp * 100) / 100, canal: data.channel, semaine_sync: semaine })
         fileKeys.add(`${data.display}|${quarter}`)
         if (quarter.includes('FY25')) { caFy25 += ca; empFy25 += emp }
-        else if (quarter.includes('FY26')) { caFy26 += ca; empFy26 += emp }
+        else if (quarter.includes('FY26')) { caFy26 += ca; empFy26 += emp; fy26ByQuarter[quarter] = (fy26ByQuarter[quarter] || 0) + ca }
         else if ((FY27_QUARTERS as readonly string[]).includes(quarter)) { caFy27ByQuarter[quarter] = (caFy27ByQuarter[quarter] || 0) + ca; empFy27ByQuarter[quarter] = (empFy27ByQuarter[quarter] || 0) + emp }
       }
       agregats.push({
         norm, reseller: data.display, canal: data.channel,
         caFy25: Math.round(caFy25 * 100) / 100, caFy26: Math.round(caFy26 * 100) / 100, caFy27ByQuarter,
-        empFy25: Math.round(empFy25 * 100) / 100, empFy26: Math.round(empFy26 * 100) / 100, empFy27ByQuarter,
+        empFy25: Math.round(empFy25 * 100) / 100, empFy26: Math.round(empFy26 * 100) / 100, empFy27ByQuarter, fy26ByQuarter,
         flagBrut: calcFlag(caFy25, caFy26, caFy27ByQuarter),
       })
     }
@@ -271,14 +272,15 @@ Deno.serve(async (req) => {
     type NonMatch = { reseller: string; raison: string; candidats?: string[] }
     const nonMatcher: NonMatch[] = []
     const comptesCrees: string[] = []
-    type Cumul = { caFy25: number; caFy26: number; q: Record<string, number>; empFy25: number; empFy26: number; empQ: Record<string, number>; aggs: AggRow[] }
+    type Cumul = { caFy25: number; caFy26: number; q: Record<string, number>; empFy25: number; empFy26: number; empQ: Record<string, number>; fy26Q: Record<string, number>; aggs: AggRow[] }
     const parCompte = new Map<string, Cumul>()
     const cumuler = (id: string, agg: AggRow) => {
-      const c = parCompte.get(id) || { caFy25: 0, caFy26: 0, q: {}, empFy25: 0, empFy26: 0, empQ: {}, aggs: [] }
+      const c = parCompte.get(id) || { caFy25: 0, caFy26: 0, q: {}, empFy25: 0, empFy26: 0, empQ: {}, fy26Q: {}, aggs: [] }
       c.caFy25 += agg.caFy25; c.caFy26 += agg.caFy26
       c.empFy25 += agg.empFy25; c.empFy26 += agg.empFy26
       for (const [q, v] of Object.entries(agg.caFy27ByQuarter)) c.q[q] = (c.q[q] || 0) + v
       for (const [q, v] of Object.entries(agg.empFy27ByQuarter)) c.empQ[q] = (c.empQ[q] || 0) + v
+      for (const [q, v] of Object.entries(agg.fy26ByQuarter)) c.fy26Q[q] = (c.fy26Q[q] || 0) + v
       c.aggs.push(agg); parCompte.set(id, c)
     }
     for (const agg of agregats) {
@@ -303,6 +305,8 @@ Deno.serve(async (req) => {
         ca_emp_fy25: round2(c.empFy25), ca_emp_fy26: round2(c.empFy26),
         ca_emp_q1fy27: round2(c.empQ['Q1FY27'] || 0), ca_emp_q2fy27: round2(c.empQ['Q2FY27'] || 0),
         ca_emp_q3fy27: round2(c.empQ['Q3FY27'] || 0), ca_emp_q4fy27: round2(c.empQ['Q4FY27'] || 0),
+        ca_q1fy26: round2(c.fy26Q['Q1FY26'] || 0), ca_q2fy26: round2(c.fy26Q['Q2FY26'] || 0),
+        ca_q3fy26: round2(c.fy26Q['Q3FY26'] || 0), ca_q4fy26: round2(c.fy26Q['Q4FY26'] || 0),
         statut_compte: calcFlag(c.caFy25, c.caFy26, c.q), date_sync_sellin: new Date().toISOString(), semaine_sync: semaine,
       }
       const { error: cErr } = await supabase.from('comptes').update(majCA).eq('id', compteId)

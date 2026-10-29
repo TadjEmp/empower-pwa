@@ -23,45 +23,42 @@ window.PlanQ3 = (function () {
     };
     const ligne = (c, detail) => ({ id: idDe(c), nom: c.Nom_Compte, detail });
 
-    // P1 : comptes qui commandaient au Q1 FY27 et ont arrêté au Q2
-    ajoute(1, 'Comptes qui ont arrêté de commander au Q2',
-      'Appeler cette semaine, comprendre le blocage, relancer une commande avant la mi-Q3.',
-      'Commande au Q1 FY27 mais rien au Q2 : le risque de perte est le plus élevé.',
-      comptes.filter(c => tot(c, 'Q1FY27') > 0 && tot(c, 'Q2FY27') <= 0)
-        .sort((a, b) => tot(b, 'Q1FY27') - tot(a, 'Q1FY27'))
-        .map(c => ligne(c, `Q1 ${eur(tot(c, 'Q1FY27'))} → Q2 ${eur(0)}`)));
+    // Les groupes viennent des statuts commerciaux (js/statuts-ca.js), du plus urgent au moins urgent
+    const ctx = window.StatutsCA ? StatutsCA.contexte(comptes) : null;
+    const calcules = ctx ? comptes.map(c => ({ c, r: StatutsCA.calculer(c, ctx) })) : [];
+    const detailTrim = ({ c }) => `${ctx.codeDernier.slice(0, 2)} ${eur(tot(c, ctx.codeDernier))}`;
+    const de = (code) => calcules.filter(x => x.r.code === code);
+    const sig = (code) => calcules.filter(x => x.r.signaux.some(s => s.code === code));
 
-    // P1 : comptes en forte baisse au Q2 par rapport au Q1
-    ajoute(1, 'Comptes en forte baisse au Q2',
+    ajoute(1, 'Comptes qui ont arrêté de commander',
+      'Appeler cette semaine, comprendre le blocage, relancer une commande avant la mi-trimestre.',
+      'Ils commandaient plus tôt cette année et n\'ont rien commandé au dernier trimestre.',
+      de('A_RELANCER').sort((a, b) => fy27(b.c) - fy27(a.c)).map(x => ligne(x.c, `FY27 ${eur(fy27(x.c))}, dernière commande ${x.r.derniere || 'n.c.'}`)));
+    ajoute(1, 'Comptes en forte baisse',
       'Faire un point commande : stock, concurrence, besoin de formation ou d\'offre.',
-      'Le CA Q2 est inférieur de plus de 30 % au Q1.',
-      comptes.filter(c => tot(c, 'Q1FY27') >= 100 && tot(c, 'Q2FY27') > 0 && tot(c, 'Q2FY27') < tot(c, 'Q1FY27') * 0.7)
-        .sort((a, b) => (tot(b, 'Q1FY27') - tot(b, 'Q2FY27')) - (tot(a, 'Q1FY27') - tot(a, 'Q2FY27')))
-        .map(c => ligne(c, `Q1 ${eur(tot(c, 'Q1FY27'))} → Q2 ${eur(tot(c, 'Q2FY27'))}`)));
-
-    // P2 : comptes actifs en FY26, sans commande en FY27
+      'Le CA du dernier trimestre est inférieur de plus de 30 % à celui d\'avant.',
+      de('EN_BAISSE').sort((a, b) => fy27(b.c) - fy27(a.c)).map(x => ligne(x.c, x.r.resume)));
+    if (ctx) ajoute(2, `Renouvellements à prévoir au ${ctx.codeCourant}`,
+      'Licences de 12 mois : proposer le renouvellement avant l\'échéance.',
+      `Ces comptes ont commandé au ${ctx.codeCourant} de l\'an dernier et n\'ont pas encore recommandé.`,
+      sig('RENOUVELLEMENT').sort((a, b) => tot(b.c, 'Q' + ctx.courant + 'FY26') - tot(a.c, 'Q' + ctx.courant + 'FY26'))
+        .map(x => ligne(x.c, x.r.signaux.find(s => s.code === 'RENOUVELLEMENT').detail)));
     ajoute(2, 'Comptes actifs en FY26 sans commande en FY27',
       'Réactiver : appel puis visite, avec une offre de reprise.',
       'Du CA l\'an dernier, aucune commande cette année.',
-      comptes.filter(c => tot(c, 'FY26') > 0 && fy27(c) <= 0)
-        .sort((a, b) => tot(b, 'FY26') - tot(a, 'FY26'))
-        .map(c => ligne(c, `FY26 ${eur(tot(c, 'FY26'))}, FY27 ${eur(0)}`)));
-
-    // P2 : comptes qui commandent chez les grossistes et pas encore par Empower
+      de('A_REACTIVER').sort((a, b) => tot(b.c, 'FY26') - tot(a.c, 'FY26')).map(x => ligne(x.c, `FY26 ${eur(tot(x.c, 'FY26'))}, FY27 ${eur(0)}`)));
     ajoute(2, 'Proposer Empower aux comptes qui commandent chez les grossistes',
-      'Présenter le programme Empower à ces comptes et les faire basculer une partie de leurs commandes.',
+      'Présenter le programme Empower à ces comptes et leur faire basculer une partie des commandes.',
       'CA FY27 chez les grossistes d\'au moins 200 €, sans commande Empower.',
-      comptes.filter(c => fy27(c) >= 200 && empFy27(c) <= 0 && !(window.estEmpower && estEmpower(c)))
-        .sort((a, b) => fy27(b) - fy27(a))
-        .map(c => ligne(c, `FY27 ${eur(fy27(c))}, 100 % grossiste`)));
-
-    // P2 : comptes déclarés Empower sans commande Empower
-    ajoute(2, 'Activer les comptes Empower sans commande Empower',
+      sig('CONVERTIR_EMPOWER').sort((a, b) => fy27(b.c) - fy27(a.c)).map(x => ligne(x.c, x.r.signaux.find(s => s.code === 'CONVERTIR_EMPOWER').detail)));
+    ajoute(3, 'Activer les comptes Empower sans commande Empower',
       'Relancer l\'onboarding : accès, formation, première commande.',
       'Compte Empower, mais aucune commande par ce canal en FY27.',
-      comptes.filter(c => window.estEmpower && estEmpower(c) && empFy27(c) <= 0)
-        .sort((a, b) => fy27(b) - fy27(a))
-        .map(c => ligne(c, fy27(c) > 0 ? `FY27 ${eur(fy27(c))} chez les grossistes` : 'aucune commande FY27')));
+      sig('ACTIVER_EMPOWER').sort((a, b) => fy27(b.c) - fy27(a.c)).map(x => ligne(x.c, fy27(x.c) > 0 ? `FY27 ${eur(fy27(x.c))} chez les grossistes` : 'aucune commande FY27')));
+    ajoute(3, 'Comptes à activer (jamais commandé)',
+      'Obtenir une première commande : appel de découverte, offre de lancement.',
+      'Aucune commande depuis FY25.',
+      de('A_ACTIVER').map(x => ligne(x.c, 'aucune commande')));
 
     // P1 : leads non rappelés
     const sansRappel = (prospects || []).filter(l => {
