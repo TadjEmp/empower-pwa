@@ -148,7 +148,7 @@ const SheetsAPI = {
       id_compte_gas: 'ID_Compte', nom_compte: 'Nom_Compte', adresse: 'Adresse', ville: 'Ville',
       code_postal: 'Code_Postal', departement: 'Departement', tel: 'Tel', email: 'Email',
       pin_cds_assigne: 'PIN_CDS_Assigne', nom_cds: 'Nom_CDS',
-      canal: 'CANAL', secteur: 'SECTEUR', has_empower: 'Has_EMPOWER',
+      canal: 'CANAL', mode_contact: 'MODE_CONTACT', secteur: 'SECTEUR', has_empower: 'Has_EMPOWER',
       flag_action: 'Flag_Action', priorite: 'Priorite', statut_compte: 'Statut',
       ca_fy25: 'CA_FY25', ca_fy26: 'CA_FY26', ca_q1fy27: 'CA_Q1FY27',
       // BLOC 04 §3/§5 (09/2026) — colonnes migrées côté sync-sellin v11,
@@ -317,7 +317,7 @@ const SheetsAPI = {
       date_statut_change: 'Date_Statut_Change',
       welcome_pack_envoye: 'Welcome_Pack_Envoye', welcome_pack_date: 'Welcome_Pack_Date',
       note: 'Note_initiale', flag_alerte: 'FLAG_ALERTE', id_compte_gas: 'ID_Compte_Gas',
-      date_prochaine_action: 'Date_prochaine_action',
+      date_prochaine_action: 'Date_prochaine_action', mode_contact: 'MODE_CONTACT',
       contact_nom: 'CONTACT_NOM', contact_fonction: 'CONTACT_FONCTION',
       // BUG dashboards/tracker "tout à zéro" (09/2026) — flag_traite/source_import
       // étaient écrits (cf. _MAPS_GAS_TO_DB.leads) mais jamais relus : absents de
@@ -394,7 +394,7 @@ const SheetsAPI = {
       'ID_Compte': 'id_compte_gas', 'Nom_Compte': 'nom_compte', 'Adresse': 'adresse', 'Ville': 'ville',
       'Code_Postal': 'code_postal', 'Departement': 'departement', 'Tel': 'tel', 'Email': 'email',
       'PIN_CDS_Assigne': 'pin_cds_assigne', 'Nom_CDS': 'nom_cds',
-      'CANAL': 'canal', 'SECTEUR': 'secteur', 'Has_EMPOWER': 'has_empower',
+      'CANAL': 'canal', 'MODE_CONTACT': 'mode_contact', 'SECTEUR': 'secteur', 'Has_EMPOWER': 'has_empower',
       'Flag_Action': 'flag_action', 'Priorite': 'priorite', 'Statut': 'statut_compte',
       'CA_FY25': 'ca_fy25', 'CA_FY26': 'ca_fy26', 'CA_Q1FY27': 'ca_q1fy27',
       'CA_Q2FY27': 'ca_q2fy27', 'CA_Q3FY27': 'ca_q3fy27', 'CA_Q4FY27': 'ca_q4fy27',
@@ -510,7 +510,7 @@ const SheetsAPI = {
       'Welcome_Pack_Envoye': 'welcome_pack_envoye', 'Welcome_Pack_Date': 'welcome_pack_date', 'WELCOME_PACK_DATE': 'welcome_pack_date',
       'Note_initiale': 'note', 'FLAG_ALERTE': 'flag_alerte', 'FLAG_ACTION': 'flag_action',
       'ID_Compte_Gas': 'id_compte_gas',
-      'Date_prochaine_action': 'date_prochaine_action',
+      'Date_prochaine_action': 'date_prochaine_action', 'MODE_CONTACT': 'mode_contact',
       'CONTACT_NOM': 'contact_nom', 'CONTACT_FONCTION': 'contact_fonction',
       'Flag_traite': 'flag_traite', 'Flag_converti': 'flag_converti',
       'Source_Import': 'source_import',
@@ -600,6 +600,7 @@ const SheetsAPI = {
     const p = this._lireAvecFallback(table, k, { limit, offset, nocache })
     if (!limit) { this._inflight.set(k, p); p.finally(() => this._inflight.delete(k)) }
     if (table === 'comptes') return this._sansMasques(p)
+    if (table === 'leads' && window.Canaux && Canaux.actif()) return this._leadsParCanal(p)
     if (table === 'objectifs_primes' && window.CACanal && CACanal.actif()) return this._objectifsParCanal(p)
     return p
   },
@@ -614,10 +615,16 @@ const SheetsAPI = {
       return !!p && String(p.Valeur).toLowerCase() === 'true'
     } catch { return false }
   },
+  async _leadsParCanal(promesse) {
+    const res = await promesse
+    if (Array.isArray(res)) return res.filter(l => Canaux.garde(l))
+    if (res && Array.isArray(res.data)) return { ...res, data: res.data.filter(l => Canaux.garde(l)) }
+    return res
+  },
   async _sansMasques(promesse) {
     const res = await promesse
     if (await this.afficherLeclerc()) return res
-    const garde = c => !this.estLeclerc(c.Nom_Compte)
+    const garde = c => !this.estLeclerc(c.Nom_Compte) && (!window.Canaux || Canaux.garde(c))
     const proj = c => (window.CACanal ? CACanal.projeter(c) : c)
     if (Array.isArray(res)) return res.filter(garde).map(proj)
     if (res && Array.isArray(res.data)) return { ...res, data: res.data.filter(garde).map(proj) }

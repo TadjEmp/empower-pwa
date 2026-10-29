@@ -489,6 +489,10 @@ function NavBar(actif) {
           <span class="nav-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></span>
           <span class="nav-lbl">Apparence : <span data-theme-libelle>${(window.Theme && Theme.LIBELLES[Theme.lire()]) || ''}</span></span>
         </button>
+        <label class="nav-item nav-sidebar-action" data-lbl="Canal" title="Filtrer toutes les vues par canal de vente">
+          <span class="nav-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></span>
+          <select data-canal-select class="nav-lbl" aria-label="Canal de vente" onchange="Canaux.choisir(this.value)" style="background:transparent;border:0;color:inherit;font:inherit;max-width:130px">${window.Canaux ? Canaux.optionsHTML() : ''}</select>
+        </label>
         <button class="nav-item nav-sidebar-action" data-lbl="CA par canal" onclick="CACanal.suivant()" title="CA affiché : tous les canaux, Empower ou Grossiste">
           <span class="nav-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></span>
           <span class="nav-lbl">CA : <span data-caCanal-libelle>${(window.CACanal && CACanal.libelleCourant()) || ''}</span></span>
@@ -619,7 +623,7 @@ const DrawerMenu = (function () {
   ];
 
   function _roleLabel(role) {
-    return { ADMIN: 'Admin', CDS: 'Commercial', CHANNEL_MANAGER: 'Manager', EXTERNE: 'Invité' }[role] || role || '';
+    return { ADMIN: 'Admin', CDS: 'Commercial', CHANNEL_MANAGER: 'Manager', EXTERNE: 'Fournisseur de leads' }[role] || role || '';
   }
 
   function _html() {
@@ -659,6 +663,10 @@ const DrawerMenu = (function () {
             <div class="drawer-item-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></div>
             Apparence : <span data-theme-libelle>${(window.Theme && Theme.LIBELLES[Theme.lire()]) || ''}</span>
           </button>
+          <label class="drawer-item">
+            <div class="drawer-item-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></div>
+            <select data-canal-select aria-label="Canal de vente" onchange="Canaux.choisir(this.value)" style="background:transparent;border:0;color:inherit;font:inherit">${window.Canaux ? Canaux.optionsHTML() : ''}</select>
+          </label>
           <button class="drawer-item" onclick="CACanal.suivant()">
             <div class="drawer-item-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></div>
             CA : <span data-caCanal-libelle>${(window.CACanal && CACanal.libelleCourant()) || ''}</span>

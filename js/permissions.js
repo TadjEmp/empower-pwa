@@ -35,8 +35,9 @@
       'home', 'tracker', 'comptes', 'objectifs', 'photos', 'admin',
       'visites_fdv', 'phoning', 'reporting', 'mailing', 'a_contacter',
     ],
+    // Fournisseur de leads (ex-« Invité » : Flavie…) : alimente le Tracker et consulte les comptes (lecture seule).
     EXTERNE: [
-      'tracker',
+      'tracker', 'comptes',
     ],
   };
 
