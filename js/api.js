@@ -594,7 +594,26 @@ const SheetsAPI = {
     if (!limit && this._inflight.has(k)) return this._inflight.get(k)
     const p = this._lireAvecFallback(table, k, { limit, offset, nocache })
     if (!limit) { this._inflight.set(k, p); p.finally(() => this._inflight.delete(k)) }
-    return p
+    return table === 'comptes' ? this._sansMasques(p) : p
+  },
+
+  // Magasins Leclerc : masqués des comptes par défaut ; l'admin les réaffiche en cochant
+  // « Afficher les magasins Leclerc » (Administration, paramètre AFFICHER_LECLERC).
+  estLeclerc(nom) { return /leclerc/i.test(String(nom || '')) },
+  async afficherLeclerc() {
+    try {
+      const ps = await this.lire(null, 'params')
+      const p = (ps || []).find(x => x.Parametre === 'AFFICHER_LECLERC')
+      return !!p && String(p.Valeur).toLowerCase() === 'true'
+    } catch { return false }
+  },
+  async _sansMasques(promesse) {
+    const res = await promesse
+    if (await this.afficherLeclerc()) return res
+    const garde = c => !this.estLeclerc(c.Nom_Compte)
+    if (Array.isArray(res)) return res.filter(garde)
+    if (res && Array.isArray(res.data)) return { ...res, data: res.data.filter(garde) }
+    return res
   },
 
   async _lireAvecFallback(table, cacheKey, opts = {}) {

@@ -160,6 +160,8 @@ window.VueMailing = {
         await SheetsAPI.mettreAJour('EMPOWER_MDB', 'LEADS', s.cible.id, maj);
         const local = s.prospects.find(x => String(x.ID_Prospect) === String(s.cible.id));
         if (local) Object.assign(local, maj);
+        // Tracker en direct : remet à zéro le flag « sans contact » (même mécanisme que phoning et visites)
+        if (typeof EmpowerBus !== 'undefined') EmpowerBus.emit('contact-prospect', { idProspect: s.cible.id, ...maj });
       }
 
       Toast.afficher(`Mailing loggué : ${s.cible.nom}`, 'succes', 4000);

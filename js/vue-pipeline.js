@@ -1726,9 +1726,11 @@ window.VuePipeline = {
     // Date_Relance passée = dernière date d'action connue (prioritaire sur date d'import)
     const relance = l.Date_Relance ? new Date(l.Date_Relance) : null;
     const relancePassee = relance && relance < maintenant;
-    const ref = (relancePassee ? l.Date_Relance : null) || l.Date_Attribution || l.Timestamp || l.Date_Import;
-    if (!ref) return false;
-    return (Date.now() - new Date(ref).getTime()) / 86400000 > 45;
+    const base = (relancePassee ? l.Date_Relance : null) || l.Date_Attribution || l.Timestamp || l.Date_Import;
+    // Tout contact réel (mailing, appel, visite) écrit Date_Derniere_Action : c'est la référence la plus récente.
+    const dates = [l.Date_Derniere_Action, base].map(d => d ? new Date(d).getTime() : NaN).filter(t => !isNaN(t));
+    if (!dates.length) return false;
+    return (Date.now() - Math.max(...dates)) / 86400000 > 45;
   },
 
   // ── Marquer le Welcome Pack comme envoyé manuellement ──
