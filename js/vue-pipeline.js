@@ -1045,7 +1045,7 @@ window.VuePipeline = {
         </div>` : ''}
 
       <div class="kanban">
-        ${this.STATUTS.map(st => {
+        ${this.STATUTS.filter(st => this.state.filtreStatut === 'TOUS' || st.id === this.state.filtreStatut).map(st => {
           const col = leads
             .filter(l => l._statut === st.id)
             .sort((a, b) => {
