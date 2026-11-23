@@ -265,6 +265,12 @@ button, [onclick], .btn-filtre, .tab-btn-premium { touch-action: manipulation; }
 /* Kanban : colonnes et cartes aérées */
 .kanban { gap: 24px; padding: 8px 24px calc(96px + var(--safe-bottom)); }
 .kanban-col { flex-basis: 300px; gap: 16px; }
+/* Bureau : les 6 colonnes tiennent à l'écran (Intégré et Archivé, en bout de ligne, restaient hors champ avec 300 px fixes) ; en dessous de ~1250 px on défile */
+@media (min-width: 900px) {
+  .kanban { gap: 12px; padding-left: 16px; padding-right: 16px; }
+  .kanban-col { flex: 1 1 0; min-width: 170px; }
+  .kanban-col-head, .kanban-carte, .kanban-ligne { padding-left: 14px; padding-right: 14px; }
+}
 .kanban-col-cartes { gap: 16px; }
 .kanban-col-head { padding: 14px 20px; border-radius: var(--radius-lg); }
 .kanban-carte, .kanban-ligne { padding: 16px 20px; display: flex; flex-direction: column; gap: 8px; }
