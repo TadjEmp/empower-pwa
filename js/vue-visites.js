@@ -1832,6 +1832,24 @@ window.VueVisites = {
   // oninput appelait VueVisites.render() — la page ENTIÈRE, derrière la
   // modale, pas seulement elle — et détruisait ses propres champs de saisie
   // à chaque frappe (après leur debounce).
+  // Champs de saisie (Nom / Ville, Dept) : rendus UNE fois, hors de #visites-recherche-modal.
+  // Avant, ils étaient dans la zone remplacée 250 ms après chaque frappe : le champ était détruit et recréé,
+  // le focus disparaissait et il fallait recliquer après chaque lettre.
+  _renderRechercheChamps() {
+    const f = this.state.formPlanif;
+    return `
+     <div style="display:flex;gap:6px;margin-bottom:6px">
+       <label style="flex:1;margin-bottom:0">Nom / Ville
+         <input placeholder="Nom ou ville…" value="${f.rechercheCompte || ''}"
+                oninput="VueVisites.setRechercheCompteModal(this.value)"/>
+       </label>
+       <label style="flex:0 0 70px;margin-bottom:0">Dept
+         <input placeholder="75…" maxlength="3" value="${f.rechercheDept || ''}"
+                oninput="VueVisites.setRechercheDeptModal(this.value)"/>
+       </label>
+     </div>`;
+  },
+
   _renderRechercheCompteModal() {
     const f = this.state.formPlanif;
     // Module 2 — Recherche par nom/ville ET par département
@@ -1850,16 +1868,6 @@ window.VueVisites = {
       : [...this.state.comptes].sort((a, b) => (a.Nom_Compte || '').localeCompare(b.Nom_Compte || '', 'fr'));
     const aucunDept = qDept.length >= 1 && comptesFiltres.length === 0;
     return `
-     <div style="display:flex;gap:6px;margin-bottom:6px">
-       <label style="flex:1;margin-bottom:0">Nom / Ville
-         <input placeholder="Nom ou ville…" value="${f.rechercheCompte || ''}"
-                oninput="VueVisites.setRechercheCompteModal(this.value)"/>
-       </label>
-       <label style="flex:0 0 70px;margin-bottom:0">Dept
-         <input placeholder="75…" maxlength="3" value="${f.rechercheDept || ''}"
-                oninput="VueVisites.setRechercheDeptModal(this.value)"/>
-       </label>
-     </div>
      ${aucunDept ? `
      <div style="font-size:12px;color:var(--c-text-2);padding:8px;background:var(--c-bg);border-radius:var(--radius-sm);margin-bottom:8px">
        Aucun compte dans ce département.
@@ -1951,7 +1959,7 @@ window.VueVisites = {
                <div style="font-size:11px;color:var(--c-text-2);margin:-4px 0 10px;padding:6px 10px;background:var(--c-bg);border-radius:var(--radius-sm)">
                  Hors base : le magasin est mémorisé dans vos fiches à froid (visibles depuis tous vos appareils). Après la visite : revoir, créer un compte ou classer en historique.
                </div>`
-            : `<div id="visites-recherche-modal">${this._renderRechercheCompteModal()}</div>`
+            : `${this._renderRechercheChamps()}<div id="visites-recherche-modal">${this._renderRechercheCompteModal()}</div>`
           }
           <!-- D3 — Section Planification -->
           <div class="modal-section-sep">Planification</div>
