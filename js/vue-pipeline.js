@@ -229,10 +229,17 @@ window.VuePipeline = {
             _activationSellIn: exact, _activationSellInFlou: flou,
           };
         })
-        // BLOC 5 : dédoublonnage par Nom_Compte normalisé — garde le premier (ordre source)
+        // BLOC 5 : dédoublonnage par Nom_Compte normalisé. On garde le lead au statut le plus
+        // avancé (INTEGRE > COMPTE_CREE > EN_COURS > A_VISITER > ASSIGNE > SAISIE > ARCHIVE) ;
+        // à égalité, le premier de l'ordre source. Garder « le premier » faisait afficher un
+        // statut en retard quand un doublon plus récent était déjà Intégré (IMICRO, Ocecam).
         .filter((p, _i, arr) => {
+          const RANG = { ARCHIVE: 0, SAISIE: 1, ASSIGNE: 2, A_VISITER: 3, EN_COURS: 4, COMPTE_CREE: 5, INTEGRE: 6 };
+          const rang = x => (RANG[x._statut] !== undefined ? RANG[x._statut] : 1);
           const k = normaliserNom(p.Nom_Compte);
-          return arr.findIndex(x => normaliserNom(x.Nom_Compte) === k) === _i;
+          const meilleur = arr.reduce((best, x) =>
+            (normaliserNom(x.Nom_Compte) === k && (!best || rang(x) > rang(best))) ? x : best, null);
+          return meilleur === p;
         })
         // ADMIN + CHANNEL_MANAGER : tous les leads (y compris INTEGRE/ARCHIVE,
         // cf. Bloc D1 07/2026 — CHANNEL_MANAGER doit voir les comptes intégrés/
