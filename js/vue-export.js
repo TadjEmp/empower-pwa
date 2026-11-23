@@ -34,6 +34,8 @@
       { id: 'q3', lib: 'CA Q3 FY27', num: true, val: c => ca(c.CA_Q3FY27) },
       { id: 'q4', lib: 'CA Q4 FY27', num: true, val: c => ca(c.CA_Q4FY27) },
       { id: 'cds', lib: 'Commercial', val: c => window.resolveCDS && window.resolveCDS(c.PIN_CDS_Assigne) !== 'n.c.' ? window.resolveCDS(c.PIN_CDS_Assigne) : '' },
+      { id: 'temp', lib: 'Température', val: c => window.CT ? CT.libTemp(CT.tempOf(c)) : '' },
+      { id: 'structures', lib: 'Structures et contacts', val: (c, ctx) => ctx.ctResume ? ctx.ctResume('compte', c.ID_Compte) : '' },
       { id: 'tracker', lib: 'Au Tracker', def: true, val: (c, ctx) => ctx.trackerIds.has(String(c.ID_Compte || '')) ? 'Oui' : 'Non' },
     ],
     tracker: [
@@ -48,6 +50,8 @@
       { id: 'email', lib: 'E-mail', def: true, val: l => l.Email },
       { id: 'canal', lib: 'Canal', def: true, val: l => l.CANAL },
       { id: 'potentiel', lib: 'Potentiel', def: true, val: l => l.POTENTIEL },
+      { id: 'temp', lib: 'Température', val: l => window.CT ? CT.libTemp(CT.tempOf(l)) : '' },
+      { id: 'structures', lib: 'Structures et contacts', val: (l, ctx) => ctx.ctResume ? ctx.ctResume('lead', l.ID_Prospect) : '' },
       { id: 'origine', lib: 'Origine', val: l => l.ORIGINE },
       { id: 'note', lib: 'Note initiale', val: l => l.Note_initiale },
       { id: 'statut', lib: 'Statut', def: true, val: l => l.STATUT_EMPOWER },
@@ -106,12 +110,14 @@
     basculer(id) { const c = this._choix(this.state.source); c.has(id) ? c.delete(id) : c.add(id); this._memoriser(); this.render(); },
     tout(v) { const src = this.state.source, c = this._choix(src); c.clear(); if (v) COLS[src].forEach(x => c.add(x.id)); this._memoriser(); this.render(); },
 
-    exporter() {
+    async exporter() {
       const s = this.state, src = s.source, cols = COLS[src].filter(c => this._choix(src).has(c.id));
       if (!cols.length) { Toast.afficher('Choisissez au moins une colonne', 'erreur'); return; }
       if (!window.XLSX) { Toast.afficher('Bibliothèque Excel indisponible (connexion requise)', 'erreur'); return; }
       const lignes = src === 'comptes' ? s.comptes : s.leads;
       const ctx = { trackerIds: s.trackerIds };
+      // Lot 8 : résumé « structures et contacts » (une lecture groupée, seulement si la colonne est cochée et la migration appliquée)
+      if (window.CT && CT.actif() && cols.some(c => c.id === 'structures')) { try { ctx.ctResume = await CT.resumes(); } catch (e) { /* colonne laissée vide */ } }
       const data = lignes.map(r => { const o = {}; cols.forEach(c => { const v = c.val(r, ctx); o[c.lib] = v == null ? '' : v; }); return o; });
       const ws = XLSX.utils.json_to_sheet(data, { header: cols.map(c => c.lib) });
       ws['!cols'] = cols.map(c => ({ wch: Math.max(c.lib.length + 2, c.num ? 12 : 18) }));

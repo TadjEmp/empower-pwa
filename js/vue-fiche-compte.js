@@ -173,6 +173,11 @@ window.VueFicheCompte = {
     else { this.render(); }
   },
 
+  // Lot 8 : température modifiable depuis la fiche compte (les droits d'écriture sont ceux de la base)
+  async _changerTemp(valeur) {
+    const c = this.state.compte; if (!c) return;
+    await CT.changerTemperature('COMPTES', c.ID_Compte, valeur, v => { c.Temperature = v || null; this.render(); });
+  },
   ouvrirEditionCoordonnees() {
     const c = this.state.compte;
     this.state.formCoord = {
@@ -579,11 +584,13 @@ window.VueFicheCompte = {
           <button class="btn-lien" style="font-size:12px;color:var(--c-primary);font-weight:600"
                   onclick="VueFicheCompte.ouvrirEditionCoordonnees()">Saisir maintenant →</button>
         </div>` : ''}
+        ${window.CT ? CT.slot('compte', c.ID_Compte) : ''}
         <div class="grille-identite">
           ${c.Adresse ? `<div class="id-ligne"><span>Adresse</span><strong>${c.Adresse}</strong></div>` : ''}
           <div class="id-ligne"><span>Ville</span><strong>${c.Ville || 'n.c.'}${c.Code_Postal ? ' (' + c.Code_Postal + ')' : ''}</strong></div>
           <div class="id-ligne"><span>Département</span><strong>${dept || 'n.c.'}</strong></div>
           <div class="id-ligne"><span>Canal / Secteur</span><strong>${window.FlagsCanal.html(c)} ${c.SECTEUR || 'n.c.'}</strong></div>
+          ${window.CT && CT.actif() ? `<div class="id-ligne"><span>Température</span><strong>${CT.selectTemp('compte-temp', CT.tempOf(c), `onchange="VueFicheCompte._changerTemp(this.value)"`)}</strong></div>` : ''}
           <div class="id-ligne"><span>Contact</span><strong>${c.Contact_Nom ? `${c.Contact_Nom}${c.Contact_Fonction ? ' · ' + c.Contact_Fonction : ''}` : 'n.c.'}</strong></div>
           <div class="id-ligne"><span>Téléphone</span><strong>${c.Tel ? `<a class="lien-tel" href="tel:${c.Tel.replace(/\s/g,'')}">${c.Tel}</a>` : 'n.c.'}</strong></div>
           <div class="id-ligne"><span>Email</span><strong>${c.Email ? `<a class="lien-email" href="mailto:${c.Email}">${c.Email}</a>` : 'n.c.'}</strong></div>
