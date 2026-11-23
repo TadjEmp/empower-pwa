@@ -269,6 +269,8 @@ button, [onclick], .btn-filtre, .tab-btn-premium { touch-action: manipulation; }
 @media (min-width: 900px) {
   .kanban { gap: 12px; padding-left: 16px; padding-right: 16px; }
   .kanban-col { flex: 1 1 0; min-width: 170px; }
+  /* le conteneur du Tracker était plafonné à 1280 px (règle générique de refresh-esi.css) : le kanban occupe toute la largeur disponible */
+  #app > :has(> .kanban) { max-width: none !important; }
   .kanban-col-head, .kanban-carte, .kanban-ligne { padding-left: 14px; padding-right: 14px; }
 }
 .kanban-col-cartes { gap: 16px; }
