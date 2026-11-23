@@ -213,6 +213,7 @@ const SheetsAPI = {
       badge_visite_froid: 'Badge_Visite_Froid', id: '_uuid',
       // Bloc 3 §1 (09/2026) — contact interlocuteur au niveau compte
       contact_nom: 'Contact_Nom', contact_fonction: 'Contact_Fonction', site_web: 'Site_Web',
+      temperature: 'Temperature', // Lot 8 : chaud / tiede / froid
       // BLOC 04 §1 (09/2026) — date d'onboarding EMPOWER, posée manuellement
       // au moment où Has_EMPOWER passe à Oui (cf. VueFicheCompte.basculerEmpower).
       date_onboarding_empower: 'Date_Onboarding_Empower',
@@ -332,7 +333,7 @@ const SheetsAPI = {
     fiches_froides: {
       id_fiche_gas: 'ID_Fiche', nom_magasin: 'Nom_Magasin', nom_norm: 'Nom_Norm',
       ville: 'Ville', departement: 'Departement', adresse: 'Adresse', tel: 'Tel', email: 'Email',
-      contact_nom: 'Contact_Nom', contact_fonction: 'Contact_Fonction',
+      contact_nom: 'Contact_Nom', contact_fonction: 'Contact_Fonction', temperature: 'Temperature',
       pin_cds: 'PIN_CDS', nom_cds: 'Nom_CDS',
       date_premiere_visite: 'Date_Premiere_Visite', date_derniere_visite: 'Date_Derniere_Visite',
       resultat_derniere: 'Resultat_Derniere', prochaine_action: 'Prochaine_Action',
@@ -362,7 +363,7 @@ const SheetsAPI = {
       welcome_pack_envoye: 'Welcome_Pack_Envoye', welcome_pack_date: 'Welcome_Pack_Date',
       note: 'Note_initiale', flag_alerte: 'FLAG_ALERTE', id_compte_gas: 'ID_Compte_Gas',
       date_prochaine_action: 'Date_prochaine_action', mode_contact: 'MODE_CONTACT',
-      contact_nom: 'CONTACT_NOM', contact_fonction: 'CONTACT_FONCTION',
+      contact_nom: 'CONTACT_NOM', contact_fonction: 'CONTACT_FONCTION', temperature: 'Temperature',
       // BUG dashboards/tracker "tout à zéro" (09/2026) — flag_traite/source_import
       // étaient écrits (cf. _MAPS_GAS_TO_DB.leads) mais jamais relus : absents de
       // cette map DB→GAS, _transformRow() les droppait silencieusement sur
@@ -452,13 +453,13 @@ const SheetsAPI = {
       'Source_Import': 'source_import', 'Badge_Visite_Froid': 'badge_visite_froid',
       'STATUT_COMPTE': 'statut_compte', 'Interet_EMPOWER': 'interet_empower',
       'FLAG_ALERTE_ALEXANDRA': 'flag_alerte_alexandra',
-      'Contact_Nom': 'contact_nom', 'Contact_Fonction': 'contact_fonction', 'Site_Web': 'site_web',
+      'Contact_Nom': 'contact_nom', 'Contact_Fonction': 'contact_fonction', 'Site_Web': 'site_web', 'Temperature': 'temperature',
       'Date_Onboarding_Empower': 'date_onboarding_empower',
     },
     fiches_froides: {
       'ID_Fiche': 'id_fiche_gas', 'Nom_Magasin': 'nom_magasin', 'Nom_Norm': 'nom_norm',
       'Ville': 'ville', 'Departement': 'departement', 'Adresse': 'adresse', 'Tel': 'tel', 'Email': 'email',
-      'Contact_Nom': 'contact_nom', 'Contact_Fonction': 'contact_fonction',
+      'Contact_Nom': 'contact_nom', 'Contact_Fonction': 'contact_fonction', 'Temperature': 'temperature',
       'PIN_CDS': 'pin_cds', 'Nom_CDS': 'nom_cds',
       'Date_Premiere_Visite': 'date_premiere_visite', 'Date_Derniere_Visite': 'date_derniere_visite',
       'Resultat_Derniere': 'resultat_derniere', 'Prochaine_Action': 'prochaine_action',
@@ -555,7 +556,7 @@ const SheetsAPI = {
       'Note_initiale': 'note', 'FLAG_ALERTE': 'flag_alerte', 'FLAG_ACTION': 'flag_action',
       'ID_Compte_Gas': 'id_compte_gas',
       'Date_prochaine_action': 'date_prochaine_action', 'MODE_CONTACT': 'mode_contact',
-      'CONTACT_NOM': 'contact_nom', 'CONTACT_FONCTION': 'contact_fonction',
+      'CONTACT_NOM': 'contact_nom', 'CONTACT_FONCTION': 'contact_fonction', 'Temperature': 'temperature',
       'Flag_traite': 'flag_traite', 'Flag_converti': 'flag_converti',
       'Source_Import': 'source_import',
       'Date_Derniere_Action': 'date_derniere_action', 'Type_Derniere_Action': 'type_derniere_action',

@@ -103,6 +103,7 @@ window.VuePipeline = {
       recherche: ancien?.recherche || '', filtreCDS: ancien?.filtreCDS || 'TOUS', filtrePotentiel: ancien?.filtrePotentiel || 'TOUS',
       filtreStatut: ancien?.filtreStatut || 'TOUS', filtreAlerte: ancien?.filtreAlerte || 'TOUS', filtreOrigine: ancien?.filtreOrigine || 'TOUS',
       filtreChannel: ancien?.filtreChannel || 'TOUS', // BLOC 7
+      filtreTemp: ancien?.filtreTemp || 'TOUS', // Lot 8
       colonnesEtendues: ancien?.colonnesEtendues || {},
       modal: null,
       exportOuvert: false,
@@ -120,6 +121,8 @@ window.VuePipeline = {
     };
     this._ecouterContacts(); // Bloc 6 — Kanban live (abonnement idempotent)
     this.render();
+    // Lot 8 : champs température / structures affichés seulement si la migration est appliquée
+    if (window.CT) CT.sonder().then(ok => { if (ok && this.state && !this.state.chargement) this.render(); });
     try {
       const [raw, params, objectifs, cdsApi, sellin, vuesFiltres, phoning, comptesSI] = await Promise.all([
         // nocache : 📋_PROSPECTS est alimenté en continu par plusieurs profils
@@ -301,6 +304,7 @@ window.VuePipeline = {
     );
     if (this.state.filtreCDS !== 'TOUS') l = l.filter(p => String(p.PIN_CDS_Assigne) === String(this.state.filtreCDS));
     if (this.state.filtrePotentiel !== 'TOUS') l = l.filter(p => String(p.POTENTIEL || '').toLowerCase() === String(this.state.filtrePotentiel).toLowerCase());
+    if (this.state.filtreTemp && this.state.filtreTemp !== 'TOUS') l = l.filter(p => (window.CT ? CT.tempOf(p) : '') === this.state.filtreTemp);
     if (this.state.filtreStatut !== 'TOUS') l = l.filter(p => p._statut === this.state.filtreStatut);
     if (this.state.filtreOrigine !== 'TOUS') l = l.filter(p => String(p.ORIGINE || '').toLowerCase() === String(this.state.filtreOrigine).toLowerCase());
     if (this.state.filtreAlerte === 'WP_RETARD') l = l.filter(p => this._retardWelcomePack(p));
@@ -395,7 +399,12 @@ window.VuePipeline = {
     this.render();
   },
   ouvrirSaisie() { this.state.modal = { type: 'saisie' }; this.render(); },
-  fermerModal()  { this.state.modal = null; this.render(); },
+  // Lot 8 : température modifiable depuis la fiche (ADMIN et CDS propriétaire ; le serveur applique les mêmes droits)
+  async _changerTemp(idProspect, valeur) {
+    const l = this.state.leads.find(x => x.ID_Prospect === idProspect); if (!l) return;
+    await CT.changerTemperature('LEADS', idProspect, valeur, v => { l.Temperature = v || null; this.render(); });
+  },
+  fermerModal()  { if (window.CT) CT.vider(); this.state.modal = null; this.render(); },
 
   // BLOC 04 §4 — raccourci "Planifier visite" depuis une card du Tracker,
   // même mécanisme de variable de transit que VueVisites.planifierSuiviAppel()
@@ -558,7 +567,7 @@ window.VuePipeline = {
       adresse: v('nl-adresse'), ville: v('nl-ville'), cp: v('nl-cp'), tel: v('nl-tel'), email: v('nl-email'),
       canal: v('nl-canal'), note: v('nl-note'), dateAction: v('nl-date-action'),
       potentiel: v('nl-potentiel'), origine: v('nl-origine'),
-      contact: v('nl-contact'), fonction: v('nl-fonction'),
+      contact: v('nl-contact'), fonction: v('nl-fonction'), temperature: v('nl-temperature'),
       cdsSelect: v('nl-cds-assigne'), statutSelect: v('nl-statut'),
     };
 
@@ -607,6 +616,7 @@ window.VuePipeline = {
       STATUT_EMPOWER: statutInit, POTENTIEL: vals.potentiel,
       ORIGINE: Session.estExterne() ? String(Session.nom || '').trim().split(/\s+/)[0] : vals.origine,   // un fournisseur est lui-même la source de ses leads
       CONTACT_NOM: vals.contact, CONTACT_FONCTION: vals.fonction,
+      ...(vals.temperature ? { Temperature: vals.temperature } : {}),
       // Traçabilité de la saisie (colonnes pin_channel / nom_channel déjà en base) : permet à un fournisseur de retrouver ses leads
       ...((Session.estExterne() || Session.estChannel()) ? { PIN_Channel: Number(Session.pin), Nom_Channel: Session.nom || '' } : {}),
     };
@@ -625,6 +635,13 @@ window.VuePipeline = {
         attrib = d;
       }
       await SheetsAPI.ecrire('EMPOWER_MDB', 'LEADS', lead);
+      // Lot 8 : siège (adresse + contact du formulaire) et structures supplémentaires. Le lead est créé quoi qu'il arrive.
+      if (window.CT && CT.actif()) {
+        const r = await CT.enregistrer('lead', lead.ID_Prospect,
+          { adresse: vals.adresse, ville: vals.ville, cp: vals.cp, dep: String(vals.cp || '').slice(0, 2) },
+          { nom: vals.contact, fonction: vals.fonction, tel: vals.tel, email: vals.email });
+        if (r && r.erreurs && r.erreurs.length) Toast.afficher('Lead créé ; structures ou contacts non enregistrés (' + r.erreurs[0] + ')', 'warning', 6000);
+      }
       // Base des comptes actifs (Google Sheet) : le lead y est ajouté, une fois l'attribution appliquée (non bloquant).
       Promise.resolve(attrib ? AttributionCP.appliquer(lead, attrib).catch(() => {}) : null).then(() => this._ajouterABase(lead.ID_Prospect));
       this.state.leads.unshift({ ...lead, _statut: lead.FLAG_ACTION });
@@ -892,7 +909,7 @@ window.VuePipeline = {
     this.render();
   },
   reinitialiserFiltres() {
-    Object.assign(this.state, { filtreCDS: 'TOUS', filtrePotentiel: 'TOUS', filtreStatut: 'TOUS', filtreAlerte: 'TOUS', filtreOrigine: 'TOUS', filtreChannel: 'TOUS', vueFiltreActive: null });
+    Object.assign(this.state, { filtreTemp: 'TOUS', filtreCDS: 'TOUS', filtrePotentiel: 'TOUS', filtreStatut: 'TOUS', filtreAlerte: 'TOUS', filtreOrigine: 'TOUS', filtreChannel: 'TOUS', vueFiltreActive: null });
     this.render();
   },
 
@@ -948,6 +965,10 @@ window.VuePipeline = {
             <option value="TOUS">Tous statuts</option>
             ${this.STATUTS.map(s => `<option value="${s.id}" ${this.state.filtreStatut === s.id ? 'selected' : ''}>${s.lbl}</option>`).join('')}
           </select>
+          ${window.CT && CT.actif() ? `<select onchange="VuePipeline.state.filtreTemp=this.value;VuePipeline.render()" aria-label="Température">
+            <option value="TOUS">Toute température</option>
+            ${CT.TEMPS.map(([v, lb]) => `<option value="${v}" ${this.state.filtreTemp === v ? 'selected' : ''}>${lb}</option>`).join('')}
+          </select>` : ''}
           <select onchange="VuePipeline.state.filtrePotentiel=this.value;VuePipeline.render()">
             <option value="TOUS">Tout potentiel</option>
             ${['Fort', 'Moyen', 'Faible'].map(p => `<option ${this.state.filtrePotentiel === p ? 'selected' : ''}>${p}</option>`).join('')}
@@ -1063,7 +1084,7 @@ window.VuePipeline = {
               <div class="kanban-carte ${this._retardWelcomePack(l) ? 'kanban-alerte' : ''} ${this._estFournisseur(l) ? 'kanban-fournisseur' : ''}" data-id="${l.ID_Prospect}"
                    onclick="VuePipeline.ouvrirLead('${l.ID_Prospect}')">
                 <div class="kanban-carte-nom" style="display:flex;align-items:baseline;justify-content:space-between;gap:6px">
-                  <span>${l.Nom_Compte}</span>
+                  <span>${l.Nom_Compte}${window.CT ? ' ' + CT.pill(CT.tempOf(l)) : ''}</span>
                   ${st.id !== 'ARCHIVE' ? this._badgeAge(l) : ''}
                 </div>
                 <div class="kanban-carte-meta">
@@ -1370,6 +1391,7 @@ window.VuePipeline = {
                 <input id="nl-email" type="email" placeholder="contact@…"/></label>
             </div>
 
+            ${window.CT ? CT.blocSaisie() : ''}
             <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.05em;margin:10px 0 6px">QUALIFICATION</div>
             <div style="display:flex;gap:10px">
               <label style="flex:1">Potentiel estimé
@@ -1382,6 +1404,9 @@ window.VuePipeline = {
               <label style="flex:1">Prochaine action
                 <input type="date" id="nl-date-action"/></label>
             </div>
+            ${window.CT && CT.actif() ? `<label>Température du prospect
+              ${CT.selectTemp('nl-temperature', '')}
+            </label>` : ''}
             ${Session.estExterne() ? '' : `<label>Source du lead
               <select id="nl-origine">
                 <option value="Alexandra">Alexandra, saisie directe</option>
@@ -1456,6 +1481,7 @@ window.VuePipeline = {
         <!-- Infos lead complètes -->
         <div class="q-recap" style="margin-bottom:12px">
           <div class="q-recap-ligne"><span>CDS assigné</span><strong>${this._nomCDS(l.PIN_CDS_Assigne)}</strong></div>
+          ${window.CT && CT.actif() ? `<div class="q-recap-ligne"><span>Température</span><strong>${CT.selectTemp('lead-temp', CT.tempOf(l), `onchange="VuePipeline._changerTemp('${jsq(l.ID_Prospect)}',this.value)"`)}</strong></div>` : ''}
           ${l._activationSellIn ? `<div class="q-recap-ligne"><span>Sell-In</span><strong style="color:var(--c-success)">Commande détectée (FY27)${this._sellInFraicheur()}</strong></div>`
             : l._activationSellInFlou ? `<div class="q-recap-ligne"><span>Sell-In</span><strong style="color:var(--c-warning)" title="Rapprochement approximatif, à confirmer">Probable, "${l._activationSellInFlou.nom}" (${l._activationSellInFlou.score}%)${this._sellInFraicheur()}</strong></div>` : ''}
           ${l.Commande_Manuelle ? `<div class="q-recap-ligne"><span>Déclaration</span><strong style="color:var(--c-success)">Commande déclarée${l.Date_Commande_Manuelle ? ' le ' + new Date(l.Date_Commande_Manuelle).toLocaleDateString('fr-FR') : ''}</strong></div>` : ''}
@@ -1472,6 +1498,7 @@ window.VuePipeline = {
           ${l.Motif_Archive ? `<div class="q-recap-ligne"><span>Motif de perte</span><strong style="color:var(--c-danger)">${(this.MOTIFS_ARCHIVE.find(m => m.id === l.Motif_Archive)?.lbl || l.Motif_Archive)}${l.Motif_Archive_Detail ? ', ' + l.Motif_Archive_Detail : ''}</strong></div>` : ''}
           <div class="q-recap-ligne"><span>Créé le</span><strong>${l.Date_Import ? dateRelative(l.Date_Import) : 'n.c.'}</strong></div>
         </div>
+        ${window.CT ? CT.slot('lead', l.ID_Prospect) : ''}
 
         <!-- Mise à jour suivi (édition réservée : ADMIN ou CDS propriétaire) -->
         ${peutEditer ? `
