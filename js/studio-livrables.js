@@ -56,7 +56,7 @@ window.Studio = (function () {
       cotLib: t === 'cotation_empower' ? 'Cotation Empower' : (cot ? (cot.libelle || 'Cotation Norton 360') : 'Cotation Norton 360'),
       cotDebut: t !== 'cotation_empower' && cot ? cot.debut : jour(), cotFin: t !== 'cotation_empower' && cot ? cot.fin : plus(30),
       cotNonRecond: !!(cot && cot.non_reconductible && t !== 'cotation_empower'), cotTd: true, cotIngram: true,
-      pal: PALIERS_COT.map(x => x.slice()),
+      pal: PALIERS_COT.map(x => x.slice()), sim: [['', 0], ['', 0], ['', 0]], simPalier: 'auto',
       // offres X+1
       offertId: '', seuil: seuilDefaut(t, lignes), seuilManuel: false, lignes, grossiste: 'pa_td',
       // bundle
@@ -78,10 +78,11 @@ window.Studio = (function () {
       return { achete: [s['op' + n], Math.max(1, Math.floor(num(s['q' + n])) || 1)],
         offert: of ? { id: of.id, nom: of.nom + ' ' + of.appareils + ' app.', pvp_ttc: null, appareils: of.appareils } : { nom: s['nom' + n] || 'Produit offert', pvp_ttc: s['pvp' + n] === '' ? null : num(s['pvp' + n]) } };
     };
+    const simu = () => { const l = s.sim.filter(([id, q]) => id && num(q) > 0).map(([id, q]) => [id, Math.floor(num(q))]); return l.length ? { lignes: l, palier: s.simPalier === 'auto' ? null : Number(s.simPalier) } : null; };
     const paliers = s.pal.filter(([sx, r]) => num(sx) > 0 && num(r) > 0).map(([sx, r, v]) => ({ seuil: Math.floor(num(sx)), remise_pct: num(r), validation: !!v }));
     const extra = s.type === 'bundle' ? { canal: s.canal, debut: s.debut, operations: [1, 2].filter(n => s['op' + n]).map(opBundle) }
-      : s.type === 'cotation_grossiste' ? { cotation: { libelle: s.cotLib, debut: s.cotDebut, fin: s.cotFin, paliers, canaux: [s.cotTd ? 'td' : '', s.cotIngram ? 'ingram' : ''].filter(Boolean), non_reconductible: s.cotNonRecond }, date: s.cotDebut || undefined }
-      : s.type === 'cotation_empower' ? { cotation: { libelle: s.cotLib, debut: s.cotDebut, fin: s.cotFin, paliers, canaux: ['empower'], non_reconductible: s.cotNonRecond }, date: s.cotDebut || undefined }
+      : s.type === 'cotation_grossiste' ? { simulation: simu(), cotation: { libelle: s.cotLib, debut: s.cotDebut, fin: s.cotFin, paliers, canaux: [s.cotTd ? 'td' : '', s.cotIngram ? 'ingram' : ''].filter(Boolean), non_reconductible: s.cotNonRecond }, date: s.cotDebut || undefined }
+      : s.type === 'cotation_empower' ? { simulation: simu(), cotation: { libelle: s.cotLib, debut: s.cotDebut, fin: s.cotFin, paliers, canaux: ['empower'], non_reconductible: s.cotNonRecond }, date: s.cotDebut || undefined }
       : {};
     return Object.assign({ date: s.dateEmission || jour() }, extra, {
       type, titre: s.titre.trim(), conditions: s.conditions.trim(), offre, grossiste: s.grossiste, volume: false,
@@ -105,7 +106,7 @@ window.Studio = (function () {
       if (s.type === 'offre21' || s.type === 'offre11') {
         const R = L.calculer(c), e = R.e, p = R.palier;
         const offertes = e.detail.reduce((n, d) => n + (d.offertes || 0), 0);
-        const sans = C.calculer(c.lignes, 'pa_empower', { date: c.date });
+        const sans = C.calculer(c.lignes, 'pa_empower', { date: c.date, tousProduits: true });
         if (!c.lignes.length) return '<p class="st-m">Choisissez un produit et une quantité pour voir le calcul.</p>';
         const X = s.type === 'offre11' ? 1 : 2, reste = X - (p.total % X);
         const statut = p.atteint ? `<b class="ok">Palier atteint</b> (${p.total} ≥ ${p.seuil})` : `<b class="ko">Palier non atteint</b> : encore ${p.reste} licence${p.reste > 1 ? 's' : ''} pour déclencher l'offre`;
@@ -118,6 +119,7 @@ window.Studio = (function () {
           <div class="st-k"><span>Prix d'achat Empower</span><b>${e2(e.cout)} HT</b></div>
           <div class="st-k"><span>Marge avec l'offre</span><b>${e2(e.marge)} (${e.pct} %)</b></div>
           <div class="st-k"><span>Marge sans l'offre</span><span>${e2(sans.marge)} (${sans.pct} %)</span></div>
+          ${e.sansPvp && e.sansPvp.length ? `<p class="st-m">Prix d'achat chiffré, marge non calculée (PVP non communiqué) : ${esc(e.sansPvp.join(', '))}.</p>` : ''}
           ${e.manquants && e.manquants.length ? `<p class="st-m">Non chiffré : ${esc(e.manquants.join(', '))}.</p>` : ''}</div>`;
       }
       if (s.type === 'bundle') {
@@ -139,17 +141,19 @@ window.Studio = (function () {
 
   function formulaire() {
     const C = window.Catalogue;
-    const prods = (sel, vide) => `<option value="">${vide || 'Aucun produit'}</option>` + C.listeProduits().map(p => `<option value="${esc(p.id)}" ${p.id === sel ? 'selected' : ''}>${esc(C.libelle(p))}</option>`).join('');
+    const prods = (sel, vide) => `<option value="">${vide || 'Aucun produit'}</option>` + C.listeProduits(null, true).map(p => `<option value="${esc(p.id)}" ${p.id === sel ? 'selected' : ''}>${esc(C.libelle(p))}</option>`).join('');
     const cartes = `<div class="st-cartes" role="radiogroup" aria-label="Type de document">${CHOIX.map(([k, l, d]) => `<button type="button" role="radio" aria-checked="${s.type === k}" class="st-carte${s.type === k ? ' on' : ''}" onclick="Studio.changerType('${k}')"><b>${esc(l)}</b><span>${esc(d)}</span></button>`).join('')}</div>`;
     let spec = '';
     if (s.type === 'cotation_grossiste' || s.type === 'cotation_empower') {
       const gro = s.type === 'cotation_grossiste';
+      const simL = s.sim.map(([id, q], i) => `<div class="st-lg"><select aria-label="Produit ${i + 1}" onchange="Studio.majSim(${i},0,this.value)">${prods(id)}</select><input type="number" min="0" max="9999" inputmode="numeric" aria-label="Quantité ${i + 1}" value="${q}" oninput="Studio.majSim(${i},1,this.value)"/></div>`).join('');
       const pal = s.pal.map(([sx, r, v], i) => `<div class="st-lg st-pal"><label class="st-c"><span>Palier ${i + 1} : dès (licences)</span><input type="number" min="1" inputmode="numeric" value="${esc(sx)}" oninput="Studio.majPalier(${i},0,this.value)"/></label><label class="st-c"><span>Remise (%)</span><input type="number" min="1" max="90" step="0.5" inputmode="decimal" value="${esc(r)}" oninput="Studio.majPalier(${i},1,this.value)"/></label></div>${v ? '<p class="st-m">Palier signalé « sous réserve de validation » sur le document.</p>' : ''}`).join('');
       spec = `<div class="st-g"><div class="st-t">${gro ? 'Cotation Grossiste' : 'Cotation Empower'}</div>${champ('Nom de la cotation', inp('cotLib'))}
         <div class="st-2">${champ('Début', inp('cotDebut', 'date'))}${champ('Fin', inp('cotFin', 'date'))}</div>
         ${gro ? `<div class="st-t">Distributeurs</div><label class="st-o"><input type="checkbox" ${s.cotTd ? 'checked' : ''} onchange="Studio.maj('cotTd',this.checked)"/> Tech Data</label><label class="st-o"><input type="checkbox" ${s.cotIngram ? 'checked' : ''} onchange="Studio.maj('cotIngram',this.checked)"/> Ingram Micro</label>` : ''}
         <label class="st-o"><input type="checkbox" ${s.cotNonRecond ? 'checked' : ''} onchange="Studio.maj('cotNonRecond',this.checked)"/> Opération non reconductible</label></div>
-        <div class="st-g"><div class="st-t">Paliers dégressifs</div>${pal}<p class="st-m">Le prix d'achat baisse selon le nombre de licences commandées. Tous les prix et marges se recalculent depuis les prix d'achat ${gro ? 'des grossistes' : 'Empower'} du catalogue. Le palier -60 % passe sous certains prix Empower : il est signalé « sous réserve de validation ».</p></div>`;
+        <div class="st-g"><div class="st-t">Paliers dégressifs</div>${pal}<p class="st-m">Le prix d'achat baisse selon le nombre de licences commandées. Tous les prix et marges se recalculent depuis les prix d'achat ${gro ? 'des grossistes' : 'Empower'} du catalogue. Le palier -60 % passe sous certains prix Empower : il est signalé « sous réserve de validation ».</p></div>
+        <div class="st-g"><div class="st-t">Commande type (facultatif)</div>${simL}${champ('Palier appliqué', `<select onchange="Studio.maj('simPalier',this.value)"><option value="auto" ${s.simPalier === 'auto' ? 'selected' : ''}>Automatique selon le total de licences</option>${s.pal.map(([sx, r], i) => `<option value="${i}" ${String(s.simPalier) === String(i) ? 'selected' : ''}>-${esc(r)} % (dès ${esc(sx)} licences)</option>`).join('')}</select>`)}<p class="st-m">Ajoute au document le total HT d'une commande type, avec le palier atteint appliqué.</p></div>`;
     } else if (s.type === 'bundle') {
       const canaux = [['pa_empower', 'Empower'], ['pa_td', 'Tech Data'], ['pa_ingram', 'Ingram Micro']].map(([k, l]) => `<option value="${k}" ${s.canal === k ? 'selected' : ''}>${l}</option>`).join('');
       const op = n => `<div class="st-t">Opération ${n}${n === 2 ? ' (facultative)' : ''}</div>
@@ -236,6 +240,7 @@ window.Studio = (function () {
     planifier();
   }
   function majPalier(i, k, v) { if (!s || !s.pal[i]) return; s.pal[i][k] = String(v).slice(0, 6); planifier(); }
+  function majSim(i, k, v) { if (!s || !s.sim[i]) return; s.sim[i][k] = k === 0 ? v : Math.max(0, Math.min(9999, Math.floor(Number(v) || 0))); if (k === 0) { if (v && !s.sim[i][1]) s.sim[i][1] = 1; rempl(); } else planifier(); }
   function majSeuil(v) { if (!s) return; s.seuil = String(v).slice(0, 5); s.seuilManuel = true; planifier(); }
   function changerOffert(n, v) { if (!s) return; s['of' + n] = v; rempl(); }
   function changerType(t) { t = ALIAS[t] || t; if (!TYPES.includes(t)) return; const garde = { client: s.client, contact: s.contact, region: s.region, compteId: s.compteId, sig: s.sig, dateEmission: s.dateEmission, titre: '' }; s = Object.assign(etat(t), garde); rempl(); }
@@ -307,5 +312,5 @@ window.Studio = (function () {
     } catch (e) { /* trace non bloquante */ }
   }
 
-  return { peut, ouvrir, fermer, onglet, zoomer, maj, majSig, majLigne, changerType, majPalier, majSeuil, changerOffert, choisirCompte, imprimer, telecharger, _cfg: () => (s ? cfg() : null), TYPES };
+  return { peut, ouvrir, fermer, onglet, zoomer, maj, majSig, majLigne, changerType, majSim, majPalier, majSeuil, changerOffert, choisirCompte, imprimer, telecharger, _cfg: () => (s ? cfg() : null), TYPES };
 })();

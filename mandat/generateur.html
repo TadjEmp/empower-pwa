@@ -156,9 +156,9 @@ html.integre .hdr{display:none}   /* dans la visionneuse de l'application : sa b
 
   <div class="st">Type d'offre</div>
   <div class="otabs">
-    <div class="otab active" onclick="setOffer('1+1',this)"><span class="bigt">1+1</span>Premier achat</div>
-    <div class="otab" onclick="setOffer('2+1',this)"><span class="bigt">2+1</span>Gamme Norton 360 &amp; SMB</div>
-    <div class="otab" onclick="setOffer('remise',this)"><span class="bigt">−%</span>Remise prix achat</div>
+    <div class="otab active" onclick="setOffer('1+1',this)"><span class="bigt">1+1</span>Dès 20 licences</div>
+    <div class="otab" onclick="setOffer('2+1',this)"><span class="bigt">2+1</span>Dès 10 licences</div>
+    <div class="otab" onclick="setOffer('remise',this)"><span class="bigt">−%</span>Remise dégressive</div>
   </div>
 
   <div class="st">Infos revendeur</div>
@@ -184,14 +184,15 @@ html.integre .hdr{display:none}   /* dans la visionneuse de l'application : sa b
 
   <!-- PANEL 1+1 -->
   <div id="p_1+1">
-    <div class="st">Produit offert (1+1)</div>
-    <div class="f"><label>Licence offerte</label>
-      <select id="off_1_1" onchange="onLicenseChange('off_1_1','pu_1_1')"></select>
+    <div class="st">Produits achetés (1+1) — saisir PU HT + quantités</div>
+    <table class="ptbl"><thead><tr><th>✓</th><th>Référence</th><th>Dev.</th><th>PU HT</th><th>Qté</th></tr></thead>
+    <tbody id="tb_1_1"></tbody></table>
+    <div class="f"><label>Palier : offre valable dès (licences commandées)</label><input type="number" id="seuil_1_1" value="20" min="1" oninput="rend()"></div>
+    <div class="f"><label>Licence offerte (1 pour 1 achetée)</label>
+      <select id="off_1_1" onchange="onLicenseChange('off_1_1','pu_off_1_1')"></select>
     </div>
-    <div class="fr">
-      <div class="f"><label>PU HT offert</label><input type="text" id="pu_1_1" placeholder="Ex : 11,61" oninput="rend()"></div>
-      <div class="f"><label>Quantité offerte</label><input type="number" id="qty_1_1" value="1" min="1" oninput="rend()"></div>
-    </div>
+    <div class="f"><label>PU HT offert</label><input type="text" id="pu_off_1_1" placeholder="Ex : 11,61" oninput="rend()"></div>
+    <div class="hint">Palier par défaut : 1+1 dès 20 licences (30 pour Small Business). Le nombre de licences offertes se calcule tout seul une fois le palier atteint.</div>
   </div>
 
   <!-- PANEL 2+1 -->
@@ -199,18 +200,21 @@ html.integre .hdr{display:none}   /* dans la visionneuse de l'application : sa b
     <div class="st">Produits achetés (2+1) — saisir PU HT + quantités</div>
     <table class="ptbl"><thead><tr><th>✓</th><th>Référence</th><th>Dev.</th><th>PU HT</th><th>Qté</th></tr></thead>
     <tbody id="tb_2_1"></tbody></table>
+    <div class="f"><label>Palier : offre valable dès (licences commandées)</label><input type="number" id="seuil_2_1" value="10" min="1" oninput="rend()"></div>
     <div class="f"><label>Licence offerte (1 pour 2 achetées)</label>
       <select id="off_2_1" onchange="onLicenseChange('off_2_1','pu_off_2_1')"></select>
     </div>
     <div class="f"><label>PU HT offert</label><input type="text" id="pu_off_2_1" placeholder="Ex : 11,61" oninput="rend()"></div>
+    <div class="hint">Palier par défaut : 2+1 dès 10 licences. Le nombre de licences offertes se calcule tout seul une fois le palier atteint.</div>
   </div>
 
   <!-- PANEL REMISE -->
   <div id="p_remise" style="display:none">
     <div class="st">Palier de remise</div>
     <div class="rbtns">
-      <div class="rbtn active" id="btn50" onclick="setR(50)">−50%</div>
-      <div class="rbtn" id="btn70" onclick="setR(70)">−70% <span style="font-size:.65rem;font-weight:400">(≥100 lic.)</span></div>
+      <div class="rbtn active" id="btn30" onclick="setR(30)">−30% <span style="font-size:.65rem;font-weight:400">(≥10 lic.)</span></div>
+      <div class="rbtn" id="btn50" onclick="setR(50)">−50% <span style="font-size:.65rem;font-weight:400">(≥25 lic.)</span></div>
+      <div class="rbtn" id="btn60" onclick="setR(60)">−60% <span style="font-size:.65rem;font-weight:400">(≥50 lic., sous réserve de validation)</span></div>
     </div>
     <div class="st">Produits & quantités — saisir PU HT de base, Qté + PU Spécial HT accordé</div>
     <table class="ptbl"><thead><tr><th>✓</th><th>Référence</th><th>Dev.</th><th>PU HT</th><th>Qté</th><th>PU Spécial HT</th></tr></thead>
@@ -249,7 +253,8 @@ const PRODS=[
 ];
 const unitLabel = p => (typeof p.dv === "number") ? `${p.dv} app.` : p.dv;
 
-let offer="1+1", remise=50, cmode="v", channel="empower";
+const REM_PALIERS={30:{seuil:10},50:{seuil:25},60:{seuil:50,validation:true}};
+let offer="1+1", remise=30, cmode="v", channel="empower";
 
 const g=id=>document.getElementById(id);
 const gv=id=>(g(id)||{}).value||"";
@@ -277,7 +282,7 @@ const COMP_MODES={
 };
 
 function buildTables(){
-  ["tb_2_1","tb_rem"].forEach(id=>{
+  ["tb_1_1","tb_2_1","tb_rem"].forEach(id=>{
     const tb=g(id); if(!tb)return; tb.innerHTML="";
     const hasSpec=id==="tb_rem";
     PRODS.forEach(p=>{
@@ -307,13 +312,13 @@ function refreshRemisePlaceholder(prodId){
 }
 
 function applyChannelDefaults(){
-  ["tb_2_1","tb_rem"].forEach(tbId=>{
+  ["tb_1_1","tb_2_1","tb_rem"].forEach(tbId=>{
     PRODS.forEach(p=>{
       const el=g(`pu_${tbId}_${p.id}`);
       if(el) el.value = channel==="empower" ? p.pu.toFixed(2) : "";
     });
   });
-  [["off_1_1","pu_1_1"],["off_2_1","pu_off_2_1"]].forEach(([selId,puId])=>{
+  [["off_1_1","pu_off_1_1"],["off_2_1","pu_off_2_1"]].forEach(([selId,puId])=>{
     const sel=g(selId), puEl=g(puId);
     if(!sel||!puEl) return;
     const p=PRODS.find(x=>x.id===sel.value);
@@ -350,8 +355,7 @@ function setOffer(o,el){
 
 function setR(r){
   remise=r;
-  g("btn50").classList.toggle("active",r===50);
-  g("btn70").classList.toggle("active",r===70);
+  [30,50,60].forEach(x=>g("btn"+x).classList.toggle("active",r===x));
   PRODS.forEach(p=>refreshRemisePlaceholder(p.id));
   rend();
 }
@@ -406,9 +410,9 @@ function rend(){
   const refLabel = channelIsEmpower ? "Réf. commande EMPOWER" : "Réf. commande / facture grossiste";
 
   const OFFER_TITLES={
-    "1+1": channelIsEmpower ? "Offre 1+1 — Premier Achat EMPOWER" : "Offre 1+1 — Premier Achat",
-    "2+1": "Offre 2+1 — Gamme Norton 360 & Small Business",
-    "remise": `Offre Remise −${remise}% sur Prix d'Achat`
+    "1+1": `Offre 1+1 — dès ${parseInt(gv("seuil_1_1"))||20} licences`,
+    "2+1": `Offre 2+1 — dès ${parseInt(gv("seuil_2_1"))||10} licences`,
+    "remise": `Offre Remise dégressive −${remise}% sur Prix d'Achat`
   };
   const CM=COMP_MODES[cmode];
   const COMP_CHIP=`<span class="chip ${CM.chipClass}">${CM.label}</span>`;
@@ -418,46 +422,32 @@ function rend(){
   // ---- Article 5 : tableau + montant, selon le type d'offre ----
   let baseChip="", art5Intro="", art5Table="", totalComp=0;
 
-  if(offer==="1+1"){
-    const offP = PRODS.find(x=>x.id===gv("off_1_1"));
+  if(offer==="1+1"||offer==="2+1"){
+    const X = offer==="1+1" ? 1 : 2, k = offer==="1+1" ? "1_1" : "2_1";
+    const prods=getProds("tb_"+k).filter(p=>p.qty>0);
+    const offP = PRODS.find(x=>x.id===gv("off_"+k));
     const offName = offP ? `${offP.n} ${unitLabel(offP)}` : "___________________";
-    const qty=parseInt(gv("qty_1_1"))||1;
-    const pu=parseFloat(gv("pu_1_1"))||0;
-    const comp=pu*qty;
-    totalComp=comp;
-    art5Intro=`Pour tout premier achat effectué ${platformPhrase}, LE MAGASIN reçoit en compensation la prise en charge du coût HT de la licence offerte ci-dessous.`;
-    art5Table=`
-      <table class="data">
-        <thead><tr><th class="rn">Licence offerte</th><th class="num">PU HT</th><th class="num">Qté</th><th class="num">Compensation HT</th></tr></thead>
-        <tbody><tr><td class="rn">${offName}</td><td class="num">${fmt(pu)}</td><td class="num">${qty}</td><td class="num">${fmt(comp)}</td></tr></tbody>
-        <tfoot><tr><td class="rn">TOTAL MANDAT</td><td></td><td class="num">${qty}</td><td class="num">${fmt(comp)}</td></tr></tfoot>
-      </table>`;
-  }
-  else if(offer==="2+1"){
-    const prods=getProds("tb_2_1");
-    const offP = PRODS.find(x=>x.id===gv("off_2_1"));
-    const offName = offP ? `${offP.n} ${unitLabel(offP)}` : "___________________";
-    const offpu=parseFloat(gv("pu_off_2_1"))||0;
-    baseChip=`<span class="chip chip-coral">Offert : ${offName}</span>`;
-    let rows="", totalQty=0, totalOffQty=0;
-    prods.forEach(p=>{
-      if(p.qty<=0)return;
-      const offQty=Math.floor(p.qty/2);
-      const offHT=offQty*offpu;
-      totalQty+=p.qty; totalOffQty+=offQty; totalComp+=offHT;
-      rows+=`<tr><td class="rn">${p.n} ${unitLabel(p)}</td><td class="num">${p.qty}</td><td class="num">${offQty}</td><td class="num">${fmt(offpu)}</td><td class="num">${fmt(offHT)}</td></tr>`;
-    });
-    art5Intro=`Pour chaque tranche de 2 licences achetées ${platformPhrase}, 1 licence <strong>${offName}</strong> est offerte. La compensation correspond au coût HT des licences offertes.`;
+    const offpu=parseFloat(gv("pu_off_"+k))||0;
+    const seuil=Math.max(1,parseInt(gv("seuil_"+k))||1);
+    const totalQty=prods.reduce((n,p)=>n+p.qty,0);
+    const atteint=totalQty>=seuil;
+    const offQty=atteint?Math.floor(totalQty/X):0;
+    totalComp=offQty*offpu;
+    baseChip=`<span class="chip chip-coral">Offert : ${offName}</span> <span class="chip chip-gray">Palier dès ${seuil} licences</span>`;
+    const rows=prods.map(p=>`<tr><td class="rn">${p.n} ${unitLabel(p)}</td><td class="num">${p.qty}</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>`).join("");
+    art5Intro=`Dès ${seuil} licences achetées ${platformPhrase} sur la période de l'opération (palier), pour chaque tranche de ${X} licence${X>1?"s":""} achetée${X>1?"s":""}, 1 licence <strong>${offName}</strong> est offerte. La compensation correspond au coût HT des licences offertes.`;
     art5Table = rows ? `
       <table class="data">
         <thead><tr><th class="rn">Référence achetée</th><th class="num">Qté achetée</th><th class="num">Licences offertes</th><th class="num">PU offert HT</th><th class="num">Compensation HT</th></tr></thead>
         <tbody>${rows}</tbody>
-        <tfoot><tr><td class="rn">TOTAL MANDAT</td><td class="num">${totalQty}</td><td class="num">${totalOffQty}</td><td></td><td class="num">${fmt(totalComp)}</td></tr></tfoot>
-      </table>` : `<p class="empty-hint">← Sélectionnez des produits et saisissez leur PU HT dans le formulaire pour générer le tableau de compensation.</p>`;
+        <tfoot><tr><td class="rn">TOTAL MANDAT</td><td class="num">${totalQty}</td><td class="num">${offQty}</td><td class="num">${fmt(offpu)}</td><td class="num">${fmt(totalComp)}</td></tr></tfoot>
+      </table>
+      <p class="legal" style="margin-top:2mm">${atteint?`Palier atteint : ${totalQty} licences commandées pour ${seuil} requises.`:`Palier non atteint : ${totalQty} licence${totalQty>1?"s":""} commandée${totalQty>1?"s":""} pour ${seuil} requises, aucune licence offerte à ce stade.`}</p>` : `<p class="empty-hint">← Sélectionnez des produits et saisissez leur PU HT dans le formulaire pour générer le tableau de compensation.</p>`;
   }
   else{
     const prods=getProds("tb_rem");
-    baseChip=`<span class="chip chip-coral">Base −${remise}% PA HT</span>`;
+    const palR=REM_PALIERS[remise]||{seuil:1};
+    baseChip=`<span class="chip chip-coral">Base −${remise}% PA HT</span> <span class="chip chip-gray">Dès ${palR.seuil} licences${palR.validation?" · sous réserve de validation":""}</span>`;
     let rows="", totalQty=0, totalPort=0, totalSpec=0;
     prods.forEach(p=>{
       if(p.qty<=0)return;
@@ -474,7 +464,8 @@ function rend(){
         <td class="num">${fmt(ecart)}</td>
       </tr>`;
     });
-    art5Intro=`${refLabel} : <strong>${esc(refEmp)||'_______________'}</strong>. La compensation est établie sur l'écart entre le Prix d'Achat Unitaire HT (PA HT) réglé par LE MAGASIN ${platformPhrase} et le Prix d'Achat Unitaire HT Spécial accordé, calculé selon une base de cotation à −${remise}% du PA HT de base, multiplié par les quantités commandées. La compensation est calculée et versée intégralement en HT, sans majoration de TVA.`;
+    art5Intro=`${refLabel} : <strong>${esc(refEmp)||'_______________'}</strong>. La compensation est établie sur l'écart entre le Prix d'Achat Unitaire HT (PA HT) réglé par LE MAGASIN ${platformPhrase} et le Prix d'Achat Unitaire HT Spécial accordé, calculé selon une base de cotation à −${remise}% du PA HT de base (palier dès ${palR.seuil} licences commandées${palR.validation?", remise soumise à validation budget commercial":""}), multiplié par les quantités commandées. La compensation est calculée et versée intégralement en HT, sans majoration de TVA.`;
+    const remQty=totalQty;
     art5Table = rows ? `
       <table class="data">
         <thead><tr><th class="rn">Référence</th><th class="num">Qté</th><th class="num">PA HT</th><th class="num">PA Spécial HT</th><th class="num">Total PA HT</th><th class="num">Total Spécial HT</th><th class="num">Compensation HT</th></tr></thead>
@@ -577,7 +568,7 @@ function rend(){
   g("cv").innerHTML = page1 + page2;
   window.__dernier = { canal: channel, offre: offer, compensation: {v:"virement",l:"licences",g:"cheques"}[cmode], montant_ht: Math.round(totalComp*100)/100,
     debut: deb||null, fin: fin||null, societe: soc, representant: rep, ref_commande: refEmp,
-    payload: { grossiste: channelIsEmpower?null:wholesalerName, remise: offer==="remise"?remise:null, siret, rcs_ville: rcsv, adresse: adr, tva, ape, date_signature: dateSign||null } };
+    payload: { grossiste: channelIsEmpower?null:wholesalerName, remise: offer==="remise"?remise:null, palier_seuil: offer==="remise" ? (REM_PALIERS[remise]||{}).seuil||null : (parseInt(gv("seuil_"+(offer==="1+1"?"1_1":"2_1")))||null), licence_offerte: offer==="remise" ? null : gv("off_"+(offer==="1+1"?"1_1":"2_1")), siret, rcs_ville: rcsv, adresse: adr, tva, ape, date_signature: dateSign||null } };
 }
 
 function _statut(t,ok){const s=g("statut"); s.textContent=t; s.className="statut "+(ok?"ok":"ko");}
