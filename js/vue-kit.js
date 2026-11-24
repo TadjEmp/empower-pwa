@@ -18,7 +18,9 @@ window.VueKit = {
   _esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); },
   _sb() { return (window.SheetsAPI && SheetsAPI._sb) || null; },
   _admin() { return window.Session && (Session.estManager() || Session.estChannel()); },
-  _peutEnvoyer() { return window.Session && ['ADMIN', 'CDS', 'CHANNEL_MANAGER'].includes(Session.role); },
+  _peutStudio() { return window.Session && ['ADMIN', 'CDS', 'CHANNEL_MANAGER', 'EXTERNE'].includes(Session.role); },
+  _peutEnvoyer() { return this._peutStudio(); },   // EXTERNE compris : le lien est copié, mais rien n'est inscrit au journal des comptes (lecture seule pour lui)
+  _estExterne() { return !!(window.Session && Session.role === 'EXTERNE'); },
   _jour() { return new Date().toISOString().slice(0, 10); },
   _echu(d) { return !!(d && d.valide_au && String(d.valide_au).slice(0, 10) < this._jour()); },
   _jj(s) { const t = String(s || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(t) ? `${t.slice(8, 10)}/${t.slice(5, 7)}/${t.slice(0, 4)}` : ''; },
@@ -60,7 +62,7 @@ window.VueKit = {
     const ok = !!d.fichier_path, id = E(d.id);
     const actions = [];
     if (ok) actions.push(`<button class="co-btn" onclick="VueKit.ouvrir('${id}')">Aperçu</button>`);
-    if (!d.interne && ['offre', 'cotation'].includes(d.categorie) && this._peutEnvoyer() && window.Studio) actions.push(`<button class="co-btn p" onclick="VueKit.studio('${d.categorie === 'cotation' ? 'cotation' : 'bienvenue'}')">Personnaliser</button>`);
+    if (!d.interne && ['offre', 'cotation'].includes(d.categorie) && this._peutStudio() && window.Studio) actions.push(`<button class="co-btn p" onclick="VueKit.studio('${d.categorie === 'cotation' ? 'cotation' : 'bienvenue'}')">Personnaliser</button>`);
     if (ok && !d.interne && !echu && d.groupe !== "Modes d'emploi" && this._peutEnvoyer()) actions.push(`<button class="co-btn p" onclick="VueKit.envoyer('${id}')">Envoyer</button>`);
     if (this._admin()) actions.push(`<label class="co-btn kit-up">${ok ? 'Remplacer' : 'Ajouter le fichier'}<input type="file" accept=".pdf,.pptx,.docx,.md,.png,.jpg,.jpeg" hidden onchange="VueKit.televerser('${id}',this)"/></label>`,
       `<label class="kit-val" title="Date de validité">Valide jusqu’au <input type="date" value="${E(String(d.valide_au || '').slice(0, 10))}" onchange="VueKit.majValidite('${id}',this.value)"/></label>`);
@@ -70,7 +72,7 @@ window.VueKit = {
 
   _listeHtml() {
     const E = this._esc, l = this._filtre(), cat = this.state.cat;
-    const studio = (['offre', 'cotation'].includes(cat) && this._peutEnvoyer() && window.Studio)
+    const studio = (['offre', 'cotation'].includes(cat) && this._peutStudio() && window.Studio)
       ? `<div class="co-carte kit-groupe"><div class="co-eyebrow">Sur mesure</div><h2>${cat === 'cotation' ? 'Cotation' : 'Offre'} personnalisée</h2><p class="co-mut">Destinataire, dates, remise et signature, aperçu en direct et PDF à télécharger.</p><button class="co-btn p" onclick="VueKit.studio('${cat === 'cotation' ? 'cotation' : 'bienvenue'}')">Ouvrir le Studio</button>${cat === 'offre' ? ' <button class="co-btn p" onclick="VueKit.studio(\'bundle\')">Bundle</button>' : ''}</div>` : '';
     if (!l.length) return studio || '<p class="co-mut" style="padding:8px 2px">Aucun document pour ce filtre.</p>';
     const groupes = []; l.forEach(d => { let g = groupes.find(x => x.n === d.groupe); if (!g) groupes.push(g = { n: d.groupe, l: [] }); g.l.push(d); });
@@ -81,7 +83,7 @@ window.VueKit = {
     const mand = window.Mandats && Mandats.peut();
     return `<div class="kit-outils">
       ${mand ? `<div class="co-carte"><div class="co-eyebrow">Contrat</div><h2>Mandat revendeur</h2><p class="co-mut">Formalise l'opération commerciale. Prérempli depuis la fiche du compte, archivé à chaque génération.</p><button class="co-btn p" onclick="VueKit.mandat()">Ouvrir le générateur</button></div>` : ''}
-      ${this._peutEnvoyer() && window.Studio ? `<div class="co-carte"><div class="co-eyebrow">Sur mesure</div><h2>Studio de documents</h2><p class="co-mut">Offre, cotation ou proposition personnalisée : destinataire, dates, remise et signature, avec aperçu en direct et PDF à télécharger.</p><div class="co-actions"><button class="co-btn p" onclick="VueKit.studio('cotation')">Cotation</button><button class="co-btn p" onclick="VueKit.studio('bienvenue')">Offre</button><button class="co-btn" onclick="VueKit.studio('bundle')">Bundle</button><button class="co-btn" onclick="VueKit.studio('proposition')">Proposition</button></div></div>` : ''}</div>`;
+      ${this._peutStudio() && window.Studio ? `<div class="co-carte"><div class="co-eyebrow">Sur mesure</div><h2>Studio de documents</h2><p class="co-mut">Offre, cotation ou proposition personnalisée : destinataire, dates, remise et signature, avec aperçu en direct et PDF à télécharger.</p><div class="co-actions"><button class="co-btn p" onclick="VueKit.studio('cotation')">Cotation</button><button class="co-btn p" onclick="VueKit.studio('bienvenue')">Offre</button><button class="co-btn" onclick="VueKit.studio('bundle')">Bundle</button><button class="co-btn" onclick="VueKit.studio('proposition')">Proposition</button></div></div>` : ''}</div>`;
   },
 
   render() {
@@ -137,10 +139,10 @@ window.VueKit = {
     const s = this.state, E = this._esc, d = s.docs.find(x => x.id === s.envoi.id); if (!d) return '';
     const l = (s.comptes || []).filter(c => !s.envoi.q || String(c.Nom_Compte || '').toLowerCase().includes(s.envoi.q.toLowerCase())).slice(0, 30);
     return `<div class="kit-modale" role="dialog" aria-modal="true"><div class="co-carte kit-boite"><div class="co-eyebrow">Envoi tracé</div><h2>${E(d.titre)}${d.format ? ' · ' + E(d.format) : ''}</h2>
-      <p class="co-mut">Un lien valable ${this.LIEN_JOURS} jours est copié, et l'envoi est inscrit au journal du compte choisi.</p>
+      <p class="co-mut">${this._estExterne() ? 'Un lien valable ' + this.LIEN_JOURS + ' jours est copié (aucune écriture au journal des comptes).' : 'Un lien valable ' + this.LIEN_JOURS + ' jours est copié, et l\'envoi est inscrit au journal du compte choisi.'}</p>
       <input type="search" class="kit-q" placeholder="Chercher le compte" aria-label="Chercher le compte" value="${E(s.envoi.q)}" oninput="VueKit.setEnvoiQ(this.value)"/>
       <select size="6" class="kit-sel" aria-label="Compte destinataire" onchange="VueKit.setEnvoiCompte(this.value)">${l.map(c => `<option value="${E(c.ID_Compte)}" ${String(c.ID_Compte) === s.envoi.compte ? 'selected' : ''}>${E(c.Nom_Compte)}${c.Ville ? ' · ' + E(c.Ville) : ''}</option>`).join('')}</select>
-      <div class="co-actions"><button class="co-btn p" onclick="VueKit.confirmerEnvoi()">Copier le lien et tracer</button><button class="co-btn" onclick="VueKit.annulerEnvoi()">Annuler</button></div></div></div>`;
+      <div class="co-actions"><button class="co-btn p" onclick="VueKit.confirmerEnvoi()">${this._estExterne() ? 'Copier le lien' : 'Copier le lien et tracer'}</button><button class="co-btn" onclick="VueKit.annulerEnvoi()">Annuler</button></div></div></div>`;
   },
   setEnvoiQ(v) { this.state.envoi.q = String(v || '').slice(0, 60); this.render(); const i = document.querySelector('.kit-boite .kit-q'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } },
   setEnvoiCompte(v) { this.state.envoi.compte = v; },
@@ -148,10 +150,12 @@ window.VueKit = {
   async confirmerEnvoi() {
     const s = this.state, e = s.envoi; if (!e) return;
     const d = s.docs.find(x => x.id === e.id), c = (s.comptes || []).find(x => String(x.ID_Compte) === String(e.compte));
-    if (!d || !c) { if (window.Toast) Toast.afficher('Choisissez le compte destinataire', 'warning'); return; }
+    const ext = this._estExterne();
+    if (!d || (!c && !ext)) { if (window.Toast) Toast.afficher('Choisissez le compte destinataire', 'warning'); return; }
     try {
       const url = await this._lien(d, this.LIEN_JOURS * 86400);
       try { await navigator.clipboard.writeText(url); } catch { window.prompt('Copiez ce lien :', url); }
+      if (ext) { s.envoi = null; this.render(); if (window.Toast) Toast.afficher('Lien copié', 'succes', 3000); return; }
       await SheetsAPI.ecrire('EMPOWER_MDB', 'ACTIONS', {
         ID_Action: genId('ACT'), Date_Action: new Date().toISOString(), Type_Action: 'Mailing', Source: 'ESI', PIN_CDS: Session.pin, Nom_Compte: c.Nom_Compte,
         Statut_Avant: c.STATUT_COMPTE || c.Statut || '', Statut_Apres: c.STATUT_COMPTE || c.Statut || '',

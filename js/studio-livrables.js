@@ -5,7 +5,7 @@
 //  Le rendu et les calculs sont ceux de js/livrables-pdf.js (design Marvesting V3, prix du catalogue uniquement, jamais de prix inventé).
 //  Personnalisable : destinataire (facultatif), contact, dates et période, remise en % (tout le reste se recalcule), signature du commercial
 //  (préremplie depuis son profil, modifiable, mémorisée sur l'appareil), conditions, titre.
-//  Qui peut l'ouvrir : ADMIN, CDS, CHANNEL_MANAGER (comme l'envoi du Kit). Chaque PDF créé pour un compte est inscrit au journal (« Devis »).
+//  Qui peut l'ouvrir : ADMIN, CDS, CHANNEL_MANAGER et EXTERNE (fournisseur de leads : génère les documents, sans envoi tracé ni écriture au journal). Chaque PDF créé pour un compte est inscrit au journal (« Devis »).
 // ═══════════════════════════════════════
 window.Studio = (function () {
   const TYPES = ['bienvenue', 'exceptionnelle', 'proposition', 'cotation', 'supplementaire', 'bundle'];
@@ -13,7 +13,7 @@ window.Studio = (function () {
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const jour = () => new Date().toISOString().slice(0, 10);
   const plus = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
-  const peut = () => !!(window.Session && Session.estConnecte && Session.estConnecte() && ['ADMIN', 'CDS', 'CHANNEL_MANAGER'].includes(Session.role));
+  const peut = () => !!(window.Session && Session.estConnecte && Session.estConnecte() && ['ADMIN', 'CDS', 'CHANNEL_MANAGER', 'EXTERNE'].includes(Session.role));
   let s = null, el = null, minuteur = null, comptes = [], libs = null, ongletMobile = 'reglages', zoom = 1;
 
   // ── Signature : profil du commercial, modifiable, mémorisée par appareil ──
@@ -112,7 +112,7 @@ window.Studio = (function () {
   }
 
   function ouvrir(type, compte) {
-    if (!peut()) { if (window.Toast) Toast.afficher('Réservé aux commerciaux et managers', 'erreur'); return false; }
+    if (!peut()) { if (window.Toast) Toast.afficher('Réservé à l’équipe commerciale et aux fournisseurs de leads', 'erreur'); return false; }
     if (!window.LivrablesPDF || !window.Catalogue) { if (window.Toast) Toast.afficher('Modèles indisponibles, rechargez la page', 'erreur'); return false; }
     fermer(); s = etat(type, compte); ongletMobile = 'reglages'; zoom = 1;
     el = document.createElement('div'); el.id = 'studio'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Studio de documents');
@@ -172,7 +172,7 @@ window.Studio = (function () {
     try {
       if (!window.SheetsAPI) return;
       const l = await SheetsAPI.lire('EMPOWER_MDB', 'COMPTES');
-      comptes = (l || []).filter(c => String(c.deleted || '').toUpperCase() !== 'TRUE' && (Session.voitTout() || Number(c.PIN_CDS_Assigne) === Session.pin));
+      comptes = (l || []).filter(c => String(c.deleted || '').toUpperCase() !== 'TRUE' && (Session.voitTout() || Session.estExterne() || Number(c.PIN_CDS_Assigne) === Session.pin));
       const dl = el && el.querySelector('#st-comptes'); if (dl) dl.innerHTML = comptes.slice(0, 400).map(c => `<option value="${esc(c.Nom_Compte)}"></option>`).join('');
     } catch (e) { comptes = []; }
   }
@@ -225,7 +225,7 @@ window.Studio = (function () {
   }
   // Document créé pour un compte : inscrit au journal (Type_Action « Devis »), base de l'alerte « devis sans suite ».
   async function tracer(T) {
-    if (!s || !s.compteId || !window.SheetsAPI) return;
+    if (!s || !s.compteId || !window.SheetsAPI || Session.estExterne()) return; // le fournisseur de leads n'écrit pas au journal des comptes
     try {
       await SheetsAPI.ecrire('EMPOWER_MDB', 'ACTIONS', {
         ID_Action: genId('DEV'), Date_Action: new Date().toISOString(), Type_Action: 'Devis', Source: 'ESI', PIN_CDS: Session.pin, Nom_Compte: s.client,
