@@ -29,6 +29,9 @@ window.LivrablesPDF = (function () {
     exceptionnelle: { lib: 'Offre exceptionnelle',    pref: 'OE', eyebrow: 'Offre exceptionnelle',    titre: 'Une offre <em>limitée</em> sur Norton', offre: true, panier: true },
     supplementaire: { lib: 'Offres supplémentaires',  pref: 'OS', eyebrow: 'Offres promotionnelles B2B', titre: 'Trois leviers pour <em>améliorer votre marge</em>', offre: false, panier: false },
     bundle:         { lib: 'Bundle produit offert',   pref: 'BD', eyebrow: 'Bundle', titre: 'Un produit <em>offert</em> avec chaque vente', offre: false, panier: false },
+    offre21:        { lib: 'Offre 2+1', pref: 'O21', eyebrow: 'Offre 2+1', titre: '2 licences achetées, <em>1 offerte</em>', offre: true, panier: true },
+    offre11:        { lib: 'Offre 1+1', pref: 'O11', eyebrow: 'Offre 1+1', titre: '1 licence achetée, <em>1 offerte</em>', offre: true, panier: true },
+    cotation_empower: { lib: 'Cotation Empower', pref: 'CE', eyebrow: 'Opération Empower', titre: 'Cotation <em>dégressive</em> Norton Empower', offre: false, panier: false },
     cotation:       { lib: 'Cotation distributeur',   pref: 'CT', eyebrow: 'Opération distributeur', titre: 'Cotation <em>exceptionnelle</em> sur Norton 360', offre: false, panier: false },
   };
 
@@ -45,10 +48,13 @@ window.LivrablesPDF = (function () {
   function calculer(cfg) {
     const C = window.Catalogue, t = TYPES[cfg.type] || TYPES.proposition;
     const lignes = (cfg.lignes || []).filter(([id, q]) => q > 0);
-    const offre = t.offre && cfg.offre && cfg.offre.type ? cfg.offre : null;
+    const total = lignes.reduce((n, [, q]) => n + Math.max(0, Math.floor(Number(q) || 0)), 0);
+    const pal = cfg.palier && Number(cfg.palier.seuil) > 0 ? { seuil: Math.floor(Number(cfg.palier.seuil)), total } : null;
+    if (pal) { pal.atteint = total >= pal.seuil; pal.reste = Math.max(0, pal.seuil - total); }
+    const offre = t.offre && cfg.offre && cfg.offre.type && (!pal || pal.atteint) ? cfg.offre : null;
     const cmp = C.comparer(lignes, { grossiste: cfg.grossiste || 'pa_td', offre, volume: !!cfg.volume, date: cfg.date });
     const e = cmp.empower, g = cmp.grossiste;
-    return { type: t, offre, cmp, e, g, gainPositif: cmp.gain > 0, reste: C.resteAuPalier((cfg.dejaCA || 0) + e.cout), grossisteNom: (cfg.grossiste === 'pa_ingram') ? 'Ingram' : 'Tech Data' };
+    return { type: t, offre, palier: pal, offreDemandee: !!(t.offre && cfg.offre && cfg.offre.type), cmp, e, g, gainPositif: cmp.gain > 0, reste: C.resteAuPalier((cfg.dejaCA || 0) + e.cout), grossisteNom: (cfg.grossiste === 'pa_ingram') ? 'Ingram' : 'Tech Data' };
   }
 
   const canalDe = cfg => (cfg.canal && CANAUX[cfg.canal]) ? cfg.canal : 'pa_td';
@@ -102,20 +108,27 @@ window.LivrablesPDF = (function () {
     let c = cfg.cotation || null;
     if (!c) { const a = C.cotationsActives(cfg.date || aujourdhui()); c = a && a[0] ? a[0] : null; }
     if (!c) return { cotation: null, grilles: [] };
-    const canaux = (c.canaux && c.canaux.length ? c.canaux : ['td', 'ingram']).filter(x => x === 'td' || x === 'ingram');
+    const canaux = (c.canaux && c.canaux.length ? c.canaux : ['td', 'ingram']).filter(x => x === 'td' || x === 'ingram' || x === 'empower');
+    const paliers = (c.paliers || []).filter(x => Number(x.seuil) > 0 && Number(x.remise_pct) > 0).sort((a, b) => a.seuil - b.seuil);
     const filtre = cfg.produits && cfg.produits.length ? new Set(cfg.produits) : null;
     const grilles = canaux.map(cx => {
       const k = 'pa_' + cx;
       const lignes = C.produits.filter(p => p.pvp_ttc != null && (!filtre || filtre.has(p.id))).map(p => {
         const base = p[k] == null ? null : Number(p[k]);
         const ex = c.prix && c.prix[p.id] != null ? Number(c.prix[p.id]) : null;
+        if (paliers.length) {
+          if (base == null) return null;
+          const ht = Number(p.pvp_ttc) / (1 + C.tva);
+          const tiers = paliers.map(x => { const cp = arr(base * (1 - Number(x.remise_pct) / 100)); return { seuil: Number(x.seuil), remise: Number(x.remise_pct), cote: cp, marge: Math.round((ht - cp) / ht * 100), validation: !!x.validation }; });
+          return { p, sku: p['sku_' + cx] || '', base, tiers, pvp: Number(p.pvp_ttc) };
+        }
         const cote = Number.isFinite(ex) && ex != null ? ex : (base != null && c.remise_pct ? base * (1 - Number(c.remise_pct) / 100) : null);
         if (base == null || cote == null) return null;
         return { p, sku: p['sku_' + cx] || '', base, cote: arr(cote), remise: Math.round((1 - cote / base) * 100), pvp: Number(p.pvp_ttc) };
       }).filter(Boolean);
-      return { canal: cx, nom: cx === 'td' ? 'Tech Data' : 'Ingram Micro', lignes };
+      return { canal: cx, nom: cx === 'td' ? 'Tech Data' : cx === 'empower' ? 'Empower' : 'Ingram Micro', lignes };
     }).filter(g => g.lignes.length);
-    return { cotation: c, grilles, remiseMax: grilles.reduce((m, g) => g.lignes.reduce((m2, l) => Math.max(m2, l.remise), m), 0) };
+    return { cotation: c, grilles, paliers, remiseMax: grilles.reduce((m, g) => g.lignes.reduce((m2, l) => Math.max(m2, l.tiers ? Math.max(...l.tiers.map(x => x.remise)) : l.remise), m), 0) };
   }
 
   // ── Mise en page ────────────────────────────────────────────────────────────────
@@ -182,7 +195,7 @@ table.t{width:100%;border-collapse:collapse;font-size:10.2px;margin-top:6px}
 table.t th{font-size:8.3px;letter-spacing:.06em;text-transform:uppercase;color:#6B7580;font-weight:700;text-align:right;padding:2px 0 6px}table.t th:first-child,table.t td:first-child{text-align:left}
 table.t td{padding:5px 0;text-align:right;color:#424242}table.t td:first-child{color:#343F48;font-weight:700}
 table.t tbody tr:nth-child(odd) td{background:#EEF0F1}table.t tbody tr td:first-child{border-radius:10px 0 0 10px;padding-left:8px}table.t tbody tr td:last-child{border-radius:0 10px 10px 0;padding-right:8px}
-table.t td.g{color:#343F48;font-weight:800}
+table.t td.g{color:#343F48;font-weight:800}table.t.dg td{padding:3px 0}table.t.dg td small{font-weight:600;color:#6B7580;font-size:8px}table.t.dg th{padding-bottom:4px}table.t.dg td{white-space:nowrap}table.t.dgc td small{display:none}
 .cond{margin:5mm 15mm 0;font-size:10px;color:#6B7580;line-height:1.55}.cond b{color:#343F48}
 .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:4mm;margin-top:10px}.steps div{background:#EEF0F1;border-radius:16px;padding:9px 12px;font-size:10px;color:#424242;line-height:1.45}.steps b{display:block;color:#FF6D68;font-size:15px;font-weight:800}
 .remise{display:inline-block;background:#343F48;color:#FF8A85;border-radius:999px;padding:1px 8px;font-size:9px;font-weight:800}
@@ -230,7 +243,8 @@ table.t td.g{color:#343F48;font-weight:800}
         <span class="r">${e2(d.pa)}</span><span class="r">${d.qte_vendue ? e2(d.marge / d.qte_vendue) : ''}</span><span class="r pos">${e2(d.marge)}</span></div>`).join('');
     const excl = cmp.exclus && cmp.exclus.length ? `<div class="note">Non chiffré, prix d'achat Empower non communiqué : ${esc(cmp.exclus.join(', '))}.</div>` : '';
     const manq = e.manquants && e.manquants.length ? `<div class="note">Non chiffré : ${esc(e.manquants.join(', '))}.</div>` : '';
-    const offreBloc = R.offre ? `<div class="ribbon"><div><span class="eb">L'offre</span><b>${esc(offreLibelle(R.offre))}</b></div>${cfg.validite ? `<div><span class="eb">Valable jusqu'au</span><b>${esc(dLong(cfg.validite))}</b></div>` : ''}</div>` : '';
+    const palBloc = R.palier ? `<div class="note">${R.palier.atteint ? `Palier atteint : offre valable dès ${R.palier.seuil} licences commandées (${R.palier.total} commandées).` : `Offre valable dès ${R.palier.seuil} licences commandées : il en manque ${R.palier.reste} (${R.palier.total} commandées).`}</div>` : '';
+    const offreBloc = (R.offre ? `<div class="ribbon"><div><span class="eb">L'offre</span><b>${esc(offreLibelle(R.offre))}</b></div>${cfg.validite ? `<div><span class="eb">Valable jusqu'au</span><b>${esc(dLong(cfg.validite))}</b></div>` : ''}</div>` : '') + palBloc;
     const cotes = cmp.cotations && cmp.cotations.length ? ` Une cotation est en cours chez ${esc(R.grossisteNom)} (${esc(cmp.cotations.join(', '))}) : elle est prise en compte.` : '';
     const rsTxt = `Revenue share jusqu'à <b>${Math.round(C.revenue_share.taux_max * 100)} %</b> sur les renouvellements pendant <b>${C.revenue_share.annees} ans</b>, selon les conditions du programme.`;
     const comparaison = R.gainPositif
@@ -286,20 +300,23 @@ ${of ? `<div class="big"><span class="eb">Votre marge avec l'offre</span><b>${e2
 
   // Cotation : une grille par distributeur.
   function pageCotation(cfg, num) {
-    const C = window.Catalogue, t = TYPES.cotation, K = calculerCotation(cfg), c = K.cotation;
+    const C = window.Catalogue, t = TYPES[cfg.type] || TYPES.cotation, K = calculerCotation(cfg), c = K.cotation;
     if (!c) return page(cfg, t, num, { contenu: '<div class="card"><div class="note">Aucune cotation renseignée : saisissez les dates et la remise, ou ajoutez-la dans les Réglages.</div></div>', cls: 'two', legal: legalBase(C) });
     const noms = K.grilles.map(g => g.nom).join(' et ');
-    const cartes = K.grilles.map(g => `<div class="card"><div class="oh"><span class="tag">${esc(g.nom.toUpperCase())}</span></div><h2>Prix d'achat cotés, revendeurs non managés</h2>
+    const valid = K.paliers.some(x => x.validation);
+    const cartes = K.grilles.map(g => g.lignes[0] && g.lignes[0].tiers ? `<div class="card"><div class="oh"><span class="tag">${esc(g.nom.toUpperCase())}</span></div><h2>Prix d'achat dégressifs selon le volume commandé</h2>
+<table class="t dg${K.grilles.length > 1 ? ' dgc' : ''}"><thead><tr><th>Produit</th><th>SKU</th><th>App.</th><th>PA habituel</th>${K.paliers.map(x => `<th>Dès ${x.seuil} lic.<br>-${Number(x.remise_pct)} %${x.validation ? '<br><small>sous réserve de validation</small>' : ''}</th>`).join('')}<th>PVP TTC</th></tr></thead><tbody>${g.lignes.map(l => `<tr><td>${esc(l.p.nom.replace('Norton ', ''))}</td><td>${esc(l.sku)}</td><td>${l.p.appareils}</td><td>${e2(l.base)}</td>${l.tiers.map(x => `<td class="g">${e2(x.cote)} <small>${x.marge} %</small></td>`).join('')}<td>${e2(l.pvp)}</td></tr>`).join('')}</tbody></table></div>`
+      : `<div class="card"><div class="oh"><span class="tag">${esc(g.nom.toUpperCase())}</span></div><h2>Prix d'achat cotés, revendeurs non managés</h2>
 <table class="t"><thead><tr><th>Produit</th><th>SKU</th><th>App.</th><th>PA habituel</th><th>PA coté</th><th>Remise</th><th>PVP TTC</th></tr></thead><tbody>${g.lignes.map(l => `<tr><td>${esc(l.p.nom.replace('Norton ', ''))}</td><td>${esc(l.sku)}</td><td>${l.p.appareils}</td><td>${e2(l.base)}</td><td class="g">${e2(l.cote)}</td><td><span class="remise">-${l.remise} %</span></td><td>${e2(l.pvp)}</td></tr>`).join('')}</tbody></table></div>`).join('');
     const echeance = c.debut && c.fin ? `Du ${dLong(c.debut)} au ${dLong(c.fin)}` : '';
     return page(cfg, t, num, { titre: `${esc(c.libelle || 'Cotation')} <em>jusqu'à -${K.remiseMax} %</em>`, sous: `${esc(noms)} · revendeurs non managés${c.non_reconductible ? ' · opération non reconductible' : ''}${(cfg.client && (cfg.client.nom || cfg.client.contact)) ? ' · Préparée pour <b>' + esc(cfg.client.nom || 'votre société') + '</b>' + (cfg.client.contact ? ' · Contact : ' + esc(cfg.client.contact) : '') + (cfg.client.region ? ' · ' + esc(cfg.client.region) : '') : ''}`, echeance,
-      contenu: cartes, cls: K.grilles.length > 1 ? 'half' : 'two', pill: 'Prix indicatifs', legal: `Prix d'achat HT ${esc(noms)} pendant la période de cotation. ${legalBase(C)} Activation immédiate via clé ESD, sans stock à gérer.` });
+      contenu: cartes, cls: K.grilles.length > 1 ? 'half' : 'two', pill: 'Prix indicatifs', legal: `Prix d'achat HT ${esc(noms)} pendant la période de cotation. ${legalBase(C)}${valid ? ' Palier signalé « sous réserve de validation » : remise soumise à validation budget commercial.' : ''} Activation immédiate via clé ESD, sans stock à gérer.` });
   }
 
   function html(cfg) {
     const t = TYPES[cfg.type] || TYPES.proposition;
     const num = cfg.numero || `${t.pref}-${aujourdhui().replace(/-/g, '')}`;
-    const corps = cfg.type === 'supplementaire' ? pageSupp(cfg, num) : cfg.type === 'bundle' ? pageBundle(cfg, num) : cfg.type === 'cotation' ? pageCotation(cfg, num) : pagePanier(cfg, num);
+    const corps = cfg.type === 'supplementaire' ? pageSupp(cfg, num) : cfg.type === 'bundle' ? pageBundle(cfg, num) : (cfg.type === 'cotation' || cfg.type === 'cotation_empower') ? pageCotation(cfg, num) : pagePanier(cfg, num);
     return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>${esc(t.lib)} ${esc(num)}</title><style>${CSS}</style></head><body>${corps}</body></html>`;
   }
 

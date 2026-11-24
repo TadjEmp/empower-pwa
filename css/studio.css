@@ -27,6 +27,19 @@
 #studio .st-defil { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; padding: 8px; border-radius: 22px; background: #D5D9DC; }
 #studio .st-feuille { margin: 0 auto; background: #fff; box-shadow: 0 4px 24px rgba(14,17,20,.18); overflow: hidden; }
 #studio .st-feuille iframe { display: block; border: 0; background: #fff; transform-origin: top left; }
+#studio .st-cartes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+#studio .st-carte { display: flex; flex-direction: column; gap: 2px; text-align: left; min-height: 64px; padding: 10px 12px; border: 2px solid transparent; border-radius: 16px; background: #fff; color: #343F48; font: inherit; cursor: pointer; }
+#studio .st-carte b { font-size: 14px; font-weight: 800; }
+#studio .st-carte span { font-size: 11px; font-weight: 500; color: #6B7580; line-height: 1.35; }
+#studio .st-carte.on { border-color: #FF6D68; background: #FFF4F3; }
+#studio .st-calc { background: #343F48; color: #fff; border-radius: 22px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+#studio .st-calc .st-t { color: #C9D0D6; }
+#studio .st-k { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+#studio .st-k span { color: #C9D0D6; } #studio .st-k b { color: #fff; font-weight: 800; text-align: right; }
+#studio .st-k b.ok { color: #7EE2A8; } #studio .st-k b.ko { color: #FFB4B0; }
+#studio .st-calc .st-m { color: #C9D0D6; }
+#studio .st-pal { grid-template-columns: 1fr 1fr; }
+#studio .st-det > summary { cursor: pointer; min-height: 32px; }
 @media (max-width: 860px) {
   #studio .st-onglets { display: flex; }
   #studio .st-corps { grid-template-columns: 1fr; padding: 10px 12px; }

@@ -62,7 +62,7 @@ window.VueKit = {
     const ok = !!d.fichier_path, id = E(d.id);
     const actions = [];
     if (ok) actions.push(`<button class="co-btn" onclick="VueKit.ouvrir('${id}')">Aperçu</button>`);
-    if (!d.interne && ['offre', 'cotation'].includes(d.categorie) && this._peutStudio() && window.Studio) actions.push(`<button class="co-btn p" onclick="VueKit.studio('${d.categorie === 'cotation' ? 'cotation' : 'bienvenue'}')">Personnaliser</button>`);
+    if (!d.interne && ['offre', 'cotation'].includes(d.categorie) && this._peutStudio() && window.Studio) actions.push(`<button class="co-btn p" onclick="VueKit.studio('${d.categorie === 'cotation' ? 'cotation_grossiste' : 'offre21'}')">Personnaliser</button>`);
     if (ok && !d.interne && !echu && d.groupe !== "Modes d'emploi" && this._peutEnvoyer()) actions.push(`<button class="co-btn p" onclick="VueKit.envoyer('${id}')">Envoyer</button>`);
     if (this._admin()) actions.push(`<label class="co-btn kit-up">${ok ? 'Remplacer' : 'Ajouter le fichier'}<input type="file" accept=".pdf,.pptx,.docx,.md,.png,.jpg,.jpeg" hidden onchange="VueKit.televerser('${id}',this)"/></label>`,
       `<label class="kit-val" title="Date de validité">Valide jusqu’au <input type="date" value="${E(String(d.valide_au || '').slice(0, 10))}" onchange="VueKit.majValidite('${id}',this.value)"/></label>`);
@@ -73,7 +73,7 @@ window.VueKit = {
   _listeHtml() {
     const E = this._esc, l = this._filtre(), cat = this.state.cat;
     const studio = (['offre', 'cotation'].includes(cat) && this._peutStudio() && window.Studio)
-      ? `<div class="co-carte kit-groupe"><div class="co-eyebrow">Sur mesure</div><h2>${cat === 'cotation' ? 'Cotation' : 'Offre'} personnalisée</h2><p class="co-mut">Destinataire, dates, remise et signature, aperçu en direct et PDF à télécharger.</p><button class="co-btn p" onclick="VueKit.studio('${cat === 'cotation' ? 'cotation' : 'bienvenue'}')">Ouvrir le Studio</button>${cat === 'offre' ? ' <button class="co-btn p" onclick="VueKit.studio(\'bundle\')">Bundle</button>' : ''}</div>` : '';
+      ? `<div class="co-carte kit-groupe"><div class="co-eyebrow">Sur mesure</div><h2>${cat === 'cotation' ? 'Cotation' : 'Offre'} personnalisée</h2><p class="co-mut">Destinataire, dates, remise et signature, aperçu en direct et PDF à télécharger.</p><button class="co-btn p" onclick="VueKit.studio('${cat === 'cotation' ? 'cotation_grossiste' : 'offre21'}')">Ouvrir le Studio</button>${cat === 'offre' ? ' <button class="co-btn p" onclick="VueKit.studio(\'offre11\')">Offre 1+1</button> <button class="co-btn p" onclick="VueKit.studio(\'bundle\')">Bundle</button>' : ''}</div>` : '';
     if (!l.length) return studio || '<p class="co-mut" style="padding:8px 2px">Aucun document pour ce filtre.</p>';
     const groupes = []; l.forEach(d => { let g = groupes.find(x => x.n === d.groupe); if (!g) groupes.push(g = { n: d.groupe, l: [] }); g.l.push(d); });
     return studio + groupes.map(g => `<div class="co-carte kit-groupe"><div class="co-eyebrow">${E(g.n)}</div>${g.l.map(d => this._ligne(d)).join('')}</div>`).join('');
@@ -83,7 +83,7 @@ window.VueKit = {
     const mand = window.Mandats && Mandats.peut();
     return `<div class="kit-outils">
       ${mand ? `<div class="co-carte"><div class="co-eyebrow">Contrat</div><h2>Mandat revendeur</h2><p class="co-mut">Formalise l'opération commerciale. Prérempli depuis la fiche du compte, archivé à chaque génération.</p><button class="co-btn p" onclick="VueKit.mandat()">Ouvrir le générateur</button></div>` : ''}
-      ${this._peutStudio() && window.Studio ? `<div class="co-carte"><div class="co-eyebrow">Sur mesure</div><h2>Studio de documents</h2><p class="co-mut">Offre, cotation ou proposition personnalisée : destinataire, dates, remise et signature, avec aperçu en direct et PDF à télécharger.</p><div class="co-actions"><button class="co-btn p" onclick="VueKit.studio('cotation')">Cotation</button><button class="co-btn p" onclick="VueKit.studio('bienvenue')">Offre</button><button class="co-btn" onclick="VueKit.studio('bundle')">Bundle</button><button class="co-btn" onclick="VueKit.studio('proposition')">Proposition</button></div></div>` : ''}</div>`;
+      ${this._peutStudio() && window.Studio ? `<div class="co-carte"><div class="co-eyebrow">Sur mesure</div><h2>Studio de documents</h2><p class="co-mut">Cotations dégressives, offres 2+1 et 1+1 avec palier, bundle : calcul automatique des licences offertes, aperçu en direct et PDF à télécharger.</p><div class="co-actions"><button class="co-btn p" onclick="VueKit.studio('cotation_grossiste')">Cotation Grossiste</button><button class="co-btn p" onclick="VueKit.studio('cotation_empower')">Cotation Empower</button><button class="co-btn" onclick="VueKit.studio('offre21')">Offre 2+1</button><button class="co-btn" onclick="VueKit.studio('offre11')">Offre 1+1</button><button class="co-btn" onclick="VueKit.studio('bundle')">Bundle</button></div></div>` : ''}</div>`;
   },
 
   render() {
