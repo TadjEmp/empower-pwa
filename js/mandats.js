@@ -7,7 +7,7 @@
 // ═══════════════════════════════════════
 window.Mandats = (function () {
   const STATUTS = { genere: 'Généré', envoye: 'Envoyé', signe: 'Signé', annule: 'Annulé' };
-  const OFFRES = { '1+1': 'Offre 1+1 premier achat', '2+1': 'Offre 2+1 gamme Norton 360 et SMB', remise: 'Remise sur prix d’achat' };
+  const OFFRES = { '1+1': 'Offre 1+1 à palier', '2+1': 'Offre 2+1 à palier', remise: 'Remise dégressive sur prix d’achat' };
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const peut = () => !!(window.Session && Session.estConnecte && Session.estConnecte() && ['ADMIN', 'CDS', 'CHANNEL_MANAGER'].includes(Session.role));
   const sb = () => (window.SheetsAPI && SheetsAPI._sb) || null;

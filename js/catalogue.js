@@ -273,13 +273,23 @@
   //        { offre } offre commerciale Empower : { type: 'xy', achetees: 2, offertes: 1 } (2 achetées = 1 offerte, revendable) ou { type: 'remise', taux: 0.1 } (sur le PA).
   function calculer(lignes, canal, opts) {
     const o = opts || {};
-    let ca = 0, cout = 0, licences = 0; const manquants = [], detail = [], cotes = new Set();
+    let ca = 0, cout = 0, licences = 0, coutSansPvp = 0; const manquants = [], detail = [], cotes = new Set(), sansPvp = [];
     (lignes || []).forEach(([id, q]) => {
       const qt = Math.max(0, Math.floor(Number(q) || 0)); const p = par(id);
       if (!p || !qt) return;
       const e = o.sansCotation ? { pa: p[canal] == null ? null : Number(p[canal]), cotation: null } : paEffectif(p, canal, o.date);
       let pa = e.pa;
-      if (pa == null || p.pvp_ttc == null) { manquants.push(p.nom + ' ' + p.appareils); return; }
+      if (pa == null) { manquants.push(p.nom + ' ' + p.appareils); return; }
+      if (p.pvp_ttc == null) {
+        // Option tousProduits : un produit sans PVP (VPN) est chiffré en prix d'achat seulement ; ni marge ni CA inventés.
+        if (!o.tousProduits) { manquants.push(p.nom + ' ' + p.appareils); return; }
+        const offS = o.offre && o.offre.type ? o.offre : null;
+        const paSans = offS && offS.type === 'remise' && Number(offS.taux) > 0 ? pa * (1 - Math.min(0.9, Number(offS.taux))) : pa;
+        if (e.cotation) cotes.add(e.cotation.libelle);
+        cout += qt * paSans; coutSansPvp += qt * paSans; licences += qt; sansPvp.push(p.nom + ' ' + p.appareils);
+        detail.push({ id, nom: p.nom, appareils: p.appareils, qte: qt, offertes: 0, qte_vendue: qt, pvp_ttc: null, pvp_ht: null, pa: arr2(paSans), marge_unit: null, marge: null, cotation: e.cotation ? e.cotation.libelle : null, sans_pvp: true });
+        return;
+      }
       const off = o.offre && o.offre.type ? o.offre : null;
       if (off && off.type === 'remise' && Number(off.taux) > 0) pa = pa * (1 - Math.min(0.9, Number(off.taux)));
       else if (!off && o.volume && qt >= DATA.remise_volume.seuil) pa = pa * (1 - DATA.remise_volume.taux);
@@ -303,7 +313,8 @@
         detail.push({ id: offP.produit || 'offert', nom, appareils: offP.appareils || (p2 ? p2.appareils : 0), qte: 0, offertes: k, qte_vendue: k, pvp_ttc: pvp, pvp_ht: arr2(ht), pa: 0, marge_unit: arr2(ht), marge: arr2(k * ht), cotation: null, produit_offert: true });
       }
     }
-    return { ca: arr2(ca), cout: arr2(cout), marge: arr2(ca - cout), pct: ca > 0 ? Math.round((ca - cout) / ca * 1000) / 10 : 0, licences, manquants, detail, cotations: [...cotes] };
+    const margeBase = ca - (cout - coutSansPvp);
+    return { ca: arr2(ca), cout: arr2(cout), marge: arr2(margeBase), pct: ca > 0 ? Math.round(margeBase / ca * 1000) / 10 : 0, licences, manquants, sansPvp, detail, cotations: [...cotes] };
   }
 
   // Même panier par Empower et par grossiste (canal 'pa_td' par défaut ou 'pa_ingram') ; gain = marge Empower - marge grossiste,
@@ -311,11 +322,15 @@
   function comparer(lignes, opts) {
     const o = opts || {}, cg = o.grossiste || 'pa_td';
     const communs = (lignes || []).filter(([id]) => { const p = par(id); return p && p.pa_empower != null && paEffectif(p, cg, o.date).pa != null; });
-    const emp = calculer(communs, 'pa_empower', o);
+    // Option tousProduits : un produit sans prix grossiste reste chiffré au prix Empower ; seule la comparaison au grossiste l'écarte.
+    const lignesEmp = o.tousProduits ? (lignes || []).filter(([id, q]) => { const p = par(id); return p && p.pa_empower != null; }) : communs;
+    const emp = calculer(lignesEmp, 'pa_empower', o);
+    const empCom = o.tousProduits ? calculer(communs, 'pa_empower', o) : emp;
     // Même nombre de licences revendues des deux côtés : les licences offertes Empower sont payées plein tarif chez le grossiste ; l'offre n'existe pas chez lui.
-    const gro = calculer(emp.detail.map(d => [d.id, d.qte_vendue]), cg, Object.assign({}, o, { offre: null, volume: false }));
-    const exclus = (lignes || []).filter(([id, q]) => q > 0 && !communs.some(([i]) => i === id)).map(([id]) => { const p = par(id); return p ? p.nom + ' ' + p.appareils : id; });
-    return { empower: emp, grossiste: gro, gain: arr2(emp.marge - gro.marge), exclus, cotations: gro.cotations };
+    const gro = calculer(empCom.detail.map(d => [d.id, d.qte_vendue]), cg, Object.assign({}, o, { offre: null, volume: false }));
+    const exclus = (lignes || []).filter(([id, q]) => q > 0 && !lignesEmp.some(([i]) => i === id)).map(([id]) => { const p = par(id); return p ? p.nom + ' ' + p.appareils : id; });
+    const sansGrossiste = lignesEmp.filter(([id, q]) => q > 0 && !communs.some(([i]) => i === id)).map(([id]) => { const p = par(id); return p ? p.nom + ' ' + p.appareils : id; });
+    return { empower: emp, empowerComparable: empCom, grossiste: gro, gain: arr2(empCom.marge - gro.marge), exclus, sansGrossiste, cotations: gro.cotations };
   }
 
   // Charge les prix et cotations des Réglages (Supabase). En cas d'échec ou de table vide, le catalogue de février 2026 reste en vigueur.
@@ -347,7 +362,7 @@
   function resteAuPalier(achatEmpower, seuil) { return Math.max(0, arr2((seuil || 1000) - (achatEmpower || 0))); }
 
   // Produits proposables selon le canal (Empower : seulement ceux qui ont un PA Empower).
-  function listeProduits(canal) { return PRODUITS.filter(p => p.pvp_ttc != null && (canal ? p[canal] != null : true)); }
+  function listeProduits(canal, avecSansPvp) { return PRODUITS.filter(p => (p.pvp_ttc != null || (avecSansPvp && p.pa_empower != null)) && (canal ? p[canal] != null : true)); }
   function libelle(p) { return p.nom.replace('Norton ', '') + ' · ' + p.appareils + ' appareil' + (p.appareils > 1 ? 's' : ''); }
 
   const API = { version: DATA.version, tva: DATA.tva, produits: PRODUITS, cotations: COTATIONS, remise_volume: DATA.remise_volume,
