@@ -185,7 +185,7 @@
      "famille": "VPN",
      "nom": "Norton VPN Plus",
      "appareils": 5,
-     "pvp_ttc": null,
+     "pvp_ttc": 29.99,
      "pa_td": null,
      "pa_ingram": null,
      "pa_empower": 17.05,
@@ -198,7 +198,7 @@
      "famille": "VPN",
      "nom": "Norton VPN Standard",
      "appareils": 1,
-     "pvp_ttc": null,
+     "pvp_ttc": 24.99,
      "pa_td": null,
      "pa_ingram": null,
      "pa_empower": 11.74,
@@ -235,7 +235,7 @@
     "Premium 10 : PVP TTC 69,99 € (Book) ou 69,90 € (cotation).",
     "Advanced et Platinum : mêmes SKU (21444054, 21444053) chez Tech Data et Ingram ; références boîte identiques chez les deux distributeurs.",
     "Portail Empower (relevé du 5 nov. 2026) : Premium 10 = 22,82 € ; Deluxe 5 = 16,34 € (corrigé, 16,24 € avant) ; Platinum 20 n'est pas vendu sur le portail Empower, donc pas de prix d'achat Empower.",
-    "Norton VPN Plus 5 appareils (17,05 €), Norton VPN Standard 1 appareil (11,74 €) et Utilities WL 10 appareils (14,30 €) : prix d'achat Empower relevés, PVP TTC et références grossiste non fournis. Ces produits restent hors calculateur tant que le PVP n'est pas saisi dans les Réglages.",
+    "Norton VPN Plus 5 appareils (17,05 €, PVP 29,99 € TTC), Norton VPN Standard 1 appareil (11,74 €, PVP 24,99 € TTC, indiqués le 24 nov. 2026) et Utilities WL 10 appareils (14,30 €) : prix d'achat Empower relevés ; Utilities WL : PVP TTC et références grossiste non fournis. Ces produits restent hors calculateur tant que le PVP n'est pas saisi dans les Réglages.",
     "Prix d'achat grossiste « sans cotation » ; la cotation Back2School (jusqu'à -50 %) a pris fin le 30/09/2026, prix d'achat cotés non fournis."
    ]
   };
