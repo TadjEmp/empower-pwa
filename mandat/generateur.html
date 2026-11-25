@@ -185,7 +185,7 @@ html.integre .hdr{display:none}   /* dans la visionneuse de l'application : sa b
   <!-- PANEL 1+1 -->
   <div id="p_1+1">
     <div class="st">Produits achetés (1+1) — saisir PU HT + quantités</div>
-    <table class="ptbl"><thead><tr><th>✓</th><th>Référence</th><th>Dev.</th><th>PU HT</th><th>Qté</th></tr></thead>
+    <table class="ptbl"><thead><tr><th>✓</th><th>Référence</th><th>Dev.</th><th>PU HT</th><th>Qté achetée</th><th>Dont remb.</th></tr></thead>
     <tbody id="tb_1_1"></tbody></table>
     <div class="f"><label>Palier : offre valable dès (licences commandées)</label><input type="number" id="seuil_1_1" value="10" min="1" oninput="rend()"></div>
     <div class="f"><label>Licence offerte (1 pour 1 achetée)</label>
@@ -198,7 +198,7 @@ html.integre .hdr{display:none}   /* dans la visionneuse de l'application : sa b
   <!-- PANEL 2+1 -->
   <div id="p_2+1" style="display:none">
     <div class="st">Produits achetés (2+1) — saisir PU HT + quantités</div>
-    <table class="ptbl"><thead><tr><th>✓</th><th>Référence</th><th>Dev.</th><th>PU HT</th><th>Qté</th></tr></thead>
+    <table class="ptbl"><thead><tr><th>✓</th><th>Référence</th><th>Dev.</th><th>PU HT</th><th>Qté achetée</th><th>Dont remb.</th></tr></thead>
     <tbody id="tb_2_1"></tbody></table>
     <div class="f"><label>Palier : offre valable dès (licences commandées)</label><input type="number" id="seuil_2_1" value="5" min="1" oninput="rend()"></div>
     <div class="f"><label>Licence offerte (1 pour 2 achetées)</label>
@@ -217,7 +217,7 @@ html.integre .hdr{display:none}   /* dans la visionneuse de l'application : sa b
       <div class="rbtn" id="btn60" onclick="setR(60)">−60% <span style="font-size:.65rem;font-weight:400">(≥50 lic., sous réserve de validation)</span></div>
     </div>
     <div class="st">Produits & quantités — saisir PU HT de base, Qté + PU Spécial HT accordé</div>
-    <table class="ptbl"><thead><tr><th>✓</th><th>Référence</th><th>Dev.</th><th>PU HT</th><th>Qté</th><th>PU Spécial HT</th></tr></thead>
+    <table class="ptbl"><thead><tr><th>✓</th><th>Référence</th><th>Dev.</th><th>PU HT</th><th>Qté achetée</th><th>Dont remb.</th><th>PU Spécial HT</th></tr></thead>
     <tbody id="tb_rem"></tbody></table>
   </div>
 
@@ -292,6 +292,7 @@ function buildTables(){
         <td>${p.n}</td><td style="text-align:center">${p.dv}</td>
         <td><input type="text" id="pu_${id}_${p.id}" class="pu" placeholder="PU HT" oninput="${hasSpec?`refreshRemisePlaceholder('${p.id}');`:""}rend()"></td>
         <td><input type="number" id="qty_${id}_${p.id}" value="" min="0" placeholder="0" oninput="rend()"></td>
+        <td><input type="number" id="rb_${id}_${p.id}" value="" min="0" placeholder="0" oninput="rend()" title="Licences remboursées ou annulées parmi les achetées"></td>
         ${hasSpec?`<td><input type="text" id="pus_${id}_${p.id}" placeholder="0.00" oninput="rend()"></td>`:""}
       `;
       tb.appendChild(tr);
@@ -374,12 +375,23 @@ function getProds(tbodyId){
     return c&&c.checked;
   }).map(p=>{
     const qty=parseFloat(g(`qty_${tbodyId}_${p.id}`)?.value)||0;
+    // Remboursées : jamais plus que les achetées. Seules les licences nettes comptent.
+    const rb=Math.min(qty,Math.max(0,parseFloat(g(`rb_${tbodyId}_${p.id}`)?.value)||0));
     const puEl=g(`pu_${tbodyId}_${p.id}`);
     const pu=parseFloat(puEl?.value)||0;
     const pusEl=g(`pus_${tbodyId}_${p.id}`);
     const pus=pusEl?parseFloat(pusEl.value)||parseFloat(pusEl.placeholder)||0:0;
-    return{...p,pu,qty,pus};
+    return{...p,pu,qty,rb,net:qty-rb,pus};
   });
+}
+
+// Affichage « 10 » ou « 10 <small>(20 − 10)</small> » quand des licences sont remboursées.
+const netTxt=p=>p.rb>0?`${p.net}<br><small style="font-weight:400;color:#777">${p.qty} achetées − ${p.rb} remb.</small>`:`${p.qty}`;
+
+// Mention contractuelle, uniquement quand des licences sont remboursées ou annulées.
+function clauseRemb(ach,rb,net){
+  if(!(rb>0)) return "";
+  return `<p class="legal" style="margin-top:2mm"><strong>Remboursements et annulations</strong> : ${ach} licence${ach>1?"s":""} achetée${ach>1?"s":""}, ${rb} remboursée${rb>1?"s":""} ou annulée${rb>1?"s":""}, soit <strong>${net} licence${net>1?"s":""} nette${net>1?"s":""}</strong>. Seules les licences nettes ouvrent droit à compensation et comptent pour l'atteinte du palier. Si des licences sont remboursées après le versement de la compensation, IMPACT SALES &amp; MARKETING peut déduire la compensation correspondante des règlements ultérieurs ou en demander la restitution, sur présentation du justificatif de remboursement. Si le palier n'est plus atteint, la compensation n'est plus due.</p>`;
 }
 
 function rend(){
@@ -420,7 +432,7 @@ function rend(){
   const art3Text = `${CM.art3Base} ${justifPhrase}.`;
 
   // ---- Article 5 : tableau + montant, selon le type d'offre ----
-  let baseChip="", art5Intro="", art5Table="", totalComp=0;
+  let baseChip="", art5Intro="", art5Table="", totalComp=0, totalRbAll=0, totalAchAll=0;
 
   if(offer==="1+1"||offer==="2+1"){
     const X = offer==="1+1" ? 1 : 2, k = offer==="1+1" ? "1_1" : "2_1";
@@ -429,36 +441,41 @@ function rend(){
     const offName = offP ? `${offP.n} ${unitLabel(offP)}` : "___________________";
     const offpu=parseFloat(gv("pu_off_"+k))||0;
     const seuil=Math.max(1,parseInt(gv("seuil_"+k))||1);
-    const totalQty=prods.reduce((n,p)=>n+p.qty,0);
+    const totalAch=prods.reduce((n,p)=>n+p.qty,0);
+    const totalRb=prods.reduce((n,p)=>n+p.rb,0);
+    totalRbAll=totalRb; totalAchAll=totalAch;
+    const totalQty=totalAch-totalRb;   // licences nettes : base du palier et des licences offertes
     const atteint=totalQty>=seuil;
     const offQty=atteint?Math.floor(totalQty/X):0;
     totalComp=offQty*offpu;
     baseChip=`<span class="chip chip-coral">Offert : ${offName}</span> <span class="chip chip-gray">Palier dès ${seuil} licences</span>`;
-    const rows=prods.map(p=>`<tr><td class="rn">${p.n} ${unitLabel(p)}</td><td class="num">${p.qty}</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>`).join("");
+    const rows=prods.map(p=>`<tr><td class="rn">${p.n} ${unitLabel(p)}</td><td class="num">${netTxt(p)}</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>`).join("");
     art5Intro=`Dès ${seuil} licences achetées ${platformPhrase} sur la période de l'opération (palier), pour chaque tranche de ${X} licence${X>1?"s":""} achetée${X>1?"s":""}, 1 licence <strong>${offName}</strong> est offerte. La compensation correspond au coût HT des licences offertes.`;
     art5Table = rows ? `
       <table class="data">
-        <thead><tr><th class="rn">Référence achetée</th><th class="num">Qté achetée</th><th class="num">Licences offertes</th><th class="num">PU offert HT</th><th class="num">Compensation HT</th></tr></thead>
+        <thead><tr><th class="rn">Référence achetée</th><th class="num">${totalRb>0?"Qté nette":"Qté achetée"}</th><th class="num">Licences offertes</th><th class="num">PU offert HT</th><th class="num">Compensation HT</th></tr></thead>
         <tbody>${rows}</tbody>
         <tfoot><tr><td class="rn">TOTAL MANDAT</td><td class="num">${totalQty}</td><td class="num">${offQty}</td><td class="num">${fmt(offpu)}</td><td class="num">${fmt(totalComp)}</td></tr></tfoot>
       </table>
-      <p class="legal" style="margin-top:2mm">${atteint?`Palier atteint : ${totalQty} licences commandées pour ${seuil} requises.`:`Palier non atteint : ${totalQty} licence${totalQty>1?"s":""} commandée${totalQty>1?"s":""} pour ${seuil} requises, aucune licence offerte à ce stade.`}</p>` : `<p class="empty-hint">← Sélectionnez des produits et saisissez leur PU HT dans le formulaire pour générer le tableau de compensation.</p>`;
+      ${clauseRemb(totalAch,totalRb,totalQty)}
+      <p class="legal" style="margin-top:2mm">${atteint?`Palier atteint : ${totalQty} licences ${totalRb>0?"nettes":"commandées"} pour ${seuil} requises.`:`Palier non atteint : ${totalQty} licence${totalQty>1?"s":""} ${totalRb>0?"nette":"commandée"}${totalQty>1?"s":""} pour ${seuil} requises, aucune licence offerte à ce stade.`}</p>` : `<p class="empty-hint">← Sélectionnez des produits et saisissez leur PU HT dans le formulaire pour générer le tableau de compensation.</p>`;
   }
   else{
     const prods=getProds("tb_rem");
     const palR=REM_PALIERS[remise]||{seuil:1};
     baseChip=`<span class="chip chip-coral">Base −${remise}% PA HT</span> <span class="chip chip-gray">Dès ${palR.seuil} licences${palR.validation?" · sous réserve de validation":""}</span>`;
-    let rows="", totalQty=0, totalPort=0, totalSpec=0;
+    let rows="", totalQty=0, totalPort=0, totalSpec=0, totalAch=0, totalRb=0;
     prods.forEach(p=>{
       if(p.qty<=0)return;
+      totalAch+=p.qty; totalRb+=p.rb; totalAchAll=totalAch; totalRbAll=totalRb;
       const puPort=p.pu;
       const puSpec=p.pus>0?p.pus:parseFloat((puPort*(1-remise/100)).toFixed(2));
-      const totPort=puPort*p.qty;
-      const totSpec=puSpec*p.qty;
+      const totPort=puPort*p.net;
+      const totSpec=puSpec*p.net;
       const ecart=totPort-totSpec;
-      totalQty+=p.qty; totalPort+=totPort; totalSpec+=totSpec; totalComp+=ecart;
+      totalQty+=p.net; totalPort+=totPort; totalSpec+=totSpec; totalComp+=ecart;
       rows+=`<tr>
-        <td class="rn">${p.n} ${unitLabel(p)}</td><td class="num">${p.qty}</td>
+        <td class="rn">${p.n} ${unitLabel(p)}</td><td class="num">${netTxt(p)}</td>
         <td class="num">${fmt(puPort)}</td><td class="num">${fmt(puSpec)}</td>
         <td class="num">${fmt(totPort)}</td><td class="num">${fmt(totSpec)}</td>
         <td class="num">${fmt(ecart)}</td>
@@ -468,10 +485,11 @@ function rend(){
     const remQty=totalQty;
     art5Table = rows ? `
       <table class="data">
-        <thead><tr><th class="rn">Référence</th><th class="num">Qté</th><th class="num">PA HT</th><th class="num">PA Spécial HT</th><th class="num">Total PA HT</th><th class="num">Total Spécial HT</th><th class="num">Compensation HT</th></tr></thead>
+        <thead><tr><th class="rn">Référence</th><th class="num">${totalRb>0?"Qté nette":"Qté"}</th><th class="num">PA HT</th><th class="num">PA Spécial HT</th><th class="num">Total PA HT</th><th class="num">Total Spécial HT</th><th class="num">Compensation HT</th></tr></thead>
         <tbody>${rows}</tbody>
         <tfoot><tr><td class="rn">TOTAL MANDAT</td><td class="num">${totalQty}</td><td></td><td></td><td class="num">${fmt(totalPort)}</td><td class="num">${fmt(totalSpec)}</td><td class="num">${fmt(totalComp)}</td></tr></tfoot>
-      </table>` : `<p class="empty-hint">← Sélectionnez des produits et saisissez leur PU HT dans le formulaire pour générer le tableau de compensation.</p>`;
+      </table>${clauseRemb(totalAch,totalRb,totalQty)}${totalRb>0&&totalQty<palR.seuil?`<p class="legal" style="margin-top:2mm"><strong>Palier non atteint</strong> : ${totalQty} licence${totalQty>1?"s":""} nette${totalQty>1?"s":""} pour ${palR.seuil} requises, la compensation n'est plus due.</p>`:""}` : `<p class="empty-hint">← Sélectionnez des produits et saisissez leur PU HT dans le formulaire pour générer le tableau de compensation.</p>`;
+    if(totalRb>0&&totalQty<palR.seuil) totalComp=0;
   }
 
   const refChip = refEmp ? `<span class="chip chip-gray">Réf. ${esc(refEmp)}</span>` : "";
@@ -568,7 +586,7 @@ function rend(){
   g("cv").innerHTML = page1 + page2;
   window.__dernier = { canal: channel, offre: offer, compensation: {v:"virement",l:"licences",g:"cheques"}[cmode], montant_ht: Math.round(totalComp*100)/100,
     debut: deb||null, fin: fin||null, societe: soc, representant: rep, ref_commande: refEmp,
-    payload: { grossiste: channelIsEmpower?null:wholesalerName, remise: offer==="remise"?remise:null, palier_seuil: offer==="remise" ? (REM_PALIERS[remise]||{}).seuil||null : (parseInt(gv("seuil_"+(offer==="1+1"?"1_1":"2_1")))||null), licence_offerte: offer==="remise" ? null : gv("off_"+(offer==="1+1"?"1_1":"2_1")), siret, rcs_ville: rcsv, adresse: adr, tva, ape, date_signature: dateSign||null } };
+    payload: { grossiste: channelIsEmpower?null:wholesalerName, remise: offer==="remise"?remise:null, palier_seuil: offer==="remise" ? (REM_PALIERS[remise]||{}).seuil||null : (parseInt(gv("seuil_"+(offer==="1+1"?"1_1":"2_1")))||null), licence_offerte: offer==="remise" ? null : gv("off_"+(offer==="1+1"?"1_1":"2_1")), siret, licences_achetees: totalAchAll, licences_remboursees: totalRbAll, rcs_ville: rcsv, adresse: adr, tva, ape, date_signature: dateSign||null } };
 }
 
 function _statut(t,ok){const s=g("statut"); s.textContent=t; s.className="statut "+(ok?"ok":"ko");}
