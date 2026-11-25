@@ -474,6 +474,10 @@ window.VueQuestionnaire = {
       };
       await SheetsAPI.ecrire('EMPOWER_MDB', 'LEADS', lead);
       this.state.prospects.unshift(lead);
+      // La fiche à froid pointe vers le lead créé (sinon elle reste « prospect à froid »).
+      if (this._derniereFicheFroide && window.FichesFroides) {
+        FichesFroides.marquerConverti(this._derniereFicheFroide, { idLead: lead.ID_Prospect }).catch(() => {});
+      }
       // Notifications dynamiques : Alexandra + tous les Channels actifs (routage
       // par rôle, plus par secteur/enseigne — aucune table de mapping secteur→Channel
       // n'existe aujourd'hui ; à affiner si un tel mapping est créé).

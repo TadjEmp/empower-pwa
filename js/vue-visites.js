@@ -358,7 +358,8 @@ window.VueVisites = {
       .sort((a, b) => String(b.Date || '').localeCompare(String(a.Date || '')))[0];
     this._modalConversion = {
       idVisite: derniere?.ID_Visite || null, idFiche,
-      nomCompte: fiche.Nom_Magasin || '', departement: fiche.Departement || '', ville: fiche.Ville || '',
+      nomCompte: fiche.Nom_Magasin || '', adresse: fiche.Adresse || derniere?.Adresse || '',
+      departement: fiche.Departement || '', ville: fiche.Ville || '',
       tel: fiche.Tel || '', email: fiche.Email || '', canal: 'REVENDEUR', note: '',
       contactNom: fiche.Contact_Nom || '', contactFonction: fiche.Contact_Fonction || '',
       pinCDS: fiche.PIN_CDS || null, nomCDS: fiche.Nom_CDS || '',
@@ -424,6 +425,7 @@ window.VueVisites = {
     this._modalConversion = {
       idVisite, idFiche: v.ID_Fiche_Froide || '',
       nomCompte: v.Nom_Compte || '',
+      adresse: v.Adresse || (this.state.fiches || []).find(f => f.ID_Fiche === v.ID_Fiche_Froide)?.Adresse || '',
       departement: v.Departement || '',
       ville: v.Ville || '',
       tel: v.Tel || '',
@@ -468,6 +470,7 @@ window.VueVisites = {
       await SheetsAPI.ecrire('EMPOWER_MDB', 'COMPTES', {
         ID_Compte:      idCompte,
         Nom_Compte:     m.nomCompte,
+        Adresse:        m.adresse || '',
         Departement:    m.departement,
         Ville:          m.ville,
         Tel:            m.tel,
@@ -2192,6 +2195,9 @@ window.VueVisites = {
         <label>Nom de l'enseigne *
           <input required value="${m.nomCompte}"
                  oninput="VueVisites._modalConversion.nomCompte=this.value"/></label>
+        <label>Adresse
+          <input value="${FichesFroides.esc(m.adresse || '')}"
+                 oninput="VueVisites._modalConversion.adresse=this.value"/></label>
         <div style="display:flex;gap:8px">
           <label style="flex:1">Département
             <input placeholder="ex : 75" maxlength="3" value="${m.departement}"

@@ -1829,6 +1829,8 @@ window.VuePipeline = {
     await SheetsAPI.ecrire('EMPOWER_MDB', 'COMPTES', {
       ID_Compte:       idCompte,
       Nom_Compte:      lead.Nom_Compte || '',
+      // Bug : l'adresse du lead n'était pas reprise à la conversion en compte.
+      Adresse:         lead.Adresse || '',
       Ville:           lead.Ville || '',
       Code_Postal:     lead.Code_Postal || '',
       Departement:     lead.Departement || '',
