@@ -150,7 +150,17 @@ window.LivrablesPDF = (function () {
     });
     const sum = f => lignes.reduce((n, l) => n + (f(l) || 0), 0);
     const achats = sum(l => l.achats), budget = sum(l => l.comp), budgetRepli = repli ? sum(l => l.compRepli) : null;
-    return { remise, repli, periode, mois, lignes, manquants, licences: sum(l => l.q), achats, budget, budgetRepli,
+    // Bases comparées : % saisis (ex. 50, 60, 70) et, en option, des paliers de volume appliqués gamme par gamme.
+    const bases = [{ lib: `Remise à ${remise} %`, sub: 'base du budget', budget }];
+    const pcts = (Array.isArray(pl.bases) ? pl.bases : []).map(Number).filter(x => x > 0 && x <= 90 && x !== remise);
+    if (repli && !pcts.includes(repli) && repli !== remise) pcts.push(repli);
+    pcts.sort((x, y) => x - y).forEach(r => bases.push({ lib: `Remise à ${r} %`, sub: '', budget: sum(l => comp(l.pa, l.q, r)) }));
+    const pal = (Array.isArray(pl.paliers) ? pl.paliers : []).map(([sx, r]) => [Math.floor(Number(sx)), Number(r)]).filter(([sx, r]) => sx > 0 && r > 0 && r <= 90).sort((x, y) => x[0] - y[0]);
+    if (pl.paliersOn && pal.length) {
+      const taux = q => pal.reduce((t, [sx, r]) => q >= sx ? r : t, 0);
+      bases.push({ lib: 'Paliers de volume', sub: pal.map(([sx, r]) => `-${r} % dès ${sx}`).join(' · '), budget: sum(l => comp(l.pa, l.q, taux(l.q))), paliers: true });
+    }
+    return { remise, repli, bases, periode, mois, lignes, manquants, licences: sum(l => l.q), achats, budget, budgetRepli,
       parMois: budget / mois, achatsMois: achats / mois, cadence: pl.cadence || '1 commande par mois', point: pl.point || 'Tous les 2 mois', autre: pl.autre || '' };
   }
 
@@ -163,18 +173,18 @@ body{font-family:Montserrat,system-ui,-apple-system,"Segoe UI",sans-serif;color:
 .page{width:297mm;height:210mm;margin:14px auto;background:#EEF0F1;position:relative;overflow:hidden;display:flex;flex-direction:column;break-after:page;page-break-after:always}
 .page:last-of-type{break-after:auto;page-break-after:auto}
 @media print{html,body{background:#fff}.page{margin:0}}
-.head{background:#343F48;color:#fff;border-radius:0 0 46px 46px;padding:9mm 15mm 0;height:61mm;flex:none;position:relative}
+.head{background:#343F48;color:#fff;border-radius:0 0 34px 34px;padding:7mm 15mm 0;height:47mm;flex:none;position:relative}
 .hrow{display:flex;align-items:center;gap:6mm}
 .hrow img{height:30px}
 .hrow .meta{margin-left:auto;text-align:right;font-size:10px;line-height:1.55;color:#C9D0D6}
 .hrow .meta b{color:#fff;font-weight:700}
 .eyebrow,.eb{font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6B7580}
-.head .eyebrow{color:#FF8A85;margin-top:5.5mm}
+.head .eyebrow{color:#FF8A85;margin-top:3.5mm}
 h1{font-size:27px;line-height:1.17;font-weight:800;color:#fff;letter-spacing:-.01em;margin:4px 0 5px;max-width:200mm}
 h1 em{font-style:normal;color:#FF8A85}
 .head .sub{color:#C9D0D6;font-size:12px}.head .sub b{color:#fff}
-.echeance{position:absolute;right:15mm;bottom:16mm;background:#FF1209;color:#fff;border-radius:999px;padding:8px 18px;font-size:11px;font-weight:700;letter-spacing:.01em}
-.body{margin:-11mm 15mm 0;position:relative;flex:1;min-height:0;display:grid;gap:6mm;align-content:start}
+.echeance{position:absolute;right:15mm;bottom:11mm;background:#FF1209;color:#fff;border-radius:999px;padding:8px 18px;font-size:11px;font-weight:700;letter-spacing:.01em}
+.body{margin:-8mm 15mm 5mm;position:relative;flex:1;min-height:0;display:grid;gap:6mm;align-content:stretch}
 .body.two{grid-template-columns:1.75fr 1fr}
 .body.three{grid-template-columns:1fr 1fr 1.45fr}
 .body.half{grid-template-columns:1fr 1fr}
@@ -240,6 +250,24 @@ table.t tr.tot td{background:#343F48!important;color:#fff;font-weight:800}table.
 .bgt{background:#343F48;color:#fff;border-radius:22px;padding:15px 20px}.bgt .eb{color:#FF8A85}.bgt big{display:block;font-size:42px;font-weight:800;line-height:1.1;margin-top:3px}.bgt big small{font-size:15px;font-weight:700}.bgt p{color:#C9D0D6;font-size:11px;margin-top:6px;line-height:1.5}.bgt .chip{display:inline-block;background:#4B5761;border-radius:999px;padding:3px 12px;font-size:9.5px;font-weight:700;margin-top:8px;color:#fff}
 .rythme{display:grid;grid-template-columns:repeat(4,1fr);gap:4mm}.rythme .card{padding:13px 15px}.rythme .card b{display:block;color:#FF6D68;font-size:16px;font-weight:800}.rythme .card span{display:block;color:#343F48;font-weight:700;font-size:11.5px;margin-top:2px}.rythme .card small{display:block;color:#6B7580;font-size:10px;margin-top:3px}
 .vals .v{display:grid;grid-template-columns:9mm 1fr auto;gap:4mm;align-items:center;background:#fff;border-radius:16px;padding:8px 14px;margin-bottom:2.5mm;font-size:11px;color:#343F48}.vals .v i{font-style:normal;background:#FF6D68;color:#fff;border-radius:50%;width:8mm;height:8mm;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px}.vals .v em{font-style:normal;font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#6B7580}
+/* barres, pastilles, icônes rondes, bloc sombre */
+.ico{width:11mm;height:11mm;border-radius:50%;background:#FF1209;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.ico svg{width:5.5mm;height:5.5mm;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ch{display:flex;align-items:center;gap:3.5mm;margin-bottom:3.5mm}.ch .t{font-size:9.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#FF1209;line-height:1.35}
+.leg{display:flex;gap:6mm;margin:0 0 3mm;font-size:10px;color:#6B7580}.leg span{display:inline-flex;align-items:center;gap:2mm}.leg i{width:3.2mm;height:3.2mm;border-radius:50%;display:inline-block}
+.grp{padding-bottom:2.5mm;margin-bottom:2.5mm;border-bottom:1px solid #EEF0F1}.grp:last-child{border:0;margin:0;padding:0}
+.gnm{display:flex;align-items:center;gap:3mm;margin-bottom:1.5mm}.gnm b{color:#343F48;font-size:12px}.gnm small{color:#6B7580;font-size:10px;margin-left:3px}
+.ini{width:9mm;height:9mm;border-radius:50%;color:#fff;font-weight:800;font-size:9px;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.br{display:grid;grid-template-columns:38mm 1fr 24mm;gap:4mm;align-items:center;margin-bottom:1.2mm}
+.br .lb{font-weight:700;color:#343F48;font-size:11px;line-height:1.2}.br .lb small{display:block;font-weight:600;color:#6B7580;font-size:9px}
+.br .tr{height:12px;border-radius:999px;background:#EEF0F1;overflow:hidden}.br .tr i{display:block;height:100%;border-radius:999px}
+.br .v{text-align:right;font-weight:800;color:#343F48;font-size:12px}
+.b-g{background:#C3C9CE}.b-d{background:#343F48}.b-c{background:#FF6D68}.b-i{background:#2E3192}
+.kd{background:#343F48;color:#fff;border-radius:22px;padding:16px 20px;display:flex;flex-direction:column;gap:3mm}.kd .eb{color:#FF8A85}
+.kd big{font-size:42px;font-weight:800;line-height:1.05;color:#FF8A85}.kd big small{font-size:15px;font-weight:700}
+.kd p{color:#E6EAED;font-size:12px;line-height:1.5}
+.kd .pl{display:inline-block;background:#4B5761;border-radius:999px;padding:3px 12px;font-size:10px;font-weight:700;color:#fff;margin:0 4px 4px 0}
+.body.top{align-content:start}.body>.kd,.body>.bgt{align-self:start}.card.fill .grp{flex:1;display:flex;flex-direction:column;justify-content:center}.vals{display:flex;flex-direction:column;gap:3mm;height:100%}.vals .v{flex:1;margin:0;max-height:34mm;font-size:12.5px}.br.nr{grid-template-columns:26mm 1fr 17mm}.card.fill .br.nr .lb small{font-size:8px}.card.f2{display:flex;flex-direction:column}.card.f2 .steps{margin-top:auto}.body>.card,.body>.kd{align-self:stretch}.body .card.fill{display:flex;flex-direction:column;justify-content:flex-start}
 .remise{display:inline-block;background:#343F48;color:#FF8A85;border-radius:999px;padding:1px 8px;font-size:9px;font-weight:800}
 `;
 
@@ -274,6 +302,28 @@ table.t tr.tot td{background:#343F48!important;color:#fff;font-weight:800}table.
 
   const legalBase = C => `Prix HT, catalogue ${esc(C.version)}. PVP HT = PVP TTC / 1,20. Marge = PVP HT moins prix d'achat. Les marges dépendent des prix de vente pratiqués.`;
 
+
+  // Barres : pastilles d'initiales, icônes rondes et rangées de barres en pilule.
+  const BCOL = ['#14142B', '#2E3192', '#E91E63', '#FF6D68', '#343F48', '#7C4DFF'];
+  const ICO = { doc: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/>', eur: '<circle cx="12" cy="12" r="8"/><path d="M15 9.5a3.5 3.5 0 1 0 0 5M8.5 11h5M8.5 13h5"/>', ok: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.5"/>' };
+  const icoR = k => `<span class="ico"><svg viewBox="0 0 24 24">${ICO[k] || ICO.ok}</svg></span>`;
+  const chT = (k, txt) => `<div class="ch">${icoR(k)}<div class="t">${txt}</div></div>`;
+  const ini = (nom, i) => { const m = String(nom || '').replace(/^Norton\s+/i, '').replace(/[^A-Za-zÀ-ÿ ]/g, ' ').trim().split(/\s+/).filter(Boolean); return `<span class="ini" style="background:${BCOL[i % BCOL.length]}">${esc(((m[0] || '')[0] || '') + ((m[1] || '')[0] || (m[0] || '')[1] || '')).toUpperCase()}</span>`; };
+  const barre = (lab, sub, val, max, cls, txt, nr) => `<div class="br${nr ? ' nr' : ''}"><div class="lb">${lab}${sub ? `<small>${sub}</small>` : ''}</div><div class="tr"><i class="${cls}" style="width:${max > 0 ? Math.max(3, Math.min(100, Math.round(val / max * 100))) : 3}%"></i></div><div class="v">${txt}</div></div>`;
+  // Marge par produit, avec et sans l'offre (une rangée de deux barres par produit).
+  function barresOffre(cfg, e, R, max) {
+    const C = window.Catalogue;
+    const rows = e.detail.filter(d => d.marge != null).sort((a, b) => b.marge - a.marge).slice(0, max || 6).map(d => {
+      const s = C.calculer([[d.id, d.qte]], 'pa_empower', { tousProduits: true, date: cfg.date });
+      return { d, sans: s && s.detail.length ? s.marge : 0, avec: d.marge };
+    });
+    if (!rows.length) return '';
+    const mx = Math.max(...rows.map(r => Math.max(r.sans, r.avec)), 1);
+    return `<div class="card fill">${chT('ok', 'Marge par produit, avec et sans l\'offre')}<div class="leg"><span><i style="background:#C3C9CE"></i>Sans l'offre</span><span><i style="background:#343F48"></i>Avec l'offre</span>${e.detail.length > (max || 6) ? `<span>· ${max || 6} produits les plus rentables, détail page suivante</span>` : ''}</div>`
+      + rows.map((r, i) => `<div class="grp"><div class="gnm">${ini(r.d.nom, i)}<div><b>${esc(r.d.nom.replace('Norton ', ''))}</b><small>${r.d.appareils} app. · ${r.d.qte} achetée${r.d.qte > 1 ? 's' : ''}${r.d.offertes ? ' + ' + r.d.offertes + ' offerte' + (r.d.offertes > 1 ? 's' : '') : ''}</small></div></div>`
+        + barre('Sans l\'offre', '', r.sans, mx, 'b-g', e0(r.sans)) + barre('Avec l\'offre', '', r.avec, mx, 'b-d', e0(r.avec)) + '</div>').join('') + '</div>';
+  }
+
   // Panier : proposition, bienvenue, exceptionnelle.
   function pagePanier(cfg, num) {
     const C = window.Catalogue, R = calculer(cfg), t = R.type, e = R.e, g = R.g, cmp = R.cmp;
@@ -297,17 +347,23 @@ table.t tr.tot td{background:#343F48!important;color:#fff;font-weight:800}table.
       : `<div class="card"><div class="eb">Ce que vous gardez en plus</div><div class="cmpv">${rsTxt}</div></div>`;
     const rs = R.gainPositif ? `<div class="card"><div class="eb">Et ensuite</div><div class="cmpv">${rsTxt} Zéro stock, commande après encaissement.</div></div>` : '';
     const palier = `<div class="cta"><b>${R.reste > 0 ? 'Palier Actif à portée.' : 'Palier Actif atteint.'}</b> ${R.reste > 0 ? `Cette commande représente ${e0(e.cout)} d'achat : il vous reste ${e0(R.reste)} pour atteindre 1 000 € de chiffre d'affaires Empower.` : `Avec cette commande, vous dépassez 1 000 € de chiffre d'affaires Empower.`}</div>`;
-    const kMain = `<div class="k main"><div class="eb">Votre marge sur cette commande</div><big>${e0(e.marge)}</big><small>Soit ${pc(e.pct)} du chiffre d'affaires HT de ${e0(e.ca)}</small></div>`;
+    let gainOff = 0;
+    if (R.offre) e.detail.forEach(d => { if (d.marge == null) return; const x = C.calculer([[d.id, d.qte]], 'pa_empower', { tousProduits: true, date: cfg.date }); gainOff += d.marge - (x && x.detail.length ? x.marge : 0); });
+    const kMain = `<div class="k main"><div class="eb">Votre marge sur cette commande</div><big style="color:#FF8A85;font-size:36px">${e0(e.marge)}</big>${gainOff > 1 ? `<span class="pl" style="display:inline-block;background:#4B5761;border-radius:999px;padding:3px 12px;font-size:10px;font-weight:700;margin-top:6px">+${e0(gainOff)} grâce à l'offre</span>` : ''}<small>Soit ${pc(e.pct)} du chiffre d'affaires HT de ${e0(e.ca)}</small></div>`;
     const kDeux = `<div class="two2"><div class="k"><div class="eb">Vous achetez</div><big>${e0(e.cout)}</big><small>HT, via le portail Empower</small></div><div class="k"><div class="eb">Vous revendez</div><big>${e0(e.ca)}</big><small>HT, ${e.licences} licence${e.licences > 1 ? 's' : ''}, prix conseillés</small></div></div>`;
     const legal = `Prix d'achat HT du portail Empower. ${legalBase(C)}${R.offre ? ' Offre soumise aux conditions du programme Empower en vigueur.' : ''}`;
     const entete = '<div class="hd"><span class="p">Produit</span><span class="r">Qté</span><span class="r">Achat HT</span><span class="r">Marge unit.</span><span class="r">Marge totale</span></div>';
     // Peu de lignes : une seule page. Beaucoup de lignes : une page de synthèse puis le détail réparti sur plusieurs pages (7 lignes par page).
     if (lignesArr.length <= 5) {
-      const contenu = `<div><div class="lines${compact}">${entete}${lignes || '<div class="note">Aucun produit sélectionné.</div>'}</div>${offreBloc}${excl}${manq}${sPvp}${sGro}</div>
+      const bOff = R.offre ? barresOffre(cfg, e, R) : '';
+      const contenu = `<div>${bOff || `<div class="lines${compact}">${entete}${lignes || '<div class="note">Aucun produit sélectionné.</div>'}</div>`}${offreBloc}${excl}${manq}${sPvp}${sGro}</div>
 <div class="col">${kMain}${kDeux}${comparaison}${rs}${palier}</div>`;
       return page(cfg, t, num, { contenu, cls: 'two', legal });
     }
-    const resume = page(cfg, t, num, { contenu: `<div class="col">${kMain}${kDeux}${palier}</div><div class="col">${comparaison}${rs}${offreBloc}${excl}${manq}${sPvp}${sGro}</div>`, cls: 'half', legal });
+    const bRes = R.offre ? barresOffre(cfg, e, R, 3) : '';
+    const resume = bRes
+      ? page(cfg, t, num, { contenu: `<div>${bRes}${offreBloc}${excl}${manq}${sPvp}${sGro}</div><div class="col">${kMain}${kDeux}${comparaison}${rs}${palier}</div>`, cls: 'two', legal })
+      : page(cfg, t, num, { contenu: `<div class="col">${kMain}${kDeux}${palier}</div><div class="col">${comparaison}${rs}${offreBloc}${excl}${manq}${sPvp}${sGro}</div>`, cls: 'half', legal });
     const parPage = 7, nbP = Math.ceil(lignesArr.length / parPage);
     const detail = Array.from({ length: nbP }, (_, k) => page(cfg, t, num, {
       eyebrow: `Détail de la commande · page ${k + 1} sur ${nbP}`, forceTitre: `Vos <em>${lignesArr.length} références</em>, ligne par ligne`, echeance: '',
@@ -347,10 +403,13 @@ ${nB.offertOk ? `<div class="big"><span class="eb">Marge effective sur le bundle
       if (!op.ok) return `<div class="card"><div class="oh"><span class="tag">OPÉRATION ${i + 1}</span></div><div class="note">Non chiffré : prix d'achat ${esc(B.canalNom)} non renseigné pour ${esc(nomLong(op.pr))}.</div></div>`;
       const d = op.std.detail[0];
       const of = op.av.detail.find(x => x.produit_offert);
-      return `<div class="card"><div class="oh"><span class="tag">OPÉRATION ${i + 1}</span></div><h2>${esc(op.titre || (op.pr.nom + ' ' + op.pr.appareils + ' appareils + ' + op.off.nom + ' offert'))}</h2>
+      const mxB = Math.max(op.av.marge, op.std.marge, 1);
+      const barsB = of ? `<div style="margin-top:3mm">${barre('Sans le produit offert', '', op.std.marge, mxB, 'b-g', e2(op.std.marge))}${barre('Avec le produit offert', '', op.av.marge, mxB, 'b-d', e2(op.av.marge))}</div>` : '';
+      return `<div class="card f2"><div class="oh"><span class="tag">OPÉRATION ${i + 1}</span></div><h2>${esc(op.titre || (op.pr.nom + ' ' + op.pr.appareils + ' appareils + ' + op.off.nom + ' offert'))}</h2>
+<div style="display:flex;gap:2mm;margin:2mm 0">${ini(op.pr.nom, i * 2)}${ini(op.off.nom, i * 2 + 1)}</div>
 <div class="eq"><span>${op.q > 1 ? op.q + ' × ' : ''}${esc(op.pr.nom.replace('Norton ', ''))} ${op.pr.appareils} app.</span><i>+</i><span class="of">${esc(op.off.nom.replace('Norton ', ''))} offert 0 €</span></div>
 <div class="mini"><span>Prix d'achat ${esc(B.canalNom)}</span><b>${e2(d.pa)} HT</b><span>PVP conseillé ${esc(op.pr.nom.replace('Norton ', ''))}</span><b>${e2(d.pvp_ttc)} TTC</b>${of ? `<span>Valeur du produit offert</span><b>${e2(of.pvp_ttc)} TTC</b>` : ''}</div>
-${of ? `<div class="big"><span class="eb">Votre marge avec l'offre</span><b>${e2(op.av.marge)}</b><small>${pc1(op.av.pct)} du CA HT, contre ${e2(op.std.marge)} (${pc1(op.std.pct)}) sans l'offre</small></div>` : `<div class="big"><span class="eb">Votre marge sur l'achat</span><b>${e2(op.std.marge)}</b><small>${pc1(op.std.pct)} du CA HT · produit offert non chiffré, PVP à renseigner</small></div>`}
+${barsB}${of ? `<div class="big"><span class="eb">Votre marge avec l'offre</span><b>${e2(op.av.marge)}</b><small>${pc1(op.av.pct)} du CA HT, contre ${e2(op.std.marge)} (${pc1(op.std.pct)}) sans l'offre</small></div>` : `<div class="big"><span class="eb">Votre marge sur l'achat</span><b>${e2(op.std.marge)}</b><small>${pc1(op.std.pct)} du CA HT · produit offert non chiffré, PVP à renseigner</small></div>`}
 <div class="steps"><div><b>1</b>Vous proposez le bundle à votre client.</div><div><b>2</b>Le produit offert est associé à la vente.</div><div><b>3</b>Activation via le portail Empower.</div></div></div>`;
     });
     const legalB = `Prix d'achat ${esc(B.canalNom)}. ${legalBase(C)} Opération encadrée par un contrat mandat établi avec Impact Sales Marketing. Détails et modalités communiqués par votre Chef de Secteur.`;
@@ -393,7 +452,17 @@ ${of ? `<div class="big"><span class="eb">Votre marge avec l'offre</span><b>${e2
     const maxPage = dgMode ? (K.grilles.length > 1 ? 9 : 10) : 9;
     const nbP = Math.max(1, ...K.grilles.map(g => Math.ceil(g.lignes.length / maxPage)));
     const parPage = Math.max(1, ...K.grilles.map(g => Math.ceil(g.lignes.length / nbP)));   // pages équilibrées
-    return Array.from({ length: nbP }, (_, k) => {
+    let synth = '';
+    if (dgMode && K.grilles.length === 1 && K.paliers.length) {
+      const g0 = K.grilles[0], top = g0.lignes.filter(l => l.tiers).sort((x, y) => y.base - x.base).slice(0, 2);
+      const cp = ['b-c', 'b-c', 'b-i', 'b-i'];
+      const grp = top.map((l, i) => `<div class="grp"><div class="gnm">${ini(l.p.nom, i)}<div><b>${esc(l.p.nom.replace('Norton ', ''))}</b><small>${l.p.appareils} app.${l.p.pvp_ttc ? ' · PVP conseillé ' + e2(l.p.pvp_ttc) + ' TTC' : ''}</small></div></div>`
+        + barre('PA habituel', '', l.base, l.base, 'b-g', e2(l.base))
+        + K.paliers.map((x, j) => barre(`-${Number(x.remise_pct)} %`, `Dès ${x.seuil} lic.${x.validation ? ' · sous réserve' : ''}`, l.tiers[j].brut, l.base, cp[j % 4], e2(l.tiers[j].brut))).join('') + '</div>').join('');
+      const kd = `<div class="kd"><div class="eb">Remise maximale</div><big>-${K.remiseMax} <small>%</small></big><p>Le prix d'achat baisse à chaque palier de licences commandées, toutes références confondues.</p><div>${K.paliers.map(x => `<span class="pl">-${Number(x.remise_pct)} % dès ${x.seuil}</span>`).join('')}${valid ? '<span class="pl">Dernier palier sous réserve de validation</span>' : ''}</div></div>`;
+      synth = page(cfg, t, num, Object.assign({}, opts, { eyebrow: `${t.eyebrow} · aperçu`, contenu: `<div class="card fill">${chT('eur', 'Prix d\'achat selon le volume commandé')}${grp}</div>${kd}`, cls: 'two' }));
+    }
+    return synth + Array.from({ length: nbP }, (_, k) => {
       const cartes = K.grilles.map(g => { const l = g.lignes.slice(k * parPage, (k + 1) * parPage); return l.length ? carte(Object.assign({}, g, { lignes: l })) : ''; }).join('');
       const dernier = k === nbP - 1;
       return page(cfg, t, num, Object.assign({}, opts, { contenu: cartes, apres: dernier ? apres : '', eyebrow: nbP > 1 ? `${t.eyebrow} · page ${k + 1} sur ${nbP}` : undefined, echeance: opts.echeance }));
@@ -437,22 +506,34 @@ ${of ? `<div class="big"><span class="eb">Votre marge avec l'offre</span><b>${e2
     const total = `<tr class="tot"><td>Total des ${P.lignes.length} gamme${P.lignes.length > 1 ? 's' : ''}</td><td>${P.licences}</td><td></td><td>${e2(P.achats)}</td><td class="g">${e2(P.budget)}</td>${P.repli ? `<td>${e2(P.budgetRepli)}</td>` : ''}</tr>`;
     const carteBudget = `<div class="bgt"><div class="eb">Budget ${pLib === 'mois' ? 'mensuel' : pLib === 'an' ? 'annuel' : pLib === 'semestre' ? 'semestriel' : 'trimestriel'} proposé</div><big>${bud.replace(' €', '')} <small>€ HT</small></big>
 <p>Base de cotation à -${P.remise} % du PA HT portail${P.mois > 1 ? `, soit environ ${e0(P.parMois)} HT par mois` : ''}.</p>${P.repli ? `<span class="chip">Repli à -${P.repli} % : ${e0(P.budgetRepli)} HT</span>` : ''}</div>`;
+    const mxB = Math.max(...P.bases.map(b => b.budget), 1);
+    const bb = P.bases.map((b, i) => barre(esc(b.lib), esc(b.sub), b.budget, mxB, b.paliers ? 'b-i' : i === 0 ? 'b-d' : 'b-c', e0(b.budget), 1)).join('');
+    const cardBases = P.bases.length > 1 ? `<div class="card">${chT('eur', 'Compensation HT selon la base de calcul')}${bb}</div>` : '';
     const tables = Array.from({ length: nbP }, (_, k) => {
       const l = P.lignes.slice(k * par, (k + 1) * par), dernier = k === nbP - 1;
       const tb = `<div class="card"><div class="oh"><span class="tag">BUDGET PAR GAMME</span></div><table class="t pl">${entete}<tbody>${l.map(ligneT).join('')}${dernier ? total : ''}</tbody></table>${dernier && P.manquants.length ? `<div class="note">Non chiffré, prix d'achat Empower non communiqué : ${esc(P.manquants.join(', '))}.</div>` : ''}</div>`;
       return page(cfg, t, num, { eyebrow: nbP > 1 ? `Budget de compensation · page ${k + 1} sur ${nbP}` : 'Budget de compensation', forceTitre: `Un budget de <em>${bud} HT</em> à -${P.remise} % sur ${P.lignes.length} gamme${P.lignes.length > 1 ? 's' : ''}`, sous: sousC, echeance: '',
-        contenu: dernier && nbP === 1 ? tb + carteBudget : tb, cls: dernier && nbP === 1 ? 'two' : 'one', pill: 'Budget prévisionnel', legal });
+        contenu: dernier && nbP === 1 ? `<div class="col">${tb}${cardBases}</div>` + carteBudget : tb, cls: dernier && nbP === 1 ? 'two' : 'one', pill: 'Budget prévisionnel', legal });
     }).join('');
+    let cmpPage = '';
+    if (P.bases.length > 1 && nbP > 1) {
+      const mxQ = Math.max(...P.lignes.map(l => l.q), 1);
+      const best = P.bases.reduce((m, b) => b.budget > m.budget ? b : m, P.bases[0]);
+      const lic = P.lignes.slice(0, 8).map((l, i) => barre(`${esc(l.p.nom.replace('Norton ', ''))}`, `${l.p.appareils} app.`, l.q, mxQ, 'b-d', l.q, 1)).join('');
+      const kd = `<div class="kd"><div class="eb">Budget ${pLib === 'mois' ? 'mensuel' : pLib === 'an' ? 'annuel' : pLib === 'semestre' ? 'semestriel' : 'trimestriel'} proposé</div><big>${bud.replace(' €', '')} <small>€ HT</small></big><p>${esc(P.bases[0].lib)}${P.mois > 1 ? `, soit ${e0(P.parMois)} HT par mois` : ''}.</p><div>${P.bases.slice(1).map(b => `<span class="pl">${esc(b.lib)} : ${e0(b.budget)} HT</span>`).join('')}</div></div>`;
+      cmpPage = page(cfg, t, num, { eyebrow: 'Comparaison des bases de calcul', forceTitre: `Le budget selon <em>${P.bases.length} bases de calcul</em>`, sous: sousC, echeance: '', cls: 'three', pill: 'Budget prévisionnel', legal,
+        contenu: `<div class="card fill">${chT('doc', 'Licences par gamme')}${lic}</div><div class="card fill">${chT('eur', 'Compensation HT par base')}${bb}<p class="note">Achats au prix portail : ${e0(P.achats)} HT pour ${P.licences} licences.</p></div>${kd}` });
+    }
     const etapes = [['M1', 'Grosse commande', 'mandat du mois'], ['M2', 'Grosse commande', 'point avec Norton'], ['M3', 'Grosse commande', 'bilan de la période'], ['M4', 'Point suivant', 'révision du budget']];
     const rythme = page(cfg, t, num, { eyebrow: 'Pilotage', forceTitre: `Un point avec Norton, <em>${esc(P.point.toLowerCase())}</em>`, sous: sousC, echeance: '', cls: 'one', pill: 'Budget prévisionnel', legal,
       contenu: `<div class="rythme">${etapes.map(([m, a, b]) => `<div class="card"><b>${m}</b><span>${a}</span><small>${b}</small></div>`).join('')}</div>
 <div class="body half" style="margin:0"><div class="card"><div class="eb">Cadence</div><h2>${esc(P.cadence)}</h2><div class="why">Point ${esc(P.point.toLowerCase())} avec Norton sur les commandes, les activations et la compensation versée.</div></div>
-<div class="card"><div class="eb">Indicateurs suivis</div><div class="why">Licences par gamme, taux d'activation, compensation versée contre budget.</div></div></div>` });
+<div class="card"><div class="eb">Indicateurs suivis</div><div class="why">Licences par gamme, taux d'activation, compensation versée contre budget.</div></div></div>${carteBudget}` });
     const pts = [[`Base de compensation à -${P.remise} % du PA HT portail, versée en HT`, 'Décision'], [`Budget ${pLib} de ${bud} HT et répartition par gamme`, 'Décision'], [`Point ${P.point.toLowerCase()} sur commandes, activations et compensation`, 'Cadence']];
     if (P.autre) pts.push([esc(P.autre), 'Support']);
     const valid = page(cfg, t, num, { eyebrow: 'Validations', forceTitre: `${pts.length} points à valider pour un budget de <em>${bud} HT</em>`, sous: sousC, echeance: '', cls: 'two', pill: 'Budget prévisionnel', legal,
       contenu: `<div class="vals">${pts.map(([x, k], i) => `<div class="v"><i>${i + 1}</i><span>${x.replace(/^(.*)$/, '$1')}</span><em>${k}</em></div>`).join('')}</div>${carteBudget}` });
-    return tables + rythme + valid;
+    return tables + cmpPage + rythme + valid;
   }
 
   function html(cfg) {
