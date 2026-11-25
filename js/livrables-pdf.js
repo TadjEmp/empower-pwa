@@ -151,7 +151,7 @@ window.LivrablesPDF = (function () {
     const sum = f => lignes.reduce((n, l) => n + (f(l) || 0), 0);
     const achats = sum(l => l.achats), budget = sum(l => l.comp), budgetRepli = repli ? sum(l => l.compRepli) : null;
     return { remise, repli, periode, mois, lignes, manquants, licences: sum(l => l.q), achats, budget, budgetRepli,
-      parMois: budget / mois, achatsMois: achats / mois, cadence: pl.cadence || '1 commande par mois', point: pl.point || 'Tous les 2 mois', encours: pl.encours !== false, autre: pl.autre || '' };
+      parMois: budget / mois, achatsMois: achats / mois, cadence: pl.cadence || '1 commande par mois', point: pl.point || 'Tous les 2 mois', autre: pl.autre || '' };
   }
 
   // ── Mise en page ────────────────────────────────────────────────────────────────
@@ -444,12 +444,11 @@ ${of ? `<div class="big"><span class="eb">Votre marge avec l'offre</span><b>${e2
         contenu: dernier && nbP === 1 ? tb + carteBudget : tb, cls: dernier && nbP === 1 ? 'two' : 'one', pill: 'Budget prévisionnel', legal });
     }).join('');
     const etapes = [['M1', 'Grosse commande', 'mandat du mois'], ['M2', 'Grosse commande', 'point avec Norton'], ['M3', 'Grosse commande', 'bilan de la période'], ['M4', 'Point suivant', 'révision du budget']];
-    const rythme = page(cfg, t, num, { eyebrow: 'Pilotage', forceTitre: `${esc(P.point)} un point, <em>${e0(P.achatsMois)} HT</em> d'encours par mois`, sous: sousC, echeance: '', cls: 'one', pill: 'Budget prévisionnel', legal,
+    const rythme = page(cfg, t, num, { eyebrow: 'Pilotage', forceTitre: `Un point avec Norton, <em>${esc(P.point.toLowerCase())}</em>`, sous: sousC, echeance: '', cls: 'one', pill: 'Budget prévisionnel', legal,
       contenu: `<div class="rythme">${etapes.map(([m, a, b]) => `<div class="card"><b>${m}</b><span>${a}</span><small>${b}</small></div>`).join('')}</div>
 <div class="body half" style="margin:0"><div class="card"><div class="eb">Cadence</div><h2>${esc(P.cadence)}</h2><div class="why">Point ${esc(P.point.toLowerCase())} avec Norton sur les commandes, les activations et la compensation versée.</div></div>
-${P.encours ? `<div class="card"><div class="eb">Encours crédit</div><h2>${e0(P.achatsMois)} HT / mois</h2><div class="why">Achats portail d'une commande mensuelle, règlement à 30 jours.</div></div>` : `<div class="card"><div class="eb">Indicateurs suivis</div><div class="why">Licences par gamme, taux d'activation, compensation versée contre budget.</div></div>`}</div>` });
+<div class="card"><div class="eb">Indicateurs suivis</div><div class="why">Licences par gamme, taux d'activation, compensation versée contre budget.</div></div></div>` });
     const pts = [[`Base de compensation à -${P.remise} % du PA HT portail, versée en HT`, 'Décision'], [`Budget ${pLib} de ${bud} HT et répartition par gamme`, 'Décision'], [`Point ${P.point.toLowerCase()} sur commandes, activations et compensation`, 'Cadence']];
-    if (P.encours) pts.push([`Encours crédit de ${nom} : ${e0(P.achatsMois)} HT par mois`, 'Crédit']);
     if (P.autre) pts.push([esc(P.autre), 'Support']);
     const valid = page(cfg, t, num, { eyebrow: 'Validations', forceTitre: `${pts.length} points à valider pour un budget de <em>${bud} HT</em>`, sous: sousC, echeance: '', cls: 'two', pill: 'Budget prévisionnel', legal,
       contenu: `<div class="vals">${pts.map(([x, k], i) => `<div class="v"><i>${i + 1}</i><span>${x.replace(/^(.*)$/, '$1')}</span><em>${k}</em></div>`).join('')}</div>${carteBudget}` });

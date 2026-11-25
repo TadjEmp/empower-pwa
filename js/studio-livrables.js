@@ -64,7 +64,7 @@ window.Studio = (function () {
       canal: 'pa_empower', debut: jour(), op1: 'n360-del5', q1: 1, of1: 'util-wl10', nom1: '', pvp1: '', op2: '', q2: 1, of2: '', nom2: '', pvp2: '',
       couv: true,
       // plan commercial (saisie à la main : c'est une proposition)
-      plan: [['n360-prem10', 100], ['n360-del5', 50], ['n360-del3', 50], ['', 0]], planRemise: '60', planRepli: '50', planPeriode: 'trimestre', planCadence: '1 commande par mois', planPoint: 'Tous les 2 mois', planEncours: true, planAutre: '',
+      plan: [['n360-prem10', 100], ['n360-del5', 50], ['n360-del3', 50], ['', 0]], planRemise: '60', planRepli: '50', planPeriode: 'trimestre', planCadence: '1 commande par mois', planPoint: 'Tous les 2 mois', planAutre: '',
       sig: signature(),
     };
   }
@@ -87,7 +87,7 @@ window.Studio = (function () {
     const extra = s.type === 'bundle' ? { canal: s.canal, debut: s.debut, operations: [1, 2].filter(n => s['op' + n]).map(opBundle) }
       : s.type === 'cotation_grossiste' ? { simulation: simu(), cotation: { libelle: s.cotLib, debut: s.cotDebut, fin: s.cotFin, paliers, canaux: [s.cotTd ? 'td' : '', s.cotIngram ? 'ingram' : ''].filter(Boolean), non_reconductible: s.cotNonRecond }, date: s.cotDebut || undefined }
       : s.type === 'cotation_empower' ? { simulation: simu(), cotation: { libelle: s.cotLib, debut: s.cotDebut, fin: s.cotFin, paliers, canaux: ['empower'], non_reconductible: s.cotNonRecond }, date: s.cotDebut || undefined }
-      : s.type === 'plan_commercial' ? { plan: { lignes: s.plan.filter(([id, q]) => id && num(q) > 0).map(([id, q]) => [id, Math.floor(num(q))]), remise: num(s.planRemise) || 60, repli: num(s.planRepli) || 0, periode: s.planPeriode, cadence: s.planCadence.trim(), point: s.planPoint.trim(), encours: !!s.planEncours, autre: s.planAutre.trim() } }
+      : s.type === 'plan_commercial' ? { plan: { lignes: s.plan.filter(([id, q]) => id && num(q) > 0).map(([id, q]) => [id, Math.floor(num(q))]), remise: num(s.planRemise) || 60, repli: num(s.planRepli) || 0, periode: s.planPeriode, cadence: s.planCadence.trim(), point: s.planPoint.trim(), autre: s.planAutre.trim() } }
       : {};
     return Object.assign({ date: s.dateEmission || jour(), couverture: s.couv !== false }, extra, {
       type, titre: s.titre.trim(), conditions: s.conditions.trim(), offre, grossiste: s.grossiste, volume: false,
@@ -177,7 +177,6 @@ window.Studio = (function () {
         <div class="st-g"><div class="st-t">Budget de compensation</div>${champ('Période', `<select onchange="Studio.maj('planPeriode',this.value)">${per}</select>`)}
         <div class="st-2">${champ('Base de cotation (remise en %)', inp('planRemise', 'number', 'min="1" max="90" step="0.5" inputmode="decimal"'))}${champ('Option de repli (%, vide = aucune)', inp('planRepli', 'number', 'min="0" max="90" step="0.5" inputmode="decimal"'))}</div>
         ${champ('Cadence des commandes', inp('planCadence'))}${champ('Point avec Norton', inp('planPoint'))}
-        <label class="st-o"><input type="checkbox" ${s.planEncours ? 'checked' : ''} onchange="Studio.maj('planEncours',this.checked);Studio.rempl()"/> Afficher l'encours crédit mensuel</label>
         ${champ('Autre point à valider (facultatif)', inp('planAutre'))}</div>`;
     } else if (s.type === 'bundle') {
       const canaux = [['pa_empower', 'Empower'], ['pa_td', 'Tech Data'], ['pa_ingram', 'Ingram Micro']].map(([k, l]) => `<option value="${k}" ${s.canal === k ? 'selected' : ''}>${l}</option>`).join('');
