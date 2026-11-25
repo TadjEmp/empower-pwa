@@ -35,13 +35,13 @@ window.Studio = (function () {
   ];
   const PDF = { cotation_grossiste: 'cotation', cotation_empower: 'cotation_empower', offre21: 'offre21', offre11: 'offre11', bundle: 'bundle' };
   const ALIAS = { cotation: 'cotation_grossiste', bienvenue: 'offre21', exceptionnelle: 'offre21', proposition: 'offre21', supplementaire: 'offre21' };
-  // Paliers par défaut : 2+1 dès 10 licences, 1+1 dès 20 (30 pour Small Business) ; cotations -30 % dès 10, -50 % dès 25, -60 % dès 50 (sous réserve de validation).
+  // Paliers par défaut : 2+1 dès 5 licences, 1+1 dès 10 (20 pour Small Business) ; cotations -30 % dès 10, -50 % dès 25, -60 % dès 50 (sous réserve de validation).
   const PALIERS_COT = [[10, 30, false], [25, 50, false], [50, 60, true]];
   const estSB = id => /^nsb/.test(String(id || ''));
 
   function seuilDefaut(type, lignes) {
     const sb = (lignes || []).some(([id, q]) => id && q > 0 && estSB(id));
-    return type === 'offre11' ? (sb ? 30 : 20) : 10;
+    return type === 'offre11' ? (sb ? 20 : 10) : 5;
   }
 
   function etat(type, compte) {
@@ -168,7 +168,7 @@ window.Studio = (function () {
         ${champ('Licence offerte', `<select onchange="Studio.maj('offertId',this.value)">${prods(s.offertId, 'La même licence que celle achetée')}</select>`)}
         ${champ('Palier : offre valable dès (licences commandées)', `<input type="number" id="st-seuil" min="1" inputmode="numeric" value="${esc(s.seuil)}" oninput="Studio.majSeuil(this.value)"/>`)}
         ${champ('Comparé à', `<select onchange="Studio.maj('grossiste',this.value)"><option value="pa_td" ${s.grossiste === 'pa_td' ? 'selected' : ''}>Tech Data</option><option value="pa_ingram" ${s.grossiste === 'pa_ingram' ? 'selected' : ''}>Ingram Micro</option></select>`)}
-        <p class="st-m">Le nombre de licences offertes se calcule tout seul : une offerte pour chaque tranche de ${X} acheté${X > 1 ? 'es' : 'e'}, une fois le palier atteint. Palier par défaut : 2+1 dès 10 licences, 1+1 dès 20 (30 pour Small Business).</p></div>`;
+        <p class="st-m">Le nombre de licences offertes se calcule tout seul : une offerte pour chaque tranche de ${X} acheté${X > 1 ? 'es' : 'e'}, une fois le palier atteint. Palier par défaut : 2+1 dès 5 licences, 1+1 dès 10 (20 pour Small Business).</p></div>`;
     }
     const perso = `<details class="st-g st-det"><summary class="st-t">Personnalisation du document</summary>
       <div class="st-t">Destinataire (facultatif)</div>

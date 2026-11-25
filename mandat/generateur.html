@@ -156,8 +156,8 @@ html.integre .hdr{display:none}   /* dans la visionneuse de l'application : sa b
 
   <div class="st">Type d'offre</div>
   <div class="otabs">
-    <div class="otab active" onclick="setOffer('1+1',this)"><span class="bigt">1+1</span>Dès 20 licences</div>
-    <div class="otab" onclick="setOffer('2+1',this)"><span class="bigt">2+1</span>Dès 10 licences</div>
+    <div class="otab active" onclick="setOffer('1+1',this)"><span class="bigt">1+1</span>Dès 10 licences</div>
+    <div class="otab" onclick="setOffer('2+1',this)"><span class="bigt">2+1</span>Dès 5 licences</div>
     <div class="otab" onclick="setOffer('remise',this)"><span class="bigt">−%</span>Remise dégressive</div>
   </div>
 
@@ -187,12 +187,12 @@ html.integre .hdr{display:none}   /* dans la visionneuse de l'application : sa b
     <div class="st">Produits achetés (1+1) — saisir PU HT + quantités</div>
     <table class="ptbl"><thead><tr><th>✓</th><th>Référence</th><th>Dev.</th><th>PU HT</th><th>Qté</th></tr></thead>
     <tbody id="tb_1_1"></tbody></table>
-    <div class="f"><label>Palier : offre valable dès (licences commandées)</label><input type="number" id="seuil_1_1" value="20" min="1" oninput="rend()"></div>
+    <div class="f"><label>Palier : offre valable dès (licences commandées)</label><input type="number" id="seuil_1_1" value="10" min="1" oninput="rend()"></div>
     <div class="f"><label>Licence offerte (1 pour 1 achetée)</label>
       <select id="off_1_1" onchange="onLicenseChange('off_1_1','pu_off_1_1')"></select>
     </div>
     <div class="f"><label>PU HT offert</label><input type="text" id="pu_off_1_1" placeholder="Ex : 11,61" oninput="rend()"></div>
-    <div class="hint">Palier par défaut : 1+1 dès 20 licences (30 pour Small Business). Le nombre de licences offertes se calcule tout seul une fois le palier atteint.</div>
+    <div class="hint">Palier par défaut : 1+1 dès 10 licences (20 pour Small Business). Le nombre de licences offertes se calcule tout seul une fois le palier atteint.</div>
   </div>
 
   <!-- PANEL 2+1 -->
@@ -200,12 +200,12 @@ html.integre .hdr{display:none}   /* dans la visionneuse de l'application : sa b
     <div class="st">Produits achetés (2+1) — saisir PU HT + quantités</div>
     <table class="ptbl"><thead><tr><th>✓</th><th>Référence</th><th>Dev.</th><th>PU HT</th><th>Qté</th></tr></thead>
     <tbody id="tb_2_1"></tbody></table>
-    <div class="f"><label>Palier : offre valable dès (licences commandées)</label><input type="number" id="seuil_2_1" value="10" min="1" oninput="rend()"></div>
+    <div class="f"><label>Palier : offre valable dès (licences commandées)</label><input type="number" id="seuil_2_1" value="5" min="1" oninput="rend()"></div>
     <div class="f"><label>Licence offerte (1 pour 2 achetées)</label>
       <select id="off_2_1" onchange="onLicenseChange('off_2_1','pu_off_2_1')"></select>
     </div>
     <div class="f"><label>PU HT offert</label><input type="text" id="pu_off_2_1" placeholder="Ex : 11,61" oninput="rend()"></div>
-    <div class="hint">Palier par défaut : 2+1 dès 10 licences. Le nombre de licences offertes se calcule tout seul une fois le palier atteint.</div>
+    <div class="hint">Palier par défaut : 2+1 dès 5 licences. Le nombre de licences offertes se calcule tout seul une fois le palier atteint.</div>
   </div>
 
   <!-- PANEL REMISE -->
@@ -410,8 +410,8 @@ function rend(){
   const refLabel = channelIsEmpower ? "Réf. commande EMPOWER" : "Réf. commande / facture grossiste";
 
   const OFFER_TITLES={
-    "1+1": `Offre 1+1 — dès ${parseInt(gv("seuil_1_1"))||20} licences`,
-    "2+1": `Offre 2+1 — dès ${parseInt(gv("seuil_2_1"))||10} licences`,
+    "1+1": `Offre 1+1 — dès ${parseInt(gv("seuil_1_1"))||10} licences`,
+    "2+1": `Offre 2+1 — dès ${parseInt(gv("seuil_2_1"))||5} licences`,
     "remise": `Offre Remise dégressive −${remise}% sur Prix d'Achat`
   };
   const CM=COMP_MODES[cmode];
