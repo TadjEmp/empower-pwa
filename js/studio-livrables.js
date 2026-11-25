@@ -8,7 +8,7 @@
 //  Qui peut l'ouvrir : ADMIN, CDS, CHANNEL_MANAGER et EXTERNE (fournisseur de leads : génère les documents, sans envoi tracé ni écriture au journal). Chaque PDF créé pour un compte est inscrit au journal (« Devis »).
 // ═══════════════════════════════════════
 window.Studio = (function () {
-  const TYPES = ['cotation_grossiste', 'cotation_empower', 'offre21', 'offre11', 'bundle'];
+  const TYPES = ['cotation_grossiste', 'cotation_empower', 'offre21', 'offre11', 'bundle', 'plan_commercial'];
   const LARGEUR = 1123;   // A4 paysage à 96 dpi
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const jour = () => new Date().toISOString().slice(0, 10);
@@ -32,8 +32,9 @@ window.Studio = (function () {
     ['offre21', 'Offre 2+1', '2 achetées, 1 offerte, dès un palier'],
     ['offre11', 'Offre 1+1', '1 achetée, 1 offerte, dès un palier'],
     ['bundle', 'Bundle', 'Un produit offert avec l\'achat d\'un autre'],
+    ['plan_commercial', 'Plan commercial', 'Budget de compensation par période, à saisir'],
   ];
-  const PDF = { cotation_grossiste: 'cotation', cotation_empower: 'cotation_empower', offre21: 'offre21', offre11: 'offre11', bundle: 'bundle' };
+  const PDF = { cotation_grossiste: 'cotation', cotation_empower: 'cotation_empower', offre21: 'offre21', offre11: 'offre11', bundle: 'bundle', plan_commercial: 'plan_commercial' };
   const ALIAS = { cotation: 'cotation_grossiste', bienvenue: 'offre21', exceptionnelle: 'offre21', proposition: 'offre21', supplementaire: 'offre21' };
   // Paliers par défaut : 2+1 dès 5 licences, 1+1 dès 10 (20 pour Small Business) ; cotations -30 % dès 10, -50 % dès 25, -60 % dès 50 (sous réserve de validation).
   const PALIERS_COT = [[10, 30, false], [25, 50, false], [50, 60, true]];
@@ -61,6 +62,9 @@ window.Studio = (function () {
       offertId: '', seuil: seuilDefaut(t, lignes), seuilManuel: false, lignes, grossiste: 'pa_td',
       // bundle
       canal: 'pa_empower', debut: jour(), op1: 'n360-del5', q1: 1, of1: 'util-wl10', nom1: '', pvp1: '', op2: '', q2: 1, of2: '', nom2: '', pvp2: '',
+      couv: true,
+      // plan commercial (saisie à la main : c'est une proposition)
+      plan: [['n360-prem10', 100], ['n360-del5', 50], ['n360-del3', 50], ['', 0]], planRemise: '60', planRepli: '50', planPeriode: 'trimestre', planCadence: '1 commande par mois', planPoint: 'Tous les 2 mois', planEncours: true, planAutre: '',
       sig: signature(),
     };
   }
@@ -83,11 +87,12 @@ window.Studio = (function () {
     const extra = s.type === 'bundle' ? { canal: s.canal, debut: s.debut, operations: [1, 2].filter(n => s['op' + n]).map(opBundle) }
       : s.type === 'cotation_grossiste' ? { simulation: simu(), cotation: { libelle: s.cotLib, debut: s.cotDebut, fin: s.cotFin, paliers, canaux: [s.cotTd ? 'td' : '', s.cotIngram ? 'ingram' : ''].filter(Boolean), non_reconductible: s.cotNonRecond }, date: s.cotDebut || undefined }
       : s.type === 'cotation_empower' ? { simulation: simu(), cotation: { libelle: s.cotLib, debut: s.cotDebut, fin: s.cotFin, paliers, canaux: ['empower'], non_reconductible: s.cotNonRecond }, date: s.cotDebut || undefined }
+      : s.type === 'plan_commercial' ? { plan: { lignes: s.plan.filter(([id, q]) => id && num(q) > 0).map(([id, q]) => [id, Math.floor(num(q))]), remise: num(s.planRemise) || 60, repli: num(s.planRepli) || 0, periode: s.planPeriode, cadence: s.planCadence.trim(), point: s.planPoint.trim(), encours: !!s.planEncours, autre: s.planAutre.trim() } }
       : {};
-    return Object.assign({ date: s.dateEmission || jour() }, extra, {
+    return Object.assign({ date: s.dateEmission || jour(), couverture: s.couv !== false }, extra, {
       type, titre: s.titre.trim(), conditions: s.conditions.trim(), offre, grossiste: s.grossiste, volume: false,
       palier: isOffre ? { seuil: Math.max(1, Math.floor(num(s.seuil)) || 1) } : null,
-      lignes: s.lignes.filter(([id, q]) => id && q > 0), validite: s.type.indexOf('cotation') === 0 ? '' : s.validite,
+      lignes: s.lignes.filter(([id, q]) => id && q > 0), validite: (s.type.indexOf('cotation') === 0 || s.type === 'plan_commercial') ? '' : s.validite,
       client: { nom: s.client.trim(), contact: s.contact.trim(), region: s.region },
       emetteur: { nom: s.sig.nom, role: s.sig.role, tel: s.sig.tel, mail: s.sig.mail },
     });
@@ -129,6 +134,16 @@ window.Studio = (function () {
           ? `<div class="st-k"><span>Opération ${i + 1} : achat</span><b>${e2(o.av.cout)} HT</b></div><div class="st-k"><span>Marge avec le produit offert</span><b>${o.offertOk ? e2(o.av.marge) + ' (' + o.av.pct + ' %)' : 'PVP offert à renseigner'}</b></div><div class="st-k"><span>Marge sans</span><span>${e2(o.std.marge)} (${o.std.pct} %)</span></div>`
           : `<p class="st-m">Opération ${i + 1} : prix d'achat non renseigné pour ce produit.</p>`).join('') + '</div>';
       }
+      if (s.type === 'plan_commercial') {
+        const P = L.calculerPlan(c);
+        if (!P.lignes.length) return '<p class="st-m">Choisissez des gammes et des volumes pour voir le budget.</p>';
+        return `<div class="st-calc"><div class="st-t">Calcul automatique</div>
+          <div class="st-k"><span>Licences</span><b>${P.licences}</b></div><div class="st-k"><span>Achats HT au prix portail</span><b>${e2(P.achats)}</b></div>
+          <div class="st-k"><span>Budget à -${P.remise} %</span><b>${e2(P.budget)} HT</b></div>
+          ${P.repli ? `<div class="st-k"><span>Repli à -${P.repli} %</span><span>${e2(P.budgetRepli)} HT</span></div>` : ''}
+          ${P.mois > 1 ? `<div class="st-k"><span>Par mois</span><span>${e2(P.parMois)} HT</span></div>` : ''}
+          ${P.manquants.length ? `<p class="st-m">Non chiffré : ${esc(P.manquants.join(', '))}.</p>` : ''}</div>`;
+      }
     } catch (e) { return ''; }
     return '';
   }
@@ -154,6 +169,16 @@ window.Studio = (function () {
         <label class="st-o"><input type="checkbox" ${s.cotNonRecond ? 'checked' : ''} onchange="Studio.maj('cotNonRecond',this.checked)"/> Opération non reconductible</label></div>
         <div class="st-g"><div class="st-t">Paliers dégressifs</div>${pal}<p class="st-m">Le prix d'achat baisse selon le nombre de licences commandées. Tous les prix et marges se recalculent depuis les prix d'achat ${gro ? 'des grossistes' : 'Empower'} du catalogue. Le palier -60 % passe sous certains prix Empower : il est signalé « sous réserve de validation ».</p></div>
         <div class="st-g"><div class="st-t">Commande type (facultatif)</div>${simL}${champ('Palier appliqué', `<select onchange="Studio.maj('simPalier',this.value)"><option value="auto" ${s.simPalier === 'auto' ? 'selected' : ''}>Automatique selon le total de licences</option>${s.pal.map(([sx, r], i) => `<option value="${i}" ${String(s.simPalier) === String(i) ? 'selected' : ''}>-${esc(r)} % (dès ${esc(sx)} licences)</option>`).join('')}</select>`)}<p class="st-m">Ajoute au document le total HT d'une commande type, avec le palier atteint appliqué.</p></div>`;
+    } else if (s.type === 'plan_commercial') {
+      const gam = s.plan.map(([id, q], i) => `<div class="st-lg"><select aria-label="Gamme ${i + 1}" onchange="Studio.majPlanLigne(${i},0,this.value)">${prods(id, 'Choisir une gamme')}</select><input type="number" min="0" max="99999" inputmode="numeric" aria-label="Licences ${i + 1}" value="${q}" oninput="Studio.majPlanLigne(${i},1,this.value)"/></div>`).join('');
+      const per = [['mois', 'Par mois'], ['trimestre', 'Par trimestre'], ['semestre', 'Par semestre'], ['an', 'Par an']].map(([k, l]) => `<option value="${k}" ${s.planPeriode === k ? 'selected' : ''}>${l}</option>`).join('');
+      spec = `<div class="st-g"><div class="st-t">Plan commercial : licences par gamme (volume de la période)</div>${gam}<button type="button" class="st-btn" onclick="Studio.ajouterGamme()">+ Ajouter une gamme</button>
+        <p class="st-m">Saisie à la main : c'est une proposition. Les prix d'achat sont ceux du portail Empower (catalogue).</p></div>
+        <div class="st-g"><div class="st-t">Budget de compensation</div>${champ('Période', `<select onchange="Studio.maj('planPeriode',this.value)">${per}</select>`)}
+        <div class="st-2">${champ('Base de cotation (remise en %)', inp('planRemise', 'number', 'min="1" max="90" step="0.5" inputmode="decimal"'))}${champ('Option de repli (%, vide = aucune)', inp('planRepli', 'number', 'min="0" max="90" step="0.5" inputmode="decimal"'))}</div>
+        ${champ('Cadence des commandes', inp('planCadence'))}${champ('Point avec Norton', inp('planPoint'))}
+        <label class="st-o"><input type="checkbox" ${s.planEncours ? 'checked' : ''} onchange="Studio.maj('planEncours',this.checked);Studio.rempl()"/> Afficher l'encours crédit mensuel</label>
+        ${champ('Autre point à valider (facultatif)', inp('planAutre'))}</div>`;
     } else if (s.type === 'bundle') {
       const canaux = [['pa_empower', 'Empower'], ['pa_td', 'Tech Data'], ['pa_ingram', 'Ingram Micro']].map(([k, l]) => `<option value="${k}" ${s.canal === k ? 'selected' : ''}>${l}</option>`).join('');
       const op = n => `<div class="st-t">Opération ${n}${n === 2 ? ' (facultative)' : ''}</div>
@@ -174,9 +199,10 @@ window.Studio = (function () {
       <div class="st-t">Destinataire (facultatif)</div>
         ${champ('Société', `<input type="text" list="st-comptes" value="${esc(s.client)}" oninput="Studio.choisirCompte(this.value)" autocomplete="off"/><datalist id="st-comptes">${comptes.slice(0, 400).map(c => `<option value="${esc(c.Nom_Compte)}"></option>`).join('')}</datalist>`)}
         ${champ('Contact', inp('contact'))}
-      <div class="st-t">Dates</div><div class="st-2">${champ('Établi le', inp('dateEmission', 'date'))}${s.type.indexOf('cotation') === 0 ? '' : champ('Valable jusqu\'au', inp('validite', 'date'))}</div>
+      <div class="st-t">Dates</div><div class="st-2">${champ('Établi le', inp('dateEmission', 'date'))}${(s.type.indexOf('cotation') === 0 || s.type === 'plan_commercial') ? '' : champ('Valable jusqu\'au', inp('validite', 'date'))}</div>
       <div class="st-t">Signature du commercial</div>
         ${champ('Nom', sigInp('nom'))}${champ('Fonction', sigInp('role'))}<div class="st-2">${champ('Téléphone', sigInp('tel'))}${champ('E-mail', sigInp('mail'))}</div>
+      <label class="st-o"><input type="checkbox" ${s.couv !== false ? 'checked' : ''} onchange="Studio.maj('couv',this.checked)"/> Page de couverture avec illustration</label>
       <div class="st-t">Texte</div>${champ('Titre (facultatif)', inp('titre'))}${champ('Conditions particulières (facultatif)', inp('conditions'))}</details>`;
     return `<div class="st-g"><div class="st-t">Document</div>${cartes}</div>${spec}<div id="st-calc">${calcHtml()}</div>${perso}`;
   }
@@ -241,6 +267,8 @@ window.Studio = (function () {
   }
   function majPalier(i, k, v) { if (!s || !s.pal[i]) return; s.pal[i][k] = String(v).slice(0, 6); planifier(); }
   function majSim(i, k, v) { if (!s || !s.sim[i]) return; s.sim[i][k] = k === 0 ? v : Math.max(0, Math.min(9999, Math.floor(Number(v) || 0))); if (k === 0) { if (v && !s.sim[i][1]) s.sim[i][1] = 1; rempl(); } else planifier(); }
+  function majPlanLigne(i, k, v) { if (!s || !s.plan[i]) return; if (k === 0) { s.plan[i][0] = v; if (v && !s.plan[i][1]) s.plan[i][1] = 10; rempl(); } else { s.plan[i][1] = Math.max(0, Math.min(99999, Math.floor(Number(v) || 0))); planifier(); } }
+  function ajouterGamme() { if (!s || s.plan.length >= 30) return; s.plan.push(['', 0]); rempl(); }
   function majSeuil(v) { if (!s) return; s.seuil = String(v).slice(0, 5); s.seuilManuel = true; planifier(); }
   function changerOffert(n, v) { if (!s) return; s['of' + n] = v; rempl(); }
   function changerType(t) { t = ALIAS[t] || t; if (!TYPES.includes(t)) return; const garde = { client: s.client, contact: s.contact, region: s.region, compteId: s.compteId, sig: s.sig, dateEmission: s.dateEmission, titre: '' }; s = Object.assign(etat(t), garde); rempl(); }
@@ -289,10 +317,13 @@ window.Studio = (function () {
       await Promise.all([...d.images].map(i => i.complete ? null : new Promise(ok => { i.onload = i.onerror = ok; })));
       if (d.fonts && d.fonts.load) { try { await Promise.all(['400','500','600','700','800'].map(w => d.fonts.load(w + ' 12px Montserrat'))); } catch (e) { /* repli police système */ } }
       if (d.fonts && d.fonts.ready) { try { await d.fonts.ready; } catch (e) { /* polices système */ } }
-      const page = d.querySelector('.page');
-      const canvas = await window.html2canvas(page, { scale: 2, useCORS: true, backgroundColor: '#EEF0F1', logging: false, windowWidth: LARGEUR, windowHeight: 800 });
+      const pages = [...d.querySelectorAll('.page')]; if (!pages.length) throw new Error('document vide');
       const pdf = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true });
-      pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 297, 210);
+      for (let i = 0; i < pages.length; i++) {   // une page PDF par feuille du document (couverture, détail, etc.)
+        const canvas = await window.html2canvas(pages[i], { scale: 2, useCORS: true, backgroundColor: '#EEF0F1', logging: false, windowWidth: LARGEUR, windowHeight: 800 });
+        if (i > 0) pdf.addPage();
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 297, 210);
+      }
       const T = window.LivrablesPDF.TYPES[PDF[s.type]];
       const nom = (T.lib + (s.client ? ' ' + s.client : '') + ' ' + (s.dateEmission || jour())).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
       pdf.save(nom + '.pdf');
@@ -312,5 +343,5 @@ window.Studio = (function () {
     } catch (e) { /* trace non bloquante */ }
   }
 
-  return { peut, ouvrir, fermer, onglet, zoomer, maj, majSig, majLigne, changerType, majSim, majPalier, majSeuil, changerOffert, choisirCompte, imprimer, telecharger, _cfg: () => (s ? cfg() : null), TYPES };
+  return { peut, ouvrir, fermer, onglet, zoomer, maj, majSig, majLigne, changerType, majSim, majPalier, majPlanLigne, ajouterGamme, rempl, majSeuil, changerOffert, choisirCompte, imprimer, telecharger, _cfg: () => (s ? cfg() : null), TYPES };
 })();

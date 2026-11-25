@@ -6,7 +6,7 @@
 //  Le cache ne sert plus que de secours hors-ligne.
 // ═══════════════════════════════════════
 
-const CACHE_NAME  = 'esi-v5-299';
+const CACHE_NAME  = 'esi-v5-300';
 // Assets immuables (jamais modifiés après publication) → cache-first.
 const STATIC_RE = /\.(png|jpe?g|svg|webp|gif|ico|woff2?|ttf)$/i;
 // Chemins relatifs : fonctionne à la racine d'un domaine comme en sous-dossier GitHub Pages
@@ -46,6 +46,9 @@ const ASSETS_CORE = [
   './js/non-suivis.js',
   './img/norton-empower-reseller-dark.png',
   './img/marvesting-group-cream.png',
+  './img/couvertures/poignee-de-main.jpg',
+  './img/couvertures/equipe.jpg',
+  './img/couvertures/small-business.jpg',
   './js/creer-menu.js',
   './js/chart-tip.js',
   './js/flags-canal.js',
