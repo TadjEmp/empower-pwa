@@ -320,7 +320,7 @@ window.VueCampagne = {
     const s = this.state; s.comptesCamp = {};
     const ids = [...new Set(s.lignes.map(l => l.compte_id).filter(Boolean))];
     for (let i = 0; i < ids.length; i += 100) {
-      const r = await SheetsAPI._sb.from('comptes').select('id,email,ville,code_postal,site_web').in('id', ids.slice(i, i + 100));
+      const r = await SheetsAPI._sb.from('comptes').select('id,email,ville,code_postal,site_web,adresse,tel,contact_nom,contact_fonction,statut_compte,ca_fy26,canal').in('id', ids.slice(i, i + 100));
       if (r.error) throw new Error(r.error.message);
       for (const c of (r.data || [])) s.comptesCamp[c.id] = c;
     }
@@ -343,7 +343,9 @@ window.VueCampagne = {
         const lieu = [c.code_postal, c.ville].filter(Boolean).join(' ');
         return `<div class="cmp-ligne" style="margin-bottom:6px"><div class="cmp-l1"><div><span class="cmp-nom">${E(l.nom_compte)}</span> ${l.ref_compte ? `<span class="cmp-sous">${E(l.ref_compte)}</span>` : ''}</div>
           <span class="cmp-pastille ${l.go_no_go === 'go' ? 'cmp-vert-p' : l.go_no_go === 'no_go' ? 'cmp-rouge' : ''}">${l.go_no_go === 'go' ? 'Go' : l.go_no_go === 'no_go' ? 'No Go' : 'À traiter'}</span></div>
-          <div class="cmp-sous">${lieu ? E(lieu) : 'Ville inconnue'}${site ? ' · ' + site : ' · pas de site connu'} · ${E(this.VERSIONS[l.version_email] || l.version_email)}</div></div>`;
+          <div class="cmp-sous">${c.adresse ? E(c.adresse) + ', ' : ''}${lieu ? E(lieu) : 'Ville inconnue'}</div>
+          <div class="cmp-sous">${c.tel ? 'Tél. ' + E(c.tel) : 'Pas de téléphone'}${c.contact_nom ? ' · Contact : ' + E(c.contact_nom) + (c.contact_fonction ? ' (' + E(c.contact_fonction) + ')' : '') : ''}</div>
+          <div class="cmp-sous">${site ? site : 'Pas de site connu'} · ${E(c.canal || '')}${c.statut_compte ? ' · ' + E(c.statut_compte) : ''}${Number(c.ca_fy26) ? ' · CA FY26 ' + E(Math.round(Number(c.ca_fy26)).toLocaleString('fr-FR')) + ' €' : ''} · Version : ${E(this.VERSIONS[l.version_email] || l.version_email)}</div></div>`;
       }).join('')}</div>` : '';
       return `<div class="cmp-carte">
         <button class="cmp-tuile" style="width:100%;flex-direction:row;justify-content:space-between;align-items:center;padding:10px 12px" aria-expanded="${ouvert}" onclick="VueCampagne.basculerManq('${E(k)}')">
