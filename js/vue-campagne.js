@@ -347,6 +347,7 @@ window.VueCampagne = {
       const sb = SheetsAPI._sb, maintenant = new Date().toISOString();
       if (decision === 'appliquee') {
         if (p.champ !== 'email') throw new Error("Seul l'email peut être appliqué pour l'instant");
+        if (!/^[^\s@<>"']+@[^\s@<>"']+\.[a-z]{2,}$/i.test(p.valeur_proposee)) throw new Error('Adresse invalide : proposition à rejeter');
         if (compte && String(compte.email || '').trim()) throw new Error('Ce compte a déjà un email : proposition à rejeter');
         const r = await sb.from('comptes').update({ email: p.valeur_proposee }).eq('id', p.compte_id).select('id');
         if (r.error) throw new Error(r.error.message);
