@@ -30,8 +30,8 @@ window.VueCampagne = {
   _etatInitial() {
     return {
       chargement: true, erreur: null,
-      campagnes: [], campagneId: null, lignes: [], exclusions: [], utilisateurs: [], propositions: [], comptesProp: {}, filtreProp: 'proposee', traitement: null,
-      onglet: 'synthese',                // synthese | comptes | exclusions | propositions
+      campagnes: [], campagneId: null, lignes: [], exclusions: [], utilisateurs: [], propositions: [], comptesProp: {}, comptesCamp: {}, ouverts: {}, filtreProp: 'proposee', traitement: null,
+      onglet: 'synthese',                // synthese | comptes | exclusions | manquants | propositions
       filtreStatut: 'TOUS',              // TOUS | A_TRAITER | GO | NO_GO | SIGNALES
       filtreCds: 'TOUS', filtreVersion: 'TOUS', recherche: '', limite: this.PAGE,
     };
@@ -58,6 +58,7 @@ window.VueCampagne = {
       s.lignes = lig.data || [];
       s.exclusions = exc.data || [];
       s.utilisateurs = Array.isArray(users) ? users : [];
+      await this._chargerComptesCampagne();
       await this._chargerPropositions();
       if (!s.campagneId || !s.campagnes.some(c => c.id === s.campagneId)) {
         const active = s.campagnes.find(c => c.statut !== 'cloturee') || s.campagnes[0];
@@ -314,6 +315,44 @@ window.VueCampagne = {
   },
 
 
+  // ── Emails manquants : comptes de la campagne dont la fiche n'a pas d'email ──
+  async _chargerComptesCampagne() {
+    const s = this.state; s.comptesCamp = {};
+    const ids = [...new Set(s.lignes.map(l => l.compte_id).filter(Boolean))];
+    for (let i = 0; i < ids.length; i += 100) {
+      const r = await SheetsAPI._sb.from('comptes').select('id,email,ville,code_postal,site_web').in('id', ids.slice(i, i + 100));
+      if (r.error) throw new Error(r.error.message);
+      for (const c of (r.data || [])) s.comptesCamp[c.id] = c;
+    }
+  },
+  _sansEmail(l) { const c = this.state.comptesCamp[l.compte_id]; return !c || !String(c.email || '').trim(); },
+  _manquants() { return this._lignes().filter(l => this._sansEmail(l)); },
+  basculerManq(cle) { this.state.ouverts[cle] = !this.state.ouverts[cle]; this.render(); },
+
+  _htmlManquants() {
+    const s = this.state, E = this.E.bind(this), liste = this._manquants();
+    if (!liste.length) return `<div class="cmp-vide">Tous les comptes de la campagne ont un email.</div>`;
+    const groupes = {};
+    for (const l of liste) { const k = l.pin_cds == null ? 'AUCUN' : String(l.pin_cds); (groupes[k] = groupes[k] || []).push(l); }
+    const totaux = {}; for (const l of this._lignes()) { const k = l.pin_cds == null ? 'AUCUN' : String(l.pin_cds); totaux[k] = (totaux[k] || 0) + 1; }
+    const cartes = Object.entries(groupes).sort((a, b) => b[1].length - a[1].length).map(([k, ls]) => {
+      const ouvert = !!s.ouverts[k], nom = k === 'AUCUN' ? 'Non attribué' : this._nomCds(k);
+      const detail = ouvert ? `<div style="margin-top:10px">${ls.slice().sort((a, b) => String(a.nom_compte).localeCompare(String(b.nom_compte))).map(l => {
+        const c = s.comptesCamp[l.compte_id] || {};
+        const site = /^https?:\/\//i.test(c.site_web || '') ? `<a href="${E(c.site_web)}" target="_blank" rel="noopener noreferrer">${E(c.site_web)}</a>` : '';
+        const lieu = [c.code_postal, c.ville].filter(Boolean).join(' ');
+        return `<div class="cmp-ligne" style="margin-bottom:6px"><div class="cmp-l1"><div><span class="cmp-nom">${E(l.nom_compte)}</span> ${l.ref_compte ? `<span class="cmp-sous">${E(l.ref_compte)}</span>` : ''}</div>
+          <span class="cmp-pastille ${l.go_no_go === 'go' ? 'cmp-vert-p' : l.go_no_go === 'no_go' ? 'cmp-rouge' : ''}">${l.go_no_go === 'go' ? 'Go' : l.go_no_go === 'no_go' ? 'No Go' : 'À traiter'}</span></div>
+          <div class="cmp-sous">${lieu ? E(lieu) : 'Ville inconnue'}${site ? ' · ' + site : ' · pas de site connu'} · ${E(this.VERSIONS[l.version_email] || l.version_email)}</div></div>`;
+      }).join('')}</div>` : '';
+      return `<div class="cmp-carte">
+        <button class="cmp-tuile" style="width:100%;flex-direction:row;justify-content:space-between;align-items:center;padding:10px 12px" aria-expanded="${ouvert}" onclick="VueCampagne.basculerManq('${E(k)}')">
+          <span style="text-align:left"><b>${E(nom)}</b><br><span class="cmp-lbl">${ls.length} compte${ls.length > 1 ? 's' : ''} sans email sur ${totaux[k] || ls.length}</span></span>
+          <span class="cmp-chiffre">${ls.length}</span><span>${ouvert ? '▾' : '▸'}</span></button>${detail}</div>`;
+    }).join('');
+    return `<div class="cmp-carte"><div class="cmp-sous">${liste.length} compte${liste.length > 1 ? 's' : ''} dont l'email n'a pas été trouvé (recherche sur site officiel et annuaires). Ouvrez une carte pour voir le détail par commercial ; à compléter directement dans la fiche compte.</div></div>${cartes}`;
+  },
+
   // ── Propositions d'enrichissement (validation) ──
   _peutValider() { return ['ADMIN', 'CHANNEL_MANAGER', 'CDS'].includes(Session.role); },
   CHAMPS: { email: 'Email', tel: 'Téléphone', site_web: 'Site web', contact_nom: 'Contact', contact_fonction: 'Fonction' },
@@ -442,8 +481,8 @@ window.VueCampagne = {
       const onglet = (k, lbl) => `<button class="btn-filtre ${s.onglet === k ? 'actif' : ''}" onclick="VueCampagne.setOnglet('${k}')">${lbl}</button>`;
       corps = `
         ${this._htmlEntete()}
-        <div class="cmp-onglets">${onglet('synthese', 'Synthèse')}${onglet('comptes', `Comptes (${this._lignes().length})`)}${onglet('exclusions', `Exclusions (${this._exclusions().length})`)}${this._peutValider() ? onglet('propositions', `Propositions (${s.propositions.filter(p => p.statut === 'proposee').length})`) : ''}</div>
-        ${s.onglet === 'synthese' ? `<div id="cmp-synthese-zone">${this._htmlSynthese()}</div>` : s.onglet === 'comptes' ? this._htmlComptes() : s.onglet === 'propositions' ? this._htmlPropositions() : this._htmlExclusions()}`;
+        <div class="cmp-onglets">${onglet('synthese', 'Synthèse')}${onglet('comptes', `Comptes (${this._lignes().length})`)}${onglet('exclusions', `Exclusions (${this._exclusions().length})`)}${onglet('manquants', `Emails manquants (${this._manquants().length})`)}${this._peutValider() ? onglet('propositions', `Propositions (${s.propositions.filter(p => p.statut === 'proposee').length})`) : ''}</div>
+        ${s.onglet === 'synthese' ? `<div id="cmp-synthese-zone">${this._htmlSynthese()}</div>` : s.onglet === 'comptes' ? this._htmlComptes() : s.onglet === 'propositions' ? this._htmlPropositions() : s.onglet === 'manquants' ? this._htmlManquants() : this._htmlExclusions()}`;
     }
     app.innerHTML = `
       ${this._css()}
