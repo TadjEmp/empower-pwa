@@ -51,6 +51,7 @@ const Router = {
     { pattern: /^#\/coach$/,                        vue: 'VueCoach',              auth: true  },
     { pattern: /^#\/kit$/,                          vue: 'VueKit',                auth: true  },
     { pattern: /^#\/mailing$/,                      vue: 'VueMailing',            auth: true  },
+    { pattern: /^#\/campagne$/,                     vue: 'VueCampagne',           auth: true  },
     { pattern: /^#\/a-contacter$/,                  vue: 'VueAContacter',         auth: true  },
     { pattern: /^#\/comptes$/,                      vue: 'VueComptes',            auth: true  },
     { pattern: /^#\/compte\/([^/]+)$/,             vue: 'VueFicheCompte',        auth: true, param: 1 },

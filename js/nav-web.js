@@ -14,7 +14,7 @@ window.NavWeb = (function () {
     [/^#\/comptes/, 'Comptes'], [/^#\/compte\//, 'Fiche compte'],
     [/^#\/phoning/, 'Phoning'], [/^#\/visites-fdv/, 'Visites FDV'], [/^#\/visites/, 'Visites'],
     [/^#\/objectifs/, 'Objectifs'], [/^#\/primes/, 'Primes'], [/^#\/photos/, 'Photos'],
-    [/^#\/mailing/, 'Mailing'], [/^#\/a-contacter/, 'À contacter'],
+    [/^#\/mailing/, 'Mailing'], [/^#\/campagne/, 'Campagne'], [/^#\/a-contacter/, 'À contacter'],
     [/^#\/questionnaire/, 'Questionnaire'], [/^#\/admin/, 'Administration'], [/^#\/login/, 'Connexion'],
   ];
 

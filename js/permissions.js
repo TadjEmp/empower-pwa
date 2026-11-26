@@ -15,7 +15,7 @@
     ADMIN: [
       'home', 'tracker', 'historiques', 'phoning', 'visites',
       'objectifs', 'primes', 'comptes', 'manager', 'admin',
-      'questionnaire', 'reporting', 'photos', 'mailing', 'a_contacter', 'territoires', 'coach', 'kit',
+      'questionnaire', 'reporting', 'photos', 'mailing', 'a_contacter', 'territoires', 'coach', 'kit', 'campagne',
       // Lot 4 — sous-sections d'Administration (droits distincts)
       'admin_primes', 'admin_baremes', 'admin_reporting', 'export',
     ],
@@ -23,7 +23,7 @@
     // l'Accueil (#/dashboard), cf. VueDashboardCDS._contexteReporting().
     CDS: [
       'home', 'tracker', 'historiques', 'phoning', 'visites',
-      'objectifs', 'primes', 'questionnaire', 'comptes', 'photos', 'reporting_cds', 'mailing', 'a_contacter', 'territoires', 'coach', 'kit',
+      'objectifs', 'primes', 'questionnaire', 'comptes', 'photos', 'reporting_cds', 'mailing', 'a_contacter', 'territoires', 'coach', 'kit', 'campagne',
     ],
     // V5 BUG5 — Alexandra : conserve OBJECTIFS ; jamais Primes (raw CDS).
     // 'reporting' réactivé : #/manager affiche désormais pour elle la Vue équipe
@@ -35,12 +35,12 @@
     // quasi-admin sur le Tracker également (cf. vue-pipeline.js _peutAssigner).
     CHANNEL_MANAGER: [
       'home', 'tracker', 'comptes', 'objectifs', 'photos', 'admin',
-      'visites_fdv', 'phoning', 'reporting', 'mailing', 'a_contacter', 'territoires', 'coach', 'kit',
+      'visites_fdv', 'phoning', 'reporting', 'mailing', 'a_contacter', 'territoires', 'coach', 'kit', 'campagne',
       'admin_reporting', 'export',   // Reporting seul : jamais Primes ni Barèmes (voir INTERDITS)
     ],
     // Fournisseur de leads (ex-« Invité » : Flavie…) : alimente le Tracker et consulte les comptes (lecture seule).
     EXTERNE: [
-      'tracker', 'comptes', 'territoires', 'kit', 'export',
+      'tracker', 'comptes', 'territoires', 'kit', 'campagne', 'export',
     ],
   };
 
@@ -79,6 +79,7 @@
     if (/^#\/territoires$/.test(h))            return 'territoires';
     if (/^#\/coach$/.test(h))                  return 'coach';
     if (/^#\/kit$/.test(h))                    return 'kit';
+    if (/^#\/campagne$/.test(h))               return 'campagne';
     if (/^#\/analyse$/.test(h))                return ['reporting', 'reporting_cds', 'admin_reporting'];
     if (/^#\/parametres-primes$/.test(h))      return 'admin_baremes';
 
@@ -107,6 +108,7 @@
     territoires:   '#/territoires',
     coach:         '#/coach',
     kit:           '#/kit',
+    campagne:      '#/campagne',
   };
 
   // Libellés des sections cochables à la création d'un accès (vue-admin.js).
@@ -117,7 +119,7 @@
     manager: 'Vue manager', reporting: 'Reporting équipe',
     reporting_cds: 'Reporting personnel', admin: 'Administration',
     questionnaire: 'Questionnaire', photos: 'Photos', mailing: 'Mailing',
-    a_contacter: 'À contacter', territoires: 'Territoires (carte)', coach: 'Coach commercial', kit: 'Kit commercial',
+    a_contacter: 'À contacter', territoires: 'Territoires (carte)', coach: 'Coach commercial', kit: 'Kit commercial', campagne: 'Campagne',
     admin_primes: 'Administration › Primes', admin_baremes: 'Administration › Barèmes',
     admin_reporting: 'Administration › Reporting',
   };
@@ -128,7 +130,10 @@
     const s = (typeof Session !== 'undefined') ? Session : null;
     if (s && s.role === role && role !== 'ADMIN' && Array.isArray(s.droits)) {
       // 'export' (Administration > Export) est un droit de rôle : jamais retiré par des droits personnalisés plus anciens.
-      return s.droits.indexOf('export') === -1 && (MATRICE[role] || []).indexOf('export') !== -1 ? s.droits.concat('export') : s.droits;
+      let d = s.droits;
+      // 'campagne' (onglet Campagne, lot 9) : droit de rôle, jamais retiré par des droits personnalisés plus anciens.
+      if (d.indexOf('campagne') === -1 && (MATRICE[role] || []).indexOf('campagne') !== -1) d = d.concat('campagne');
+      return d.indexOf('export') === -1 && (MATRICE[role] || []).indexOf('export') !== -1 ? d.concat('export') : d;
     }
     return MATRICE[role] || [];
   }

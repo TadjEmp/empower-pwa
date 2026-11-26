@@ -362,6 +362,9 @@ function NavBar(actif) {
     // leads Tracker, cf. vue-mailing.js).
     { id: 'mailing',     hash: '#/mailing',             mobileNav: false, lbl: 'Mailing',
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>' },
+    // Lot 9 — onglet Campagne : avancement, Go/No Go, signalements et retours d'une campagne fournisseur (lecture seule pour EXTERNE)
+    { id: 'campagne',    hash: '#/campagne',            mobileNav: false, lbl: 'Campagne',
+      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>' },
     { id: 'photos',      hash: '#/photos',              mobileNav: false, lbl: 'Mes Photos',
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>' },
     // Section 9 cahier des charges — vue consolidée Channel (lecture seule FDV)
@@ -397,7 +400,7 @@ function NavBar(actif) {
   // Portefeuille (Pipeline, Comptes, Historique CA, Territoires), Activité, Reporting ; Administration en bas.
   const SECTIONS = [
     { lbl: null,        ids: ['home', 'coach', 'comptes', 'territoires', 'kit'] },
-    { lbl: 'Activité',  ids: ['a_contacter', 'visites', 'phoning', 'mailing'] },
+    { lbl: 'Activité',  ids: ['a_contacter', 'visites', 'phoning', 'mailing', 'campagne'] },
     { lbl: 'Reporting', ids: ['analyse'] },
   ];
   const SECTION_BAS = { lbl: null, ids: ['aide', 'admin'] };
@@ -419,7 +422,9 @@ function NavBar(actif) {
     // Tous profils : Tracker et Base comptes sont deux entrées distinctes du volet.
     delete ALIAS_ACTIF.tracker;
     if (_externe) TOUS.find(i => i.id === 'admin').hash = '#/export';
-    SECTIONS[0] = { lbl: null, ids: _externe ? ['tracker', 'comptes', 'territoires', 'kit'] : ['home', 'coach', 'tracker', 'comptes', 'territoires', 'kit'] };
+    SECTIONS[0] = { lbl: null, ids: _externe ? ['tracker', 'comptes', 'campagne', 'territoires', 'kit'] : ['home', 'coach', 'tracker', 'comptes', 'territoires', 'kit'] };
+    // L'EXTERNE a Campagne dans le premier volet : on la retire du volet Activité pour éviter un doublon.
+    if (_externe) SECTIONS[1] = { ...SECTIONS[1], ids: SECTIONS[1].ids.filter(id => id !== 'campagne') };
     const ic = TOUS.find(i => i.id === 'comptes');
     ic.lbl = 'Base comptes';
     ic.icone = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>';
@@ -665,6 +670,7 @@ const DrawerMenu = (function () {
     // raccourci sur l'Accueil n'en tient pas lieu — l'utilisateur veut le
     // même volet que sur Web Desktop). Mêmes rôles que permissions.js.
     { id: 'mailing',     hash: '#/mailing',              ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>', lbl: 'Mailing',          roles: ['ADMIN','CDS','CHANNEL_MANAGER'] },
+    { id: 'campagne',    hash: '#/campagne',             ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>', lbl: 'Campagne',         roles: ['ADMIN','CDS','CHANNEL_MANAGER','EXTERNE'] },
     { id: 'visites_fdv', hash: '#/visites-fdv',          ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', lbl: 'Visites FDV',       roles: ['CHANNEL_MANAGER'] },
     { id: 'photos',      hash: '#/photos',               ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>', lbl: 'Mes Photos',        roles: ['ADMIN','CDS','CHANNEL_MANAGER'] },
     { id: 'historiques', hash: '#/comptes-historiques',  ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>', lbl: 'Historique CA',   roles: ['ADMIN','CDS','CHANNEL_MANAGER'] },
@@ -683,7 +689,7 @@ const DrawerMenu = (function () {
     const nom     = (typeof Session !== 'undefined') ? (Session.nom || '') : '';
     const initiale = nom ? nom.charAt(0).toUpperCase() : '?';
     // Ordre unique (identique à la barre latérale) : navigation métier, puis Administration, puis profil, puis réglages
-    const ORDRE = ['home', 'comptes', 'a_contacter', 'visites', 'phoning', 'mailing', 'photos', 'visites_fdv', 'historiques', 'objectifs', 'primes', 'aide', 'admin'];
+    const ORDRE = ['home', 'comptes', 'a_contacter', 'visites', 'phoning', 'mailing', 'campagne', 'photos', 'visites_fdv', 'historiques', 'objectifs', 'primes', 'aide', 'admin'];
     const tous    = ITEMS.filter(i => !role || i.roles.includes(role)).sort((x, y) => ORDRE.indexOf(x.id) - ORDRE.indexOf(y.id));
     const items   = tous.filter(i => i.id !== 'admin');
     // Le commercial n'a pas la page Administration : son entrée ouvre ses Primes et son Reporting
