@@ -1,0 +1,25 @@
+/* Kit commercial et mandats : sans traits ni liserés, fonds doux, ombres légères ; corail réservé à l'action principale. */
+.kit { padding: 0 0 24px; display: flex; flex-direction: column; gap: 14px; --co-fond: var(--cs-fond, #F1F3F4); --co-carte: var(--c-surface, #fff); --co-ink: var(--c-title, #1d2329); --co-mut: var(--c-text-2, #6B7580); --co-sh: 0 1px 10px rgba(26,34,46,.07); }
+.kit-q { width: 100%; margin-top: 8px; padding: 10px 14px; border: 0; border-radius: 12px; background: var(--co-fond); color: inherit; font: inherit; font-size: 14px; }
+.kit-outils { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.kit-outils .co-carte p { margin: 4px 0 12px; }
+.kit-groupe { display: flex; flex-direction: column; }
+.kit-ligne { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 12px 12px; margin: 6px 0 0; border-radius: 14px; background: var(--co-fond); }
+.kit-ligne.kit-echu { opacity: .7; }
+.kit-t b { color: var(--co-ink); font-size: 14px; }
+.kit-t { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.kit-b { display: flex; flex-wrap: wrap; gap: 6px; }
+.kit-a { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.kit-chip { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: #fff; color: #343F48; }
+.kit-int { background: #F7DEDC; color: #9C2F2A; } .kit-ech { background: #FBF0DA; color: #8A5A0B; } .kit-cons { background: #DDF1E8; color: #1E6B4A; }
+.kit-up { cursor: pointer; }
+.kit-val { font-size: 12px; color: var(--co-mut); display: inline-flex; align-items: center; gap: 6px; }
+.kit-val input { padding: 6px 8px; border: 0; border-radius: 8px; background: #fff; font: inherit; font-size: 12px; }
+.kit-cible { margin-top: 10px; font-size: 13px; }
+.kit-modale { position: fixed; inset: 0; background: rgba(26,34,46,.45); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 900; }
+.kit-boite { width: min(520px, 100%); max-height: 90vh; overflow: auto; }
+.kit-sel { width: 100%; margin: 10px 0; padding: 6px; border: 0; border-radius: 12px; background: var(--co-fond); font: inherit; font-size: 14px; }
+.kit .co-carte h2, .kit .co-eyebrow { margin-top: 4px; }
+.mandat-ligne { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; margin: 6px 0; border-radius: 12px; background: #F1F3F4; font-size: 13px; flex-wrap: wrap; }
+.mandat-ligne select { padding: 6px 10px; border: 0; border-radius: 10px; background: #fff; font: inherit; font-size: 12px; }
+.mandat-mut { color: #6B7580; font-size: 12px; }

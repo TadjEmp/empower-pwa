@@ -40,6 +40,7 @@ global.Router  = { aller:    () => {} };
 global.GroqAPI = {};
 
 // ── Utilitaires app simulés ──────────────────────────────────────────────────
+global.debounce      = (fn) => fn;
 global.genId         = (p) => `${p}_TEST`;
 global.FiscalWeeks   = { codeDe: () => 'W25' };
 global.getISOWeek    = ()  => 'W25';
@@ -155,8 +156,8 @@ console.log('\n─── T3 : valider() visite NOUVELLE — Statut_Visite = \'r�
   await VueQuestionnaire.valider();
 
   // ecrire est appelé plusieurs fois (🗺️_VISITES puis 📊_ACTIONS) — on cible le bon
-  const ecritVisite = _ecrireCalls.find(c => c.o === '🗺️_VISITES');
-  const majVisite   = _mettreAJourCalls.find(c => c.o === '🗺️_VISITES');
+  const ecritVisite = _ecrireCalls.find(c => c.o === 'VISITES');
+  const majVisite   = _mettreAJourCalls.find(c => c.o === 'VISITES');
 
   ok('SheetsAPI.ecrire(🗺️_VISITES) appelé pour nouvelle visite',
      !!ecritVisite,
@@ -190,8 +191,8 @@ console.log('\n─── T3 : valider() visite NOUVELLE — Statut_Visite = \'r�
   await VueQuestionnaire.valider();
 
   // mettreAJour est appelé plusieurs fois (🗺️_VISITES puis 🏢_COMPTES) — on cible le bon
-  const majVis = _mettreAJourCalls.find(c => c.o === '🗺️_VISITES');
-  const ecritP = _ecrireCalls.find(c => c.o === '🗺️_VISITES');
+  const majVis = _mettreAJourCalls.find(c => c.o === 'VISITES');
+  const ecritP = _ecrireCalls.find(c => c.o === 'VISITES');
 
   ok('SheetsAPI.mettreAJour(🗺️_VISITES) appelé (visite planifiée)',
      !!majVis,

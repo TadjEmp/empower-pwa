@@ -34,8 +34,9 @@ window.VueObjectifs = {
     this.state.erreur = null;
     this.render();
     try {
+      if (window.Atterrissage) await Atterrissage.charger().catch(() => {});   // semaines Sell-In avant le premier calcul
       const [objectifs, params, nsb, prospects] = await Promise.all([
-        SheetsAPI.lire('EMPOWER_MDB', 'OBJECTIFS_PRIMES'),
+        SheetsAPI.lire('EMPOWER_MDB', 'OBJECTIFS_PRIMES', { nocache: true }),
         SheetsAPI.lire('EMPOWER_MDB', 'PARAMS'),
         SheetsAPI.lire('EMPOWER_MDB', 'NSB_COMMANDES').catch(() => []),
         SheetsAPI.lire('EMPOWER_MDB', 'LEADS').catch(() => []),
@@ -106,16 +107,20 @@ window.VueObjectifs = {
     const pct = (obj > 0 && isFinite(ca) && isFinite(obj)) ? Math.round(ca / obj * 100) : 0;
     const numSem   = parseInt((this.state.semaine || 'S01').replace('S', ''), 10) || 1;
     const semDansQ = Math.min(Math.max(numSem, 1), 13);
-    const projection = isFinite(ca) ? Math.round(ca / semDansQ * 13) : 0;
+    // Atterrissage prévisionnel en fonction des semaines (source unique : Atterrissage) ; ancien calcul linéaire en repli.
+    const att = (window.Atterrissage && isFinite(ca)) ? Atterrissage.prevoir(ca, obj, q) : null;
+    const projection = isFinite(ca) ? Math.round(att ? att.prevu : ca / semDansQ * 13) : 0;
     const ecart = isFinite(obj) && isFinite(ca) ? obj - ca : null;
-    const pace  = pct >= 100 ? 'ON_TRACK' : pct >= 80 ? 'WATCH' : 'AT_RISK';
+    // Statut = atterrissage prévu (trimestre en cours), sinon réalisé ; mêmes seuils que le bloc d'atterrissage (100 / 85).
+    const pPace = (att && !att.avenir && !att.clos && att.pct != null) ? att.pct : pct;
+    const pace  = pPace >= 100 ? 'ON_TRACK' : pPace >= (att && !att.clos ? 85 : 80) ? 'WATCH' : 'AT_RISK';
     return { ca, obj, pct, projection, ecart, pace, id: o.ID_Objectif || '' };
   },
 
   _barreProgression(pct, pace) {
-    const couleur = pace === 'ON_TRACK' ? 'var(--c-success)' : pace === 'WATCH' ? 'var(--c-warning)' : 'var(--c-danger)';
-    return `<div style="height:8px;background:var(--c-border);border-radius:4px;overflow:hidden;margin-top:6px">
-      <div style="height:100%;width:${Math.min(pct, 100)}%;background:${couleur};transition:width .4s ease"></div>
+    const cls = pace === 'AT_RISK' ? 'pace-risk' : pace === 'WATCH' ? 'pace-watch' : 'pace-ok';
+    return `<div class="pace-barre" style="margin-top:6px" data-tip="${Math.round(pct)} % de l'objectif">
+      <div class="pace-barre-fill ${cls}" style="width:${Math.min(pct, 100)}%"></div>
     </div>`;
   },
 
@@ -325,7 +330,7 @@ window.VueObjectifs = {
       const ecartHtml = d.ecart === null ? 'n.c.'
         : `${d.ecart > 0 ? '-' : '+'}${fmtEUR(Math.abs(d.ecart))}`;
       const ecartCouleur = d.ecart === null ? 'var(--c-text-2)'
-        : d.ecart > 0 ? 'var(--c-danger)' : 'var(--c-success)';
+        : d.ecart > 0 ? 'var(--corail, #FF6D68)' : 'var(--ardoise, #343F48)';
       return `
         <div class="bloc-fiche">
           <div class="bloc-titre">${nomAffiche}
@@ -337,9 +342,10 @@ window.VueObjectifs = {
             <span>/ ${fmtEUR(d.obj)}, ${q}</span>
           </div>
           ${this._barreProgression(d.pct, d.pace)}
+          ${window.Atterrissage ? Atterrissage.html(d.ca, d.obj, q) : ''}
           <div class="objectifs-grille" style="margin-top:10px">
             <div class="stat-mini"><div>${safePct(d.pct)}</div><div>Atteinte</div></div>
-            <div class="stat-mini"><div>${fmtEUR(d.projection)}</div><div>Projection ${q}</div></div>
+            <div class="stat-mini"><div>${fmtEUR(d.projection)}</div><div>Atterrissage ${q}</div></div>
             <div class="stat-mini" style="color:${ecartCouleur}">
               <div>${ecartHtml}</div>
               <div>Écart</div>

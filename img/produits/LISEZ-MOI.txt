@@ -1,0 +1,1 @@
+# Visuels produits (boîtes) : un fichier <id produit du catalogue>.png par produit. Absent = pastille typographique.

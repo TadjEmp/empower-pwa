@@ -6,7 +6,7 @@
 //  Le cache ne sert plus que de secours hors-ligne.
 // ═══════════════════════════════════════
 
-const CACHE_NAME  = 'esi-v5-154';
+const CACHE_NAME  = 'esi-v5-306';
 // Assets immuables (jamais modifiés après publication) → cache-first.
 const STATIC_RE = /\.(png|jpe?g|svg|webp|gif|ico|woff2?|ttf)$/i;
 // Chemins relatifs : fonctionne à la racine d'un domaine comme en sous-dossier GitHub Pages
@@ -22,6 +22,14 @@ const ASSETS_CORE = [
   './css/pipeline.css',
   './css/v7.css',
   './css/gen-digital.css',
+  './css/refresh-esi.css',
+  './css/compte-saas.css',
+  './css/coach.css',
+  './css/kit.css',
+  './css/mobile.css',
+  './css/visionneuse.css',
+  './css/studio.css',
+  './css/coach-chat.css',
   './js/utils.js',
   './js/helpers.js',
   './js/session.js',
@@ -32,9 +40,21 @@ const ASSETS_CORE = [
   './js/modal-stable.js',
   './js/nav-web.js',
   './js/api.js',
+  './js/contacts-structures.js',
   './js/fiches-froides.js',
   './js/sellin-flag.js',
   './js/non-suivis.js',
+  './img/norton-empower-reseller-dark.png',
+  './img/marvesting-group-cream.png',
+  './img/couvertures/poignee-de-main.jpg',
+  './img/couvertures/equipe.jpg',
+  './img/couvertures/small-business.jpg',
+  './js/creer-menu.js',
+  './js/chart-tip.js',
+  './js/flags-canal.js',
+  './js/contacts-geo.js',
+  './js/pilotage-historique.js',
+  './js/vue-pilotage.js',
   './js/vue-a-contacter.js',
   './js/push.js',
   './js/groq.js',
@@ -48,11 +68,36 @@ const ASSETS_CORE = [
   './js/vue-fiche-compte.js',
   './js/vue-questionnaire.js',
   './js/vue-phoning.js',
+  './js/attribution-cp.js',
+  './js/admin-equipe-secteurs.js',
+  './js/catalogue.js',
+  './js/coach-moteur.js',
+  './js/admin-prix.js',
+  './js/admin-coach.js',
   './js/vue-pipeline.js',
+  './js/tracker-excel.js',
+  './js/vue-export.js',
   './js/vue-dashboard-manager.js',
   './js/vue-admin.js',
   './js/vue-primes.js',
   './js/vue-mailing.js',
+  './js/vue-campagne.js',
+  './js/france-deps.js',
+  './js/vue-territoires.js',
+  './js/livrables-police.js',
+  './js/livrables-pdf.js',
+  './js/vue-coach.js',
+  './js/mandats.js',
+  './js/mobile-ux.js',
+  './js/visionneuse.js',
+  './js/coach-chat.js',
+  './js/studio-livrables.js',
+  './js/vue-kit.js',
+  './js/vue-aide.js',
+  './js/vue-analyse.js',
+  './js/vue-equipe.js',
+  './js/rapport-export.js',
+  './js/vue-parametres-primes.js',
   './img/logo-marvesting-sm.png',
   './icons/icon-192.png',
 ];
@@ -100,6 +145,8 @@ async function networkFirst(request) {
 }
 
 async function navigation(request) {
+  // Pages statiques autonomes (ex. /mandat/generateur.html) : servies telles quelles, sans toucher à la copie d'index.html du cache.
+  try { if (/\.[a-zA-Z0-9]+$/.test(new URL(request.url).pathname)) return await fetch(request); } catch (e) { return Response.error(); }
   try {
     const resp = await fetch(request, { cache: 'no-store' });
     if (resp && resp.status === 200) {

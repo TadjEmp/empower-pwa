@@ -32,7 +32,7 @@ window.VuePhoning = {
       chargement: true, envoiEnCours: false,
       comptes: [], tousComptes: [], prospects: [], cdsListe: [],
       typeSource: 'EXISTANT', cible: null,
-      mode: 'BASE',            // BASE | PLANNING | APPEL | HISTORIQUE
+      mode: 'FILE',            // FILE | BASE | PLANNING | APPEL | HISTORIQUE
       // BLOC — pile des modes traversés (Base/Planning/Journal), pour que "←"
       // les redéroule un par un au lieu de sauter hors de Phoning en un clic
       // (setMode() ne pousse jamais dans l'historique navigateur, cf. retour()
@@ -1007,19 +1007,156 @@ window.VuePhoning = {
       </div>`;
   },
 
+  // ── Onglets communs (File · Planning · Base · Journal) ──
+  _onglets(actif) {
+    const b = (k, lbl) => `<button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;${actif === k ? 'background:var(--c-title);color:var(--on-title)' : 'background:transparent;color:var(--c-text-2)'}" ${actif === k ? '' : `onclick="VuePhoning.setMode('${k}')"`}>${lbl}</button>`;
+    return `<div style="display:flex;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:4px;background:var(--c-surface);margin-bottom:14px">
+      ${b('FILE', "File d'appels")}${b('PLANNING', 'Planning')}${b('BASE', `Base (${this.state.comptes.length})`)}${b('HISTORIQUE', 'Journal')}
+    </div>`;
+  },
+
+  _e(v) { return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); },
+
+  // ── File d'appels : ce qu'il faut appeler aujourd'hui, par priorité lisible ──
+  _fileItems() {
+    const s = this.state, auj = dateISOLocale();
+    const vus = new Set(), out = [];
+    const ajouter = (type, id, obj, rang, motif, detail, planId) => {
+      const cle = type + ':' + id;
+      const dedup = (type === 'LEAD' ? 'L' : 'C') + id;
+      if (!id || vus.has(dedup)) return;
+      vus.add(dedup);
+      out.push({ cle, type, id: String(id), obj, rang, motif, detail: detail || '', planId: planId || null });
+    };
+    const jours = d => Math.max(0, Math.floor((Date.now() - new Date(String(d).slice(0, 10)).getTime()) / 86400000));
+    const comptes = Session.voitTout() && s.filtreCDSBase !== 'TOUS'
+      ? s.comptes.filter(c => String(c.PIN_CDS_Assigne) === String(s.filtreCDSBase)) : s.comptes;
+    // 1. Appels planifiés échus ou du jour
+    (s.planning || []).forEach(a => {
+      const d = String(a.Date_Planifiee || '').slice(0, 10);
+      if (!d || d > auj || !a.ID_Cible) return;
+      const r = this._resoudreCible(a.ID_Cible, s.tousComptes || s.comptes, s.prospects);
+      if (!r) return;
+      ajouter(r.type === 'PROSPECT' ? 'LEAD' : 'COMPTE', a.ID_Cible, r.obj, d >= auj ? 1 : (jours(d) > 14 ? 3 : 0), d >= auj ? 'Appel planifié aujourd\'hui' : (jours(d) > 14 ? 'Planifié, jamais traité' : 'Appel planifié en retard'), d < auj ? `depuis ${jours(d)} j` : '', a.ID_Appel);
+    });
+    // 2. Rappels de leads échus
+    s.prospects.forEach(p => {
+      const st = String(p.STATUT_EMPOWER || '').toUpperCase();
+      if (['ARCHIVE', 'INTEGRE'].includes(st)) return;
+      const d = String(p.Date_prochaine_action || '').slice(0, 10);
+      if (!d || d > auj) return;
+      ajouter('LEAD', p.ID_Prospect, p, d < auj ? 0 : 1, d < auj ? 'Rappel en retard' : 'Rappel aujourd\'hui', d < auj ? `depuis ${jours(d)} j` : '');
+    });
+    // 3. Comptes sans appel récent (jamais appelés ou plus de 6 semaines), meilleur CA d'abord
+    const dernier = new Map();
+    (s.journal || []).forEach(a => { const k = String(a.ID_Cible); if (!dernier.has(k)) dernier.set(k, a.Date); });
+    comptes.map(c => ({ c, d: dernier.get(String(c.ID_Compte)) || null }))
+      .filter(x => !x.d || jours(x.d) > 42)
+      .sort((a, b) => (window.caFY27Complet ? window.caFY27Complet(b.c) - window.caFY27Complet(a.c) : 0))
+      .slice(0, 20)
+      .forEach(x => ajouter('COMPTE', x.c.ID_Compte, x.c, 2, x.d ? 'Sans appel récent' : 'Jamais appelé', x.d ? `${Math.floor(jours(x.d) / 7)} sem.` : ''));
+    return out.sort((a, b) => a.rang - b.rang).slice(0, 30);
+  },
+
+  _fileSelection(items) {
+    const s = this.state;
+    let it = items.find(x => x.cle === s.fileSel);
+    if (!it && window.innerWidth >= 900) it = items[0];
+    return it || null;
+  },
+
+  selectionnerFile(cle) { this.state.fileSel = cle; this.state.fileOuverte = true; this.render(); },
+  fermerFicheFile() { this.state.fileOuverte = false; this.render(); },
+
+  demarrerDepuisFile(cle) {
+    const it = this._fileItems().find(x => x.cle === cle);
+    if (!it) return;
+    this.state._fileAppels = this._fileItems().filter(x => x.type === 'COMPTE').map(x => x.obj);
+    this.state._fileAppelsIdx = this.state._fileAppels.findIndex(c => String(c.ID_Compte) === it.id);
+    if (it.planId) { this.lancerAppelPlanifie(it.planId); return; }
+    if (it.type === 'COMPTE') { this.demarrerAppelCompte(it.id, true); return; }
+    this.state.cible = it.obj; this.state.typeSource = 'PROSPECT'; this.state.idPlanifEnCours = null;
+    this.state.mode = 'APPEL'; this.state.phase = 'PRE'; this.state.recherche = it.obj.Nom_Compte || '';
+    this.render();
+  },
+  saisieDepuisFile(cle) {
+    const it = this._fileItems().find(x => x.cle === cle);
+    if (!it) return;
+    if (it.type === 'COMPTE') this.demarrerSaisiePostAppel(it.id);
+    else { this.choisirDepuisLead(it.obj); }
+  },
+  choisirDepuisLead(p) {
+    this.state.cible = p; this.state.typeSource = 'PROSPECT'; this.state.idPlanifEnCours = null;
+    this.state.mode = 'APPEL'; this.state.phase = 'POST'; this.state.recherche = p.Nom_Compte || '';
+    this.render();
+  },
+
+  _renderFicheFile(it) {
+    const E = v => this._e(v), s = this.state;
+    if (!it) return `<div class="pf-fiche-vide">Sélectionnez un compte dans la file.</div>`;
+    const o = it.obj || {};
+    const nom = o.Nom_Compte || o.Enseigne || 'n.c.';
+    const dernier = (s.journal || []).find(a => String(a.ID_Cible) === String(it.id)) || null;
+    const tel = o.Tel ? String(o.Tel) : '';
+    const lecture = Session.role === 'CHANNEL_MANAGER';
+    const note = dernier && dernier.Note ? dernier.Note : (it.type === 'LEAD' && o.Note_initiale ? o.Note_initiale : '');
+    const quand = dernier && dernier.Date ? new Date(dernier.Date).toLocaleDateString('fr-FR') : '';
+    return `<div class="pf-fiche-corps">
+      <div class="pf-fiche-tete">
+        <button class="pf-retour" onclick="VuePhoning.fermerFicheFile()" aria-label="Retour à la file"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span></button>
+        <div style="min-width:0"><h2>${E(nom)}</h2>
+          <div class="pf-sous">${E([o.Ville, o.CANAL, it.type === 'LEAD' ? 'Lead Tracker' : 'Compte'].filter(Boolean).join(' · '))}</div></div>
+      </div>
+      <div class="pf-motif pf-r${it.rang}">${E(it.motif)}${it.detail ? ' · ' + E(it.detail) : ''}</div>
+      <div class="pf-coord">
+        ${tel ? `<a href="tel:${E(tel.replace(/\s/g, ''))}"><span class="material-symbols-outlined" aria-hidden="true">call</span>${E(tel)}</a>` : '<span class="pf-sous">Téléphone non renseigné</span>'}
+        ${o.Email ? `<a href="mailto:${E(o.Email)}"><span class="material-symbols-outlined" aria-hidden="true">mail</span>${E(o.Email)}</a>` : ''}
+      </div>
+      <div class="pf-bloc"><div class="pf-bloc-t">Dernier contact</div>
+        ${note || quand ? `<div>${quand ? `<strong>${E(quand)}</strong> · ` : ''}${E(note || 'sans compte rendu')}</div>` : '<div class="pf-sous">Aucun appel enregistré.</div>'}
+      </div>
+      ${lecture ? '' : `<div class="pf-actions">
+        <button class="btn-primaire" onclick="VuePhoning.demarrerDepuisFile('${E(it.cle)}')">▶ Démarrer l'appel</button>
+        <button class="btn-secondaire" onclick="VuePhoning.saisieDepuisFile('${E(it.cle)}')">Saisie post appel</button>
+        ${it.type === 'COMPTE' ? `<button class="btn-secondaire" onclick="VuePhoning.ouvrirFormPlanif('${E(it.id)}')" title="Planifier un appel"><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span></button>` : ''}
+      </div>`}
+    </div>`;
+  },
+
+  _renderFile() {
+    const E = v => this._e(v), s = this.state;
+    const items = this._fileItems();
+    const sel = this._fileSelection(items);
+    const nbRetard = items.filter(x => x.rang === 0).length;
+    const lignes = items.map(it => {
+      const o = it.obj || {};
+      return `<button class="pf-ligne ${sel && sel.cle === it.cle ? 'on' : ''}" onclick="VuePhoning.selectionnerFile('${E(it.cle)}')">
+        <span class="pf-nom">${E(o.Nom_Compte || o.Enseigne || 'n.c.')}</span>
+        <span class="pf-m pf-r${it.rang}">${E(it.motif)}${it.detail ? ' · ' + E(it.detail) : ''}${o.Ville ? ' · ' + E(o.Ville) : ''}</span>
+      </button>`;
+    }).join('');
+    return `<div class="q-champs">
+      ${this._onglets('FILE')}
+      ${this._renderKpiBase()}
+      ${Session.voitTout() ? `<select class="q-input" style="margin-bottom:10px" onchange="VuePhoning.setFiltreCDSBase(this.value);VuePhoning.render()">
+          <option value="TOUS">Tous CDS</option>
+          ${s.cdsListe.map(c => `<option value="${c.pin}" ${s.filtreCDSBase == c.pin ? 'selected' : ''}>${E(c.nom)}</option>`).join('')}
+        </select>` : ''}
+      <div class="pf-grid ${s.fileOuverte ? 'fiche-ouverte' : ''}">
+        <div class="pf-file">
+          <div class="pf-file-t">File du jour · ${items.length} à appeler${nbRetard ? ` · <span class="pf-r0">${nbRetard} en retard</span>` : ''}</div>
+          ${items.length ? lignes : '<div class="pf-fiche-vide">Rien à appeler pour le moment.</div>'}
+        </div>
+        <div class="pf-fiche">${this._renderFicheFile(sel)}</div>
+      </div>
+    </div>`;
+  },
+
   // ── Mode BASE : liste des comptes à appeler ──
   _renderBaseComptes() {
     const s = this.state;
     const _tabs = () => `
-      <div style="display:flex;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:4px;background:var(--c-surface);margin-bottom:14px">
-        <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:transparent;color:var(--c-text-2)"
-                onclick="VuePhoning.setMode('PLANNING')">Planning</button>
-        <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:var(--c-title);color:var(--on-title)">
-          Base (${s.comptes.length})
-        </button>
-        <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:transparent;color:var(--c-text-2)"
-                onclick="VuePhoning.setMode('HISTORIQUE')">Journal</button>
-      </div>`;
+      ${this._onglets('BASE')}`;
 
     if (!s.comptes.length) {
       return `<div class="q-champs">${_tabs()}<div style="padding:32px;text-align:center;color:var(--c-text-2)">Aucun compte attribué.</div></div>`;
@@ -1261,7 +1398,7 @@ window.VuePhoning = {
       Toast.afficher('Bibliothèque XLSX non chargée', 'erreur'); return;
     }
     const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(rows);
+    const ws = XLSX.utils.json_to_sheet(denaturer(rows));
     ws['!cols'] = Object.keys(rows[0] || {}).map(() => ({ wch: 22 }));
     XLSX.utils.book_append_sheet(wb, ws, 'Phoning');
     XLSX.writeFile(wb, `PHONING_${f.debut || 'debut'}_${f.fin || 'fin'}_${ts}.xlsx`);
@@ -1274,15 +1411,7 @@ window.VuePhoning = {
   _renderJournal() {
     const s = this.state;
     const tabs = `
-      <div style="display:flex;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:4px;background:var(--c-surface);margin-bottom:14px">
-        <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:transparent;color:var(--c-text-2)"
-                onclick="VuePhoning.setMode('PLANNING')">Planning</button>
-        <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:transparent;color:var(--c-text-2)"
-                onclick="VuePhoning.setMode('BASE')">Base (${s.comptes.length})</button>
-        <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:var(--c-title);color:var(--on-title)">
-          Journal
-        </button>
-      </div>`;
+      ${this._onglets('HISTORIQUE')}`;
     if (s.journalChargement) {
       return `<div class="q-champs">${tabs}<div style="padding:32px;text-align:center;color:var(--c-text-2)">Chargement du journal…</div></div>`;
     }
@@ -1623,6 +1752,8 @@ window.VuePhoning = {
   // ── RENDER ──
   render() {
     const app = document.getElementById('app');
+    // Retour système : un mode traversé (Base, Planning, Journal) se referme d'abord, sans quitter Phoning.
+    if (typeof Router !== 'undefined' && this.state) Router.couche.sync('phoning-mode', (this.state._modeHistorique || []).length > 0, () => VuePhoning.retourMode(), 'VuePhoning');
     if (!this.state || this.state.chargement) {
       app.innerHTML = skeletonListe(6);
       return;
@@ -1641,7 +1772,8 @@ window.VuePhoning = {
     const backAction = s.mode === 'APPEL'
       ? 'VuePhoning.setMode(\'PLANNING\')'
       : 'VuePhoning.retourMode()';
-    const titre = s.mode === 'PLANNING' ? 'Planning phoning'
+    const titre = s.mode === 'FILE' ? 'File d\'appels'
+      : s.mode === 'PLANNING' ? 'Planning phoning'
       : s.mode === 'HISTORIQUE' ? 'Journal appels'
       : TITRES[s.phase];
 
@@ -1665,13 +1797,14 @@ window.VuePhoning = {
            questionnaire Empower /9 se retrouvait sous le bouton "Suivant"
            sans pouvoir scroller pour l'atteindre. Retiré uniquement pour
            CALL ; PRE/POST n'ont pas de q-nav-fixe et gardent avec-nav. -->
-      <div class="q-contenu ${s.mode === 'APPEL' && s.phase === 'CALL' ? '' : 'avec-nav'} ${['PLANNING','BASE','HISTORIQUE'].includes(s.mode) ? 'q-contenu-large' : ''}">
-        ${s.mode === 'PLANNING'    ? this._renderPlanning()
+      <div class="q-contenu ${s.mode === 'APPEL' && s.phase === 'CALL' ? '' : 'avec-nav'} ${['FILE','PLANNING','BASE','HISTORIQUE'].includes(s.mode) ? 'q-contenu-large' : ''}">
+        ${s.mode === 'FILE'        ? this._renderFile()
+        : s.mode === 'PLANNING'    ? this._renderPlanning()
         : s.mode === 'BASE'        ? this._renderBaseComptes()
         : s.mode === 'HISTORIQUE'  ? this._renderJournal()
         : this['_phase' + s.phase]()}
       </div>
-      ${(s.mode === 'BASE' || s.mode === 'PLANNING' || s.mode === 'HISTORIQUE') && Session.role !== 'CHANNEL_MANAGER' ? `<button class="fab" onclick="VuePhoning.demarrerAppelDirect()" title="Créer un appel (base ou à froid)">＋</button>` : ''}
+      ${(s.mode === 'FILE' || s.mode === 'BASE' || s.mode === 'PLANNING' || s.mode === 'HISTORIQUE') && Session.role !== 'CHANNEL_MANAGER' ? `<button class="fab" onclick="VuePhoning.demarrerAppelDirect()" title="Créer un appel (base ou à froid)">＋</button>` : ''}
       ${NavBar('phoning')}
       ${this._renderModalEditAppel()}
       ${this._renderConfirmDeleteAppel()}
@@ -2368,15 +2501,7 @@ window.VuePhoning = {
 
     return `<div class="q-champs">
       <!-- Tabs navigation -->
-      <div style="display:flex;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:4px;background:var(--c-surface);margin-bottom:14px">
-        <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:var(--c-title);color:var(--on-title)">
-          Planning
-        </button>
-        <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:transparent;color:var(--c-text-2)"
-                onclick="VuePhoning.setMode('BASE')">Base (${s.comptes.length})</button>
-        <button type="button" style="flex:1;padding:8px 4px;border:none;border-radius:4px;font-weight:600;font-size:11px;cursor:pointer;background:transparent;color:var(--c-text-2)"
-                onclick="VuePhoning.setMode('HISTORIQUE')">Journal</button>
-      </div>
+      ${this._onglets('PLANNING')}
 
       <!-- Actions rapides -->
       <div style="display:flex;gap:8px;margin-bottom:14px">
@@ -2514,7 +2639,7 @@ window.VuePhoning = {
     const baseRecherche = this.state.tousComptes || this.state.comptes;
     const matches = baseRecherche.filter(c => normaliserNom(c.Nom_Compte).includes(q)).slice(0, 6);
     zone.innerHTML = matches.map(c => `
-      <div class="q-arbre-btn" style="margin-top:4px" onclick="VuePhoning._choisirComptePlanif('${c.ID_Compte}','${c.Nom_Compte.replace(/'/g, "\\'")}')">
+      <div class="q-arbre-btn" style="margin-top:4px" onclick="VuePhoning._choisirComptePlanif('${c.ID_Compte}','${jsq(c.Nom_Compte)}')">
         <strong>${c.Nom_Compte}</strong>
         <span style="color:var(--c-text-2);font-size:12px">${c.Ville || 'n.c.'}</span>
       </div>`).join('');

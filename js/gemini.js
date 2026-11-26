@@ -23,6 +23,18 @@ window.GeminiAPI = {
     return data.texte;
   },
 
+  // Coach : fonction coach-chat (outils prix, marge, comptes côté serveur). Tous profils, Externe compris.
+  async coach(messages, faits, prenom, perimetrePin) {
+    const r = await fetch(SheetsAPI.BASE_URL.replace(/ai-proxy$/, 'coach-chat'), {
+      method:  'POST',
+      headers: { 'Authorization': 'Bearer ' + SUPABASE_ANON },
+      body: JSON.stringify({ token: SheetsAPI.TOKEN || (typeof Session !== 'undefined' && Session.token) || null, messages, faits: faits || '', prenom: prenom || '', perimetre_pin: perimetrePin || null }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || !data.ok) throw new Error(data.erreur || ('HTTP ' + r.status));
+    return data;
+  },
+
   // T01 — Analyser la fiche prospect
   t01_analyser(lead) {
     const ctx = `Tu es un assistant commercial B2B expert en distribution informatique / cybersécurité (marque Norton).

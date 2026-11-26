@@ -15,14 +15,25 @@ window.SellInFlag = {
   libelle(c) {
     const q = this._q(c && c.SellIn_Dernier_Quarter);
     const s = Number(c && c.SellIn_Derniere_Semaine);
+    // Le détail hebdomadaire peut être en retard sur les totaux du trimestre : si le CA d'un trimestre plus récent est connu, on l'indique (sans inventer la semaine).
+    const recent = this._dernierTrimestreCA(c);
+    if (recent && (!q || this._ordre(recent) > this._ordre(c.SellIn_Dernier_Quarter))) return `${recent.slice(0, 2)} · semaine n.c.`;
     return q && s ? `${q.q} · S${s}` : null;
+  },
+  _dernierTrimestreCA(c) {
+    if (!c) return null;
+    for (const t of ['Q4', 'Q3', 'Q2', 'Q1']) { const v = window.parseCA ? parseCA(c[`CA_${t}FY27`]) : Number(c[`CA_${t}FY27`]); if (v > 0) return `${t}FY27`; }
+    return null;
   },
 
   badge(c) {
     const lib = this.libelle(c);
     if (!lib) return '';
     const q = this._q(c.SellIn_Dernier_Quarter);
-    const titre = `SELL IN : dernière commande en semaine ${Number(c.SellIn_Derniere_Semaine)} du ${q.q} FY${q.fy.slice(2)}`;
+    const recent = this._dernierTrimestreCA(c);
+    const titre = recent && (!q || this._ordre(recent) > this._ordre(c.SellIn_Dernier_Quarter))
+      ? `SELL IN : commandes au ${recent.slice(0, 2)} FY27 (semaine pas encore détaillée dans l'import hebdomadaire)`
+      : `SELL IN : dernière commande en semaine ${Number(c.SellIn_Derniere_Semaine)} du ${q.q} FY${q.fy.slice(2)}`;
     return `<span class="badge-sellin" title="${this.esc(titre)}">${lib}</span>`;
   },
 

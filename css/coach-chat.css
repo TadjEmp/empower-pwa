@@ -1,0 +1,66 @@
+/* Coach en fenêtre de chat. Sans traits ni liserés : fonds doux, ombres légères, corail pour l'action principale seulement. */
+.cc { --co-fond: var(--cs-fond, #F1F3F4); --co-carte: var(--c-surface, #fff); --co-ink: var(--c-title, #1d2329); --co-mut: var(--c-text-2, #6B7580); --co-sh: 0 1px 10px rgba(26,34,46,.07);
+  position: fixed; z-index: 1500; display: none; flex-direction: column; background: var(--c-surface, #fff); color: var(--c-text, #2a3139); font-family: inherit; overflow: hidden; }
+.cc.cc-ouvert { display: flex; }
+.cc-fond, .cc-bulle, .cc-ico { display: none; }
+.cc-tete { display: flex; align-items: center; gap: 8px; padding: 12px 12px 10px 16px; background: #343F48; color: #fff; flex: none; position: relative; }
+.cc-titre { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.cc-titre b { font-size: 15px; }
+.cc-titre .co-mut { color: rgba(255,255,255,.7); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cc-seg { display: flex; gap: 4px; margin-left: auto; background: rgba(255,255,255,.12); border-radius: 999px; padding: 3px; }
+.cc-seg button { border: 0; border-radius: 999px; padding: 6px 11px; background: transparent; color: #fff; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.cc-seg button[aria-selected=true] { background: #fff; color: #343F48; }
+.cc-ib { border: 0; background: rgba(255,255,255,.12); color: #fff; min-width: 34px; height: 34px; border-radius: 999px; font: inherit; font-size: 16px; font-weight: 600; cursor: pointer; padding: 0 10px; }
+.cc-ib:hover { background: rgba(255,255,255,.22); }
+.cc-poign { display: none; }
+.cc-corps { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--co-fond); }
+.cc-chips { display: flex; gap: 6px; overflow-x: auto; padding: 10px 12px 4px; flex: none; scrollbar-width: none; }
+.cc-chips::-webkit-scrollbar { display: none; }
+.cc-chips .co-chip { white-space: nowrap; background: #fff; flex: none; }
+.cc-chips .cc-ctx { background: #343F48; color: #fff; }
+.cc .cc-fil { flex: 1; min-height: 0; max-height: none; padding: 6px 12px; }
+.cc .co-bulle.a { background: #fff; }
+.cc .cc-saisie { margin: 0; padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); background: var(--co-fond); flex: none; }
+.cc .cc-saisie input { background: #fff; }
+.cc-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 12px; }
+.cc-msg { padding: 24px 18px; text-align: center; color: var(--co-mut); font-size: 14px; }
+.cc-pastille { position: absolute; top: -3px; right: -3px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #FF1209; color: #fff; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+
+/* Bureau : bulle + fenêtre flottante, volet latéral au bouton « agrandir » */
+@media (min-width: 900px) {
+  .cc-bulle { display: inline-flex; align-items: center; justify-content: center; position: fixed; right: 22px; bottom: 22px; z-index: 1400; width: 56px; height: 56px; border: 0; border-radius: 50%; background: #FF6D68; color: #fff; box-shadow: 0 8px 24px rgba(52,63,72,.32); cursor: pointer; transition: transform .15s; }
+  .cc-bulle:hover { transform: scale(1.06); }
+  .cc-bulle[hidden] { display: none; }
+  body:has(.fab) .cc-bulle { right: 92px; }
+  .cc { right: 22px; bottom: 22px; width: 400px; height: min(640px, calc(100vh - 44px)); border-radius: 22px; box-shadow: 0 18px 50px rgba(52,63,72,.3); }
+  .cc.cc-large { top: 0; right: 0; bottom: 0; width: 460px; height: auto; border-radius: 0; box-shadow: -8px 0 30px rgba(52,63,72,.2); }
+  body.cc-dock #app { margin-right: 460px; }
+  .cc-seg button { padding: 6px 9px; }
+  body:has(.cc.cc-ouvert) .cc-bulle { display: none; }
+}
+
+/* Mobile : icône d'en-tête + feuille du bas */
+@media (max-width: 899px) {
+  .cc-ico { display: inline-flex; align-items: center; justify-content: center; position: relative; flex: none; width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgba(255,255,255,.15); color: #fff; cursor: pointer; margin-left: auto; margin-right: 6px; }
+  .app-brand-bar .cc-ico + .brand-hamburger { margin-left: 0; }
+  .cc-fond.cc-fond-on { display: block; position: fixed; inset: 0; z-index: 1490; background: rgba(26,34,46,.38); }
+  .cc { left: 0; right: 0; bottom: 0; height: 88vh; height: 88dvh; border-radius: 22px 22px 0 0; box-shadow: 0 -10px 40px rgba(26,34,46,.3); animation: cc-monte .22s ease-out; transition: transform .2s; }
+  .cc-tete { padding-top: 20px; flex-wrap: wrap; row-gap: 8px; }
+  .cc-poign { display: block; position: absolute; top: 7px; left: 50%; width: 40px; height: 4px; margin-left: -20px; border-radius: 2px; background: rgba(255,255,255,.4); }
+  .cc-agr { display: none; }
+  .cc-seg { margin-left: 0; order: 5; width: 100%; }
+  .cc-seg button { flex: 1; }
+  .cc-titre { flex: 1; }
+  .cc .cc-saisie input { font-size: 16px; }
+}
+@keyframes cc-monte { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media print { .cc, .cc-bulle, .cc-fond, .cc-ico { display: none !important; } }
+
+/* En-tête du Coach en panneau large : titre, segments, Plan, réduire et fermer tiennent sur une ligne, rien n'est coupé */
+@media (min-width: 900px) {
+  .cc-tete { gap: 6px; }
+  .cc-titre { flex: 1 1 auto; min-width: 56px; }
+  .cc-seg { margin-left: auto; flex: none; }
+  .cc-seg button { padding: 6px 8px; font-size: 11.5px; }
+  .cc-ib { flex: none; min-width: 32px; height: 32px; padding: 0 10px; font-size: 12px; }
+}

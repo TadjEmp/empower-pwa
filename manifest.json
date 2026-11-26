@@ -3,8 +3,8 @@
   "short_name": "ESI",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#0050FF",
+  "background_color": "#E4E6E8",
+  "theme_color": "#242E39",
   "orientation": "portrait",
   "icons": [
     {

@@ -76,3 +76,6 @@ const Session = {
   estExterne()  { return this.role === 'EXTERNE'; },
   voitTout()    { return this.role === 'ADMIN' || this.role === 'CHANNEL_MANAGER'; },
 };
+
+// Exposé sur window : plusieurs modules (Kit, mandats, coach, toasts) testent « window.Session » ; un const global n'est pas une propriété de window.
+window.Session = Session;

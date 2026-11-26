@@ -33,7 +33,7 @@ function calculerCamembertsActivite(raw) {
   // Vue consolidée (aucun commercial choisi, rôle Admin/Channel) → répartition
   // par commercial. Vue personnelle (CDS, ou commercial choisi) → par statut.
   const consolide = Session.voitTout() && !filtres.pinCommercial;
-  const COULEURS = ['#0050FF', '#0400F5', '#00b27e', '#f59e0b', '#9333ea', '#626264'];
+  const COULEURS = ['#343F48', '#5B7A99', '#8C9BB8', '#B8BEC4', '#6B7580', '#4A5A78'];
 
   const parCommercial = (lignes, ns) => {
     const parPin = new Map();
@@ -149,7 +149,7 @@ function svgCAHebdo(data) {
   const fy27Vals = data.map(d => d.fy27);
   const dernierIdx = fy27Vals.lastIndexOf(fy27Vals.filter(v => v !== null).pop());
   const marqueur = dernierIdx >= 0
-    ? `<circle cx="${xOf(dernierIdx).toFixed(1)}" cy="${yOf(data[dernierIdx].fy27).toFixed(1)}" r="3" fill="#0050FF"/>`
+    ? `<circle cx="${xOf(dernierIdx).toFixed(1)}" cy="${yOf(data[dernierIdx].fy27).toFixed(1)}" r="3" fill="#343F48"/>`
     : '';
   const labels = data.map((d, i) =>
     (i % 2 === 0)
@@ -158,13 +158,14 @@ function svgCAHebdo(data) {
   ).join('');
 
   return `
-    <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"
+    <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" data-tipzone
          style="width:${W}px;max-width:100%;height:auto;display:block;margin:8px 0 4px">
       ${ligne('fy26', '#9aa0a6')}
-      ${ligne('fy27', '#0050FF')}
+      ${ligne('fy27', '#343F48')}
       ${marqueur}
       ${labels}
-      <rect x="4" y="2" width="8" height="8" fill="#0050FF" rx="1"/>
+      ${data.map((d, i) => `<rect x="${(xOf(i) - 8).toFixed(1)}" y="${TOP - 4}" width="16" height="${BASE - TOP + 8}" fill="transparent" tabindex="0" data-tip="${d.wk}\nFY27 : ${d.fy27 === null ? 'à venir' : Math.round(d.fy27).toLocaleString('fr-FR') + ' €'}\nFY26 réf. : ${Math.round(d.fy26).toLocaleString('fr-FR')} €"/>`).join('')}
+      <rect x="4" y="2" width="8" height="8" fill="#343F48" rx="1"/>
       <text x="15" y="10" font-size="9" fill="#1a1a1a">CA FY27 (à ce jour)</text>
       <rect x="102" y="2" width="8" height="8" fill="#9aa0a6" rx="1"/>
       <text x="113" y="10" font-size="9" fill="#626264">CA FY26 (réf.)</text>
@@ -216,6 +217,60 @@ function renderBlocCAHebdo(f, ns, fmtEUR) {
   </div>`;
 }
 
+
+// ── Jauge « activés » Empower : comptes onboardés Empower ayant passé une première commande ──
+//    Règle unique (décision 4 nov. 2026) : FlagsCanal.active, soit CA Empower > 0 sur au moins une période.
+//    Le signal « dernière semaine de commande » ne compte pas (il peut venir d'une commande Grossiste).
+//    Les données viennent des COMPTES, mis à jour à chaque import Sell-In.
+function calculerActivationEmpower(comptes) {
+  const vivants = (comptes || []).filter(c => !String(c.deleted || '').toUpperCase().includes('TRUE'));
+  const onboardes = vivants.filter(c => window.estEmpower && window.estEmpower(c));
+  const actif = c => window.FlagsCanal.active(c);
+  const parCds = {};
+  let act = 0;
+  onboardes.forEach(c => {
+    const a = actif(c), k = c.PIN_CDS_Assigne;
+    if (a) act++;
+    (parCds[k] = parCds[k] || { act: 0, tot: 0 }).tot++;
+    if (a) parCds[k].act++;
+  });
+  const tot = onboardes.length;
+  return { act, tot, non: tot - act, pct: tot ? Math.round(act / tot * 100) : 0,
+    parCds: Object.entries(parCds).map(([pin, v]) => ({ pin, ...v, pct: v.tot ? Math.round(v.act / v.tot * 100) : 0 })).sort((a, b) => b.tot - a.tot) };
+}
+
+function renderJaugeActivation(comptes, opts) {
+  const nu = !!(opts && opts.sansCarte);
+  const a = calculerActivationEmpower(comptes);
+  const R = 70, C = Math.PI * R, rempli = C * a.pct / 100;
+  const arc = `M 20 90 A ${R} ${R} 0 0 1 160 90`;
+  const lignes = a.parCds.filter(x => x.pin && x.pin !== 'undefined').map(x => `
+      <div style="display:flex;align-items:center;gap:8px;font-size:12px;margin-top:6px">
+        <span style="flex:0 0 110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${window.resolveCDS ? window.resolveCDS(x.pin) : x.pin}</span>
+        <span style="flex:1;height:8px;border-radius:4px;background:var(--c-border);overflow:hidden"><span style="display:block;height:100%;width:${x.pct}%;background:#FF6D68"></span></span>
+        <span style="flex:0 0 96px;text-align:right;white-space:nowrap;color:var(--c-text-2)">${x.act} / ${x.tot} · ${x.pct} %</span>
+      </div>`).join('');
+  const corps = `
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:16px">
+      <svg viewBox="0 0 180 104" width="200" role="img" aria-label="${a.pct} % de comptes activés : ${a.act} sur ${a.tot}" style="max-width:100%;flex:0 0 auto">
+        <path d="${arc}" fill="none" stroke="var(--c-border)" stroke-width="16" stroke-linecap="round"/>
+        <path d="${arc}" fill="none" stroke="#FF6D68" stroke-width="16" stroke-linecap="round" stroke-dasharray="${rempli.toFixed(1)} ${C.toFixed(1)}"/>
+        <text x="90" y="80" text-anchor="middle" font-size="28" font-weight="800" fill="var(--c-title)">${a.pct} %</text>
+        <text x="90" y="98" text-anchor="middle" font-size="10" fill="var(--c-text-2)">activés</text>
+      </svg>
+      <div style="flex:1;min-width:160px">
+        <div style="font-size:28px;font-weight:800;color:var(--c-title);line-height:1">${a.act}<span style="font-size:15px;font-weight:600;color:var(--c-text-2)"> / ${a.tot}</span></div>
+        <div style="font-size:12px;color:var(--c-text-2);margin-top:4px">comptes Empower activés (première commande passée)</div>
+        <div style="font-size:12px;margin-top:6px"><strong>${a.non}</strong> à relancer pour une première commande</div>
+      </div>
+    </div>
+    ${lignes ? `<div style="margin-top:10px">${lignes}</div>` : ''}
+    <div style="font-size:11px;color:var(--c-text-2);margin-top:8px">Mis à jour à chaque import du fichier Sell-In.</div>`;
+  return nu ? corps : `<div class="bloc-fiche"><div class="bloc-titre">Activation Empower</div>${corps}</div>`;
+}
+
+window.calculerActivationEmpower = calculerActivationEmpower;
+window.renderJaugeActivation = renderJaugeActivation;
 window.calculerCamembertsActivite = calculerCamembertsActivite;
 window.renderBlocCamemberts = renderBlocCamemberts;
 window.renderBlocCAHebdo = renderBlocCAHebdo;

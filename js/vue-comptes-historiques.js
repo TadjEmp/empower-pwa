@@ -26,6 +26,7 @@ window.VueComptesHistoriques = {
       case 'fy25':   return c.caFy25 || 0;
       case 'fy26':   return c.caFy26 || 0;
       case 'q1fy27': return c.caQ1Fy27 || 0;
+      case 'fy27':   return c.caFy27 || 0;
       case 'cds':    return c.cdsPrenom || '';
       default:       return '';
     }
@@ -46,23 +47,28 @@ window.VueComptesHistoriques = {
     this.render();
     try {
       const [rawV17, rawMDB, params] = await Promise.all([
-        SheetsAPI.lire('V17', 'COMPTES_HISTORIQUES'),
-        SheetsAPI.lire('EMPOWER_MDB', 'COMPTES'),
+        SheetsAPI.lire('V17', 'COMPTES_HISTORIQUES', { nocache: true }),   // CA à jour : jamais le cache de 30 min
+        SheetsAPI.lire('EMPOWER_MDB', 'COMPTES', { nocache: true }),
         SheetsAPI.lire('EMPOWER_MDB', 'PARAMS').catch(() => []),
       ]);
       const mapMDB = new Map(rawMDB.map(c => [normaliserNom(c.Nom_Compte), c]));
+      const mapUuid = new Map(rawMDB.map(c => [String(c._uuid), c]));   // un revendeur Sell-In rapproché par alias (nom différent) retrouve son compte par identifiant
       // BLOC 07 §8 — quarter FY27 actif, même pattern que vue-dashboard-manager.js
       const paramMap = Object.fromEntries((params || []).map(p => [p.Parametre, p.Valeur]));
       this.state.quarter = paramMap.QuarterActif || 'Q1';
       const quarter = this.state.quarter;
 
       this.state.comptes = rawV17.map(r => {
-        const mdb = mapMDB.get(normaliserNom(r.RESELLER || '')) || null;
+        const mdb = (r.Compte_ID && mapUuid.get(String(r.Compte_ID))) || mapMDB.get(normaliserNom(r.RESELLER || '')) || null;
 
         // parseCA robuste : valeurs corrompues (dates "11/4/1903") → null (Bloc 9 #2)
         const caFy25   = window.parseCA(r['CA FY25 €']  || r.CA_FY25  || null);
         const caFy26   = window.parseCA(r['CA FY26 €']  || r.CA_FY26  || null);
         const caQ1Fy27 = window.caQuarterActif(r, quarter, 'sellin') ?? window.caQuarterActif(mdb, quarter);
+        // Cumul FY27 (tous trimestres) et détail : un compte qui a commandé aux trimestres précédents n'apparaît plus à zéro.
+        const forme = r['CA Q1FY27 €'] !== undefined ? 'sellin' : 'comptes', src = forme === 'sellin' ? r : mdb;
+        const caFy27 = window.caFY27Cumul(src, forme);
+        const detail27 = window.caFY27Detail(src, forme);
 
         // PIN CDS → prénom via resolveCDS (Bloc 9 #1) ; jamais de PIN brut dans l'UI
         const pinBrut = mdb?.PIN_CDS_Assigne || null;
@@ -75,7 +81,7 @@ window.VueComptesHistoriques = {
           canal:    r.CANAL || 'n.c.',
           caFy25,
           caFy26,
-          caQ1Fy27,
+          caQ1Fy27, caFy27, detail27,
           statut:   mdb?.STATUT_COMPTE || r.STATUT_FY27 || r.FLAG_BRUT || 'n.c.',
           priorite: r.FLAG_BRUT || '',
           pin:      pinBrut,   // stocké pour filtrage CDS mais jamais affiché
@@ -106,9 +112,9 @@ window.VueComptesHistoriques = {
       const pr = (c.priorite || '').toUpperCase();
       const f  = this.state.filtreStatut;
       if (f === 'REACTIVER') return st.startsWith('REACTIVER') || pr.startsWith('REACTIVER');
-      // "Actif" = CA_Q1FY27 > 0, calculé dynamiquement (Bloc 9 #3)
-      if (f === 'ACTIF')     return st === 'ACTIF' || pr === 'ACTIF' || (c.caQ1Fy27 !== null && c.caQ1Fy27 > 0);
-      if (f === 'INACTIF')   return st === 'INACTIF' || pr === 'INACTIF' || ((c.caFy26 === null || c.caFy26 === 0) && (c.caQ1Fy27 === null || c.caQ1Fy27 === 0));
+      // "Actif" = CA FY27 cumulé > 0 (tous trimestres), comme le statut calculé par la synchronisation Sell-In
+      if (f === 'ACTIF')     return st === 'ACTIF' || pr === 'ACTIF' || (c.caFy27 !== null && c.caFy27 > 0);
+      if (f === 'INACTIF')   return st === 'INACTIF' || pr === 'INACTIF' || ((c.caFy26 === null || c.caFy26 === 0) && (c.caFy27 === null || c.caFy27 === 0));
       return st === f || pr === f;
     });
     // Tri — colonne cliquable (Bloc 4) prioritaire sur le select existant
@@ -147,6 +153,7 @@ window.VueComptesHistoriques = {
     const total = this.state.comptes.length;
     // caTotal : null → 0 pour la somme (Bloc 9 #2)
     const caTotal = this.state.comptes.reduce((s, c) => s + (c.caFy26 || 0), 0);
+    const caTotal27 = this.state.comptes.reduce((s, c) => s + (c.caFy27 || 0), 0);
 
     app.innerHTML = `
       <header class="header-vue">
@@ -165,6 +172,7 @@ window.VueComptesHistoriques = {
       <div class="kpi-grid-layout">
         ${kpiCard({ label: 'Comptes',    value: total,        accent: 'primary' })}
         ${kpiCard({ label: 'CA FY26',    value: window.fmtCA(caTotal) !== 'n.c.' ? window.fmtCA(caTotal) : 'n.c.', unit: '€', accent: 'teal' })}
+        ${kpiCard({ label: 'CA FY27 cumulé', value: window.fmtCA(caTotal27) !== 'n.c.' ? window.fmtCA(caTotal27) : 'n.c.', unit: '€', accent: 'primary' })}
       </div>
 
       <!-- Filtres -->
@@ -190,10 +198,17 @@ window.VueComptesHistoriques = {
       <div class="liste-comptes avec-nav" id="ch-liste-zone">${this._renderListeZone(liste)}</div>
 
       ${NavBar('historiques')}
+      ${FusionTabs.portefeuille()}
     `;
 
     const champ = document.getElementById('ch-recherche');
     if (this.state.recherche && champ) champ.focus();
+  },
+
+  // Détail du CA FY27 par trimestre, pour l'infobulle : « Q1 1 255 € · Q2 487 € · Q3 0 € ».
+  _titreDetail27(c) {
+    const d = (c && c.detail27) || [];
+    return d.length ? d.map(x => `${x[0]} ${window.fmtCA(x[1])} €`).join(' · ') : 'Aucun CA FY27';
   },
 
   // BLOC 11 — même correctif que VueComptes._renderListeZone (cause identique).
@@ -219,7 +234,8 @@ window.VueComptesHistoriques = {
             <div class="cc-infos">
               <span>📍 ${c.canal !== 'n.c.' ? c.canal : 'n.c.'}</span>
               ${caFy25Fmt !== 'n.c.' ? `<span>FY25 : ${caFy25Fmt} €</span>` : ''}
-              ${caQ1Fy27Fmt !== 'n.c.' ? `<span style="color:var(--c-success)">${this.state.quarter}FY27 : ${caQ1Fy27Fmt} €</span>` : ''}
+              ${c.caFy27 ? `<span style="color:var(--c-success)" title="${this._titreDetail27(c)}">FY27 : ${window.fmtCA(c.caFy27)} €</span>` : ''}
+              ${caQ1Fy27Fmt !== 'n.c.' ? `<span>${this.state.quarter} : ${caQ1Fy27Fmt} €</span>` : ''}
               ${Session.voitTout() && c.cdsPrenom !== 'n.c.' ? `<span>👤 ${c.cdsPrenom}</span>` : ''}
             </div>
             ${c.statut && c.statut !== 'n.c.' ? `
@@ -244,6 +260,7 @@ window.VueComptesHistoriques = {
               <th style="cursor:pointer" onclick="VueComptesHistoriques.triParColonneHist('canal')">Canal${this._indicateurTriHist('canal')}</th>
               <th class="num" style="cursor:pointer" onclick="VueComptesHistoriques.triParColonneHist('fy25')">CA FY25${this._indicateurTriHist('fy25')}</th>
               <th class="num" style="cursor:pointer" onclick="VueComptesHistoriques.triParColonneHist('fy26')">CA FY26${this._indicateurTriHist('fy26')}</th>
+              <th class="num" style="cursor:pointer" onclick="VueComptesHistoriques.triParColonneHist('fy27')">CA FY27 cumulé${this._indicateurTriHist('fy27')}</th>
               <th class="num" style="cursor:pointer" onclick="VueComptesHistoriques.triParColonneHist('q1fy27')">CA ${this.state.quarter} FY27${this._indicateurTriHist('q1fy27')}</th>
               <th>Statut</th>${Session.voitTout() ? `<th style="cursor:pointer" onclick="VueComptesHistoriques.triParColonneHist('cds')">CDS${this._indicateurTriHist('cds')}</th>` : ''}<th>Actions</th>
             </tr></thead>
@@ -257,6 +274,7 @@ window.VueComptesHistoriques = {
                   <td>${c.canal !== 'n.c.' ? c.canal : 'n.c.'}</td>
                   <td class="num">${caFy25Fmt !== 'n.c.' ? caFy25Fmt + ' €' : 'n.c.'}</td>
                   <td class="num" style="font-weight:700;color:var(--c-title)">${caFy26Fmt !== 'n.c.' ? caFy26Fmt + ' €' : 'n.c.'}</td>
+                  <td class="num" style="font-weight:700;color:var(--c-success)" title="${this._titreDetail27(c)}">${c.caFy27 ? window.fmtCA(c.caFy27) + ' €' : 'n.c.'}</td>
                   <td class="num" style="font-weight:600;color:var(--c-success)">${caQ1Fy27Fmt !== 'n.c.' ? caQ1Fy27Fmt + ' €' : 'n.c.'}</td>
                   <td>${c.statut && c.statut !== 'n.c.' ? `<span class="statut-pill statut-${slugify(c.statut).replace(/-/g,'_')}">${c.statut}</span>` : 'n.c.'}</td>
                   ${Session.voitTout() ? `<td>${c.cdsPrenom !== 'n.c.' ? '👤 ' + c.cdsPrenom : 'n.c.'}</td>` : ''}

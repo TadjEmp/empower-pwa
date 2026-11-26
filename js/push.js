@@ -86,6 +86,30 @@ window.PushNotifs = {
 
   _rendre() { if (window.NotifCenter) NotifCenter._render(); },
 
+  // ── Invitation à activer les alertes (une fois par semaine au plus, tant que l'appareil n'est pas abonné) ──
+  // L'activation exige un geste de l'utilisateur : la bannière ne fait qu'inviter, le bouton « Activer » déclenche la demande.
+  _invitationRecente() { try { const t = Number(localStorage.getItem('esi_push_invite') || 0); return t && Date.now() - t < 7 * 86400000; } catch { return false; } },
+  _noterInvitation() { try { localStorage.setItem('esi_push_invite', String(Date.now())); } catch { /* stockage indisponible */ } },
+  invitationUtile() {
+    if (!this.supporte() || this._abonne || Notification.permission === 'denied' || this._invitationRecente()) return false;
+    return true;
+  },
+  inviter() {
+    if (document.getElementById('push-invite') || !this.invitationUtile()) return;
+    const ios = this.estIOS() && !this.estInstallee();
+    const texte = ios
+      ? "Pour être alerté des nouveaux leads sur iPhone : ajoutez l'app à l'écran d'accueil (Partager, puis Sur l'écran d'accueil) et ouvrez-la depuis l'icône."
+      : 'Activez les alertes pour être prévenu des nouveaux leads, même app fermée.';
+    const el = document.createElement('div');
+    el.id = 'push-invite'; el.className = 'push-invite'; el.setAttribute('role', 'region'); el.setAttribute('aria-label', 'Alertes');
+    el.innerHTML = `<p>${texte}</p><div class="push-invite-act">` + (ios ? '' : `<button type="button" class="push-invite-ok">Activer</button>`) + `<button type="button" class="push-invite-non">Plus tard</button></div>`;
+    document.body.appendChild(el);
+    const fermer = () => { this._noterInvitation(); el.remove(); };
+    el.querySelector('.push-invite-non').addEventListener('click', fermer);
+    const ok = el.querySelector('.push-invite-ok');
+    if (ok) ok.addEventListener('click', async () => { await this.activer(); await this.rafraichir(); fermer(); });
+  },
+
   // Bloc affiché dans le panneau de notifications.
   html() {
     if (!this.supporte()) return `<div class="nc-push nc-push-info">Notifications push non disponibles sur ce navigateur.</div>`;

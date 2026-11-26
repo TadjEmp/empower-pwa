@@ -7,7 +7,7 @@ window.VueLogin = {
   state: { erreur: null, chargement: false, mode: 'login', resetEmail: '', resetMsg: '', resetToken: '', nouveauMdp: '', resetMdpMsg: '' },
 
   init() {
-    if (Session.estConnecte()) { Router.aller('#/dashboard'); return; }
+    if (Session.estConnecte()) { Router.aller('#/pilotage'); return; }
     // BLOC 9 — détecter token de reset dans l'URL (#/reset-password?token=xxx)
     const hash = Router.hashCourant();
     if (hash.includes('reset-password')) {
@@ -73,7 +73,7 @@ window.VueLogin = {
       <div class="login-page">
         <div class="login-carte">
           <h1 class="login-titre" style="font-size:20px">Mot de passe oublié</h1>
-          <p class="login-sous">Saisissez votre email, vous recevrez un lien valable 30 minutes.</p>
+          <p class="login-sous">Saisissez votre e-mail : les administrateurs sont prévenus et vous communiquent un nouveau mot de passe.</p>
           <form class="login-form" onsubmit="VueLogin.envoyerReset(event)">
             <div class="login-champ">
               <span class="champ-icone"><span class="material-symbols-outlined" aria-hidden="true">mail</span></span>
@@ -82,7 +82,7 @@ window.VueLogin = {
             </div>
             ${this.state.resetMsg ? `<div class="login-erreur" style="color:var(--c-success)">${this.state.resetMsg}</div>` : ''}
             <button type="submit" class="btn-login" ${this.state.chargement ? 'disabled' : ''}>
-              ${this.state.chargement ? 'Envoi…' : 'Envoyer le lien →'}
+              ${this.state.chargement ? 'Envoi…' : 'Prévenir les administrateurs →'}
             </button>
             <button type="button" class="btn-secondaire" style="width:100%;margin-top:8px"
                     onclick="VueLogin.state.mode='login';VueLogin.render()">← Retour à la connexion</button>
@@ -117,12 +117,15 @@ window.VueLogin = {
     this.state.resetMsg   = '';
     this._renderReset();
     try {
-      const r = await SheetsAPI._fetchRetry(SheetsAPI.BASE_URL, 'POST', 2, { action: 'sendResetEmail', email: this.state.resetEmail });
-      this.state.resetMsg = r.message || 'Lien envoyé si l\'email est connu.';
-      // Si admin et lien retourné (MailApp non configuré) : afficher le lien
-      if (r.lienAdmin) this.state.resetMsg += `\n\n🔗 (Admin) Lien : ${r.lienAdmin}`;
+      const rep = await fetch(`${SUPABASE_URL}/functions/v1/auth-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+        body: JSON.stringify({ action: 'demandeReset', email: this.state.resetEmail }),
+      });
+      const r = await rep.json();
+      this.state.resetMsg = r.message || 'Demande transmise aux administrateurs.';
     } catch(err) {
-      this.state.resetMsg = '❌ Erreur : ' + err.message;
+      this.state.resetMsg = 'Demande impossible pour le moment, réessayez plus tard.';
     }
     this.state.chargement = false;
     this._renderReset();
@@ -165,9 +168,23 @@ window.VueLogin = {
     if (this._gestesActifs) return;
     this._gestesActifs = true;
     const marquer = e => { if (e.isTrusted) this._geste = Date.now(); };
-    document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('.btn-login')) marquer(e); }, true);
-    document.addEventListener('click', e => { if (e.target.closest && e.target.closest('.btn-login')) marquer(e); }, true);
-    document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.closest && e.target.closest('.login-form')) marquer(e); }, true);
+    const tactile = () => !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+    // Téléphone / tablette : seule une vraie pression sur « Se connecter » lance la connexion (pas la touche « Aller » du clavier,
+    // ni un envoi déclenché par le remplissage automatique, ni un clic simulé). Le geste doit commencer par un appui réel sur le bouton.
+    document.addEventListener('pointerdown', e => { if (e.target.closest && e.target.closest('.btn-login')) { if (e.isTrusted) { this._appui = Date.now(); marquer(e); } } }, true);
+    document.addEventListener('click', e => {
+      if (!(e.target.closest && e.target.closest('.btn-login'))) return;
+      if (tactile() && !(this._appui && Date.now() - this._appui < 2000)) return;   // clic sans appui préalable : ignoré
+      marquer(e);
+    }, true);
+    // Remplissage automatique (gestionnaire de mots de passe) : des événements « input » arrivent sans frappe au clavier.
+    // Ordinateur : une validation par Entrée juste après un tel remplissage n'est pas un geste de l'utilisateur.
+    const form = e => e.target.closest && e.target.closest('.login-form');
+    document.addEventListener('keydown', e => { if (form(e) && e.key !== 'Enter') this._frappe = Date.now(); }, true);
+    document.addEventListener('input', e => { if (form(e) && !(this._frappe && Date.now() - this._frappe < 400)) this._rempli = Date.now(); }, true);
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && form(e) && !tactile() && !(this._rempli && Date.now() - this._rempli < 1500)) marquer(e);
+    }, true);
   },
 
   _gesteRecent() { return !!this._geste && Date.now() - this._geste < 3000; },
@@ -185,6 +202,7 @@ window.VueLogin = {
         if (btn) btn.parentNode.insertBefore(info, btn);
       }
       info.textContent = 'Vérifiez vos identifiants puis appuyez sur « Se connecter ».';
+      this._geste = 0;
       return;
     }
     this._geste = 0;
@@ -212,7 +230,7 @@ window.VueLogin = {
       // ici, donc après une connexion l'utilisateur ne recevait aucune
       // notification et le desktop restait sans titre de page (cf. app.js).
       demarrerServicesSession();
-      Router.aller('#/dashboard');
+      Router.aller('#/pilotage');
     } else {
       this.state.erreur = `❌ ${r.erreur}`;
       this.state.chargement = false;

@@ -9,6 +9,46 @@
 const SUPABASE_URL  = 'https://osqwtonwomhalxeidayp.supabase.co'
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9zcXd0b253b21oYWx4ZWlkYXlwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4MDk2NjYsImV4cCI6MjA5NzM4NTY2Nn0.98TzvM8dz_SPRJVv6ZMomiW8aj6vjd6pFG3d4RXQkPU'
 
+
+// ── Lot 6 (C1) — neutralisation des données à la lecture ──
+// Les gabarits des vues injectent des champs saisis (noms, notes, villes…) dans innerHTML. Pour qu'une donnée ne puisse
+// jamais devenir du code (XSS stocké), toute chaîne lue en base est neutralisée : < > " ` deviennent des entités HTML
+// (affichage identique, y compris dans value="…" et <textarea>). Les « & » sont laissés tels quels : idempotent, sans double encodage.
+// Les chaînes JSON (questionnaire_json…) gardent leurs guillemets pour rester analysables.
+// Les exports (CSV / Excel) repassent par denaturer(). Les écritures envoient toujours les valeurs saisies, jamais les entités.
+const _NEUTRE = { '<': '&lt;', '>': '&gt;', '"': '&quot;', '`': '&#96;' };
+// Identifiants (ID_Compte, ID_Prospect, id_cible…) : ils se retrouvent dans des gestionnaires onclick="f('…')".
+// Seuls [A-Za-z0-9_.:-] sont admis (toutes les valeurs existantes en base respectent déjà ce jeu).
+const _CLE_ID = /^(id|uuid|_uuid)$|^id_|_id$|_gas$/i;
+function neutraliser(v, prof = 0, cle = '') {
+  if (typeof v === 'string') {
+    if (cle && _CLE_ID.test(cle)) return v.replace(/[^A-Za-z0-9_.:\-]/g, '_');
+    if (!/[<>"`]/.test(v)) return v;
+    return v.replace(/^\s*[\[{]/.test(v) ? /[<>`]/g : /[<>"`]/g, c => _NEUTRE[c]);
+  }
+  if (prof > 6 || v === null || typeof v !== 'object') return v;
+  if (Array.isArray(v)) return v.map(x => neutraliser(x, prof + 1, cle));
+  if (Object.prototype.toString.call(v) !== '[object Object]') return v;
+  const o = {};
+  for (const k of Object.keys(v)) o[k] = neutraliser(v[k], prof + 1, k);
+  return o;
+}
+function denaturer(v, prof = 0) {
+  if (typeof v === 'string') return v.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#96;/g, '`');
+  if (prof > 6 || v === null || typeof v !== 'object') return v;
+  if (Array.isArray(v)) return v.map(x => denaturer(x, prof + 1));
+  if (Object.prototype.toString.call(v) !== '[object Object]') return v;
+  const o = {};
+  for (const k of Object.keys(v)) o[k] = denaturer(v[k], prof + 1);
+  return o;
+}
+// Texte à placer dans une chaîne JavaScript d'un attribut onclick="f('${jsq(x)}')" : tout caractère hors [A-Za-z0-9 _.-] est
+// écrit en \uXXXX, donc ni apostrophe, ni guillemet, ni « < » ne peut sortir de la chaîne, avant comme après décodage HTML.
+function jsq(s) {
+  return String(s ?? '').replace(/[^A-Za-z0-9 _.\-]/g, c => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
+}
+window.neutraliser = neutraliser; window.denaturer = denaturer; window.jsq = jsq;
+
 const SheetsAPI = {
   TOKEN:       null,
   BASE_URL:    'https://osqwtonwomhalxeidayp.supabase.co/functions/v1/ai-proxy',
@@ -126,7 +166,7 @@ const SheetsAPI = {
     '📝_ACTIONS': 'actions', '📊_ACTIONS': 'actions', 'ACTIONS': 'actions',
     '👤_UTILISATEURS': 'utilisateurs', 'UTILISATEURS': 'utilisateurs',
     '❄️_FICHES_FROIDES': 'fiches_froides', 'FICHES_FROIDES': 'fiches_froides',
-    '📦_SELLIN_SEMAINES': 'sellin_semaines', 'SELLIN_SEMAINES': 'sellin_semaines',
+    '📦_SELLIN_SEMAINES': 'sellin_semaines', 'SELLIN_SEMAINES': 'sellin_semaines', 'SELLIN_TRIMESTRES': 'sellin',
     'V_COMPTES_SUIVI': 'v_comptes_suivi', 'ATTRIBUTIONS_HISTORIQUE': 'attributions_historique', 'V_A_CONTACTER': 'v_a_contacter',
   },
 
@@ -151,6 +191,8 @@ const SheetsAPI = {
       canal: 'CANAL', mode_contact: 'MODE_CONTACT', secteur: 'SECTEUR', has_empower: 'Has_EMPOWER',
       flag_action: 'Flag_Action', priorite: 'Priorite', statut_compte: 'Statut',
       ca_fy25: 'CA_FY25', ca_fy26: 'CA_FY26', ca_q1fy27: 'CA_Q1FY27',
+      // CA FY26 par trimestre (comparaison à période égale avec FY27)
+      ca_q1fy26: 'CA_Q1FY26', ca_q2fy26: 'CA_Q2FY26', ca_q3fy26: 'CA_Q3FY26', ca_q4fy26: 'CA_Q4FY26',
       // BLOC 04 §3/§5 (09/2026) — colonnes migrées côté sync-sellin v11,
       // jamais exposées côté frontend jusqu'ici.
       ca_q2fy27: 'CA_Q2FY27', ca_q3fy27: 'CA_Q3FY27', ca_q4fy27: 'CA_Q4FY27',
@@ -170,7 +212,8 @@ const SheetsAPI = {
       source_import: 'Source_Import',
       badge_visite_froid: 'Badge_Visite_Froid', id: '_uuid',
       // Bloc 3 §1 (09/2026) — contact interlocuteur au niveau compte
-      contact_nom: 'Contact_Nom', contact_fonction: 'Contact_Fonction',
+      contact_nom: 'Contact_Nom', contact_fonction: 'Contact_Fonction', site_web: 'Site_Web',
+      temperature: 'Temperature', // Lot 8 : chaud / tiede / froid
       // BLOC 04 §1 (09/2026) — date d'onboarding EMPOWER, posée manuellement
       // au moment où Has_EMPOWER passe à Oui (cf. VueFicheCompte.basculerEmpower).
       date_onboarding_empower: 'Date_Onboarding_Empower',
@@ -194,6 +237,9 @@ const SheetsAPI = {
       ancien_nom: 'Ancien_Nom', nouveau_nom: 'Nouveau_Nom', acteur_pin: 'Acteur_PIN', mode: 'Mode', motif: 'Motif',
       date_effet: 'Date_Effet', created_at: 'Cree_Le',
     },
+    sellin: {
+      reseller: 'Reseller', quarter: 'Quarter', ca_eur: 'CA_EUR', ca_empower: 'CA_Empower', canal: 'Canal', secteur: 'Secteur', compte_id: 'Compte_ID', id: '_uuid',
+    },
     sellin_semaines: {
       reseller: 'Reseller', reseller_norm: 'Reseller_Norm', quarter: 'Quarter', semaine: 'Semaine',
       ca_eur: 'CA_EUR', unites: 'Unites', commercial_sellin: 'Commercial_SellIn', compte_id: 'Compte_ID', id: '_uuid',
@@ -213,7 +259,6 @@ const SheetsAPI = {
       q2_obj_initial: 'Q2_Obj_Initial', q2_obj_revise: 'Q2_Obj_Revise', q2_ca_realise: 'Q2_CA_Realise',
       q3_obj_initial: 'Q3_Obj_Initial', q3_obj_revise: 'Q3_Obj_Revise', q3_ca_realise: 'Q3_CA_Realise',
       q4_obj_initial: 'Q4_Obj_Initial', q4_obj_revise: 'Q4_Obj_Revise', q4_ca_realise: 'Q4_CA_Realise',
-      prime_q1: 'Prime_Q1', prime_q2: 'Prime_Q2', prime_q3: 'Prime_Q3', prime_q4: 'Prime_Q4',
       fy27_obj: 'FY27_Obj', bonus_manager_eligible: 'Bonus_Manager_Eligible', id: '_uuid',
     },
     visites: {
@@ -288,7 +333,7 @@ const SheetsAPI = {
     fiches_froides: {
       id_fiche_gas: 'ID_Fiche', nom_magasin: 'Nom_Magasin', nom_norm: 'Nom_Norm',
       ville: 'Ville', departement: 'Departement', adresse: 'Adresse', tel: 'Tel', email: 'Email',
-      contact_nom: 'Contact_Nom', contact_fonction: 'Contact_Fonction',
+      contact_nom: 'Contact_Nom', contact_fonction: 'Contact_Fonction', temperature: 'Temperature',
       pin_cds: 'PIN_CDS', nom_cds: 'Nom_CDS',
       date_premiere_visite: 'Date_Premiere_Visite', date_derniere_visite: 'Date_Derniere_Visite',
       resultat_derniere: 'Resultat_Derniere', prochaine_action: 'Prochaine_Action',
@@ -318,7 +363,7 @@ const SheetsAPI = {
       welcome_pack_envoye: 'Welcome_Pack_Envoye', welcome_pack_date: 'Welcome_Pack_Date',
       note: 'Note_initiale', flag_alerte: 'FLAG_ALERTE', id_compte_gas: 'ID_Compte_Gas',
       date_prochaine_action: 'Date_prochaine_action', mode_contact: 'MODE_CONTACT',
-      contact_nom: 'CONTACT_NOM', contact_fonction: 'CONTACT_FONCTION',
+      contact_nom: 'CONTACT_NOM', contact_fonction: 'CONTACT_FONCTION', temperature: 'Temperature',
       // BUG dashboards/tracker "tout à zéro" (09/2026) — flag_traite/source_import
       // étaient écrits (cf. _MAPS_GAS_TO_DB.leads) mais jamais relus : absents de
       // cette map DB→GAS, _transformRow() les droppait silencieusement sur
@@ -408,13 +453,13 @@ const SheetsAPI = {
       'Source_Import': 'source_import', 'Badge_Visite_Froid': 'badge_visite_froid',
       'STATUT_COMPTE': 'statut_compte', 'Interet_EMPOWER': 'interet_empower',
       'FLAG_ALERTE_ALEXANDRA': 'flag_alerte_alexandra',
-      'Contact_Nom': 'contact_nom', 'Contact_Fonction': 'contact_fonction',
+      'Contact_Nom': 'contact_nom', 'Contact_Fonction': 'contact_fonction', 'Site_Web': 'site_web', 'Temperature': 'temperature',
       'Date_Onboarding_Empower': 'date_onboarding_empower',
     },
     fiches_froides: {
       'ID_Fiche': 'id_fiche_gas', 'Nom_Magasin': 'nom_magasin', 'Nom_Norm': 'nom_norm',
       'Ville': 'ville', 'Departement': 'departement', 'Adresse': 'adresse', 'Tel': 'tel', 'Email': 'email',
-      'Contact_Nom': 'contact_nom', 'Contact_Fonction': 'contact_fonction',
+      'Contact_Nom': 'contact_nom', 'Contact_Fonction': 'contact_fonction', 'Temperature': 'temperature',
       'PIN_CDS': 'pin_cds', 'Nom_CDS': 'nom_cds',
       'Date_Premiere_Visite': 'date_premiere_visite', 'Date_Derniere_Visite': 'date_derniere_visite',
       'Resultat_Derniere': 'resultat_derniere', 'Prochaine_Action': 'prochaine_action',
@@ -511,7 +556,7 @@ const SheetsAPI = {
       'Note_initiale': 'note', 'FLAG_ALERTE': 'flag_alerte', 'FLAG_ACTION': 'flag_action',
       'ID_Compte_Gas': 'id_compte_gas',
       'Date_prochaine_action': 'date_prochaine_action', 'MODE_CONTACT': 'mode_contact',
-      'CONTACT_NOM': 'contact_nom', 'CONTACT_FONCTION': 'contact_fonction',
+      'CONTACT_NOM': 'contact_nom', 'CONTACT_FONCTION': 'contact_fonction', 'Temperature': 'temperature',
       'Flag_traite': 'flag_traite', 'Flag_converti': 'flag_converti',
       'Source_Import': 'source_import',
       'Date_Derniere_Action': 'date_derniere_action', 'Type_Derniere_Action': 'type_derniere_action',
@@ -599,10 +644,12 @@ const SheetsAPI = {
     if (!limit && this._inflight.has(k)) return this._inflight.get(k)
     const p = this._lireAvecFallback(table, k, { limit, offset, nocache })
     if (!limit) { this._inflight.set(k, p); p.finally(() => this._inflight.delete(k)) }
-    if (table === 'comptes') return this._sansMasques(p)
-    if (table === 'leads' && window.Canaux && Canaux.actif()) return this._leadsParCanal(p)
-    if (table === 'objectifs_primes' && window.CACanal && CACanal.actif()) return this._objectifsParCanal(p)
-    return p
+    // Lot 6 (C1) : neutralisation systématique de ce que les vues recevront (cache hors-ligne compris)
+    const sure = pr => pr.then(r => (r && !Array.isArray(r) && Array.isArray(r.data)) ? { ...r, data: neutraliser(r.data) } : neutraliser(r))
+    if (table === 'comptes') return sure(this._sansMasques(p))
+    if (table === 'leads' && window.Canaux && Canaux.actif()) return sure(this._leadsParCanal(p))
+    if (table === 'objectifs_primes' && window.CACanal && CACanal.actif()) return sure(this._objectifsParCanal(p))
+    return sure(p)
   },
 
   // Magasins Leclerc : masqués des comptes par défaut ; l'admin les réaffiche en cochant
@@ -781,7 +828,7 @@ const SheetsAPI = {
       const { data, error } = await this._sb.from('utilisateurs')
         .select('pin,nom,role,email').eq('actif', true).order('pin')
       if (error) throw new Error(error.message)
-      return (data || []).map(u => ({ pin: Number(u.pin), nom: u.nom, role: u.role, email: u.email }))
+      return neutraliser((data || []).map(u => ({ pin: Number(u.pin), nom: u.nom, role: u.role, email: u.email })))
     } catch(e) { return null }
   },
 
@@ -809,7 +856,7 @@ const SheetsAPI = {
       return {
         ok: true,
         kpi: { total, actifs, react, caQ1, caFy26, nbVisites: nbVisites||0, nbAppels: nbAppels||0 },
-        comptes: (comptes||[]).map(c => this._transformRow('comptes', c)),
+        comptes: neutraliser((comptes||[]).map(c => this._transformRow('comptes', c))),
       }
     } catch(e) { return { ok: false, erreur: e.message } }
   },
@@ -963,3 +1010,6 @@ const SheetsAPI = {
     Toast.afficher(`${ok}/${all.length} sync`, ok === all.length ? 'succes' : 'warning', 3000)
   },
 }
+
+// Exposé sur window (voir session.js) : sans cela, `window.SheetsAPI && SheetsAPI._sb` restait faux et le Kit, les mandats et les coches du Coach ne fonctionnaient pas.
+window.SheetsAPI = SheetsAPI;

@@ -42,6 +42,7 @@
   // 5. Si pas de session → aller login ; sinon démarrer le polling notifs
   // Init sidebar collapse state (avant toute navigation)
   if (window.SidebarToggle) SidebarToggle.init();
+  if (window.CoachChat) CoachChat.init();   // Coach en fenêtre de chat (bulle bureau, icône d'en-tête mobile)
 
   if (!sessionOk) {
     Router.aller('#/login');
@@ -69,7 +70,7 @@ function demarrerServicesSession() {
   if (window.NotifCenter) NotifCenter._render();    // cloche visible immédiatement
   _initPollingNotifs();                             // garde interne _demarre
   if (window.DrawerMenu) DrawerMenu.renderToRoot();
-  if (window.PushNotifs) PushNotifs.synchroniser().then(() => NotifCenter && NotifCenter._render());   // Lot 6 — ré-enregistre l'appareil déjà abonné
+  if (window.PushNotifs) PushNotifs.synchroniser().then(() => { if (window.NotifCenter) NotifCenter._render(); setTimeout(() => PushNotifs.inviter(), 4000); });   // Lot 6 — ré-enregistre l'appareil déjà abonné
   if (window.AContacter) AContacter.charger().catch(() => {});   // Lot 5 — compteur « À contacter » (non bloquant)
   if (window.Topbar) Topbar.init();                 // garde interne _observer
   if (window.PaletteCommandes) PaletteCommandes.init(); // Feuille de route Phase 4 — ⌘K

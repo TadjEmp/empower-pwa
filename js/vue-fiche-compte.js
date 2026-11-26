@@ -16,8 +16,9 @@ window.VueFicheCompte = {
 
   state: {
     compte: null, v17: null, visites: [], appels: [], chargement: true,
-    editCoord: false,
-    formCoord: { adresse: '', ville: '', code_postal: '', departement: '', tel: '', email: '', contact_nom: '', contact_fonction: '' },
+    editCoord: false, onglet: 'resume', ongletId: null,
+    notes: [], noteTexte: '', noteType: 'NOTE', noteEnCours: false,
+    formCoord: { adresse: '', ville: '', code_postal: '', departement: '', tel: '', email: '', contact_nom: '', contact_fonction: '', site_web: '' },
     sauvegardeEnCours: false,
     modalRapportPhoning: false,
     empowerEnCours: false,
@@ -81,8 +82,8 @@ window.VueFicheCompte = {
     this.state.suppressionEnCours = false;
     await NonSuivis.charger();   // Lot 3 — état « non suivi » (vue SQL)
     const [comptes, rawV17, visites, appels, params, sellinSem] = await Promise.all([
-      SheetsAPI.lire('EMPOWER_MDB', 'COMPTES'),
-      SheetsAPI.lire('V17', 'COMPTES_HISTORIQUES'),
+      SheetsAPI.lire('EMPOWER_MDB', 'COMPTES', { nocache: true }),   // CA à jour : jamais le cache de 30 min
+      SheetsAPI.lire('V17', 'COMPTES_HISTORIQUES', { nocache: true }),
       SheetsAPI.lire('EMPOWER_MDB', 'VISITES'),
       SheetsAPI.lire('EMPOWER_MDB', 'PHONING'),
       SheetsAPI.lire('EMPOWER_MDB', 'PARAMS').catch(() => []),
@@ -103,14 +104,60 @@ window.VueFicheCompte = {
     this.state.compte  = compte;
     this.state.sellinSemaines = SellInFlag.dernieres(sellinSem, compte._uuid);
     this.state.historiqueAttrib = await NonSuivis.historique(compte._uuid);
-    this.state.v17     = rawV17.find(r => normaliserNom(r.RESELLER) === nomNorm) || null;
+    // Rapprochement Sell-In : identifiant du compte d'abord (alias de nom), nom normalisé ensuite
+    this.state.v17     = rawV17.find(r => r.Compte_ID && String(r.Compte_ID) === String(compte._uuid)) || rawV17.find(r => normaliserNom(r.RESELLER) === nomNorm) || null;
     this.state.visites = visites.filter(v => String(v.ID_Cible) === String(idCompte))
       .sort((a, b) => new Date(b.Date) - new Date(a.Date));
+    // Fournisseur de leads (EXTERNE) : aucune visite terrain visible sur la fiche
+    if (Session.estExterne()) this.state.visites = [];
     // Bloc Phoning (07/2026) — une réservation planifiée/fermée n'est pas un
     // vrai appel : exclue de "Appels (N)"/dernier appel (cf. estAppelRealise).
     this.state.appels  = appels.filter(a => String(a.ID_Cible) === String(idCompte) && estAppelRealise(a))
       .sort((a, b) => new Date(b.Date) - new Date(a.Date));
+    // Notes du compte (journal) : jamais bloquant, la fiche s'affiche même si la table est indisponible
+    this.state.notes = [];
+    this.state.noteTexte = '';
+    try {
+      const { data } = await SheetsAPI._sb.from('comptes_notes').select('*').eq('compte_id', compte._uuid).order('created_at', { ascending: false }).limit(200);
+      this.state.notes = data || [];
+    } catch (e) { /* notes indisponibles */ }
     this.state.chargement = false;
+  },
+
+  async ajouterNote() {
+    const c = this.state.compte, st = this.state;
+    const texte = String(st.noteTexte || '').trim();
+    if (!c || st.noteEnCours) return;
+    if (!texte) { Toast.afficher('Saisissez une note', 'erreur'); return; }
+    st.noteEnCours = true; this._rerender();
+    try {
+      const { data, error } = await SheetsAPI._sb.rpc('compte_note_ajouter', { p_compte: c._uuid, p_texte: texte, p_type: st.noteType });
+      if (error) throw new Error(error.message);
+      if (!data || data.ok !== true) throw new Error((data && data.erreur) || 'Note non enregistrée');
+      const r = await SheetsAPI._sb.from('comptes_notes').select('*').eq('compte_id', c._uuid).order('created_at', { ascending: false }).limit(200);
+      st.notes = (r && r.data) || st.notes;
+      st.noteTexte = ''; st.noteType = 'NOTE';
+      Toast.afficher('Note ajoutée, les commerciaux concernés sont prévenus', 'succes');
+    } catch (e) {
+      Toast.afficher('' + e.message, 'erreur');
+    }
+    st.noteEnCours = false; this._rerender();
+  },
+
+  _renderNotes() {
+    const st = this.state;
+    const dateFr = d => { const x = new Date(d); return isNaN(x) ? '' : x.toLocaleDateString('fr-FR') + ' ' + x.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); };
+    const roles = { ADMIN: 'Admin', CHANNEL_MANAGER: 'Channel', CDS: 'Commercial', EXTERNE: 'Externe' };
+    const liste = st.notes.length
+      ? st.notes.map(n => `<div class="carte-visite">
+          <div class="visite-date">${this._h(dateFr(n.created_at))} · ${this._h(n.auteur_nom || 'Inconnu')}${n.auteur_role ? ` (${this._h(roles[n.auteur_role] || n.auteur_role)})` : ''}${n.type === 'MAJ_INFOS' ? ' · <strong>Mise à jour des infos</strong>' : ''}</div>
+          <div style="font-size:13.5px;line-height:1.5;white-space:pre-line">${this._h(n.texte)}</div></div>`).join('')
+      : '<div class="vide-liste">Aucune note sur ce compte</div>';
+    return `<div class="bloc-fiche"><div class="bloc-titre">Ajouter une note</div>
+        <textarea maxlength="2000" rows="3" placeholder="Note, ou précision sur une mise à jour des infos du compte…" style="width:100%;box-sizing:border-box" oninput="VueFicheCompte.state.noteTexte=this.value">${this._h(st.noteTexte)}</textarea>
+        <label style="display:flex;flex-direction:row;align-items:center;gap:8px;margin:8px 0;font-size:13px;cursor:pointer"><input style="margin:0;width:auto;flex:none" type="checkbox" ${st.noteType === 'MAJ_INFOS' ? 'checked' : ''} onchange="VueFicheCompte.state.noteType=this.checked?'MAJ_INFOS':'NOTE'"/> Concerne une mise à jour des infos du compte</label>
+        <button class="btn-primaire" style="width:auto" ${st.noteEnCours ? 'disabled' : ''} onclick="VueFicheCompte.ajouterNote()">${st.noteEnCours ? 'Envoi...' : 'Enregistrer et prévenir les commerciaux'}</button></div>
+      <div class="bloc-fiche"><div class="bloc-titre">Notes (${st.notes.length})</div>${liste}</div>`;
   },
 
   // Rend la fiche via le bon conteneur selon le contexte d'ouverture : panneau
@@ -126,18 +173,25 @@ window.VueFicheCompte = {
     else { this.render(); }
   },
 
+  // Lot 8 : température modifiable depuis la fiche compte (les droits d'écriture sont ceux de la base)
+  async _changerTemp(valeur) {
+    const c = this.state.compte; if (!c) return;
+    await CT.changerTemperature('COMPTES', c.ID_Compte, valeur, v => { c.Temperature = v || null; this.render(); });
+  },
   ouvrirEditionCoordonnees() {
     const c = this.state.compte;
     this.state.formCoord = {
       adresse:     c.Adresse     || '',
       ville:       c.Ville       || '',
       code_postal: c.Code_Postal || '',
-      departement: c.Departement || (c.Code_Postal ? String(c.Code_Postal).slice(0, 2) : ''),
+      departement: c.Departement || window.ESI_GEO.depDeCP(c.Code_Postal) || '',
       tel:         c.Tel         || '',
       email:       c.Email       || '',
       contact_nom:      c.Contact_Nom      || '',
       contact_fonction: c.Contact_Fonction || '',
+      site_web:    c.Site_Web    || '',
     };
+    this.state.formCoord._depAuto = !c.Departement || String(c.Departement).trim() === window.ESI_GEO.depDeCP(c.Code_Postal);
     this.state.editCoord = true;
     this._rerender();
   },
@@ -147,12 +201,14 @@ window.VueFicheCompte = {
     this._rerender();
   },
 
+  // Département déduit du code postal à 5 chiffres (Corse 2A/2B, outre-mer 3 chiffres), sans reconstruire le formulaire
+  // (le re-rendu à chaque frappe faisait perdre le focus au champ).
   _syncDept() {
-    const cp = this.state.formCoord.code_postal.trim();
-    if (cp.length >= 2 && !this.state.formCoord.departement) {
-      this.state.formCoord.departement = cp.slice(0, cp.startsWith('97') ? 3 : 2);
+    const f = this.state.formCoord, dep = window.ESI_GEO.depDeCP(f.code_postal);
+    if (dep && (!f.departement || f._depAuto)) {
+      f.departement = dep; f._depAuto = true;
+      const champ = document.getElementById('fiche-dep'); if (champ) champ.value = dep;
     }
-    this._rerender();
   },
 
   async sauvegarderCoordonnees() {
@@ -169,16 +225,33 @@ window.VueFicheCompte = {
       Email:       f.email.trim()       || null,
       Contact_Nom:      f.contact_nom.trim()      || null,
       Contact_Fonction: f.contact_fonction.trim() || null,
+      Site_Web:    f.site_web.trim()    || null,
     };
 
     this.state.sauvegardeEnCours = true;
     this._rerender();
     try {
+      // Changements réels (avant/après), pour la note automatique de l'Externe
+      const libelles = { Adresse: 'Adresse', Ville: 'Ville', Code_Postal: 'Code postal', Departement: 'Département', Tel: 'Téléphone', Email: 'E-mail', Contact_Nom: 'Contact', Contact_Fonction: 'Fonction', Site_Web: 'Site web' };
+      const coupe = v => { const t = String(v == null ? '' : v).trim(); return t ? (t.length > 80 ? t.slice(0, 80) + '…' : t) : 'vide'; };
+      const changements = Object.keys(champs)
+        .filter(k => String(c[k] == null ? '' : c[k]).trim() !== String(champs[k] == null ? '' : champs[k]).trim())
+        .map(k => `${libelles[k] || k} : ${coupe(c[k])} → ${coupe(champs[k])}`);
       await SheetsAPI.mettreAJour('EMPOWER_MDB', 'COMPTES', c.ID_Compte, champs);
       // Update local state
       Object.assign(this.state.compte, champs);
       this.state.editCoord = false;
       Toast.afficher('Coordonnées mises à jour', 'succes');
+      // Externe : une note « mise à jour des infos » est ajoutée seule et prévient commercial, channel et admin
+      if (Session.estExterne() && changements.length) {
+        try {
+          const { data } = await SheetsAPI._sb.rpc('compte_note_ajouter', { p_compte: c._uuid, p_texte: ('Infos mises à jour — ' + changements.join(' ; ')).slice(0, 2000), p_type: 'MAJ_INFOS' });
+          if (data && data.ok) {
+            const r = await SheetsAPI._sb.from('comptes_notes').select('*').eq('compte_id', c._uuid).order('created_at', { ascending: false }).limit(200);
+            this.state.notes = (r && r.data) || this.state.notes;
+          }
+        } catch (e) { /* note automatique non bloquante : la mise à jour est déjà enregistrée */ }
+      }
     } catch(e) {
       Toast.afficher('' + e.message, 'erreur');
     }
@@ -228,6 +301,14 @@ window.VueFicheCompte = {
       await SheetsAPI.mettreAJour('EMPOWER_MDB', 'COMPTES', idCompte, champs);
       Object.assign(this.state.compte, champs);
       Toast.afficher(devenirEmpower ? 'Compte marqué EMPOWER' : 'Compte repassé Grossiste', 'succes');
+      // Externe : le passage en Empower est tracé par une note, qui prévient commercial, channel et admin
+      if (Session.estExterne() && devenirEmpower) {
+        try {
+          await SheetsAPI._sb.rpc('compte_note_ajouter', { p_compte: this.state.compte._uuid, p_texte: 'Compte passé Empower par ' + (Session.nom || 'l\'Externe') + '.', p_type: 'NOTE' });
+          const r = await SheetsAPI._sb.from('comptes_notes').select('*').eq('compte_id', this.state.compte._uuid).order('created_at', { ascending: false }).limit(200);
+          this.state.notes = (r && r.data) || this.state.notes;
+        } catch (e) { /* note automatique non bloquante */ }
+      }
     } catch(e) {
       Toast.afficher('' + e.message, 'erreur');
     }
@@ -242,7 +323,7 @@ window.VueFicheCompte = {
   // de suivi. Accès : le CDS propriétaire du compte, ou un manager (ADMIN) —
   // jamais CHANNEL_MANAGER (lecture seule, même règle que le reste de l'app).
   _peutAjouterAuTracker(c) {
-    return Session.estManager() || (Session.estCDS() && Number(c.PIN_CDS_Assigne) === Session.pin);
+    return Session.estManager() || Session.estExterne() || (Session.estCDS() && Number(c.PIN_CDS_Assigne) === Session.pin);
   },
 
   ouvrirAjoutTrackerDepuisCompte() {
@@ -261,6 +342,14 @@ window.VueFicheCompte = {
     if (this.state.ajoutTrackerEnCours) return;
     this.state.ajoutTrackerEnCours = true;
     this._rerender();
+    // Externe : le lead est créé par la fonction base compte_vers_tracker (droits, doublons, notifications)
+    if (Session.estExterne()) {
+      const ok = await VueComptes.ajouterAuTrackerRpc(c, note);
+      if (ok) this._trackerAjouteDepuisFiche = true;
+      this.state.ajoutTrackerEnCours = false;
+      this._rerender();
+      return;
+    }
     try {
       // Anti-doublon : jamais deux fois le même compte dans le Tracker.
       const prospects = await SheetsAPI.lire('EMPOWER_MDB', 'LEADS');
@@ -438,7 +527,7 @@ window.VueFicheCompte = {
               </label>
               <label style="flex:1;font-size:13px;font-weight:600">Département
                 <input value="${f.departement}" placeholder="ex : 75" maxlength="3"
-                       oninput="VueFicheCompte.state.formCoord.departement=this.value"
+                       id="fiche-dep" oninput="VueFicheCompte.state.formCoord.departement=this.value;VueFicheCompte.state.formCoord._depAuto=false"
                        style="width:100%;margin-top:4px"/>
               </label>
             </div>
@@ -450,6 +539,11 @@ window.VueFicheCompte = {
             <label style="font-size:13px;font-weight:600">Email
               <input type="email" value="${f.email}" placeholder="ex : contact@societe.fr"
                      oninput="VueFicheCompte.state.formCoord.email=this.value"
+                     style="width:100%;margin-top:4px"/>
+            </label>
+            <label style="font-size:13px;font-weight:600">Site web
+              <input type="url" value="${f.site_web}" placeholder="ex : https://www.societe.fr"
+                     oninput="VueFicheCompte.state.formCoord.site_web=this.value"
                      style="width:100%;margin-top:4px"/>
             </label>
             <div style="display:flex;gap:8px">
@@ -490,14 +584,17 @@ window.VueFicheCompte = {
           <button class="btn-lien" style="font-size:12px;color:var(--c-primary);font-weight:600"
                   onclick="VueFicheCompte.ouvrirEditionCoordonnees()">Saisir maintenant →</button>
         </div>` : ''}
+        ${window.CT ? CT.slot('compte', c.ID_Compte) : ''}
         <div class="grille-identite">
           ${c.Adresse ? `<div class="id-ligne"><span>Adresse</span><strong>${c.Adresse}</strong></div>` : ''}
           <div class="id-ligne"><span>Ville</span><strong>${c.Ville || 'n.c.'}${c.Code_Postal ? ' (' + c.Code_Postal + ')' : ''}</strong></div>
           <div class="id-ligne"><span>Département</span><strong>${dept || 'n.c.'}</strong></div>
-          <div class="id-ligne"><span>Canal / Secteur</span><strong>${c.CANAL || 'n.c.'} · ${c.SECTEUR || 'n.c.'}</strong></div>
+          <div class="id-ligne"><span>Canal / Secteur</span><strong>${window.FlagsCanal.html(c)} ${c.SECTEUR || 'n.c.'}</strong></div>
+          ${window.CT && CT.actif() ? `<div class="id-ligne"><span>Température</span><strong>${CT.selectTemp('compte-temp', CT.tempOf(c), `onchange="VueFicheCompte._changerTemp(this.value)"`)}</strong></div>` : ''}
           <div class="id-ligne"><span>Contact</span><strong>${c.Contact_Nom ? `${c.Contact_Nom}${c.Contact_Fonction ? ' · ' + c.Contact_Fonction : ''}` : 'n.c.'}</strong></div>
           <div class="id-ligne"><span>Téléphone</span><strong>${c.Tel ? `<a class="lien-tel" href="tel:${c.Tel.replace(/\s/g,'')}">${c.Tel}</a>` : 'n.c.'}</strong></div>
           <div class="id-ligne"><span>Email</span><strong>${c.Email ? `<a class="lien-email" href="mailto:${c.Email}">${c.Email}</a>` : 'n.c.'}</strong></div>
+          <div class="id-ligne"><span>Site web</span><strong>${/^https?:\/\//i.test(c.Site_Web || '') ? `<a class="lien-email" href="${String(c.Site_Web).replace(/"/g, '')}" target="_blank" rel="noopener noreferrer">${String(c.Site_Web).replace(/^https?:\/\/(www\.)?/i, '').replace(/\/$/, '')}</a>` : 'n.c.'}</strong></div>
           <div class="id-ligne"><span>CDS</span>${
             Session.voitTout()
               ? `<select onchange="VueFicheCompte.changerCDS('${c.ID_Compte}', this.value)"
@@ -510,11 +607,11 @@ window.VueFicheCompte = {
           <div class="id-ligne"><span>EMPOWER${c.Date_Onboarding_Empower ? ` <span style="font-weight:400;color:var(--c-text-2)">· depuis le ${new Date(c.Date_Onboarding_Empower).toLocaleDateString('fr-FR')}</span>` : ''}</span>
             <span style="display:flex;align-items:center;gap:8px">
               <strong>${window.estEmpower(c) ? 'Oui' : 'Non'}</strong>
-              <button class="btn-lien" style="font-size:12px"
+              ${(Session.estExterne() && window.estEmpower(c)) ? '' : `<button class="btn-lien" style="font-size:12px"
                       onclick="VueFicheCompte.basculerEmpower('${c.ID_Compte}', ${window.estEmpower(c) ? 'false' : 'true'})"
                       ${this.state.empowerEnCours ? 'disabled' : ''}>
                 ${window.estEmpower(c) ? '↩︎ Repasser Grossiste' : 'Marquer Empower'}
-              </button>
+              </button>`}
               ${!window.estEmpower(c) && this._peutAjouterAuTracker(c) ? `
               <button class="btn-lien" style="font-size:12px;color:var(--c-primary)"
                       title="Démarre le suivi d'onboarding EMPOWER dans le Tracker"
@@ -524,15 +621,19 @@ window.VueFicheCompte = {
               </button>` : ''}
             </span>
           </div>
-          <div class="id-ligne"><span>Dernière visite</span><strong>${this._dateLigne(this._dernierVisiteRealisee())}</strong></div>
+          ${Session.estExterne() ? '' : `<div class="id-ligne"><span>Dernière visite</span><strong>${this._dateLigne(this._dernierVisiteRealisee())}</strong></div>`}
           <div class="id-ligne"><span>Dernier appel</span><strong>${this._dateLigne(this.state.appels[0]?.Date)}</strong></div>
-          <div class="id-ligne"><span>Prochaine visite</span><strong>${this._dateLigne(this._prochaineVisitePlanifiee())}</strong></div>
+          ${Session.estExterne() ? '' : `<div class="id-ligne"><span>Prochaine visite</span><strong>${this._dateLigne(this._prochaineVisitePlanifiee())}</strong></div>`}
           <div class="id-ligne"><span>CA FY25</span><strong>${window.fmtCA(this.state.v17?.['CA FY25 €'] ?? c.CA_FY25)} €</strong></div>
           <div class="id-ligne"><span>CA FY26</span><strong>${window.fmtCA(this.state.v17?.['CA FY26 €'] ?? c.CA_FY26)} €</strong></div>
-          <div class="id-ligne"><span>Dernier Q (${this.state.quarter}·27)</span><strong>${(() => {
-            const v = window.caQuarterActif(this.state.v17, this.state.quarter, 'sellin') ?? window.caQuarterActif(c, this.state.quarter);
+          <div class="id-ligne"><span>CA FY27 (cumul)</span><strong>${(() => {
+            const v = window.caFY27Cumul(this.state.v17, 'sellin') ?? window.caFY27Cumul(c);
             return v !== null ? window.fmtCA(v) : 'n.c.';
           })()} €</strong></div>
+          <div class="id-ligne"><span>Détail FY27</span><strong>${(() => {
+            const d = this.state.v17 ? window.caFY27Detail(this.state.v17, 'sellin') : window.caFY27Detail(c);
+            return d.length ? d.map(x => `${x[0]} ${window.fmtCA(x[1])} €`).join(' · ') : 'n.c.';
+          })()}</strong></div>
           <div class="id-ligne"><span>Potentiel</span><strong>${c.POTENTIEL || this.state.v17?.POTENTIEL_UPSELL || 'n.c.'}</strong></div>
           ${this.state.v17?.GROSSISTE_PRINCIPAL ? `<div class="id-ligne"><span>Grossiste</span><strong>${this.state.v17.GROSSISTE_PRINCIPAL}</strong></div>` : ''}
         </div>
@@ -549,7 +650,7 @@ window.VueFicheCompte = {
         <div style="margin-top:10px;text-align:right">
           <button class="btn-lien" style="font-size:11px;color:var(--c-danger)"
                   title="Compte en double, supprime ce compte, conserve l'historique lié"
-                  onclick="VueFicheCompte.supprimerCompte('${c.ID_Compte}', '${(c.Nom_Compte || '').replace(/'/g, "\\'")}')"
+                  onclick="VueFicheCompte.supprimerCompte('${c.ID_Compte}', '${jsq(c.Nom_Compte)}')"
                   ${this.state.suppressionEnCours ? 'disabled' : ''}>
             Compte en double ? Supprimer
           </button>
@@ -560,61 +661,102 @@ window.VueFicheCompte = {
   // Contenu de la fiche (identité + CA + prochaine action + visites + appels),
   // sans header ni barre d'actions — réutilisé par render() (page pleine mobile)
   // et par le panneau docké desktop (VueComptes.ouvrirFiche, Bloc 9 refonte).
+  _h(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); },
+  setOnglet(o) { this.state.onglet = o; this._rerender(); },
+
+  _renderHero(c, fy26, dernier) {
+    const e = ContactsObjectif.etat(c), p = Paliers.palier(c), act = Paliers.prochaineAction(c);
+    const ini = String(c.Nom_Compte || '?').replace(/[^A-Za-zÀ-ÿ0-9 ]/g, '').trim().split(/\s+/).slice(0, 2).map(x => x[0]).join('').toUpperCase() || '?';
+    const dep = window.ESI_GEO.depDe(c), tel = c.Tel ? String(c.Tel).replace(/\s/g, '') : '', mail = c.Email || '';
+    const caEmp = Paliers.caEmpower(c);
+    const cible = act.cible === 'fiche' ? "VueFicheCompte.setOnglet('contact');VueFicheCompte.ouvrirEditionCoordonnees()" : "VueFicheCompte.setOnglet('resume')";
+    return `
+      <section class="cs-hero" aria-label="Compte">
+        <div class="cs-hero-top">
+          <div class="cs-avatar" aria-hidden="true">${this._h(ini)}</div>
+          <div style="min-width:0;flex:1">
+            <h2 class="cs-nom">${this._h(c.Nom_Compte)}</h2>
+            <div class="cs-meta">${this._h(c.Ville || 'Ville à renseigner')}${dep ? ' · ' + dep : ''} · ${this._h(window.resolveCDS(c.PIN_CDS_Assigne))}</div>
+            <div class="cs-flags">${window.FlagsCanal.html(c)} ${Paliers.badgePalier(c)} ${ContactsObjectif.pastille(c)} <span class="cs-meta">Fiche ${e.pct} %</span></div>
+          </div>
+        </div>
+        <div class="cs-quick">
+          ${tel ? `<a class="primaire" href="tel:${this._h(tel)}">Appeler</a>` : '<span class="vide">Appeler (téléphone à renseigner)</span>'}
+          ${mail ? `<a href="mailto:${this._h(mail)}">E-mail</a>` : ''}
+          <button onclick="VueQuestionnaire._visitePlanifiee=null;Router.aller('#/questionnaire/${c.ID_Compte}')">Visite</button>
+        </div>
+      </section>
+      <div class="cs-kpis">
+        <div class="cs-kpi"><div class="cs-kpi-l">CA Empower FY27</div><div class="cs-kpi-v">${caEmp ? window.fmtCA(caEmp) + ' €' : 'n.c.'}</div><div class="cs-kpi-s">${p.cle === 'NA' ? 'Hors Empower' : 'Palier ' + p.lib}</div></div>
+        <div class="cs-kpi"><div class="cs-kpi-l">CA FY26</div><div class="cs-kpi-v">${fy26 ? window.fmtCA(fy26) + ' €' : 'n.c.'}</div><div class="cs-kpi-s">Sell-in</div></div>
+        <div class="cs-kpi"><div class="cs-kpi-l">Dernier contact</div><div class="cs-kpi-v" style="font-size:17px">${dernier ? this._dateLigne(dernier) : 'Jamais'}</div><div class="cs-kpi-s">visite ou appel</div></div>
+        <div class="cs-kpi"><div class="cs-kpi-l">Fiche</div><div class="cs-kpi-v">${e.pct} %</div><div class="cs-kpi-s">${e.complet ? 'Complète' : e.contact ? 'Contact renseigné' : 'À compléter'}</div></div>
+      </div>
+      <div class="cs-next" role="status"><div><strong>Prochaine meilleure action : ${this._h(act.lib)}</strong><span>${this._h(act.detail)}</span></div>
+        ${act.cible === 'fiche' ? `<button class="btn-secondaire" style="width:auto" onclick="${cible}">Compléter la fiche</button>` : ''}</div>`;
+  },
+
+  // Coordonnées visibles d'emblée dans le Résumé (téléphone, e-mail, adresse, contact, site).
+  _renderCoordonneesResume(c) {
+    const h = x => this._h(x), tel = c.Tel ? String(c.Tel).trim() : '', mail = c.Email ? String(c.Email).trim() : '';
+    const ligne = (lib, val, lien) => `<div class="id-ligne"><span>${lib}</span><strong>${val ? (lien ? `<a href="${lien}">${h(val)}</a>` : h(val)) : '<em style="font-weight:400;color:var(--c-muted)">à renseigner</em>'}</strong></div>`;
+    const adr = [c.Adresse, [c.Code_Postal, c.Ville].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+    const site = c.Site_Web ? String(c.Site_Web).trim() : '';
+    const contact = [c.Contact_Nom, c.Contact_Fonction].filter(Boolean).join(' · ');
+    return `<div class="bloc-fiche"><div class="bloc-titre">Coordonnées
+        <button class="btn-lien" style="margin-left:auto;font-size:13px" onclick="VueFicheCompte.setOnglet('contact');VueFicheCompte.ouvrirEditionCoordonnees()">Modifier</button></div>
+      <div class="grille-identite">
+        ${ligne('Téléphone', tel, tel ? 'tel:' + h(tel.replace(/\s/g, '')) : '')}
+        ${ligne('E-mail', mail, mail ? 'mailto:' + h(mail) : '')}
+        ${ligne('Contact', contact)}
+        ${ligne('Adresse', adr)}
+        ${ligne('Site web', site, /^https?:\/\//i.test(site) ? h(site) : '')}
+      </div></div>`;
+  },
+
+  _renderChecklist(c) {
+    const e = ContactsObjectif.etat(c);
+    return `<div class="bloc-fiche"><div class="bloc-titre">Complétude de la fiche · objectif 31/12/2026</div>
+      <div class="cs-checklist">${ContactsObjectif.CHAMPS.map(x => `<div class="cs-check ${e.f[x.cle] ? 'ok' : 'ko'}">${e.f[x.cle] ? '✓' : '○'} ${x.lib}</div>`).join('')}</div>
+      ${e.complet ? '' : `<div style="margin-top:10px"><button class="btn-secondaire" style="width:auto" onclick="VueFicheCompte.setOnglet('contact');VueFicheCompte.ouvrirEditionCoordonnees()">Renseigner maintenant</button></div>`}</div>`;
+  },
+
   renderContenuFiche() {
     const c   = this.state.compte;
     const v17 = this.state.v17;
+    if (this.state.ongletId !== c.ID_Compte) { this.state.ongletId = c.ID_Compte; this.state.onglet = 'resume'; }
     const fy25 = window.parseCA(v17?.['CA FY25 €'] ?? c.CA_FY25) ?? 0;
     const fy26 = window.parseCA(v17?.['CA FY26 €'] ?? c.CA_FY26) ?? 0;
-    const fy27 = (window.caQuarterActif(v17, this.state.quarter, 'sellin') ?? window.caQuarterActif(c, this.state.quarter)) ?? 0;
+    const fy27 = (window.caFY27Cumul(v17, 'sellin') ?? window.caFY27Cumul(c)) ?? 0;
+    const det27 = v17 ? window.caFY27Detail(v17, 'sellin') : window.caFY27Detail(c);
     const maxCA = Math.max(fy25, fy26, fy27, 1);
+    const dernier = [this._dernierVisiteRealisee && this._dernierVisiteRealisee(), (this.state.appels[0] || {}).Date].filter(Boolean).map(d => String(d.Date || d).slice(0, 10)).sort().pop() || c.Date_Derniere_Action || null;
+    const o = this.state.onglet, nbAct = this.state.visites.length + this.state.appels.length;
+    const onglets = [['resume', 'Résumé'], ['contact', 'Contact et localisation'], ['activite', `Activité (${nbAct})`], ['notes', `Notes (${this.state.notes.length})`], ['chiffres', 'Chiffres']];
 
-    return `
-      ${this._renderBlocIdentite(c)}
-
+    const resume = `${this._renderCoordonneesResume(c)}
+      ${this._renderChecklist(c)}
+      ${window.EquipeContacts ? EquipeContacts.carteDuCommercial(c.PIN_CDS_Assigne) : ''}
+      ${window.Mandats ? Mandats.blocFiche(c) : ''}
       ${SellInFlag.blocFiche(c, this.state.sellinSemaines)}
-
       ${NonSuivis.blocFiche(c, this.state.historiqueAttrib)}
-
-      <!-- CA HISTORIQUE -->
-      <div class="bloc-fiche">
-        <div class="bloc-titre">CA Historique</div>
+      <div class="bloc-fiche"><div class="bloc-titre">Prochaine action planifiée</div>
+        ${c.Prochaine_Action ? `<div class="prochaine-action-detail"><div class="pa-type">${c.Prochaine_Action}</div>
+          <div class="pa-date ${estDepassee(c.Date_Prochaine_Action) ? 'date-depassee' : ''}">${dateRelative(c.Date_Prochaine_Action)}</div>
+          ${c.Note_initiale ? `<div class="pa-note">${c.Note_initiale}</div>` : ''}</div>` : '<div class="pas-de-donnees">Aucune action planifiée</div>'}</div>`;
+    const chiffres = `<div class="bloc-fiche"><div class="bloc-titre">CA Historique</div>
         ${!v17 ? '<div class="pas-de-v17">Pas de correspondance V17, données MDB</div>' : ''}
-        <div class="graphique-ca">
-          ${this._barreCA('FY25', fy25, maxCA)}
-          ${this._barreCA('FY26', fy26, maxCA)}
-          ${this._barreCA(this.state.quarter + '·27', fy27, maxCA)}
-        </div>
-        ${v17 ? `
-        <div class="grille-identite" style="margin-top:12px">
+        <div class="graphique-ca">${this._barreCA('FY25', fy25, maxCA)}${this._barreCA('FY26', fy26, maxCA)}${this._barreCA('FY27 cumul', fy27, maxCA)}${det27.map(x => this._barreCA(x[0] + '·27', x[1], maxCA)).join('')}</div>
+        ${v17 ? `<div class="grille-identite" style="margin-top:12px">
           <div class="id-ligne"><span>Évolution FY26 vs FY25</span><strong>${(() => { const ev = window.parseCA(v17['EVOL_FY26_VS_FY25_%']); return ev !== null ? ev + ' %' : (v17['EVOL_FY26_VS_FY25_%'] ? String(v17['EVOL_FY26_VS_FY25_%']) : 'n.c.'); })()}</strong></div>
           <div class="id-ligne"><span>Potentiel upsell</span><strong>${v17.POTENTIEL_UPSELL || 'n.c.'}</strong></div>
-          <div class="id-ligne"><span>Score potentiel</span><strong>${v17.SCORE_POTENTIEL != null && v17.SCORE_POTENTIEL !== '' ? String(v17.SCORE_POTENTIEL) + '/100' : 'n.c.'}</strong></div>
-        </div>` : ''}
-      </div>
+          <div class="id-ligne"><span>Score potentiel</span><strong>${v17.SCORE_POTENTIEL != null && v17.SCORE_POTENTIEL !== '' ? String(v17.SCORE_POTENTIEL) + '/100' : 'n.c.'}</strong></div></div>` : ''}</div>`;
+    const activite = `<div class="bloc-fiche"><div class="bloc-titre">Activité (${nbAct})</div>${this._renderActiviteUnifiee()}</div>`;
+    const corps = { resume, contact: this._renderBlocIdentite(c), activite, notes: this._renderNotes(), chiffres }[o] || resume;
 
-      <!-- PROCHAINE ACTION -->
-      <div class="bloc-fiche">
-        <div class="bloc-titre">Prochaine action</div>
-        ${c.Prochaine_Action ? `
-          <div class="prochaine-action-detail">
-            <div class="pa-type">${c.Prochaine_Action}</div>
-            <div class="pa-date ${estDepassee(c.Date_Prochaine_Action) ? 'date-depassee' : ''}">
-              ${dateRelative(c.Date_Prochaine_Action)}
-            </div>
-            ${c.Note_initiale ? `<div class="pa-note">${c.Note_initiale}</div>` : ''}
-          </div>` : '<div class="pas-de-donnees">Aucune action planifiée</div>'}
-      </div>
-
-      <!-- ACTIVITÉ — Feuille de route Phase 2 : chronologie unifiée visites +
-           appels (inspirée de la "All-in-One Lead/Deal Page" de frappe/crm,
-           cf. Repères CRM), remplace les deux blocs Visites/Appels séparés,
-           qu'il fallait recroiser mentalement pour reconstituer l'historique
-           réel du compte. Mêmes données déjà chargées (state.visites/appels),
-           aucun nouveau fetch. -->
-      <div class="bloc-fiche">
-        <div class="bloc-titre">Activité (${this.state.visites.length + this.state.appels.length})</div>
-        ${this._renderActiviteUnifiee()}
-      </div>`;
+    return `${this._renderHero(c, fy26, dernier)}
+      <div class="cs-onglets" role="tablist">${onglets.map(([k, l]) => `<button role="tab" aria-selected="${o === k}" onclick="VueFicheCompte.setOnglet('${k}')">${l}</button>`).join('')}</div>
+      ${corps}`;
   },
 
   _renderActiviteUnifiee() {

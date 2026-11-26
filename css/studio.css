@@ -1,0 +1,51 @@
+/* Studio de documents : couche plein écran, design Marvesting V3 (cartes arrondies sans traits, ardoise, corail réservé à l'action principale) */
+#studio { position: fixed; inset: 0; z-index: 9500; display: flex; flex-direction: column; background: #E4E6E8; color: #424242; font-family: Montserrat, system-ui, -apple-system, sans-serif; }
+#studio .st-barre { flex: none; display: flex; align-items: center; gap: 10px; min-height: 56px; padding: calc(8px + env(safe-area-inset-top, 0px)) 12px 8px; background: #343F48; color: #fff; }
+#studio .st-fermer { flex: none; min-height: 44px; padding: 0 16px; border: 0; border-radius: 999px; background: #FF6D68; color: #0E0D30; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+#studio .st-titre { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; font-size: 15px; }
+#studio .st-actions { flex: none; display: flex; gap: 8px; }
+#studio .st-btn { min-height: 44px; padding: 0 16px; border: 0; border-radius: 999px; background: rgba(255,255,255,.14); color: #fff; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+#studio .st-btn.p { background: #FF6D68; color: #0E0D30; }
+#studio .st-btn:disabled { opacity: .6; cursor: wait; }
+#studio .st-onglets { display: none; flex: none; gap: 8px; padding: 10px 12px 0; }
+#studio .st-onglets button { flex: 1; min-height: 44px; border: 0; border-radius: 999px; background: #EEF0F1; color: #343F48; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+#studio .st-onglets button.on { background: #343F48; color: #fff; }
+#studio .st-corps { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(340px, 420px) 1fr; gap: 14px; padding: 14px; }
+#studio .st-form { overflow: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 12px; padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+#studio .st-g { background: #EEF0F1; border-radius: 22px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+#studio .st-t { font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #343F48; }
+#studio .st-c { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: #6B7580; min-width: 0; }
+#studio .st-c input, #studio .st-c select, #studio .st-lg select, #studio .st-lg input { width: 100%; min-height: 44px; padding: 0 14px; border: 0; border-radius: 14px; background: #fff; color: #343F48; font: inherit; font-size: 16px; font-weight: 500; box-sizing: border-box; }
+#studio .st-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+#studio .st-lg { display: grid; grid-template-columns: 1fr 84px; gap: 8px; }
+#studio .st-o { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #343F48; min-height: 44px; }
+#studio .st-m { margin: 0; font-size: 12px; line-height: 1.5; color: #6B7580; }
+#studio .st-prev { position: relative; min-width: 0; min-height: 0; display: flex; }
+#studio .st-zoom { position: absolute; right: 14px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 6px; padding: 6px; border-radius: 26px; background: #343F48; box-shadow: 0 4px 18px rgba(14,17,20,.3); }
+#studio .st-zoom button { min-width: 44px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 22px; background: rgba(255,255,255,.14); color: #fff; font: inherit; font-size: 18px; font-weight: 700; cursor: pointer; }
+#studio .st-zoom button:nth-child(2) { font-size: 13px; }
+#studio .st-defil { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; padding: 8px; border-radius: 22px; background: #D5D9DC; }
+#studio .st-feuille { margin: 0 auto; background: #fff; box-shadow: 0 4px 24px rgba(14,17,20,.18); overflow: hidden; }
+#studio .st-feuille iframe { display: block; border: 0; background: #fff; transform-origin: top left; }
+#studio .st-cartes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+#studio .st-carte { display: flex; flex-direction: column; gap: 2px; text-align: left; min-height: 64px; padding: 10px 12px; border: 2px solid transparent; border-radius: 16px; background: #fff; color: #343F48; font: inherit; cursor: pointer; }
+#studio .st-carte b { font-size: 14px; font-weight: 800; }
+#studio .st-carte span { font-size: 11px; font-weight: 500; color: #6B7580; line-height: 1.35; }
+#studio .st-carte.on { border-color: #FF6D68; background: #FFF4F3; }
+#studio .st-calc { background: #343F48; color: #fff; border-radius: 22px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+#studio .st-calc .st-t { color: #C9D0D6; }
+#studio .st-k { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+#studio .st-k span { color: #C9D0D6; } #studio .st-k b { color: #fff; font-weight: 800; text-align: right; }
+#studio .st-k b.ok { color: #7EE2A8; } #studio .st-k b.ko { color: #FFB4B0; }
+#studio .st-calc .st-m { color: #C9D0D6; }
+#studio .st-pal { grid-template-columns: 1fr 1fr; }
+#studio .st-det > summary { cursor: pointer; min-height: 32px; }
+@media (max-width: 860px) {
+  #studio .st-onglets { display: flex; }
+  #studio .st-corps { grid-template-columns: 1fr; padding: 10px 12px; }
+  #studio[data-onglet="reglages"] .st-prev { display: none; }
+  #studio[data-onglet="apercu"] .st-form { display: none; }
+  #studio .st-titre { display: none; }
+  #studio .st-actions { margin-left: auto; }
+  #studio .st-btn:not(.p) { display: none; }
+}

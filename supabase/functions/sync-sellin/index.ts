@@ -1,4 +1,7 @@
-// sync-sellin v15 — verify_jwt: false ; v15 : CA par canal (part Empower séparée) ; v14 : authentification session ADMIN / CHANNEL_MANAGER
+// v20 (9/11/2026) : params écrits par UPDATE ciblé (le upsert était refusé par la base).
+// v19 (9/11/2026) : enregistrement de DATE_SYNC_SELLIN contrôlé et placé avant le calcul des objectifs.
+// v18 (9/11/2026) : la colonne SALES du fichier attribue les comptes SANS commercial (création et comptes existants non attribués). Un compte déjà attribué n'est jamais modifié.
+// sync-sellin v16 (déployé en v17 côté Supabase) — M4 garde-fou purge ; v15 — verify_jwt: false ; v15 : CA par canal (part Empower séparée) ; v14 : authentification session ADMIN / CHANNEL_MANAGER
 // v11 : accepte des lignes envoyées par le navigateur (POST { rows: string[][] }, header en rows[0]),
 //       repli Google Sheets sans `rows`. Agrégation Q1→Q4 FY27.
 // v13 : alias manuels (sellin_alias) + CUMUL par compte (deux noms vers un même compte s'additionnent).
@@ -139,11 +142,13 @@ Deno.serve(async (req) => {
     let sourceLabel: string
     let bodyRows: string[][] | null = null
     let dryRun = false
+    let purgeConfirmee = false
     if (req.method === 'POST') {
       try {
         const body = await req.json()
         if (Array.isArray(body?.rows) && body.rows.length > 1) bodyRows = body.rows
         dryRun = !!body?.dry_run
+        purgeConfirmee = body?.confirmer_purge === true
       } catch { /* body vide/non-JSON → repli Sheets */ }
     }
     if (bodyRows) {
@@ -159,12 +164,13 @@ Deno.serve(async (req) => {
     if (rows.length < 2) return jres({ ok: false, error: 'Données Sell-In vides' }, 404)
 
     const headers = rows[0].map(h => (h || '').trim().toUpperCase())
-    const colIdx = { quarter: headers.indexOf('QUARTER'), reseller: headers.indexOf('RESELLER'), channel: headers.indexOf('CHANNEL'), caEur: headers.indexOf('CA_EUR') }
+    const colIdx = { quarter: headers.indexOf('QUARTER'), reseller: headers.indexOf('RESELLER'), channel: headers.indexOf('CHANNEL'), sales: headers.indexOf('SALES'), caEur: headers.indexOf('CA_EUR') }
     if (colIdx.quarter < 0 || colIdx.reseller < 0 || colIdx.caEur < 0) throw new Error(`Colonnes manquantes. Headers: ${headers.join(', ')}`)
 
     // ── Pivot : clé = nom NORMALISÉ ; `display` = 1ʳᵉ graphie rencontrée dans le fichier ──
-    type ResellerData = { display: string; byQuarter: Record<string, number>; empByQuarter: Record<string, number>; channel: string }
+    type ResellerData = { sales: Record<string, number>; display: string; byQuarter: Record<string, number>; empByQuarter: Record<string, number>; channel: string }
     const pivot: Record<string, ResellerData> = {}
+    const salesDe = (row: string[]) => colIdx.sales >= 0 ? (row[colIdx.sales] || '').toString().trim().toUpperCase() : ''
     const fileQuarters = new Set<string>()
     const caParTrimestre: Record<string, number> = {}
     for (let i = 1; i < rows.length; i++) {
@@ -176,15 +182,16 @@ Deno.serve(async (req) => {
       if (!reseller || !quarter || ca === 0) continue
       const norm = normalizeName(reseller)
       if (!norm) continue
-      if (!pivot[norm]) pivot[norm] = { display: reseller, byQuarter: {}, empByQuarter: {}, channel }
+      if (!pivot[norm]) pivot[norm] = { sales: {}, display: reseller, byQuarter: {}, empByQuarter: {}, channel }
       pivot[norm].byQuarter[quarter] = (pivot[norm].byQuarter[quarter] || 0) + ca
+      const sv = salesDe(row); if (sv) pivot[norm].sales[sv] = (pivot[norm].sales[sv] || 0) + 1
       // CA par canal de commande : la part Empower est suivie séparément (le grossiste = total - Empower)
       if (/EMPOWER/i.test(channel)) pivot[norm].empByQuarter[quarter] = (pivot[norm].empByQuarter[quarter] || 0) + ca
       fileQuarters.add(quarter)
       caParTrimestre[quarter] = (caParTrimestre[quarter] || 0) + ca
     }
 
-    type AggRow = { norm: string; reseller: string; canal: string; caFy25: number; caFy26: number; caFy27ByQuarter: Record<string, number>; empFy25: number; empFy26: number; empFy27ByQuarter: Record<string, number>; flagBrut: string }
+    type AggRow = { sales: Record<string, number>; norm: string; reseller: string; canal: string; caFy25: number; caFy26: number; caFy27ByQuarter: Record<string, number>; empFy25: number; empFy26: number; empFy27ByQuarter: Record<string, number>; flagBrut: string }
     const agregats: AggRow[] = []
     const sellinRows: Array<{ reseller: string; quarter: string; ca_eur: number; ca_empower: number; canal: string; semaine_sync: string }> = []
     const fileKeys = new Set<string>()          // `${reseller}|${quarter}` exacts écrits
@@ -201,7 +208,7 @@ Deno.serve(async (req) => {
         else if ((FY27_QUARTERS as readonly string[]).includes(quarter)) { caFy27ByQuarter[quarter] = (caFy27ByQuarter[quarter] || 0) + ca; empFy27ByQuarter[quarter] = (empFy27ByQuarter[quarter] || 0) + emp }
       }
       agregats.push({
-        norm, reseller: data.display, canal: data.channel,
+        sales: data.sales, norm, reseller: data.display, canal: data.channel,
         caFy25: Math.round(caFy25 * 100) / 100, caFy26: Math.round(caFy26 * 100) / 100, caFy27ByQuarter,
         empFy25: Math.round(empFy25 * 100) / 100, empFy26: Math.round(empFy26 * 100) / 100, empFy27ByQuarter,
         flagBrut: calcFlag(caFy25, caFy26, caFy27ByQuarter),
@@ -222,9 +229,19 @@ Deno.serve(async (req) => {
     }
 
     // ── Rapprochement comptes (nom normalisé exact ; quasi-doublon → à valider ; sinon création non attribuée) ──
-    const comptesList = await lireTout(supabase, 'comptes', 'id,nom_compte,deleted')
+    const comptesList = await lireTout(supabase, 'comptes', 'id,nom_compte,deleted,pin_cds_assigne')
     const compteMap = new Map<string, string>()
-    for (const c of comptesList) if (!c.deleted) compteMap.set(normalizeName(c.nom_compte || ''), c.id)
+    const pinDuCompte = new Map<string, number | null>()
+    for (const c of comptesList) if (!c.deleted) { compteMap.set(normalizeName(c.nom_compte || ''), c.id); pinDuCompte.set(c.id, c.pin_cds_assigne ?? null) }
+    // Commerciaux : prénom (colonne SALES) → pin. « NON SUIVI » ou un nom inconnu n'attribue rien.
+    const { data: users } = await supabase.from('utilisateurs').select('pin,nom,role').eq('actif', true).neq('role', 'EXTERNE')
+    const commercialDe = new Map<string, { pin: number; nom: string }>((users || []).map((u: any) => [normalizeName(u.nom || ''), { pin: Number(u.pin), nom: String(u.nom) }]))
+    const choisirCommercial = (aggs: { sales: Record<string, number> }[]) => {
+      const tot: Record<string, number> = {}
+      for (const a of aggs) for (const [k, v] of Object.entries(a.sales || {})) tot[k] = (tot[k] || 0) + v
+      const best = Object.entries(tot).sort((x, y) => y[1] - x[1]).map(([k]) => commercialDe.get(normalizeName(k))).find(Boolean)
+      return best || null
+    }
 
     if (dryRun) {
       const aCreer = agregats.filter(a => !compteMap.has(a.norm) && ![...compteMap.keys()].some(n => estNomProche(a.norm, n))).map(a => a.reseller)
@@ -233,6 +250,12 @@ Deno.serve(async (req) => {
         ca_par_trimestre: Object.fromEntries(Object.entries(caParTrimestre).sort().map(([q, v]) => [q, round2(v)])),
         purge: planPurge, comptes_existants_rapproches: agregats.filter(a => compteMap.has(a.norm)).length, comptes_a_creer: aCreer, quasi_doublons: quasi })
     }
+
+    // ── Garde-fou (lot 6 / M4) : une purge importante (fichier tronqué, mauvais onglet…) n'est jamais appliquée sans
+    //    confirmation explicite. Le plan est renvoyé (rien n'est écrit) ; le client doit rappeler avec confirmer_purge:true.
+    const purgeImportante = (purgeSellin.length > 25 && purgeSellin.length > sellinExistant.length * 0.05) || purgeAgregats.length > 5
+    if (purgeImportante && !purgeConfirmee)
+      return jres({ ok: false, purge_a_confirmer: true, error: 'Purge importante : confirmation requise', purge: planPurge }, 409)
 
     // ── Écritures : upsert d'abord, purge ensuite (jamais de perte si l'écriture échoue en route) ──
     const BATCH = 200
@@ -287,14 +310,16 @@ Deno.serve(async (req) => {
       const candidats = [...compteMap.entries()].filter(([nom]) => estNomProche(agg.norm, nom)).map(([, id]) => id)
       if (candidats.length) { nonMatcher.push({ reseller: agg.reseller, raison: 'QUASI_DOUBLON', candidats }); continue }
       const { data: nouveau, error: insErr } = await supabase.from('comptes').insert({
-        nom_compte: agg.reseller, canal: agg.canal, pin_cds_assigne: null, source_import: 'SYNC_SELLIN',
+        nom_compte: agg.reseller, canal: agg.canal, pin_cds_assigne: choisirCommercial([agg])?.pin ?? null, nom_cds: choisirCommercial([agg])?.nom ?? null, source_import: 'SYNC_SELLIN',
       }).select('id').single()
       if (insErr || !nouveau) { nonMatcher.push({ reseller: agg.reseller, raison: 'ERREUR_CREATION: ' + (insErr?.message || 'inconnue') }); continue }
       compteMap.set(agg.norm, nouveau.id)
+      pinDuCompte.set(nouveau.id, choisirCommercial([agg])?.pin ?? null)
       comptesCrees.push(agg.reseller)
       cumuler(nouveau.id, agg)
     }
     let comptesMaj = 0
+    const comptesAttribues: string[] = []
     for (const [compteId, c] of parCompte) {
       const majCA = {
         ca_fy25: round2(c.caFy25), ca_fy26: round2(c.caFy26),
@@ -308,13 +333,20 @@ Deno.serve(async (req) => {
       const { error: cErr } = await supabase.from('comptes').update(majCA).eq('id', compteId)
       if (cErr) { nonMatcher.push({ reseller: c.aggs.map(a => a.reseller).join(' + '), raison: 'ERREUR_MAJ: ' + cErr.message }); continue }
       comptesMaj++
+      if (!pinDuCompte.get(compteId)) {
+        const com = choisirCommercial(c.aggs)
+        if (com) {
+          const { error: aErr } = await supabase.from('comptes').update({ pin_cds_assigne: com.pin, nom_cds: com.nom }).eq('id', compteId).is('pin_cds_assigne', null)
+          if (!aErr) comptesAttribues.push(`${c.aggs[0].reseller} → ${com.nom}`)
+        }
+      }
       for (const a of c.aggs) await supabase.from('sellin_agregats').update({ compte_id: compteId }).eq('reseller', a.reseller)
     }
 
     if (comptesCrees.length || nonMatcher.length) {
       const { data: destinataires } = await supabase.from('utilisateurs').select('pin').eq('actif', true).in('role', ['ADMIN', 'CHANNEL_MANAGER'])
       const messages: string[] = []
-      if (comptesCrees.length) messages.push(`🏢 ${comptesCrees.length} nouveau(x) compte(s) créé(s) via Sell-In, non attribué(s) — à attribuer à un CDS`)
+      if (comptesCrees.length) messages.push(`🏢 ${comptesCrees.length} nouveau(x) compte(s) créé(s) via Sell-In (commercial repris de la colonne SALES quand il est connu, sinon à attribuer à un CDS)`)
       if (nonMatcher.filter(n => n.raison === 'QUASI_DOUBLON').length) messages.push(`⚠️ ${nonMatcher.filter(n => n.raison === 'QUASI_DOUBLON').length} revendeur(s) Sell-In ressemblent à un compte existant — à valider manuellement`)
       const message = messages.join(' · ')
       const notifRows = (destinataires || []).map((u: any) => ({
@@ -326,12 +358,31 @@ Deno.serve(async (req) => {
 
     const result = {
       ok: true, semaine, source: sourceLabel, revendeurs: agregats.length, lignes_sellin: totalSellinUpserted,
-      comptes_maj: comptesMaj, comptes_crees: comptesCrees.length, ca_par_cds: {} as Record<string, Record<string, number>>,
+      comptes_maj: comptesMaj, comptes_crees: comptesCrees.length, comptes_attribues: comptesAttribues, ca_par_cds: {} as Record<string, Record<string, number>>,
       ca_par_trimestre: Object.fromEntries(Object.entries(caParTrimestre).sort().map(([q, v]) => [q, round2(v)])),
       purge: { sellin: purgeSellin.length, sellin_ca: planPurge.sellin_ca, agregats: purgeAgregats.length },
       nonMatcher, duree_ms: Date.now() - startTime,
       message: `Sync OK (${sourceLabel}) — ${agregats.length} revendeurs · ${comptesMaj} comptes MAJ · ${comptesCrees.length} créé(s) · ${nonMatcher.length} à valider · ${purgeSellin.length} ligne(s) obsolète(s) purgée(s) — ${semaine}`,
     }
+
+    // v20 : la base refuse le upsert sur params (« UPDATE requires a WHERE clause ») : UPDATE ciblé par paramètre, INSERT si la ligne n'existe pas.
+    const paramsAEcrire = [
+      { parametre: 'DATE_SYNC_SELLIN', valeur: new Date().toISOString(), description: 'Dernière sync Sell-In' },
+      { parametre: 'SEMAINE_SYNC', valeur: semaine, description: 'Dernière semaine synchronisée' },
+      { parametre: 'COMPTES_MAJ', valeur: String(comptesMaj), description: 'Nb comptes mis à jour' },
+      { parametre: 'REVENDEURS_SYNC', valeur: String(agregats.length), description: 'Nb revendeurs Sell-In' },
+      { parametre: 'SELLIN_SOURCE', valeur: sourceLabel, description: 'Source de la dernière sync Sell-In' },
+    ]
+    const erreursParams: string[] = []
+    for (const p of paramsAEcrire) {
+      const { data: maj, error: uErr } = await supabase.from('params').update({ valeur: p.valeur, description: p.description }).eq('parametre', p.parametre).select('id')
+      if (uErr) { erreursParams.push(`${p.parametre}: ${uErr.message}`); continue }
+      if (!maj || !maj.length) {
+        const { error: iErr } = await supabase.from('params').insert(p)
+        if (iErr) erreursParams.push(`${p.parametre}: ${iErr.message}`)
+      }
+    }
+    if (erreursParams.length) { console.error('sync-sellin params:', erreursParams.join(' | ')); (result as any).params_erreur = erreursParams.join(' | ') }
 
     const { data: objectifs } = await supabase.from('objectifs_primes').select('id, pin_cds')
     const caPinResults: Record<string, Record<string, number>> = {}
@@ -350,14 +401,6 @@ Deno.serve(async (req) => {
       }).eq('id', obj.id)
     }
     result.ca_par_cds = caPinResults
-
-    await supabase.from('params').upsert([
-      { parametre: 'DATE_SYNC_SELLIN', valeur: new Date().toISOString(), description: 'Dernière sync Sell-In' },
-      { parametre: 'SEMAINE_SYNC', valeur: semaine, description: 'Dernière semaine synchronisée' },
-      { parametre: 'COMPTES_MAJ', valeur: String(comptesMaj), description: 'Nb comptes mis à jour' },
-      { parametre: 'REVENDEURS_SYNC', valeur: String(agregats.length), description: 'Nb revendeurs Sell-In' },
-      { parametre: 'SELLIN_SOURCE', valeur: sourceLabel, description: 'Source de la dernière sync Sell-In' },
-    ], { onConflict: 'parametre' })
 
     return jres(result)
   } catch (err) {

@@ -219,6 +219,7 @@ window.VueMailing = {
   render() {
     const s = this.state;
     if (!s) return;
+    if (typeof Router !== 'undefined') Router.couche.sync('mailing-cible', !!s.cible, () => VueMailing.fermerCible(), 'VueMailing');
     const app = document.getElementById('app');
     // Header standard de l'app (même convention que vue-comptes.js/vue-phoning.js) :
     // "←" contextuel — ferme la fiche ouverte si une cible est sélectionnée,

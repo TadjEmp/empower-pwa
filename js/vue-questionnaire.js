@@ -114,6 +114,12 @@ window.VueQuestionnaire = {
       localStorage.setItem(this._CLE_BROUILLON, JSON.stringify({
         cle, ts: Date.now(),
         cible: this.state.cible, typeSource: this.state.typeSource, recherche: this.state.recherche,
+        // La visite planifiée voyage avec le brouillon : après un rechargement
+        // (page tuée par l'appli caméra), _visitePlanifiee est perdue en mémoire
+        // et la clé du brouillon ne correspondait plus (visite à froid planifiée
+        // = clé ID_Visite à l'enregistrement, 'NOUVELLE' au retour) : la saisie
+        // n'était jamais restaurée.
+        visitePlanifiee: this._visitePlanifiee || null,
         etape: this.state.etape, d: this.state.d, photos: this.state.photos,
         gps: this.state.gps, debut: this.state.debut,
         _sourceVerrouillee: this._sourceVerrouillee, _modeFroid: this._modeFroid,
@@ -153,9 +159,10 @@ window.VueQuestionnaire = {
       etape: 0, chargement: true, envoiEnCours: false,
       comptes: [], prospects: [],
       typeSource: 'EXISTANT',
+      filtreProspect: { source: 'TOUS', pin: 'TOUS', secteur: 'TOUS' },
       cible: null,
       dernieresVisites: [],
-      recherche: '', suggestionsOuvertes: false,
+      recherche: '', suggestionsOuvertes: true,
       gps: { lat: '', lng: '' },
       debut: Date.now(),
       photos: [],
@@ -214,6 +221,19 @@ window.VueQuestionnaire = {
     // sans rapport — "Visite à froid" verrouillée s'affichait pour un
     // revendeur pourtant bien existant, sans aucun moyen de revenir en
     // arrière (cf. _sourceVerrouillee, utilisé par _etape0()).
+    // Rechargement de la page (OS qui tue la PWA pendant la prise de photo) :
+    // la visite planifiée en mémoire est perdue, on la reprend depuis le
+    // brouillon si, et seulement si, elle concerne bien cette route.
+    if (!this._visitePlanifiee) {
+      try {
+        const b = JSON.parse(localStorage.getItem(this._CLE_BROUILLON) || 'null');
+        const vp = b && b.visitePlanifiee;
+        if (vp && Date.now() - (b.ts || 0) <= 12 * 3600000 && (
+          (idCible === null && (vp.ID_Cible === 'HORS_BASE' || vp.Source_Visite === 'ESI_VISITE_FROID')) ||
+          (idCible !== null && String(vp.ID_Cible) === String(idCible))
+        )) this._visitePlanifiee = vp;
+      } catch {}
+    }
     const visitePertinente = this._visitePlanifiee && (
       (idCible === null && (this._visitePlanifiee.ID_Cible === 'HORS_BASE' || this._visitePlanifiee.Source_Visite === 'ESI_VISITE_FROID')) ||
       (idCible !== null && String(this._visitePlanifiee.ID_Cible) === String(idCible))
@@ -324,10 +344,43 @@ window.VueQuestionnaire = {
   },
 
   get sourceListe() { return this.state.typeSource === 'PROSPECT' ? this.state.prospects : this.state.typeSource === 'FROID' ? [] : this.state.comptes; },
+  // Mode « Prospect » : leads du Tracker ET base de comptes, filtrables (source, commercial, secteur).
+  _poolProspects() {
+    const f = this.state.filtreProspect;
+    let pool = [];
+    if (f.source !== 'COMPTES') pool = pool.concat(this.state.prospects.map(p => Object.assign({}, p, { _src: 'LEAD' })));
+    if (f.source !== 'LEADS')   pool = pool.concat(this.state.comptes.map(c => Object.assign({}, c, { _src: 'COMPTE' })));
+    if (f.pin !== 'TOUS')     pool = pool.filter(x => String(x.PIN_CDS_Assigne || '') === String(f.pin === 'AUCUN' ? '' : f.pin));
+    if (f.secteur !== 'TOUS') pool = pool.filter(x => String(x.SECTEUR || '') === f.secteur);
+    return pool;
+  },
   get suggestions() {
     const q = normaliserNom(this.state.recherche);
-    if (q.length < 2) return [];
-    return this.sourceListe.filter(c => normaliserNom(c.Nom_Compte).includes(q)).slice(0, 6);
+    if (this.state.typeSource === 'PROSPECT') {
+      const pool = this._poolProspects();
+      const l = q.length < 1 ? pool : pool.filter(c => normaliserNom(c.Nom_Compte).includes(q) || normaliserNom(c.Ville || '').includes(q));
+      return l.slice().sort((a, b) => (a.Nom_Compte || '').localeCompare(b.Nom_Compte || '', 'fr')).slice(0, 40);
+    }
+    // Existant : la liste est visible dès l'ouverture (ordre alphabétique), la saisie la filtre (nom ou ville).
+    const l = q.length < 1 ? this.sourceListe : this.sourceListe.filter(c => normaliserNom(c.Nom_Compte).includes(q) || normaliserNom(c.Ville || '').includes(q));
+    return l.slice().sort((a, b) => (a.Nom_Compte || '').localeCompare(b.Nom_Compte || '', 'fr')).slice(0, 40);
+  },
+  setFiltreProspect(cle, v) {
+    this.state.filtreProspect[cle] = v;
+    this.state.suggestionsOuvertes = true;
+    this._renderSuggestions();
+  },
+  _renderFiltresProspect() {
+    const f = this.state.filtreProspect;
+    const secteurs = [...new Set(this.state.prospects.concat(this.state.comptes).map(x => x.SECTEUR).filter(Boolean))].sort();
+    const pins = [...new Set(this.state.prospects.concat(this.state.comptes).map(x => x.PIN_CDS_Assigne).filter(Boolean).map(String))];
+    const sel = (cle, lib, opts) => `<select class="q-input" style="flex:1;min-width:110px;padding:8px" aria-label="${lib}" onchange="VueQuestionnaire.setFiltreProspect('${cle}',this.value)">
+      ${opts.map(([v, l]) => `<option value="${v}" ${String(f[cle]) === String(v) ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
+    return `<div class="q-filtres-prospect" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      ${sel('source', 'Source', [['TOUS', 'Source : toutes'], ['LEADS', 'Leads Tracker'], ['COMPTES', 'Base comptes']])}
+      ${Session.voitTout() ? sel('pin', 'Commercial', [['TOUS', 'Commercial : tous'], ['AUCUN', 'Non attribué']].concat(pins.map(p => [p, window.resolveCDS ? window.resolveCDS(p) : p]))) : ''}
+      ${secteurs.length ? sel('secteur', 'Secteur', [['TOUS', 'Secteur : tous']].concat(secteurs.map(x => [x, x]))) : ''}
+    </div>`;
   },
 
   setSource(s) {
@@ -338,7 +391,9 @@ window.VueQuestionnaire = {
     } else {
       this._modeFroid = false;
     }
+    this.state.suggestionsOuvertes = s === 'PROSPECT' || s === 'EXISTANT';
     this.render();
+    if (s === 'PROSPECT' || s === 'EXISTANT') this._renderSuggestions();
   },
 
   // Générique — utilisé par le formulaire à froid ET, depuis l'audit fiche
@@ -419,6 +474,10 @@ window.VueQuestionnaire = {
       };
       await SheetsAPI.ecrire('EMPOWER_MDB', 'LEADS', lead);
       this.state.prospects.unshift(lead);
+      // La fiche à froid pointe vers le lead créé (sinon elle reste « prospect à froid »).
+      if (this._derniereFicheFroide && window.FichesFroides) {
+        FichesFroides.marquerConverti(this._derniereFicheFroide, { idLead: lead.ID_Prospect }).catch(() => {});
+      }
       // Notifications dynamiques : Alexandra + tous les Channels actifs (routage
       // par rôle, plus par secteur/enseigne — aucune table de mapping secteur→Channel
       // n'existe aujourd'hui ; à affiner si un tel mapping est créé).
@@ -494,7 +553,10 @@ window.VueQuestionnaire = {
   },
 
   choisirCible(idx) {
-    this.state.cible = this.suggestions[idx];
+    const choisi = this.suggestions[idx];
+    const src = choisi._src;
+    this.state.cible = Object.assign({}, choisi); delete this.state.cible._src; // jamais persisté
+    if (src === 'COMPTE') this.state.typeSource = 'EXISTANT';
     this.state.recherche = this.state.cible.Nom_Compte;
     this.state.suggestionsOuvertes = false;
     this.state.dernieresVisites = [];
@@ -519,10 +581,12 @@ window.VueQuestionnaire = {
   _renderSuggestions() {
     const zone = document.getElementById('q-suggestions');
     if (!zone) return;
-    zone.innerHTML = (this.state.suggestionsOuvertes ? this.suggestions : []).map((c, i) => `
+    const liste = this.state.suggestionsOuvertes ? this.suggestions : [];
+    zone.classList.toggle('q-sugg-liste', liste.length > 0);
+    zone.innerHTML = liste.map((c, i) => `
       <div class="q-arbre-btn" style="margin-top:4px" onclick="VueQuestionnaire.choisirCible(${i})">
         <strong>${c.Nom_Compte}</strong>
-        <span style="color:var(--c-text-2);font-size:12px"> · ${c.Ville||'n.c.'}${c.STATUT_COMPTE?' · '+c.STATUT_COMPTE:''}</span>
+        <span style="color:var(--c-text-2);font-size:12px"> · ${c.Ville||'n.c.'}${c.STATUT_COMPTE?' · '+c.STATUT_COMPTE:''}${c._src ? ' · ' + (c._src === 'LEAD' ? 'Lead Tracker' : 'Base comptes') : ''}</span>
       </div>`).join('');
   },
 
@@ -642,7 +706,7 @@ window.VueQuestionnaire = {
     this.render(); window.scrollTo(0, 0);
   },
   precedent() {
-    if (this.state.etape === 0) { history.back(); return; }
+    if (this.state.etape === 0) { Router.retour(); return; }
     let prev = this.state.etape - 1;
     while (prev > 0 && this._etapeMasquee(prev)) prev--;
     this.state.etape = prev; this.render(); window.scrollTo(0, 0);
@@ -988,6 +1052,8 @@ window.VueQuestionnaire = {
   // ── RENDER ──
   render() {
     const app = document.getElementById('app');
+    // Retour système : l'étape précédente du questionnaire, sans perdre la saisie ni quitter la page.
+    if (typeof Router !== 'undefined' && this.state) Router.couche.sync('quest-etape', this.state.etape > 0, () => VueQuestionnaire.precedent(), 'VueQuestionnaire');
     if (!this.state || this.state.chargement) {
       app.innerHTML = skeletonListe(6);
       return;
@@ -1083,7 +1149,8 @@ window.VueQuestionnaire = {
           <input class="q-input" type="email" placeholder="ex : contact@enseigne.fr" value="${s.cible?.Email || ''}"
                  oninput="VueQuestionnaire.setContactChamp('Email',this.value)"/></label>
       </div>` : verrouille ? '' : `
-      <label class="q-label">Compte ${s.typeSource==='EXISTANT'?'(base historique)':'(base prospects)'}
+      ${s.typeSource === 'PROSPECT' ? this._renderFiltresProspect() : ''}
+      <label class="q-label">Compte ${s.typeSource==='EXISTANT'?'(base historique)':'(leads Tracker et base comptes)'}
         <input class="q-input" placeholder="Rechercher…" value="${s.recherche}"
                oninput="VueQuestionnaire.setRecherche(this.value)" autocomplete="off"/>
       </label>

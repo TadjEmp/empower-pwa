@@ -346,3 +346,14 @@
 .admin-recap { display:grid; grid-template-columns:110px 1fr; gap:6px 12px; margin:12px 0; font-size:14px; }
 .admin-recap dt { color:var(--c-text-2); }
 .admin-recap dd { margin:0; font-weight:500; }
+
+/* Invitation à activer les alertes (push) : carte flottante V3, bouton corail pour l'action principale */
+.push-invite{position:fixed;left:16px;right:16px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:1200;max-width:420px;margin:0 auto;background:#fff;border-radius:22px;padding:16px 18px;box-shadow:0 8px 28px rgba(52,63,72,.18);color:#343F48;font-size:13px;line-height:1.45}
+.push-invite p{margin:0 0 12px}
+.push-invite-act{display:flex;gap:8px;justify-content:flex-end}
+.push-invite-act button{border:0;border-radius:999px;padding:9px 18px;font:inherit;font-weight:700;cursor:pointer}
+.push-invite-ok{background:#FF6D68;color:#343F48}
+.push-invite-non{background:#EEF0F1;color:#343F48}
+@media (min-width:900px){.push-invite{left:auto;right:96px;bottom:24px;margin:0}}
+:root[data-theme="dark"] .push-invite{background:#2A3239;color:#E6E9EB}
+:root[data-theme="dark"] .push-invite-non{background:#343F48;color:#E6E9EB}

@@ -1,0 +1,28 @@
+// Lot 6 (C1) — neutralisation des données à la lecture (api.js : neutraliser, denaturer, jsq)
+const fs = require('fs'), vm = require('vm');
+const src = fs.readFileSync(__dirname + '/js/api.js', 'utf8');
+const debut = src.indexOf('const _NEUTRE'), fin = src.indexOf('window.neutraliser');
+const ctx = { window: {} }; vm.createContext(ctx);
+vm.runInContext(src.slice(debut, fin) + '\nwindow.n = neutraliser; window.d = denaturer; window.j = jsq;', ctx);
+const { n, d, j } = ctx.window;
+let ok = 0, ko = 0; const t = (nom, cond) => { cond ? ok++ : (ko++, console.log('  ❌ ' + nom)); };
+t('balise neutralisée', n('<img src=x onerror=alert(1)>') === '&lt;img src=x onerror=alert(1)&gt;');
+t('guillemets neutralisés', n('a" onmouseover="x') === 'a&quot; onmouseover=&quot;x');
+t('accent grave neutralisé', n('`x`') === '&#96;x&#96;');
+t('texte normal inchangé', n("L'Atelier & Cie, Paris 8e") === "L'Atelier & Cie, Paris 8e");
+t('idempotent sur &', n('A &amp; B') === 'A &amp; B');
+t('JSON : guillemets conservés', n('{"a":"<b>"}') === '{"a":"&lt;b&gt;"}');
+t('tableau JSON', JSON.parse(n('["x","<y>"]'))[1] === '&lt;y&gt;');
+t('objet imbriqué', n({ a: { b: '<' } }).a.b === '&lt;');
+t('nombre / booléen / null inchangés', n(5) === 5 && n(true) === true && n(null) === null);
+t('identifiant assaini', n({ ID_Prospect: "P');alert(1);('" }).ID_Prospect === 'P___alert_1____');
+t('identifiant normal inchangé', n({ ID_Compte: 'COMP_abc-12.3:x' }).ID_Compte === 'COMP_abc-12.3:x');
+t('id_cible_gas assaini', n({ id_cible_gas: "a'b" }).id_cible_gas === 'a_b');
+t('champ non identifiant avec apostrophe inchangé', n({ Nom_Compte: "d'Azur" }).Nom_Compte === "d'Azur");
+t('aller-retour export', d(n('<a "x">')) === '<a "x">');
+t('denaturer objet', d({ a: ['&lt;'] }).a[0] === '<');
+const s = j("x');alert(1);//\\<\"");
+t('jsq : aucun caractère dangereux', !/['"<>\\ ]/.test(s.replace(/\\u[0-9a-f]{4}/g, '')));
+t('jsq : valeur restituée par JavaScript', vm.runInNewContext("'" + s + "'") === "x');alert(1);//\\<\"");
+console.log(`${ko ? '🔴' : '🟢'} ${ok} ✅ passés | ${ko} ❌ échoués`);
+process.exit(ko ? 1 : 0);

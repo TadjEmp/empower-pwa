@@ -33,6 +33,7 @@
     })();
   </script>
   <meta name="theme-color" content="#242E39"/>
+  <style>html,body{background:#E4E6E8}html[data-theme="dark"],html[data-theme="dark"] body{background:#1C2227}</style>   <!-- fond V3 dès le premier affichage, avant les feuilles de style -->
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Montserrat:wght@400;500;600;700;800;900&family=Roboto:wght@400;500;700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet"/>
@@ -42,27 +43,35 @@
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="icons/icon-192.png"/>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,300..500,0..1,0&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="css/base.css?v=19c"/>
-  <link rel="stylesheet" href="css/components.css?v=8c"/>
+  <link rel="stylesheet" href="css/base.css?v=19d"/>
+  <link rel="stylesheet" href="css/components.css?v=8e"/>
   <link rel="stylesheet" href="css/comptes.css?v=3c"/>
   <link rel="stylesheet" href="css/questionnaire.css?v=5c"/>
   <link rel="stylesheet" href="css/dashboard.css?v=9c"/>
-  <link rel="stylesheet" href="css/pipeline.css?v=14c"/>
+  <link rel="stylesheet" href="css/pipeline.css?v=14d"/>
   <link rel="stylesheet" href="css/v7.css?v=14"/>
-  <link rel="stylesheet" href="css/gen-digital.css?v=32"/>
-  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="css/gen-digital.css?v=35"/>
+  <link rel="stylesheet" href="css/refresh-esi.css?v=41"/>
+  <link rel="stylesheet" href="css/compte-saas.css?v=7f"/>
+  <link rel="stylesheet" href="css/coach.css?v=1"/>
+  <link rel="stylesheet" href="css/kit.css?v=1"/>
+  <link rel="stylesheet" href="css/mobile.css?v=r5">
+  <link rel="stylesheet" href="css/visionneuse.css?v=r4">
+  <link rel="stylesheet" href="css/studio.css?v=r2">
+  <link rel="stylesheet" href="css/coach-chat.css?v=r1x">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
   <!-- Feuille de route Phase 1 — piège de focus pour les modales/drawer (utils.js#ModalAccessibilite) -->
-  <script src="https://cdn.jsdelivr.net/npm/tabbable@6.5.0/dist/index.umd.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/focus-trap@7.8.0/dist/focus-trap.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tabbable@6.5.0/dist/index.umd.js" integrity="sha384-VdDx0tePwYOH1V1a6tK++qwdcQ/Kjn+m4sARQk45Mbzo+7X/K+84y44Sb57HGoyR" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/focus-trap@7.8.0/dist/focus-trap.umd.js" integrity="sha384-hovg5vVGKH5vwiK1WJ+gXhnjfc/G1jKeMvX3/X/YF+nXcN9FSwwPWgZ0zyxWGk75" crossorigin="anonymous"></script>
   <!-- Feuille de route Phase 1 — glisser-déposer du Tracker (vue-pipeline.js), animation
        de drag incluse (option `animation`), cf. décision "auto-animate" dans le journal
        de la feuille de route : ce paquet suppose des mutations DOM incrémentales, incompatible
        avec le render() de cette app (innerHTML entièrement remplacé à chaque appel). -->
-  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.7/Sortable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.7/Sortable.min.js" integrity="sha384-DgmC6Xe2bSN2WjTDXzWYbUbxyhNP+NNkGDR/g78pCXV7E7rcVTGxVg0uIVCUUcBc" crossorigin="anonymous"></script>
   <!-- Feuille de route Phase 4 — palette de commandes "Aller à…" (utils.js#PaletteCommandes).
        Build officiel non utilisable en <script> classique (imports bruts "lit" destinés à un
        bundler) : passe par la transformation ESM de jsDelivr (imports déjà résolus/empaquetés). -->
-  <script type="module" src="https://cdn.jsdelivr.net/npm/ninja-keys@1.2.2/+esm"></script>
+  <script type="module" src="https://cdn.jsdelivr.net/npm/ninja-keys@1.2.2/+esm" integrity="sha384-gzA7WHESztHD9nh4Vd7JKzb5B8U3sum+Xp7h6UJxCz4jRSFYgCpC8qYF/tEoOYM8" crossorigin="anonymous"></script>
 </head>
 <body>
   <ninja-keys placeholder="Aller à… (Tracker, Comptes, Planning…)" hotkeys-joined-view></ninja-keys>
@@ -87,63 +96,98 @@
   </div>
 
   <!-- Couche API & utilitaires -->
-  <script src="js/utils.js?v=r9"></script>
+  <script src="js/utils.js?v=r96we"></script>
   <script src="js/fiscal-weeks.js?v=r2"></script>
+  <script src="js/atterrissage.js?v=r2"></script>
   <script src="js/filter-state.js?v=r2"></script>
   <script src="js/questionnaire-branching.js?v=r2"></script>
-  <script src="js/helpers.js?v=r2"></script>
-  <script src="js/session.js?v=r13"></script>
-  <script src="js/dashboard-activite.js?v=r2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/helpers.js?v=r2b"></script>
+  <script src="js/session.js?v=r13w"></script>
+  <script src="js/dashboard-activite.js?v=r6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js" integrity="sha384-TcHRA3zBbn+Lexh5n+Oil4guNPOS3rjNDpGRAN46u/s/mB2IZ50ceC6TYDU2yvgK" crossorigin="anonymous"></script>
   <script src="js/ca-canal.js?v=1"></script>
   <script src="js/canaux.js?v=2"></script>
-  <script src="js/api.js?v=r15"></script>
+  <script src="js/api.js?v=r20"></script>
+  <script src="js/contacts-structures.js?v=r1"></script>
   <script src="js/groq.js?v=r2"></script>
-  <script src="js/gemini.js?v=r2"></script>
-  <script src="js/toast.js?v=r2"></script>
+  <script src="js/gemini.js?v=r4"></script>
+  <script src="js/toast.js?v=r2w"></script>
   <script src="js/theme.js?v=1"></script>
   <script src="js/modal-stable.js?v=5"></script>
-  <script src="js/permissions.js?v=r3"></script>
-  <script src="js/router.js?v=r5"></script>
-  <script src="js/nav-web.js?v=r5"></script>
+  <script src="js/permissions.js?v=r5d"></script>
+  <script src="js/router.js?v=r23c"></script>
+  <script src="js/nav-web.js?v=r11"></script>
 
   <!-- Vues V2.1 — Navigation 7 modules -->
-  <script src="js/vue-login.js?v=r11"></script>
+  <script src="js/vue-login.js?v=r14"></script>
   <script src="js/plan-q3.js?v=1"></script>
-  <script src="js/vue-dashboard-cds.js?v=r8"></script>
+  <script src="js/vue-dashboard-cds.js?v=r9"></script>
   <!-- EMPOWER TRACKER (B3 : renommage complet) -->
-  <script src="js/vue-pipeline.js?v=r11"></script>
+  <script src="js/attribution-cp.js?v=r3"></script>
+  <script src="js/admin-equipe-secteurs.js?v=r3"></script>
+  <script src="js/catalogue.js?v=r5"></script>
+  <script src="js/coach-moteur.js?v=r3"></script>
+  <script src="js/admin-coach.js?v=r1"></script>
+  <script src="js/admin-prix.js?v=r1"></script>
+  <script src="js/vue-pipeline.js?v=r21"></script>
+  <script src="js/tracker-excel.js?v=3"></script>
+  <script src="js/vue-export.js?v=2"></script>
   <!-- COMPTES HISTORIQUES -->
-  <script src="js/vue-comptes-historiques.js?v=r8"></script>
+  <script src="js/vue-comptes-historiques.js?v=r9"></script>
   <!-- PHONING -->
-  <script src="js/vue-phoning.js?v=r9"></script>
+  <script src="js/vue-phoning.js?v=r13"></script>
   <!-- VISITES -->
   <script src="js/fiches-froides.js?v=r8"></script>
-  <script src="js/sellin-flag.js?v=r8"></script>
+  <script src="js/sellin-flag.js?v=r9"></script>
   <script src="js/non-suivis.js?v=r8"></script>
-  <script src="js/vue-visites.js?v=r9"></script>
+  <script src="js/vue-visites.js?v=r91d"></script>
   <!-- Section 9 cahier des charges : vue consolidée Channel (lecture seule FDV) -->
   <script src="js/vue-visites-fdv.js?v=r8"></script>
   <!-- SUIVI DES OBJECTIFS -->
-  <script src="js/vue-objectifs.js?v=r8"></script>
+  <script src="js/vue-objectifs.js?v=r12"></script>
   <!-- SUIVI DES PRIMES -->
-  <script src="js/vue-primes.js?v=r8"></script>
+  <script src="js/vue-primes.js?v=r10"></script>
+  <!-- Barèmes de primes persistants (Supabase) : étend VuePrimes sans modifier vue-primes.js -->
+  <script src="js/primes-baremes.js?v=1"></script>
   <!-- Vues auxiliaires -->
   <script src="js/vue-photos.js?v=r8"></script>
+  <script src="js/france-deps.js?v=r1"></script>
+  <script src="js/vue-territoires.js?v=r8"></script>
+  <script src="js/livrables-police.js?v=r2"></script>
+  <script src="js/livrables-pdf.js?v=r12"></script>
+  <script src="js/vue-coach.js?v=r10"></script>
+  <script src="js/coach-chat.js?v=r2"></script>
+  <script src="js/mandats.js?v=r2"></script>
+  <script src="js/visionneuse.js?v=r6"></script>
+  <script src="js/mobile-ux.js?v=r1f"></script>
+  <script src="js/studio-livrables.js?v=r13"></script>
+  <script src="js/vue-kit.js?v=r9"></script>
+  <script src="js/vue-aide.js?v=r1x"></script>
+  <script src="js/vue-analyse.js?v=r20vx"></script>
+  <script src="js/rapport-export.js?v=5"></script>
+  <script src="js/vue-parametres-primes.js?v=r2"></script>
   <!-- BLOC 11 Partie B — Mailing loggué comme action commerciale -->
-  <script src="js/vue-mailing.js?v=r11"></script>
+  <script src="js/vue-mailing.js?v=r12"></script>
+  <script src="js/vue-campagne.js?v=r4"></script>
+  <script src="js/creer-menu.js?v=r3"></script>
+  <script src="js/chart-tip.js?v=1"></script>
+  <script src="js/flags-canal.js?v=1"></script>
+  <script src="js/contacts-geo.js?v=r6"></script>
+  <script src="js/pilotage-historique.js?v=2"></script>
+  <script src="js/vue-pilotage.js?v=14"></script>
   <script src="js/vue-a-contacter.js?v=r8"></script>
-  <script src="js/vue-comptes.js?v=r10"></script>
-  <script src="js/vue-fiche-compte.js?v=r8"></script>
-  <script src="js/vue-questionnaire.js?v=r7"></script>
-  <script src="js/vue-dashboard-manager.js?v=r7"></script>
-  <script src="js/vue-admin.js?v=r15"></script>
+  <script src="js/vue-comptes.js?v=r21"></script>
+  <script src="js/vue-fiche-compte.js?v=r17"></script>
+  <script src="js/vue-questionnaire.js?v=r13"></script>
+  <script src="js/vue-dashboard-manager.js?v=r15"></script>
+  <script src="js/vue-equipe.js?v=2"></script>
+  <script src="js/vue-admin.js?v=r28b"></script>
 
   <!-- Centre de notifications (cloche + badge + panneau) -->
-  <script src="js/push.js?v=r2"></script>
-  <script src="js/notif-center.js?v=r2"></script>
+  <script src="js/push.js?v=r2x"></script>
+  <script src="js/notif-center.js?v=r5"></script>
 
   <!-- Boot -->
-  <script src="js/app.js?v=r12"></script>
+  <script src="js/app.js?v=r13x"></script>
 </body>
 </html>

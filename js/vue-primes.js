@@ -49,7 +49,7 @@ window.VuePrimes = {
     this.render();
     try {
       const [objectifs, nsb, prospects, params, cdsApi] = await Promise.all([
-        SheetsAPI.lire('EMPOWER_MDB', 'OBJECTIFS_PRIMES'),
+        SheetsAPI.lire('EMPOWER_MDB', 'OBJECTIFS_PRIMES', { nocache: true }),
         SheetsAPI.lire('EMPOWER_MDB', 'NSB_COMMANDES'),
         SheetsAPI.lire('EMPOWER_MDB', 'LEADS'),
         SheetsAPI.lire('EMPOWER_MDB', 'PARAMS'),
@@ -311,8 +311,8 @@ window.VuePrimes = {
         ${estManager ? this._renderManager(q) : this._renderCDS(Session.pin, q)}
         </div>
       </div>
-      ${NavBar('primes')}
-      ${FusionTabs.performance()}
+      ${NavBar(window.hebergeParAdmin && hebergeParAdmin() ? 'admin' : 'primes')}
+      ${window.hebergeParAdmin && hebergeParAdmin() ? FusionTabs.administration() : FusionTabs.performance()}
       ${this._renderModalNSB()}
       ${this._renderModalOnboarding()}
     `;

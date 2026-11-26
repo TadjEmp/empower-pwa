@@ -1,0 +1,28 @@
+/* Visionneuse de documents : couche plein écran, bouton Fermer toujours visible (sans liseré) */
+#visionneuse { position: fixed; inset: 0; z-index: 3000; display: flex; flex-direction: column; background: var(--c-bg, #F5F0E8); color: var(--c-text, #1d2329); }
+#visionneuse .vis-barre { flex: none; display: flex; align-items: center; gap: 10px; min-height: 56px; padding: calc(8px + env(safe-area-inset-top, 0px)) 12px 8px; background: #343F48; color: #fff; box-shadow: 0 2px 10px rgba(14,17,20,.25); }
+#visionneuse .vis-fermer { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px; border: 0; border-radius: 22px; background: #FF6D68; color: #0E0D30; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+#visionneuse .vis-titre { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; font-size: 15px; }
+#visionneuse .vis-actions { flex: none; display: flex; gap: 8px; }
+#visionneuse .vis-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 14px; border: 0; border-radius: 22px; background: rgba(255,255,255,.14); color: #fff; font: inherit; font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer; white-space: nowrap; }
+#visionneuse .vis-btn.p { background: #fff; color: #0E0D30; }
+#visionneuse .vis-corps { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+#visionneuse .vis-defil { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; padding: 8px; background: #D9DDE0; }
+#visionneuse .vis-feuille { margin: 0 auto; background: #fff; box-shadow: 0 4px 24px rgba(14,17,20,.18); transform-origin: top left; overflow: hidden; }
+#visionneuse .vis-feuille iframe { display: block; border: 0; background: #fff; transform-origin: top left; }
+#visionneuse iframe.vis-plein { flex: 1; width: 100%; border: 0; background: #fff; padding-bottom: env(safe-area-inset-bottom, 0px); }
+#visionneuse .vis-vide { margin: 24px 16px; padding: 20px; border-radius: 16px; background: #fff; box-shadow: 0 1px 10px rgba(26,34,46,.08); line-height: 1.5; }
+body.vis-ouverte { overflow: hidden; }
+@media (max-width: 520px) {
+  #visionneuse .vis-titre { display: none; }
+  #visionneuse .vis-actions { margin-left: auto; }
+}
+@media print { #visionneuse { display: none !important; } }
+#visionneuse .vis-img { display: block; max-width: 100%; height: auto; margin: 0 auto; border-radius: 12px; }
+#visionneuse .vis-corps { position: relative; }
+#visionneuse .vis-zoom { position: absolute; right: 12px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 6px; padding: 6px; border-radius: 26px; background: #343F48; box-shadow: 0 4px 18px rgba(14,17,20,.3); }
+#visionneuse .vis-zoom button { min-width: 44px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 22px; background: rgba(255,255,255,.14); color: #fff; font: inherit; font-size: 18px; font-weight: 700; cursor: pointer; }
+#visionneuse .vis-zoom button[data-z="0"] { font-size: 13px; }
+
+#visionneuse .vis-pdf { text-align: center; }
+#visionneuse .vis-page { display: block; margin: 0 auto 10px; background: #fff; box-shadow: 0 4px 24px rgba(14,17,20,.18); max-width: none; }

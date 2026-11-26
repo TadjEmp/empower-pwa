@@ -10,14 +10,14 @@ window.VueVisites = {
   // Bloc 3 + M6/P6-2 : vocabulaire statuts — Planifiée / En cours / Réalisée / Manquée / Annulée
   STATUTS: ['planifiée', 'en cours', 'réalisée', 'manquée', 'annulée'],
   STATUT_COULEURS: {
-    'planifiée': 'var(--c-primary)',   // 🟡 jaune
-    'en cours':  'var(--c-warning)',   // 🔵 bleu
-    'réalisée':  'var(--c-success)',   // 🟢 vert
-    'manquée':   'var(--c-danger)',    // 🔴 rouge — date passée sans synchro
-    'annulée':   'var(--c-text-2)',
-    // tolérance ancien libellé en base
-    'reportée':  'var(--c-warning)',
+    'planifiée': '#B8BEC4',   // gris moyen : à venir
+    'en cours':  '#6B7580',
+    'réalisée':  '#343F48',   // ardoise : fait
+    'manquée':   '#FF6D68',   // corail : risque, date passée sans synchro
+    'annulée':   '#D6D6D6',
+    'reportée':  '#6B7580',
   },
+
   // libellés d'affichage (capitalisés, jamais undefined)
   _labelStatut(s) {
     const v = (s || 'planifiée').toLowerCase();
@@ -358,7 +358,8 @@ window.VueVisites = {
       .sort((a, b) => String(b.Date || '').localeCompare(String(a.Date || '')))[0];
     this._modalConversion = {
       idVisite: derniere?.ID_Visite || null, idFiche,
-      nomCompte: fiche.Nom_Magasin || '', departement: fiche.Departement || '', ville: fiche.Ville || '',
+      nomCompte: fiche.Nom_Magasin || '', adresse: fiche.Adresse || derniere?.Adresse || '',
+      departement: fiche.Departement || '', ville: fiche.Ville || '',
       tel: fiche.Tel || '', email: fiche.Email || '', canal: 'REVENDEUR', note: '',
       contactNom: fiche.Contact_Nom || '', contactFonction: fiche.Contact_Fonction || '',
       pinCDS: fiche.PIN_CDS || null, nomCDS: fiche.Nom_CDS || '',
@@ -424,6 +425,7 @@ window.VueVisites = {
     this._modalConversion = {
       idVisite, idFiche: v.ID_Fiche_Froide || '',
       nomCompte: v.Nom_Compte || '',
+      adresse: v.Adresse || (this.state.fiches || []).find(f => f.ID_Fiche === v.ID_Fiche_Froide)?.Adresse || '',
       departement: v.Departement || '',
       ville: v.Ville || '',
       tel: v.Tel || '',
@@ -468,6 +470,7 @@ window.VueVisites = {
       await SheetsAPI.ecrire('EMPOWER_MDB', 'COMPTES', {
         ID_Compte:      idCompte,
         Nom_Compte:     m.nomCompte,
+        Adresse:        m.adresse || '',
         Departement:    m.departement,
         Ville:          m.ville,
         Tel:            m.tel,
@@ -768,14 +771,16 @@ window.VueVisites = {
 
   // ── Navigation dates ──
   jourPrecedent() {
-    const d = new Date(this.state.dateVue);
-    d.setDate(d.getDate() - (this.state.modeVue === 'semaine' ? 7 : 1));
+    const d = new Date(this.state.dateVue + 'T12:00:00');
+    if (this.state.modeVue === 'mois') d.setMonth(d.getMonth() - 1, 1);
+    else d.setDate(d.getDate() - (this.state.modeVue === 'semaine' ? 7 : 1));
     this.state.dateVue = dateISOLocale(d);
     this.render();
   },
   jourSuivant() {
-    const d = new Date(this.state.dateVue);
-    d.setDate(d.getDate() + (this.state.modeVue === 'semaine' ? 7 : 1));
+    const d = new Date(this.state.dateVue + 'T12:00:00');
+    if (this.state.modeVue === 'mois') d.setMonth(d.getMonth() + 1, 1);
+    else d.setDate(d.getDate() + (this.state.modeVue === 'semaine' ? 7 : 1));
     this.state.dateVue = dateISOLocale(d);
     this.render();
   },
@@ -783,6 +788,56 @@ window.VueVisites = {
     this.state.dateVue = dateISOLocale();
     this.render();
   },
+  _renderMois() {
+    const d = new Date(this.state.dateVue + 'T12:00:00');
+    const an = d.getFullYear(), m = d.getMonth();
+    const cle = `${an}-${String(m + 1).padStart(2, '0')}`;
+    const nbJ = new Date(an, m + 1, 0).getDate();
+    const decal = (new Date(an, m, 1, 12).getDay() + 6) % 7;
+    const today = dateISOLocale();
+    const sel = this.state.commercialSelectionne;
+    const parJour = {};
+    this.state.visites.forEach(v => {
+      const iso = (v.Date || v.Date_Planif || '').slice(0, 10);
+      if (iso.slice(0, 7) !== cle) return;
+      if (sel && String(v.PIN_CDS || '') !== sel) return;
+      (parJour[iso] = parJour[iso] || []).push(v);
+    });
+    const tous = Object.values(parJour).flat();
+    const nb = st => tous.filter(v => this._statutEffectif(v) === st).length;
+    const kpi = (n, l, alerte) => `<div class="pilo-kpi${alerte && n ? ' alerte' : ''}" style="cursor:default"><span>${l}</span><strong>${n}</strong></div>`;
+    const maxPrev = window.innerWidth >= 900 ? 2 : 0;
+    let cases = '';
+    for (let i = 0; i < decal; i++) cases += '<div class="mois-case mois-vide"></div>';
+    for (let j = 1; j <= nbJ; j++) {
+      const iso = `${cle}-${String(j).padStart(2, '0')}`;
+      const vs = (parJour[iso] || []).slice().sort((a, b) => (a.Heure || '').localeCompare(b.Heure || ''));
+      const dow = (decal + j - 1) % 7;
+      const statuts = [...new Set(vs.map(v => this._statutEffectif(v)))];
+      const dots = statuts.slice(0, 4).map(st => `<i style="background:${this.STATUT_COULEURS[st] || '#B8BEC4'}"></i>`).join('');
+      const echap = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      const prev = vs.slice(0, maxPrev).map(v => `<span class="mois-prev">${echap(v.Heure ? v.Heure + ' ' : '')}${echap((v.Nom_Compte || '').slice(0, 14))}</span>`).join('');
+      cases += `<button type="button" class="mois-case${dow > 4 ? ' mois-we' : ''}${iso === today ? ' mois-auj' : ''}${iso === this.state.dateVue ? ' mois-sel' : ''}"
+        onclick="VueVisites.state.dateVue='${iso}';VueVisites.state.modeVue='jour';VueVisites.render()"
+        aria-label="${j} : ${vs.length} visite(s)" data-tip="${vs.length ? vs.length + ' visite(s)' : 'Aucune visite'}">
+        <span class="mois-num">${j}</span>${vs.length ? `<span class="mois-n">${vs.length}</span>` : ''}
+        ${prev}<span class="mois-dots">${dots}</span></button>`;
+    }
+    const jours = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+    const legende = ['planifiée', 'en cours', 'réalisée', 'manquée', 'annulée']
+      .map(st => `<span><i style="background:${this.STATUT_COULEURS[st]}"></i>${this._labelStatut(st)}</span>`).join('');
+    return `
+      ${sel ? this._boutonRetourCommerciaux() : ''}
+      <div class="pilo-kpis" style="grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:12px">
+        ${kpi(tous.length, 'Visites du mois')}${kpi(nb('réalisée'), 'Réalisées')}${kpi(nb('planifiée') + nb('en cours'), 'À venir')}${kpi(nb('manquée'), 'Manquées', true)}
+      </div>
+      <div class="pilo-panneau mois">
+        <div class="mois-tete">${jours.map(j => `<span>${j}</span>`).join('')}</div>
+        <div class="mois-grille">${cases}</div>
+        <div class="mois-legende">${legende}</div>
+      </div>`;
+  },
+
   setModeVue(mode) { this.state.modeVue = mode; this.render(); },
 
   // ── Bloc 3 : passage Planifiée → En cours (déverrouille le questionnaire) ──
@@ -1404,7 +1459,7 @@ window.VueVisites = {
       Toast.afficher('Bibliothèque XLSX non chargée', 'error'); return;
     }
     const wb  = XLSX.utils.book_new();
-    const ws  = XLSX.utils.json_to_sheet(rows);
+    const ws  = XLSX.utils.json_to_sheet(denaturer(rows));
     // Largeurs colonnes auto (~20 chars)
     ws['!cols'] = Object.keys(rows[0] || {}).map(() => ({ wch: 22 }));
     XLSX.utils.book_append_sheet(wb, ws, 'Visites');
@@ -1683,6 +1738,8 @@ window.VueVisites = {
           contenu = `<div class="layout-split">${this._renderRailSemaine()}<div class="layout-split-detail">${contenu}</div></div>`;
         }
       }
+    } else if (this.state.modeVue === 'mois') {
+      contenu = this._renderMois();
     } else if (groupeActif) {
       contenu = this._renderGrilleManagerSemaine();
     } else {
@@ -1703,7 +1760,8 @@ window.VueVisites = {
               <div class="pj-label">${j.label}</div>
               <div class="pj-count">${j.visites.length ? j.visites.length + 'v' : ''}${this._resumeJour(j.visites).photos ? ` ${this._resumeJour(j.visites).photos}` : ''}</div>
               ${j.visites.slice(0, maxParJour).map(v => `
-                <div class="pj-item" style="border-left:3px solid ${this.STATUT_COULEURS[this._statutEffectif(v)] || 'var(--c-text-2)'}">
+                <div class="pj-item">
+                  <i class="pj-dot" style="background:${this.STATUT_COULEURS[this._statutEffectif(v)] || '#B8BEC4'}"></i>
                   <span class="pj-heure">${v.Heure || 'n.c.'}</span>
                   <span class="pj-nom">${(v.Nom_Compte || '').slice(0, 14)}</span>
                 </div>`).join('')}
@@ -1716,6 +1774,12 @@ window.VueVisites = {
     // Bloc 3 : export historique accessible aux CDS (sur leurs propres visites, déjà filtrées)
     // + Managers/Admin (toute l'équipe). Tout le monde a donc le bouton.
     const peutExtraire = true;
+    const _dvue = new Date(this.state.dateVue + 'T12:00:00');
+    const _lundi = new Date(_dvue); _lundi.setDate(_dvue.getDate() - ((_dvue.getDay() + 6) % 7));
+    const _vend = new Date(_lundi); _vend.setDate(_lundi.getDate() + 4);
+    const libelleDate = this.state.modeVue === 'jour' ? dateLbl
+      : this.state.modeVue === 'mois' ? _dvue.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+      : `${_lundi.getDate()} au ${_vend.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`;
 
     app.innerHTML = `
       <header class="header-vue">
@@ -1735,17 +1799,17 @@ window.VueVisites = {
            rendant scrollable horizontalement de bout en bout, cartes coupées des
            deux côtés en swipant. flex-wrap:wrap : la nav date passe à la ligne
            plutôt que de pousser la page hors de son viewport. -->
-      <div style="display:flex;align-items:center;gap:8px;row-gap:6px;flex-wrap:wrap;padding:10px 14px;background:var(--c-surface);">
-        <button class="btn-filtre ${this.state.modeVue === 'jour' ? 'actif' : ''}" onclick="VueVisites.setModeVue('jour')">Jour</button>
-        <button class="btn-filtre ${this.state.modeVue === 'semaine' ? 'actif' : ''}" onclick="VueVisites.setModeVue('semaine')">Semaine</button>
-        <button class="btn-filtre ${this.state.modeVue === 'historique' ? 'actif' : ''}" onclick="VueVisites.setModeVue('historique')">Historique</button>
-        <button class="btn-filtre ${this.state.modeVue === 'froid' ? 'actif' : ''}" onclick="VueVisites.setModeVue('froid')">À froid${this.state.fiches.filter(x => x.Statut === 'A_REVOIR').length ? ` (${this.state.fiches.filter(x => x.Statut === 'A_REVOIR').length})` : ''}</button>
+      <div class="vp-bar">
+        <div class="vp-seg" role="tablist" aria-label="Mode d'affichage">
+          ${[['jour', 'Jour'], ['semaine', 'Semaine'], ['mois', 'Mois'], ['historique', 'Historique'], ['froid', 'À froid' + (this.state.fiches.filter(x => x.Statut === 'A_REVOIR').length ? ` (${this.state.fiches.filter(x => x.Statut === 'A_REVOIR').length})` : '')]]
+            .map(([k, l]) => `<button type="button" role="tab" aria-selected="${this.state.modeVue === k}" class="${this.state.modeVue === k ? 'actif' : ''}" onclick="VueVisites.setModeVue('${k}')">${l}</button>`).join('')}
+        </div>
         ${this.state.modeVue !== 'historique' && this.state.modeVue !== 'froid' ? `
-        <div style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <button class="btn-retour" onclick="VueVisites.jourPrecedent()">‹</button>
-          <span style="font-size:13px;font-weight:600;white-space:nowrap">${this.state.modeVue === 'jour' ? dateLbl : 'Semaine en cours'}</span>
-          <button class="btn-retour" onclick="VueVisites.jourSuivant()">›</button>
-          ${!estAujd ? `<button class="btn-filtre" style="font-size:11px;padding:4px 8px" onclick="VueVisites.allerAujourdhui()">Auj.</button>` : ''}
+        <div class="vp-date">
+          <button class="btn-retour" onclick="VueVisites.jourPrecedent()" aria-label="Précédent">‹</button>
+          <span>${libelleDate}</span>
+          <button class="btn-retour" onclick="VueVisites.jourSuivant()" aria-label="Suivant">›</button>
+          ${!estAujd || this.state.modeVue !== 'jour' ? `<button class="vp-auj" onclick="VueVisites.allerAujourdhui()">Aujourd'hui</button>` : ''}
         </div>` : ''}
       </div>
 
@@ -1771,6 +1835,24 @@ window.VueVisites = {
   // oninput appelait VueVisites.render() — la page ENTIÈRE, derrière la
   // modale, pas seulement elle — et détruisait ses propres champs de saisie
   // à chaque frappe (après leur debounce).
+  // Champs de saisie (Nom / Ville, Dept) : rendus UNE fois, hors de #visites-recherche-modal.
+  // Avant, ils étaient dans la zone remplacée 250 ms après chaque frappe : le champ était détruit et recréé,
+  // le focus disparaissait et il fallait recliquer après chaque lettre.
+  _renderRechercheChamps() {
+    const f = this.state.formPlanif;
+    return `
+     <div style="display:flex;gap:6px;margin-bottom:6px">
+       <label style="flex:1;margin-bottom:0">Nom / Ville
+         <input placeholder="Nom ou ville…" value="${f.rechercheCompte || ''}"
+                oninput="VueVisites.setRechercheCompteModal(this.value)"/>
+       </label>
+       <label style="flex:0 0 70px;margin-bottom:0">Dept
+         <input placeholder="75…" maxlength="3" value="${f.rechercheDept || ''}"
+                oninput="VueVisites.setRechercheDeptModal(this.value)"/>
+       </label>
+     </div>`;
+  },
+
   _renderRechercheCompteModal() {
     const f = this.state.formPlanif;
     // Module 2 — Recherche par nom/ville ET par département
@@ -1789,16 +1871,6 @@ window.VueVisites = {
       : [...this.state.comptes].sort((a, b) => (a.Nom_Compte || '').localeCompare(b.Nom_Compte || '', 'fr'));
     const aucunDept = qDept.length >= 1 && comptesFiltres.length === 0;
     return `
-     <div style="display:flex;gap:6px;margin-bottom:6px">
-       <label style="flex:1;margin-bottom:0">Nom / Ville
-         <input placeholder="Nom ou ville…" value="${f.rechercheCompte || ''}"
-                oninput="VueVisites.setRechercheCompteModal(this.value)"/>
-       </label>
-       <label style="flex:0 0 70px;margin-bottom:0">Dept
-         <input placeholder="75…" maxlength="3" value="${f.rechercheDept || ''}"
-                oninput="VueVisites.setRechercheDeptModal(this.value)"/>
-       </label>
-     </div>
      ${aucunDept ? `
      <div style="font-size:12px;color:var(--c-text-2);padding:8px;background:var(--c-bg);border-radius:var(--radius-sm);margin-bottom:8px">
        Aucun compte dans ce département.
@@ -1807,15 +1879,16 @@ window.VueVisites = {
          Créer une visite à froid
        </button>
      </div>` : ''}
-     <label>Compte * <span style="font-size:11px;color:var(--c-text-2);font-weight:400">${actif ? comptesFiltres.length + ' résultat(s)' : 'trié par nom'}</span>
-       <select required size="7" style="height:180px"
-               onchange="VueVisites.setCible(this.value, this.options[this.selectedIndex].dataset.nom)">
-         <option value="">sélectionner</option>
-         ${comptesFiltres.map(c =>
-           `<option value="${c.ID_Compte}" data-nom="${c.Nom_Compte}" ${f.idCible === c.ID_Compte ? 'selected' : ''}>${c.urgent ? '! ' : ''}${c.Nom_Compte}${c.Departement ? ' [' + c.Departement + ']' : ''}${c.Ville ? ', ' + c.Ville : ''}${c.silence != null ? ' · ' + c.silence + 's' : ''}</option>`
-         ).join('')}
-       </select>
-     </label>
+     <div class="visites-compte-label">Compte * <span style="font-size:11px;color:var(--c-text-2);font-weight:400">${actif ? comptesFiltres.length + ' résultat(s)' : 'trié par nom'}</span></div>
+     <div class="q-sugg-liste visites-compte-liste" role="listbox" aria-label="Comptes">
+       ${comptesFiltres.length ? comptesFiltres.map(c => {
+         const nom = String(c.Nom_Compte || '').replace(/"/g, '&quot;');
+         return `<button type="button" role="option" aria-selected="${f.idCible === c.ID_Compte}" class="q-arbre-btn visites-compte-opt ${f.idCible === c.ID_Compte ? 'sel' : ''}" data-id="${c.ID_Compte}" data-nom="${nom}" onclick="VueVisites.setCible(this.dataset.id, this.dataset.nom)">
+           <strong>${c.urgent ? '! ' : ''}${c.Nom_Compte}</strong>
+           <span style="color:var(--c-text-2);font-size:12px">${c.Departement ? ' [' + c.Departement + ']' : ''}${c.Ville ? ' · ' + c.Ville : ''}${c.silence != null ? ' · ' + c.silence + ' sem.' : ''}</span>
+         </button>`;
+       }).join('') : '<div style="font-size:13px;color:var(--c-text-2);padding:10px">Aucun compte.</div>'}
+     </div>
      ${this._ficheCompteSelectionne(f.idCible)}`;
   },
 
@@ -1889,7 +1962,7 @@ window.VueVisites = {
                <div style="font-size:11px;color:var(--c-text-2);margin:-4px 0 10px;padding:6px 10px;background:var(--c-bg);border-radius:var(--radius-sm)">
                  Hors base : le magasin est mémorisé dans vos fiches à froid (visibles depuis tous vos appareils). Après la visite : revoir, créer un compte ou classer en historique.
                </div>`
-            : `<div id="visites-recherche-modal">${this._renderRechercheCompteModal()}</div>`
+            : `${this._renderRechercheChamps()}<div id="visites-recherche-modal">${this._renderRechercheCompteModal()}</div>`
           }
           <!-- D3 — Section Planification -->
           <div class="modal-section-sep">Planification</div>
@@ -2050,7 +2123,7 @@ window.VueVisites = {
             ${m.photos.map(url => `
               <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
                 <img src="${url}" style="width:64px;height:64px;object-fit:cover;border-radius:var(--radius-sm)"/>
-                <button type="button" class="btn-sup-photo" onclick="VueVisites.supprimerPhotoEdition('${url.replace(/'/g, "\\'")}')"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
+                <button type="button" class="btn-sup-photo" onclick="VueVisites.supprimerPhotoEdition('${jsq(url)}')"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>
               </div>`).join('')}
             ${m.photosEnAttente.map((p, i) => `
               <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
@@ -2122,6 +2195,9 @@ window.VueVisites = {
         <label>Nom de l'enseigne *
           <input required value="${m.nomCompte}"
                  oninput="VueVisites._modalConversion.nomCompte=this.value"/></label>
+        <label>Adresse
+          <input value="${FichesFroides.esc(m.adresse || '')}"
+                 oninput="VueVisites._modalConversion.adresse=this.value"/></label>
         <div style="display:flex;gap:8px">
           <label style="flex:1">Département
             <input placeholder="ex : 75" maxlength="3" value="${m.departement}"
@@ -2273,7 +2349,7 @@ window.VueVisites = {
       if (!rows.length) { Toast.afficher('Aucune donnée pour ces filtres', 'warning'); return; }
       if (typeof XLSX === 'undefined') { Toast.afficher('Bibliothèque XLSX non chargée', 'error'); return; }
       const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(rows);
+      const ws = XLSX.utils.json_to_sheet(denaturer(rows));
       ws['!cols'] = Object.keys(rows[0]).map(() => ({ wch: 22 }));
       XLSX.utils.book_append_sheet(wb, ws, 'Tracker');
       const ts = dateISOLocale().replace(/-/g, '');
@@ -2313,7 +2389,7 @@ window.VueVisites = {
       }));
       if (typeof XLSX === 'undefined') { Toast.afficher('Bibliothèque XLSX non chargée', 'error'); return; }
       const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(rows);
+      const ws = XLSX.utils.json_to_sheet(denaturer(rows));
       ws['!cols'] = Object.keys(rows[0]).map(() => ({ wch: 22 }));
       XLSX.utils.book_append_sheet(wb, ws, 'Comptes archivés');
       const ts = dateISOLocale().replace(/-/g, '');

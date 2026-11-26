@@ -55,11 +55,15 @@ function statutStockeVersBadge(c) {
 }
 
 // ── BUG-05 — Statut compte calculé dynamiquement ─────────────────────────
+// Règle unique (tous profils) fondée sur les commandes, jamais sur un statut saisi :
+//   actif       = a commandé en FY27
+//   a_reactiver = a commandé en FY25 ou FY26, mais pas en FY27
+//   silencieux  = aucune commande en FY25, FY26 ni FY27 (donc aucun CA)
 function getStatutCompte(c) {
-  const stocke = statutStockeVersBadge(c);
-  if (stocke) return stocke;
-  if (parseAmount(c.CA_Q1FY27 || 0) > 0)  return 'actif';
-  if (parseAmount(c.CA_FY26   || 0) > 0)  return 'a_reactiver';
+  const ca = k => (window.parseCA ? window.parseCA(c[k]) : parseAmount(c[k] || 0)) || 0;
+  const fy27 = window.caFY27Cumul ? (window.caFY27Cumul(c) || 0) : (ca('CA_Q1FY27') + ca('CA_Q2FY27') + ca('CA_Q3FY27') + ca('CA_Q4FY27'));
+  if (fy27 > 0) return 'actif';
+  if (ca('CA_FY26') > 0 || ca('CA_FY25') > 0) return 'a_reactiver';
   return 'silencieux';
 }
 

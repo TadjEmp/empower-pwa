@@ -265,6 +265,14 @@ button, [onclick], .btn-filtre, .tab-btn-premium { touch-action: manipulation; }
 /* Kanban : colonnes et cartes aérées */
 .kanban { gap: 24px; padding: 8px 24px calc(96px + var(--safe-bottom)); }
 .kanban-col { flex-basis: 300px; gap: 16px; }
+/* Bureau : les 6 colonnes tiennent à l'écran (Intégré et Archivé, en bout de ligne, restaient hors champ avec 300 px fixes) ; en dessous de ~1250 px on défile */
+@media (min-width: 900px) {
+  .kanban { gap: 12px; padding-left: 16px; padding-right: 16px; }
+  .kanban-col { flex: 1 1 0; min-width: 170px; }
+  /* le conteneur du Tracker était plafonné à 1280 px (règle générique de refresh-esi.css) : le kanban occupe toute la largeur disponible */
+  #app > :has(> .kanban) { max-width: none !important; }
+  .kanban-col-head, .kanban-carte, .kanban-ligne { padding-left: 14px; padding-right: 14px; }
+}
 .kanban-col-cartes { gap: 16px; }
 .kanban-col-head { padding: 14px 20px; border-radius: var(--radius-lg); }
 .kanban-carte, .kanban-ligne { padding: 16px 20px; display: flex; flex-direction: column; gap: 8px; }
@@ -506,6 +514,13 @@ input::placeholder, textarea::placeholder { color: var(--c-text-2); opacity: 1; 
 
 /* Connexion : le champ porte déjà son fond (.login-champ) ; l'input reste transparent pour ne pas former un second bloc */
 .login-champ input, .login-champ input:focus { background: transparent; border: 0; }
+/* Connexion : un seul contour (celui du champ). L'input n'a ni anneau, ni ombre, ni fond propre, y compris en remplissage automatique. */
+.login-champ input, .login-champ input:focus, .login-champ input:focus-visible { outline: none; box-shadow: none; border-radius: 0; }
+.login-champ:focus-within { border-color: #FF6D68; box-shadow: 0 0 0 3px rgba(255,109,104,.18); }
+.login-champ input:-webkit-autofill, .login-champ input:-webkit-autofill:hover, .login-champ input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--bg-base, #F1F3F4) inset; -webkit-text-fill-color: var(--c-title, #1c2228); caret-color: var(--c-title, #1c2228);
+  border-radius: 0; transition: background-color 9999s ease-out 0s; }
+.login-champ:focus-within input:-webkit-autofill { -webkit-box-shadow: 0 0 0 1000px var(--bg-warm-white, #fff) inset; }
 
 /* ═══ Changement de vue : plus de reste de l'ancien design ═══
    - squelettes de chargement : teintes du design actuel (ils étaient beiges, héritage de l'ancienne palette)

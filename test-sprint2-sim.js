@@ -6,6 +6,7 @@
 //  P6-5 : prospect à froid → localStorage, JAMAIS dans 📋_PROSPECTS
 // ═══════════════════════════════════════
 global.window = global;
+global.debounce = (fn) => fn;
 
 // ── localStorage mock ────────────────────────────────────────────────────────
 const _ls = {};
@@ -76,8 +77,8 @@ console.log('══════════════════════�
 console.log('─── P6-2 : statut manquée présent (vocabulaire + couleur) ───');
 ok('STATUTS contient "manquée"', VueVisites.STATUTS.includes('manquée'),
    JSON.stringify(VueVisites.STATUTS));
-ok('STATUT_COULEURS["manquée"] = var(--c-danger) (rouge)',
-   VueVisites.STATUT_COULEURS['manquée'] === 'var(--c-danger)',
+ok('STATUT_COULEURS["manquée"] = corail de la charte (#FF6D68)',
+   VueVisites.STATUT_COULEURS['manquée'] === '#FF6D68',
    VueVisites.STATUT_COULEURS['manquée']);
 ok('_labelStatut("manquée") = "Manquée"', VueVisites._labelStatut('manquée') === 'Manquée');
 
@@ -139,7 +140,7 @@ ok('Persisté sous la clé esi_prospects_froid', !!_ls['esi_prospects_froid']);
   await VueVisites.planifier(fakeEvent);
 
   const ecritProspect = _ecrireCalls.find(c => c.o === '📋_PROSPECTS');
-  const ecritVisite   = _ecrireCalls.find(c => c.o === '🗺️_VISITES');
+  const ecritVisite   = _ecrireCalls.find(c => c.o === 'VISITES');
   ok('Visite à froid → AUCUNE écriture dans 📋_PROSPECTS',
      !ecritProspect, `appels ecrire: [${_ecrireCalls.map(c => c.o).join(', ')}]`);
   ok('Visite à froid → écriture dans 🗺️_VISITES (la visite existe bien)',

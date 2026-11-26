@@ -9,17 +9,18 @@
 window.NavWeb = (function () {
 
   const TITRES = [
-    [/^#\/dashboard/, 'Accueil'], [/^#\/manager/, 'Vue équipe'], [/^#\/reporting-cds/, 'Reporting'],
+    [/^#\/pilotage/, 'Pilotage'], [/^#\/dashboard/, 'Accueil'], [/^#\/manager/, 'Vue équipe'], [/^#\/reporting-cds/, 'Reporting'],
     [/^#\/empower-tracker/, 'Tracker'], [/^#\/comptes-historiques/, 'Historique CA'],
     [/^#\/comptes/, 'Comptes'], [/^#\/compte\//, 'Fiche compte'],
     [/^#\/phoning/, 'Phoning'], [/^#\/visites-fdv/, 'Visites FDV'], [/^#\/visites/, 'Visites'],
     [/^#\/objectifs/, 'Objectifs'], [/^#\/primes/, 'Primes'], [/^#\/photos/, 'Photos'],
-    [/^#\/mailing/, 'Mailing'], [/^#\/a-contacter/, 'À contacter'],
+    [/^#\/mailing/, 'Mailing'], [/^#\/campagne/, 'Campagne'], [/^#\/a-contacter/, 'À contacter'],
     [/^#\/questionnaire/, 'Questionnaire'], [/^#\/admin/, 'Administration'], [/^#\/login/, 'Connexion'],
   ];
 
   // Tables lues par chaque page : réchauffées avant le clic pour que l'affichage soit immédiat.
   const DONNEES = [
+    [/^#\/pilotage/,         ['COMPTES', 'VISITES', 'PHONING', 'LEADS', 'OBJECTIFS_PRIMES']],
     [/^#\/dashboard/,        ['COMPTES', 'VISITES', 'PHONING', 'LEADS', 'OBJECTIFS_PRIMES']],
     [/^#\/manager/,          ['COMPTES', 'VISITES', 'PHONING', 'LEADS', 'OBJECTIFS_PRIMES']],
     [/^#\/empower-tracker/,  ['LEADS', 'COMPTES']],
@@ -33,6 +34,8 @@ window.NavWeb = (function () {
   ];
 
   const positions = {};          // hash -> scrollY
+  let figer = false;             // pendant un changement de page, le défilement de l'ancienne page ne doit pas écraser la position mémorisée de la nouvelle
+  const hauteurs = {};           // hash -> hauteur de page (réservée au retour pour que le défilement reprenne tout de suite)
   let courant = null;             // hash affiché
   let viaAller = false;           // navigation déclenchée par un clic de l'app (pas retour/avant)
   let barre = null, minuteur = null, observeur = null, debutMs = 0;
@@ -70,7 +73,8 @@ window.NavWeb = (function () {
     const terminer = () => {
       if (observeur) observeur.disconnect();
       clearTimeout(minuteur); clearTimeout(calme);
-      masquerBarre();
+      masquerBarre(); figer = false;
+      const a = document.getElementById('app'); if (a) setTimeout(() => { a.style.minHeight = ''; }, avance ? 0 : 900);   // la hauteur réservée tient jusqu'à la fin des reprises de position
       if (!avance) restaurerPosition(hash);
     };
     observeur = new MutationObserver(() => { clearTimeout(calme); calme = setTimeout(terminer, 200); });
@@ -105,8 +109,8 @@ window.NavWeb = (function () {
 
   // ── Appelés par le routeur ──
   function avant(hash) {
-    if (courant) positions[courant] = window.scrollY;
-    courant = hash;
+    if (courant) { positions[courant] = window.scrollY; hauteurs[courant] = document.documentElement.scrollHeight; }
+    courant = hash; figer = true;
     afficherBarre();
     titre(hash);
   }
@@ -117,6 +121,14 @@ window.NavWeb = (function () {
     surveillerFin(hash, avance);
   }
   function marquerAller() { viaAller = true; }
+  // Retour : on réserve la hauteur de la page quittée et on reprend la position avant l'image d'arrivée (pas de saut après coup).
+  function restaurerTot(hash) {
+    const y = positions[hash]; if (!y || courant !== hash) return;
+    const app = document.getElementById('app'), h = hauteurs[hash];
+    if (app && h) app.style.minHeight = h + 'px';
+    window.scrollTo(0, y);
+    requestAnimationFrame(() => { figer = false; });
+  }
 
   // ── Préchargement ──
   function precharger(hash) {
@@ -151,12 +163,9 @@ window.NavWeb = (function () {
 
   function init() {
     // Titre et retour/avant : le routeur appelle avant()/apres(); ici seulement les écouteurs globaux.
-    let ticking = false;
-    window.addEventListener('scroll', () => {
-      if (ticking || !courant) return;
-      ticking = true;
-      requestAnimationFrame(() => { positions[courant] = window.scrollY; ticking = false; });
-    }, { passive: true });
+    // Le navigateur restaure lui-même le défilement au retour, en concurrence avec le nôtre : les deux se disputaient la position
+    // (sauts 0, 251, 900…). On prend la main, et la position n'est mémorisée qu'au moment de quitter la page (avant()), jamais en continu.
+    try { window.history.scrollRestoration = 'manual'; } catch (e) { /* navigateur sans cette option */ }
 
     // Un clic sur un lien de navigation est une navigation en avant (pas un retour)
     document.addEventListener('click', e => {
@@ -181,5 +190,5 @@ window.NavWeb = (function () {
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
-  return { avant, apres, marquerAller, precharger };
+  return { avant, apres, marquerAller, precharger, restaurerTot };
 })();

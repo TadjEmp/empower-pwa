@@ -53,3 +53,5 @@ const Toast = {
     }, dureeMs);
   },
 };
+
+window.Toast = Toast;   // voir session.js

@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Générateur de contrat de mandat Norton EMPOWER</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+/* Éditeur : thème clair de l'app, sans traits ni liserés (fonds doux, ombres légères, corail pour la sélection et l'action). */
+:root{--accent:#FF6D68;--accent-soft:#FF6D68;--ink-e:#1d2329;--mut-e:#6B7580;--fond-e:#F1F3F4;--carte-e:#fff;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Inter',sans-serif;background:var(--fond-e);color:var(--ink-e);min-height:100vh;font-size:14px;}
+.hdr{background:#343F48;padding:0 1.5rem;display:flex;align-items:center;justify-content:space-between;height:58px;position:sticky;top:0;z-index:200;box-shadow:0 2px 14px rgba(26,34,46,.18);}
+.hdr-logos{display:flex;align-items:center;gap:1rem;}
+.hdr-logos img{height:22px;object-fit:contain;}
+.hdr-logos .logo-bulle{background:#fff;border-radius:6px;padding:3px 8px;display:inline-flex;align-items:center;}
+.hdr-logos .sep{width:1px;height:24px;background:rgba(255,255,255,.2);}
+.hdr-tag{display:flex;align-items:center;gap:14px;font-size:.78rem;color:#C9D0D6;font-weight:600;}
+.hdr-tag a{color:#fff;text-decoration:none;background:rgba(255,255,255,.12);padding:6px 12px;border-radius:999px;}
+.app{display:grid;grid-template-columns:420px 1fr;height:calc(100vh - 58px);}
+.fp{background:var(--carte-e);overflow-y:auto;padding:1.25rem 1.4rem;box-shadow:2px 0 14px rgba(26,34,46,.06);}
+.st{font-size:.64rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--mut-e);margin:1.4rem 0 .6rem;}
+.st:first-child{margin-top:0;}
+.otabs{display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem;margin-bottom:.75rem;}
+.otab{background:var(--fond-e);border-radius:12px;padding:.7rem .4rem;cursor:pointer;text-align:center;font-size:.74rem;font-weight:600;color:var(--mut-e);transition:background .15s;}
+.otab:hover{background:#E4E8EB;color:var(--ink-e);}
+.otab.active{background:var(--accent);color:#fff;}
+.otab .bigt{display:block;font-size:1.15rem;font-weight:800;margin-bottom:1px;}
+.f{margin-bottom:.65rem;}
+.f label{display:block;font-size:.72rem;color:var(--mut-e);margin-bottom:.28rem;font-weight:600;}
+.f input,.f select{width:100%;background:var(--fond-e);border:0;border-radius:10px;padding:.55rem .75rem;color:var(--ink-e);font-family:'Inter',sans-serif;font-size:.82rem;}
+.f input:focus,.f select:focus{outline:2px solid rgba(255,109,104,.45);}
+.f input::placeholder{color:#A3ABB3;}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;}
+.rg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.45rem;margin-bottom:.5rem;}
+.ro{background:var(--fond-e);border-radius:12px;padding:.6rem .3rem;cursor:pointer;text-align:center;font-size:.7rem;line-height:1.3;color:var(--mut-e);user-select:none;}
+.ro.sel{background:var(--accent);color:#fff;}
+.ptbl{width:100%;border-collapse:separate;border-spacing:0 3px;font-size:.73rem;margin-bottom:.6rem;}
+.ptbl th{color:var(--mut-e);font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;padding:.3rem .4rem;text-align:left;}
+.ptbl td{padding:.35rem .4rem;vertical-align:middle;background:var(--fond-e);}
+.ptbl td:first-child{border-radius:10px 0 0 10px;}.ptbl td:last-child{border-radius:0 10px 10px 0;}
+.ptbl input[type=checkbox]{accent-color:var(--accent);width:14px;height:14px;cursor:pointer;}
+.ptbl input[type=number],.ptbl input[type=text]{background:#fff;border:0;border-radius:8px;color:var(--ink-e);font-size:.72rem;padding:.28rem .4rem;width:62px;text-align:center;}
+.pu{font-variant-numeric:tabular-nums;}
+.rbtns{display:flex;gap:.45rem;margin-bottom:.6rem;}
+.rbtn{flex:1;padding:.55rem;background:var(--fond-e);border-radius:12px;color:var(--mut-e);font-size:.82rem;font-weight:700;cursor:pointer;text-align:center;}
+.rbtn.active{background:var(--accent);color:#fff;}
+.btn-gen{width:100%;padding:.8rem;background:var(--fond-e);color:var(--ink-e);border:0;border-radius:12px;font-family:'Inter',sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;margin-top:1rem;}
+.btn-gen:hover{background:#E4E8EB;}
+.btn-pdf{width:100%;padding:.8rem;background:var(--accent);color:#fff;border:0;border-radius:12px;font-family:'Inter',sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;margin-top:.5rem;}
+.btn-pdf:hover{filter:brightness(.96);}
+.hint{font-size:.68rem;color:var(--mut-e);margin-top:.6rem;line-height:1.5;}
+.statut{font-size:.74rem;margin-top:.6rem;padding:.55rem .75rem;border-radius:10px;background:var(--fond-e);color:var(--ink-e);display:none;}
+.statut.ok{background:#DDF1E8;color:#1E6B4A;display:block;}.statut.ko{background:#FBF0DA;color:#8A5A0B;display:block;}
+.pp{background:#DDE1E4;overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding:1.5rem 1rem;gap:6mm;}
+#cv{display:flex;flex-direction:column;align-items:center;gap:6mm;}
+@media (max-width:600px){.hdr{flex-wrap:wrap;gap:.4rem}.hdr-tag{display:none}.hdr a{margin-left:auto}}
+@media (max-width:900px){.app{grid-template-columns:1fr;height:auto}.fp{box-shadow:none}.pp{padding:1rem .5rem;overflow-x:hidden;align-items:flex-start}}
+
+:root{
+  --coral:#FF4438; --coral-soft:#FF6D68; --coral-10:#FFEDEC;
+  --primary:#0050FF; --primary-10:#EAF0FF;
+  --ink:#141c25; --body-text:#2b3340; --muted:#6b7280;
+  --line:#e4e6ef; --line-strong:#c3c5d9; --surface:#f8f9fa;
+  --docfont:'Inter',-apple-system,sans-serif;
+}
+.page{
+  width:210mm; min-height:297mm; background:#fff; position:relative;
+  padding:0 16mm 10mm 16mm; font-family:var(--docfont); color:var(--ink);
+  box-shadow:0 6px 40px rgba(0,0,0,.35); -webkit-font-smoothing:antialiased;
+}
+.topbar{ height:4mm; background:linear-gradient(90deg,var(--coral) 0%,var(--coral-soft) 100%); margin:0 -16mm 5mm -16mm; }
+.header{ display:flex; justify-content:space-between; align-items:flex-start; padding-bottom:3mm; margin-bottom:5mm; }
+.logo{ height:8mm; display:block; }
+.doc-meta{ text-align:right; }
+.doc-badge{ display:inline-flex; align-items:center; gap:5px; background:var(--coral-10); color:var(--coral); font-weight:800; font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; padding:4px 11px; border-radius:100px; }
+.doc-title{ font-size:19px; font-weight:900; margin:6px 0 2px 0; letter-spacing:-.01em; }
+.doc-sub{ font-size:10.5px; color:var(--muted); font-weight:600; display:flex; align-items:center; justify-content:flex-end; gap:5px; }
+.doc-sub img{ height:9px; object-fit:contain; }
+.eyebrow{ font-size:9.5px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--coral); margin:0 0 3px 0; }
+.h2{ font-size:13px; font-weight:800; color:var(--ink); margin:0 0 2mm 0; letter-spacing:-.005em; }
+.page-break{ break-before:page; page-break-before:always; padding-top:12mm; }
+p.legal{ font-size:9.8px; line-height:1.5; color:var(--body-text); margin:0 0 2.2mm 0; text-align:justify; break-inside:avoid; page-break-inside:avoid; }
+ul.legal{ margin:0 0 2.2mm 0; padding-left:0; list-style:none; break-inside:avoid; page-break-inside:avoid; }
+ul.legal li{ font-size:9.8px; line-height:1.45; color:var(--body-text); padding-left:15px; position:relative; margin-bottom:1.3mm; break-inside:avoid; page-break-inside:avoid; }
+ul.legal li::before{ content:""; position:absolute; left:0; top:6.5px; width:5px; height:5px; border-radius:2px; background:var(--coral); }
+table.data{ width:100%; border-collapse:collapse; font-size:9.3px; break-inside:avoid; page-break-inside:avoid; margin:2mm 0 0 0; }
+table.data tbody tr{ break-inside:avoid; page-break-inside:avoid; }
+table.data thead th{ text-align:left; font-size:8.2px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); background:var(--surface); padding:2.6mm 2.6mm; white-space:nowrap; }
+table.data tbody td{ padding:1.9mm 2.6mm; color:var(--ink); font-weight:500; white-space:nowrap; }
+table.data tbody tr:nth-child(even){ background:#F6F7FA; }
+table.data .rn{ white-space:normal; font-weight:600; }
+table.data .num{ font-variant-numeric:tabular-nums; text-align:right; font-weight:700; }
+table.data tfoot td{ padding:3mm 2.6mm; font-weight:900; font-size:10px; background:var(--coral-10); color:var(--ink); }
+.chip{ display:inline-block; padding:2px 8px; border-radius:100px; font-size:8px; font-weight:800; letter-spacing:.04em; }
+.chip-blue{ background:var(--primary-10); color:var(--primary); }
+.chip-coral{ background:var(--coral-10); color:var(--coral); }
+.chip-gray{ background:var(--surface); color:var(--muted); }
+.total-banner{ background:linear-gradient(135deg,var(--ink) 0%,#232e3d 100%); color:#fff; border-radius:12px; padding:4.5mm 7mm; display:flex; justify-content:space-between; align-items:center; margin:4mm 0 0 0; break-inside:avoid; page-break-inside:avoid; }
+.total-banner .label{ font-size:9.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:rgba(255,255,255,.65); }
+.total-banner .amount{ font-size:24px; font-weight:900; margin-top:1mm; }
+.total-banner .amount .cur{ font-size:14px; font-weight:700; opacity:.7; margin-left:2px; }
+.sig-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8mm; margin-top:6mm; break-inside:avoid; page-break-inside:avoid; }
+.sig-card{ background:var(--surface); border-radius:12px; padding:5mm; min-height:30mm; break-inside:avoid; page-break-inside:avoid; }
+.sig-card .who{ font-size:8.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin-bottom:2mm; }
+.sig-card .name{ font-size:10.5px; font-weight:800; color:var(--ink); }
+.sig-card .role{ font-size:9.5px; color:var(--muted); margin-top:1mm; }
+.sig-card .box{ margin-top:4mm; background:#fff; border-radius:8px; min-height:15mm; padding:2mm 3mm; font-size:8px; color:var(--muted); font-style:italic; }
+.footer{ display:flex; justify-content:space-between; align-items:center; padding-top:2.5mm; margin-top:4mm; break-inside:avoid; page-break-inside:avoid; }
+.footer .brand{ font-size:8.5px; font-weight:800; letter-spacing:.05em; color:var(--muted); text-transform:uppercase; }
+.footer .page-no{ font-size:8.5px; font-weight:700; color:var(--muted); }
+.fi{ display:inline-block; min-width:60px; background:var(--coral-10); color:var(--coral); font-weight:600; padding:0 6px; border-radius:5px; }
+.fe{ display:inline-block; min-width:60px; background:var(--surface); color:var(--muted); font-style:italic; border-radius:5px; padding:0 6px; }
+.empty-hint{ font-size:9.8px; color:var(--muted); font-style:italic; }
+/* ---------- Impression ---------- */
+html.integre .hdr{display:none}   /* dans la visionneuse de l'application : sa barre porte déjà « Fermer » */
+@media print {
+  * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; color-adjust:exact !important; }
+  .hdr, .fp { display:none !important; }
+  body{background:#fff !important;}
+  .app { display:block !important; height:auto !important; }
+  .pp { background:#fff !important; padding:0 !important; max-height:none !important; overflow:visible !important; gap:0 !important; }
+  #cv{ gap:0 !important; }
+  .page { box-shadow:none !important; margin:0 !important; }
+  @page { margin:0; size:A4; }
+}
+</style>
+</head>
+<body>
+<script>try{if(window.parent&&window.parent!==window)document.documentElement.classList.add("integre")}catch(e){}</script>
+<div class="hdr">
+  <div class="hdr-logos">
+    <span class="logo-bulle"><img src="logo-norton.webp" alt="Norton"></span>
+    <div class="sep"></div>
+    <img src="logo-marvesting.webp" alt="Marvesting">
+  </div>
+  <div class="hdr-tag"><span>Contrat de mandat</span><a href="/" onclick="if(window.opener&&!window.opener.closed){window.close();return false}">Retour à l'application</a></div>
+</div>
+
+<div class="app">
+<div class="fp">
+  <div class="st">Canal de commande</div>
+  <div class="otabs" style="grid-template-columns:1fr 1fr">
+    <div class="otab active" id="chanE" onclick="setChannel('empower')">Portail EMPOWER</div>
+    <div class="otab" id="chanG" onclick="setChannel('grossiste')">Grossiste (Techdata / Ingram)</div>
+  </div>
+  <div class="f" id="wholesalerWrap" style="display:none">
+    <label>Grossiste</label>
+    <select id="wholesaler" onchange="rend()">
+      <option value="Techdata">Techdata</option>
+      <option value="Ingram">Ingram Micro</option>
+    </select>
+  </div>
+
+  <div class="st">Type d'offre</div>
+  <div class="otabs">
+    <div class="otab active" onclick="setOffer('1+1',this)"><span class="bigt">1+1</span>Dès 10 licences</div>
+    <div class="otab" onclick="setOffer('2+1',this)"><span class="bigt">2+1</span>Dès 5 licences</div>
+    <div class="otab" onclick="setOffer('remise',this)"><span class="bigt">−%</span>Remise dégressive</div>
+  </div>
+
+  <div class="st">Infos revendeur</div>
+  <div class="f"><label>Société</label><input type="text" id="soc" placeholder="Ex : INFOTECH" oninput="rend()"></div>
+  <div class="f"><label>Représentant légal</label><input type="text" id="rep" placeholder="Ex : Ayoub AZAHAF" oninput="rend()"></div>
+  <div class="fr">
+    <div class="f"><label>Ville RCS</label><input type="text" id="rcsv" placeholder="Paris" oninput="rend()"></div>
+    <div class="f"><label>N° RCS / SIRET</label><input type="text" id="siret" placeholder="123 456 789" oninput="rend()"></div>
+  </div>
+  <div class="f"><label>Adresse siège social</label><input type="text" id="adr" placeholder="12 rue de la Paix, 75001 Paris" oninput="rend()"></div>
+  <div class="fr">
+    <div class="f"><label>N° TVA intracom.</label><input type="text" id="tva" placeholder="FR12345678901" oninput="rend()"></div>
+    <div class="f"><label>Code APE</label><input type="text" id="ape" placeholder="4741Z" oninput="rend()"></div>
+  </div>
+  <div class="f"><label id="refEmpLabel">Réf. commande EMPOWER</label><input type="text" id="refEmp" placeholder="EMW-2026-XXXXX" oninput="rend()"></div>
+
+  <div class="st">Durée de l'opération</div>
+  <div class="fr">
+    <div class="f"><label>Début</label><input type="date" id="deb" value="2026-02-01" oninput="rend()"></div>
+    <div class="f"><label>Fin</label><input type="date" id="fin" value="2026-03-31" oninput="rend()"></div>
+  </div>
+  <div class="f"><label>Date de signature (fait à Levallois-Perret, le...)</label><input type="date" id="dateSign" oninput="rend()" onchange="rend()"></div>
+
+  <!-- PANEL 1+1 -->
+  <div id="p_1+1">
+    <div class="st">Produits achetés (1+1) — saisir PU HT + quantités</div>
+    <table class="ptbl"><thead><tr><th>✓</th><th>Référence</th><th>Dev.</th><th>PU HT</th><th>Qté achetée</th><th>Dont remb.</th></tr></thead>
+    <tbody id="tb_1_1"></tbody></table>
+    <div class="f"><label>Palier : offre valable dès (licences commandées)</label><input type="number" id="seuil_1_1" value="10" min="1" oninput="rend()"></div>
+    <div class="f"><label>Licence offerte (1 pour 1 achetée)</label>
+      <select id="off_1_1" onchange="onLicenseChange('off_1_1','pu_off_1_1')"></select>
+    </div>
+    <div class="f"><label>PU HT offert</label><input type="text" id="pu_off_1_1" placeholder="Ex : 11,61" oninput="rend()"></div>
+    <div class="hint">Palier par défaut : 1+1 dès 10 licences (20 pour Small Business). Le nombre de licences offertes se calcule tout seul une fois le palier atteint.</div>
+  </div>
+
+  <!-- PANEL 2+1 -->
+  <div id="p_2+1" style="display:none">
+    <div class="st">Produits achetés (2+1) — saisir PU HT + quantités</div>
+    <table class="ptbl"><thead><tr><th>✓</th><th>Référence</th><th>Dev.</th><th>PU HT</th><th>Qté achetée</th><th>Dont remb.</th></tr></thead>
+    <tbody id="tb_2_1"></tbody></table>
+    <div class="f"><label>Palier : offre valable dès (licences commandées)</label><input type="number" id="seuil_2_1" value="5" min="1" oninput="rend()"></div>
+    <div class="f"><label>Licence offerte (1 pour 2 achetées)</label>
+      <select id="off_2_1" onchange="onLicenseChange('off_2_1','pu_off_2_1')"></select>
+    </div>
+    <div class="f"><label>PU HT offert</label><input type="text" id="pu_off_2_1" placeholder="Ex : 11,61" oninput="rend()"></div>
+    <div class="hint">Palier par défaut : 2+1 dès 5 licences. Le nombre de licences offertes se calcule tout seul une fois le palier atteint.</div>
+  </div>
+
+  <!-- PANEL REMISE -->
+  <div id="p_remise" style="display:none">
+    <div class="st">Palier de remise</div>
+    <div class="rbtns">
+      <div class="rbtn active" id="btn30" onclick="setR(30)">−30% <span style="font-size:.65rem;font-weight:400">(≥10 lic.)</span></div>
+      <div class="rbtn" id="btn50" onclick="setR(50)">−50% <span style="font-size:.65rem;font-weight:400">(≥25 lic.)</span></div>
+      <div class="rbtn" id="btn60" onclick="setR(60)">−60% <span style="font-size:.65rem;font-weight:400">(≥50 lic., sous réserve de validation)</span></div>
+    </div>
+    <div class="st">Produits & quantités — saisir PU HT de base, Qté + PU Spécial HT accordé</div>
+    <table class="ptbl"><thead><tr><th>✓</th><th>Référence</th><th>Dev.</th><th>PU HT</th><th>Qté achetée</th><th>Dont remb.</th><th>PU Spécial HT</th></tr></thead>
+    <tbody id="tb_rem"></tbody></table>
+  </div>
+
+  <div class="st">Mode de compensation</div>
+  <div class="rg">
+    <div class="ro sel" id="rv" onclick="setC('v')">Virement bancaire</div>
+    <div class="ro" id="rl" onclick="setC('l')">Licences gratuites<br>(envoi par mail)</div>
+    <div class="ro" id="rg2" onclick="setC('g')">Chèques cadeaux</div>
+  </div>
+  <button class="btn-gen" onclick="rend()">Actualiser l'aperçu</button>
+  <button class="btn-pdf" onclick="dlPDF()">Archiver et télécharger le PDF</button>
+  <div class="statut" id="statut"></div>
+  <div class="hint">Le PDF tient sur 2 pages fixes (page 1 : contrat et compensation ; page 2 : juridiction et signatures). Le mandat est archivé dans l'application à chaque téléchargement.</div>
+</div>
+
+<div class="pp"><div id="cv"></div></div>
+</div>
+
+<script>
+const MARVESTING_SRC="logo-marvesting.webp", NORTON_SRC="logo-norton.webp";
+// Toute saisie est échappée avant d'entrer dans le HTML de l'aperçu.
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const PRODS=[
+  {id:"s1", n:"Norton 360 Standard",            dv:1,  pu:11.61},
+  {id:"d3", n:"Norton 360 Deluxe",              dv:3,  pu:15.11},
+  {id:"d5", n:"Norton 360 Deluxe",              dv:5,  pu:16.34},
+  {id:"av", n:"Norton AntiVirus Plus",           dv:1,  pu:14.55},
+  {id:"p10",n:"Norton 360 Premium",             dv:10, pu:22.82},
+  {id:"ss1",n:"Norton Small Business Standard", dv:1,  pu:17.86},
+  {id:"sp",  n:"Norton Small Business Premium",  dv:10, pu:62.90},
+  {id:"vpn", n:"Norton VPN Standard",            dv:"1 an", pu:11.74},
+  {id:"util",n:"Norton Utilities Subscription",  dv:"1 an", pu:14.30},
+];
+const unitLabel = p => (typeof p.dv === "number") ? `${p.dv} app.` : p.dv;
+
+const REM_PALIERS={30:{seuil:10},50:{seuil:25},60:{seuil:50,validation:true}};
+let offer="1+1", remise=30, cmode="v", channel="empower";
+
+const g=id=>document.getElementById(id);
+const gv=id=>(g(id)||{}).value||"";
+const fmt=n=>n.toFixed(2).replace(".",",")+" €";
+const fmtD=s=>{if(!s||!/^\d{4}-\d{2}-\d{2}$/.test(s))return"___";const[y,m,d]=s.split("-");return d+"/"+m+"/"+y;};
+const fi=v=>v?`<span class="fi">${esc(v)}</span>`:`<span class="fe">___________</span>`;
+const MOIS=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+function fmtPeriode(deb,fin){
+  if(!deb||!fin) return "___";
+  const[y1,m1]=deb.split("-"); const[y2,m2]=fin.split("-");
+  if(y1===y2&&m1===m2) return `${MOIS[parseInt(m1,10)-1]} ${y1}`;
+  return `${fmtD(deb)} – ${fmtD(fin)}`;
+}
+
+const COMP_MODES={
+  v:{ label:"Virement bancaire", chipClass:"chip-blue",
+      art3Base:"Le montant de la compensation est payable par virement bancaire sous un délai de 30 jours à réception du présent contrat dûment signé et",
+      art5:"sous forme de virement bancaire, sous 30 jours à réception du contrat signé et des justificatifs correspondants." },
+  l:{ label:"Licences gratuites (envoi par mail)", chipClass:"chip-coral",
+      art3Base:"Le montant de la compensation est réglé par l'attribution de licences gratuites d'une valeur équivalente, envoyées par courrier électronique à l'adresse communiquée par LE MAGASIN, sous un délai de 30 jours à réception du présent contrat dûment signé et",
+      art5:"sous forme de licences gratuites d'une valeur équivalente, envoyées par email au MAGASIN." },
+  g:{ label:"Chèques cadeaux", chipClass:"chip-gray",
+      art3Base:"Le montant de la compensation est réglé par la remise de chèques cadeaux d'une valeur équivalente, sous un délai de 30 jours à réception du présent contrat dûment signé et",
+      art5:"sous forme de chèques cadeaux d'une valeur équivalente à la compensation due." }
+};
+
+function buildTables(){
+  ["tb_1_1","tb_2_1","tb_rem"].forEach(id=>{
+    const tb=g(id); if(!tb)return; tb.innerHTML="";
+    const hasSpec=id==="tb_rem";
+    PRODS.forEach(p=>{
+      const tr=document.createElement("tr");
+      tr.innerHTML=`
+        <td><input type="checkbox" id="chk_${id}_${p.id}" onchange="rend()"></td>
+        <td>${p.n}</td><td style="text-align:center">${p.dv}</td>
+        <td><input type="text" id="pu_${id}_${p.id}" class="pu" placeholder="PU HT" oninput="${hasSpec?`refreshRemisePlaceholder('${p.id}');`:""}rend()"></td>
+        <td><input type="number" id="qty_${id}_${p.id}" value="" min="0" placeholder="0" oninput="rend()"></td>
+        <td><input type="number" id="rb_${id}_${p.id}" value="" min="0" placeholder="0" oninput="rend()" title="Licences remboursées ou annulées parmi les achetées"></td>
+        ${hasSpec?`<td><input type="text" id="pus_${id}_${p.id}" placeholder="0.00" oninput="rend()"></td>`:""}
+      `;
+      tb.appendChild(tr);
+    });
+  });
+}
+
+function buildLicenseSelect(selectId){
+  const sel=g(selectId); if(!sel) return;
+  sel.innerHTML = PRODS.map(p=>`<option value="${p.id}">${p.n} ${unitLabel(p)}</option>`).join("");
+}
+
+function refreshRemisePlaceholder(prodId){
+  const puEl=g(`pu_tb_rem_${prodId}`);
+  const pu=parseFloat(puEl?.value)||0;
+  const el=g(`pus_tb_rem_${prodId}`);
+  if(el) el.placeholder=(pu*(1-remise/100)).toFixed(2);
+}
+
+function applyChannelDefaults(){
+  ["tb_1_1","tb_2_1","tb_rem"].forEach(tbId=>{
+    PRODS.forEach(p=>{
+      const el=g(`pu_${tbId}_${p.id}`);
+      if(el) el.value = channel==="empower" ? p.pu.toFixed(2) : "";
+    });
+  });
+  [["off_1_1","pu_off_1_1"],["off_2_1","pu_off_2_1"]].forEach(([selId,puId])=>{
+    const sel=g(selId), puEl=g(puId);
+    if(!sel||!puEl) return;
+    const p=PRODS.find(x=>x.id===sel.value);
+    puEl.value = (channel==="empower" && p) ? p.pu.toFixed(2) : "";
+  });
+  PRODS.forEach(p=>refreshRemisePlaceholder(p.id));
+}
+
+function onLicenseChange(selId,puId){
+  const sel=g(selId), puEl=g(puId);
+  const p=PRODS.find(x=>x.id===sel.value);
+  puEl.value = (channel==="empower" && p) ? p.pu.toFixed(2) : "";
+  rend();
+}
+
+function setChannel(ch){
+  channel=ch;
+  g("chanE").classList.toggle("active",ch==="empower");
+  g("chanG").classList.toggle("active",ch==="grossiste");
+  g("wholesalerWrap").style.display = ch==="grossiste" ? "" : "none";
+  g("refEmpLabel").textContent = ch==="empower" ? "Réf. commande EMPOWER" : "Réf. commande / facture grossiste";
+  g("refEmp").placeholder = ch==="empower" ? "EMW-2026-XXXXX" : "FACT-2026-XXXXX";
+  applyChannelDefaults();
+  rend();
+}
+
+function setOffer(o,el){
+  offer=o;
+  document.querySelectorAll(".otabs .otab").forEach(t=>{ if(t.id!=="chanE"&&t.id!=="chanG") t.classList.remove("active"); });
+  el.classList.add("active");
+  ["1+1","2+1","remise"].forEach(t=>g("p_"+t).style.display=t===o?"":"none");
+  rend();
+}
+
+function setR(r){
+  remise=r;
+  [30,50,60].forEach(x=>g("btn"+x).classList.toggle("active",r===x));
+  PRODS.forEach(p=>refreshRemisePlaceholder(p.id));
+  rend();
+}
+
+function setC(m){
+  cmode=m;
+  g("rv").classList.toggle("sel",m==="v");
+  g("rl").classList.toggle("sel",m==="l");
+  g("rg2").classList.toggle("sel",m==="g");
+  rend();
+}
+
+function getProds(tbodyId){
+  return PRODS.filter(p=>{
+    const c=g(`chk_${tbodyId}_${p.id}`);
+    return c&&c.checked;
+  }).map(p=>{
+    const qty=parseFloat(g(`qty_${tbodyId}_${p.id}`)?.value)||0;
+    // Remboursées : jamais plus que les achetées. Seules les licences nettes comptent.
+    const rb=Math.min(qty,Math.max(0,parseFloat(g(`rb_${tbodyId}_${p.id}`)?.value)||0));
+    const puEl=g(`pu_${tbodyId}_${p.id}`);
+    const pu=parseFloat(puEl?.value)||0;
+    const pusEl=g(`pus_${tbodyId}_${p.id}`);
+    const pus=pusEl?parseFloat(pusEl.value)||parseFloat(pusEl.placeholder)||0:0;
+    return{...p,pu,qty,rb,net:qty-rb,pus};
+  });
+}
+
+// Affichage « 10 » ou « 10 <small>(20 − 10)</small> » quand des licences sont remboursées.
+const netTxt=p=>p.rb>0?`${p.net}<br><small style="font-weight:400;color:#777">${p.qty} achetées − ${p.rb} remb.</small>`:`${p.qty}`;
+
+// Mention contractuelle, uniquement quand des licences sont remboursées ou annulées.
+function clauseRemb(ach,rb,net){
+  if(!(rb>0)) return "";
+  return `<p class="legal" style="margin-top:2mm"><strong>Remboursements et annulations</strong> : ${ach} licence${ach>1?"s":""} achetée${ach>1?"s":""}, ${rb} remboursée${rb>1?"s":""} ou annulée${rb>1?"s":""}, soit <strong>${net} licence${net>1?"s":""} nette${net>1?"s":""}</strong>. Seules les licences nettes ouvrent droit à compensation et comptent pour l'atteinte du palier. Si des licences sont remboursées après le versement de la compensation, IMPACT SALES &amp; MARKETING peut déduire la compensation correspondante des règlements ultérieurs ou en demander la restitution, sur présentation du justificatif de remboursement. Si le palier n'est plus atteint, la compensation n'est plus due.</p>`;
+}
+
+function rend(){
+  const soc=gv("soc"), rep=gv("rep"), rcsv=gv("rcsv"), siret=gv("siret");
+  const adr=gv("adr"), tva=gv("tva"), ape=gv("ape"), refEmp=gv("refEmp");
+  const deb=gv("deb"), fin=gv("fin"), dateSign=gv("dateSign");
+
+  const channelIsEmpower = channel === "empower";
+  const wholesalerName = gv("wholesaler") || "Techdata";
+  const wholesalerFull = wholesalerName === "Ingram" ? "Ingram Micro" : "Techdata";
+  // Formule "sur la plateforme EMPOWER" / "auprès du grossiste agréé X" — réutilisée dans plusieurs articles
+  const platformPhrase = channelIsEmpower
+    ? "sur la plateforme Norton EMPOWER Reseller"
+    : `auprès du grossiste agréé <strong>${wholesalerFull}</strong>`;
+  const justifPhrase = channelIsEmpower
+    ? "des justificatifs de commandes issus de la plateforme Norton EMPOWER Reseller"
+    : `des factures ou bons de commande du grossiste ${wholesalerFull}`;
+  const orderChannelBullet = channelIsEmpower
+    ? "Passer ses commandes exclusivement via la plateforme partenaire Norton EMPOWER Reseller (EmpowerReseller.Norton.com)."
+    : `Passer ses commandes exclusivement auprès du grossiste agréé <strong>${wholesalerFull}</strong>.`;
+  const justifBullet = channelIsEmpower
+    ? "Fournir les justificatifs de commandes issus de la plateforme pour le calcul de la compensation."
+    : "Fournir les factures ou bons de commande du grossiste pour le calcul de la compensation.";
+  const docSubProgram = channelIsEmpower ? "Programme Norton EMPOWER" : `Partenariat Norton via ${wholesalerFull}`;
+  const objetPhrase = channelIsEmpower
+    ? "dans le cadre du programme partenaire Norton EMPOWER."
+    : `dans le cadre de son partenariat Norton, pour les produits achetés auprès du grossiste agréé <strong>${wholesalerFull}</strong>.`;
+  const refLabel = channelIsEmpower ? "Réf. commande EMPOWER" : "Réf. commande / facture grossiste";
+
+  const OFFER_TITLES={
+    "1+1": `Offre 1+1 — dès ${parseInt(gv("seuil_1_1"))||10} licences`,
+    "2+1": `Offre 2+1 — dès ${parseInt(gv("seuil_2_1"))||5} licences`,
+    "remise": `Offre Remise dégressive −${remise}% sur Prix d'Achat`
+  };
+  const CM=COMP_MODES[cmode];
+  const COMP_CHIP=`<span class="chip ${CM.chipClass}">${CM.label}</span>`;
+  const mandatLabel = `Mandat ${fmtPeriode(deb,fin)}`;
+  const art3Text = `${CM.art3Base} ${justifPhrase}.`;
+
+  // ---- Article 5 : tableau + montant, selon le type d'offre ----
+  let baseChip="", art5Intro="", art5Table="", totalComp=0, totalRbAll=0, totalAchAll=0;
+
+  if(offer==="1+1"||offer==="2+1"){
+    const X = offer==="1+1" ? 1 : 2, k = offer==="1+1" ? "1_1" : "2_1";
+    const prods=getProds("tb_"+k).filter(p=>p.qty>0);
+    const offP = PRODS.find(x=>x.id===gv("off_"+k));
+    const offName = offP ? `${offP.n} ${unitLabel(offP)}` : "___________________";
+    const offpu=parseFloat(gv("pu_off_"+k))||0;
+    const seuil=Math.max(1,parseInt(gv("seuil_"+k))||1);
+    const totalAch=prods.reduce((n,p)=>n+p.qty,0);
+    const totalRb=prods.reduce((n,p)=>n+p.rb,0);
+    totalRbAll=totalRb; totalAchAll=totalAch;
+    const totalQty=totalAch-totalRb;   // licences nettes : base du palier et des licences offertes
+    const atteint=totalQty>=seuil;
+    const offQty=atteint?Math.floor(totalQty/X):0;
+    totalComp=offQty*offpu;
+    baseChip=`<span class="chip chip-coral">Offert : ${offName}</span> <span class="chip chip-gray">Palier dès ${seuil} licences</span>`;
+    const rows=prods.map(p=>`<tr><td class="rn">${p.n} ${unitLabel(p)}</td><td class="num">${netTxt(p)}</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>`).join("");
+    art5Intro=`Dès ${seuil} licences achetées ${platformPhrase} sur la période de l'opération (palier), pour chaque tranche de ${X} licence${X>1?"s":""} achetée${X>1?"s":""}, 1 licence <strong>${offName}</strong> est offerte. La compensation correspond au coût HT des licences offertes.`;
+    art5Table = rows ? `
+      <table class="data">
+        <thead><tr><th class="rn">Référence achetée</th><th class="num">${totalRb>0?"Qté nette":"Qté achetée"}</th><th class="num">Licences offertes</th><th class="num">PU offert HT</th><th class="num">Compensation HT</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr><td class="rn">TOTAL MANDAT</td><td class="num">${totalQty}</td><td class="num">${offQty}</td><td class="num">${fmt(offpu)}</td><td class="num">${fmt(totalComp)}</td></tr></tfoot>
+      </table>
+      ${clauseRemb(totalAch,totalRb,totalQty)}
+      <p class="legal" style="margin-top:2mm">${atteint?`Palier atteint : ${totalQty} licences ${totalRb>0?"nettes":"commandées"} pour ${seuil} requises.`:`Palier non atteint : ${totalQty} licence${totalQty>1?"s":""} ${totalRb>0?"nette":"commandée"}${totalQty>1?"s":""} pour ${seuil} requises, aucune licence offerte à ce stade.`}</p>` : `<p class="empty-hint">← Sélectionnez des produits et saisissez leur PU HT dans le formulaire pour générer le tableau de compensation.</p>`;
+  }
+  else{
+    const prods=getProds("tb_rem");
+    const palR=REM_PALIERS[remise]||{seuil:1};
+    baseChip=`<span class="chip chip-coral">Base −${remise}% PA HT</span> <span class="chip chip-gray">Dès ${palR.seuil} licences${palR.validation?" · sous réserve de validation":""}</span>`;
+    let rows="", totalQty=0, totalPort=0, totalSpec=0, totalAch=0, totalRb=0;
+    prods.forEach(p=>{
+      if(p.qty<=0)return;
+      totalAch+=p.qty; totalRb+=p.rb; totalAchAll=totalAch; totalRbAll=totalRb;
+      const puPort=p.pu;
+      const puSpec=p.pus>0?p.pus:parseFloat((puPort*(1-remise/100)).toFixed(2));
+      const totPort=puPort*p.net;
+      const totSpec=puSpec*p.net;
+      const ecart=totPort-totSpec;
+      totalQty+=p.net; totalPort+=totPort; totalSpec+=totSpec; totalComp+=ecart;
+      rows+=`<tr>
+        <td class="rn">${p.n} ${unitLabel(p)}</td><td class="num">${netTxt(p)}</td>
+        <td class="num">${fmt(puPort)}</td><td class="num">${fmt(puSpec)}</td>
+        <td class="num">${fmt(totPort)}</td><td class="num">${fmt(totSpec)}</td>
+        <td class="num">${fmt(ecart)}</td>
+      </tr>`;
+    });
+    art5Intro=`${refLabel} : <strong>${esc(refEmp)||'_______________'}</strong>. La compensation est établie sur l'écart entre le Prix d'Achat Unitaire HT (PA HT) réglé par LE MAGASIN ${platformPhrase} et le Prix d'Achat Unitaire HT Spécial accordé, calculé selon une base de cotation à −${remise}% du PA HT de base (palier dès ${palR.seuil} licences commandées${palR.validation?", remise soumise à validation budget commercial":""}), multiplié par les quantités commandées. La compensation est calculée et versée intégralement en HT, sans majoration de TVA.`;
+    const remQty=totalQty;
+    art5Table = rows ? `
+      <table class="data">
+        <thead><tr><th class="rn">Référence</th><th class="num">${totalRb>0?"Qté nette":"Qté"}</th><th class="num">PA HT</th><th class="num">PA Spécial HT</th><th class="num">Total PA HT</th><th class="num">Total Spécial HT</th><th class="num">Compensation HT</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr><td class="rn">TOTAL MANDAT</td><td class="num">${totalQty}</td><td></td><td></td><td class="num">${fmt(totalPort)}</td><td class="num">${fmt(totalSpec)}</td><td class="num">${fmt(totalComp)}</td></tr></tfoot>
+      </table>${clauseRemb(totalAch,totalRb,totalQty)}${totalRb>0&&totalQty<palR.seuil?`<p class="legal" style="margin-top:2mm"><strong>Palier non atteint</strong> : ${totalQty} licence${totalQty>1?"s":""} nette${totalQty>1?"s":""} pour ${palR.seuil} requises, la compensation n'est plus due.</p>`:""}` : `<p class="empty-hint">← Sélectionnez des produits et saisissez leur PU HT dans le formulaire pour générer le tableau de compensation.</p>`;
+    if(totalRb>0&&totalQty<palR.seuil) totalComp=0;
+  }
+
+  const refChip = refEmp ? `<span class="chip chip-gray">Réf. ${esc(refEmp)}</span>` : "";
+
+  // ---------------------------------------------------------------
+  // PAGE 1 — corps du contrat + compensation + montant
+  // ---------------------------------------------------------------
+  const page1 = `
+  <div class="page" id="pg1">
+    <div class="topbar"></div>
+    <div class="header">
+      <img class="logo" src="${MARVESTING_SRC}" alt="Marvesting">
+      <div class="doc-meta">
+        <span class="doc-badge">Contrat de mandat</span>
+        <div class="doc-title">${mandatLabel}</div>
+        <div class="doc-sub"><img src="${NORTON_SRC}" alt="Norton"> ${docSubProgram} — Partenaire ${soc?esc(soc.toUpperCase()):'______'}</div>
+      </div>
+    </div>
+
+    <div class="eyebrow">Entre les soussignés</div>
+    <p class="legal"><strong>IMPACT SALES &amp; MARKETING</strong>, au capital de 550 000 euros, immatriculée au RCS de Nanterre sous le numéro 452 223 753 00032, dont le siège social est situé 102-116 rue Victor Hugo, 92300 Levallois-Perret, représentée par Monsieur Jean-Dominique CASTELLANI en sa qualité de Directeur Général — ci-après « IMPACT SALES &amp; MARKETING » — d'une part,</p>
+    <p class="legal">et ${fi(rep)}, représentant légal de la société ${fi(soc)}, immatriculée au RCS de ${fi(rcsv)} sous le numéro ${fi(siret)}, dont le siège social est situé ${fi(adr)}. N° TVA intracommunautaire ${fi(tva)}, code APE ${fi(ape)} — ci-après « LE MAGASIN » — d'autre part.</p>
+
+    <div class="eyebrow">Article 1</div>
+    <div class="h2">Objet du mandat</div>
+    <p class="legal">Le présent contrat a pour objet de définir les conditions dans lesquelles IMPACT SALES &amp; MARKETING confie au MAGASIN la mission de promouvoir la gamme Norton (GenDigital) ${objetPhrase} <span class="chip chip-coral">${OFFER_TITLES[offer]}</span></p>
+
+    <div class="eyebrow">Article 2</div>
+    <div class="h2">Engagements du Magasin</div>
+    <ul class="legal">
+      <li>Mettre en avant les produits de la gamme Norton au sein de son point de vente ou site internet.</li>
+      <li>Appliquer les préconisations de prix de vente conseillés.</li>
+      <li>${orderChannelBullet}</li>
+      <li>${justifBullet}</li>
+    </ul>
+
+    <div class="eyebrow">Article 3</div>
+    <div class="h2">Modalités de règlement</div>
+    <p class="legal">${art3Text}</p>
+
+    <div class="eyebrow">Article 4</div>
+    <div class="h2">Durée du mandat</div>
+    <p class="legal">Le présent contrat est conclu pour la période ci-dessus. Il prend effet le <strong>${fmtD(deb)}</strong> et se termine le <strong>${fmtD(fin)}</strong> inclus. Il couvre l'ensemble des commandes passées par LE MAGASIN ${platformPhrase} durant cette période. ${refChip}</p>
+
+    <div class="eyebrow">Article 5</div>
+    <div class="h2">Calcul de la compensation ${baseChip}</div>
+    <p class="legal">${art5Intro}</p>
+    ${art5Table}
+    <p class="legal" style="margin-top:2mm">Mode de règlement : ${COMP_CHIP} — la compensation est versée ${CM.art5}</p>
+
+    <div class="total-banner">
+      <div><div class="label">Montant à verser au Magasin</div></div>
+      <div class="amount">${fmt(totalComp).replace(/\s*€\s*$/,'')}<span class="cur">€ HT</span></div>
+    </div>
+
+    <div class="footer">
+      <div class="brand">Marvesting × Impact Sales &amp; Marketing — Document confidentiel</div>
+      <div class="page-no">${mandatLabel} · 1/2</div>
+    </div>
+  </div>`;
+
+
+  // ---------------------------------------------------------------
+  // PAGE 2 — juridiction + signatures (saut de page piloté)
+  // ---------------------------------------------------------------
+  const page2 = `
+  <div class="page page-break" id="pg2">
+    <div class="eyebrow">Article 6</div>
+    <div class="h2">Droit applicable et juridiction</div>
+    <p class="legal">Le présent contrat est régi par le droit français. Tout litige relatif à son exécution sera soumis à la compétence exclusive du Tribunal de Commerce de Nanterre.</p>
+    <p class="legal">Fait à Levallois-Perret, le ${dateSign ? fmtD(dateSign) : "_____________________________"}, en deux (2) exemplaires originaux.</p>
+
+    <div class="sig-grid">
+      <div class="sig-card">
+        <div class="who">Le Magasin</div>
+        <div class="name">${esc(rep)||'___________________'}</div>
+        <div class="role">Société ${esc(soc)||'___________________'}</div>
+        <div class="box">Signature et cachet</div>
+      </div>
+      <div class="sig-card">
+        <div class="who">Impact Sales &amp; Marketing</div>
+        <div class="name">M. Jean-Dominique CASTELLANI — Directeur Général</div>
+        <div class="role">Visa Chef des Ventes : Tadjidine SOEFOU</div>
+        <div class="box">Signature et cachet</div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="brand">Marvesting × Impact Sales &amp; Marketing — Document confidentiel</div>
+      <div class="page-no">${mandatLabel} · 2/2</div>
+    </div>
+  </div>`;
+
+  g("cv").innerHTML = page1 + page2;
+  window.__dernier = { canal: channel, offre: offer, compensation: {v:"virement",l:"licences",g:"cheques"}[cmode], montant_ht: Math.round(totalComp*100)/100,
+    debut: deb||null, fin: fin||null, societe: soc, representant: rep, ref_commande: refEmp,
+    payload: { grossiste: channelIsEmpower?null:wholesalerName, remise: offer==="remise"?remise:null, palier_seuil: offer==="remise" ? (REM_PALIERS[remise]||{}).seuil||null : (parseInt(gv("seuil_"+(offer==="1+1"?"1_1":"2_1")))||null), licence_offerte: offer==="remise" ? null : gv("off_"+(offer==="1+1"?"1_1":"2_1")), siret, licences_achetees: totalAchAll, licences_remboursees: totalRbAll, rcs_ville: rcsv, adresse: adr, tva, ape, date_signature: dateSign||null } };
+}
+
+function _statut(t,ok){const s=g("statut"); s.textContent=t; s.className="statut "+(ok?"ok":"ko");}
+async function dlPDF(){
+  rend();
+  const rec=Object.assign({compte_id:(window.__compte||null)}, window.__dernier||{});
+  if(!rec.societe){ _statut("Renseignez la société avant d'archiver le mandat.",false); return; }
+  try{
+    const M=(window.opener && !window.opener.closed && window.opener.Mandats) || (window.parent && window.parent!==window && window.parent.Mandats);
+    if(M){ const res=await M.archiver(rec); _statut(res&&res.ok?"Mandat archivé dans l'application.":("Archivage impossible : "+((res&&res.message)||"erreur")+". Le PDF reste téléchargeable."),!!(res&&res.ok)); }
+    else _statut("Archivage indisponible : ouvrez le générateur depuis l'application pour archiver. Le PDF reste téléchargeable.",false);
+  }catch(e){ _statut("Archivage impossible. Le PDF reste téléchargeable.",false); }
+  telechargerPdf();
+}
+
+// PDF téléchargé directement (sans passer par la fenêtre d'impression, absente ou limitée sur téléphone). Repli : impression.
+function _script(src){return new Promise((ok,ko)=>{const t=document.createElement("script");t.src=src;t.onload=ok;t.onerror=()=>ko(new Error("bibliothèque PDF indisponible"));document.head.appendChild(t);});}
+async function telechargerPdf(){
+  const bouton=document.querySelector(".btn-pdf"), lib=bouton?bouton.textContent:"";
+  if(bouton){bouton.disabled=true;bouton.textContent="Création du PDF…";}
+  const cv=g("cv"), garde={t:cv.style.transform,mb:cv.style.marginBottom,mr:cv.style.marginRight,w:cv.style.width};
+  try{
+    if(!window.html2canvas) await _script("/lib/pdfgen/html2canvas.min.js");
+    if(!window.jspdf) await _script("/lib/pdfgen/jspdf.umd.min.js");
+    cv.style.transform="";cv.style.marginBottom="";cv.style.marginRight="";cv.style.width="";   // feuilles à leur taille réelle pour la capture
+    const pages=[...cv.querySelectorAll(".page")]; if(!pages.length) throw new Error("aperçu vide");
+    const pdf=new window.jspdf.jsPDF({orientation:"portrait",unit:"mm",format:"a4",compress:true});
+    for(let i=0;i<pages.length;i++){
+      const c=await window.html2canvas(pages[i],{scale:2,useCORS:true,backgroundColor:"#ffffff",logging:false});
+      let w=210,h=210*c.height/c.width; if(h>297){h=297;w=297*c.width/c.height;}
+      if(i>0) pdf.addPage();
+      pdf.addImage(c.toDataURL("image/jpeg",0.92),"JPEG",(210-w)/2,0,w,h);
+    }
+    const soc=(window.__dernier&&window.__dernier.societe||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,60);
+    pdf.save("Mandat-"+(soc||"revendeur")+"-"+new Date().toISOString().slice(0,10)+".pdf");
+  }catch(e){
+    _statut("Téléchargement direct impossible ("+((e&&e.message)||"erreur")+"). Ouverture de l'impression.",false);
+    setTimeout(()=>window.print(),300);
+  }finally{
+    cv.style.transform=garde.t;cv.style.marginBottom=garde.mb;cv.style.marginRight=garde.mr;cv.style.width=garde.w;
+    if(bouton){bouton.disabled=false;bouton.textContent=lib;}
+  }
+}
+
+buildTables();
+buildLicenseSelect("off_1_1");
+buildLicenseSelect("off_2_1");
+applyChannelDefaults();
+(function(){
+  const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  const t0=new Date(), t1=new Date(t0.getTime()+60*86400000);
+  if(!g("deb").dataset.fixe){ g("deb").value=iso(t0); g("fin").value=iso(t1); }
+  const dEl = document.getElementById("dateSign");
+  if(dEl && !dEl.value){
+    const t = new Date();
+    const mm = String(t.getMonth()+1).padStart(2,"0");
+    const dd = String(t.getDate()).padStart(2,"0");
+    dEl.value = `${t.getFullYear()}-${mm}-${dd}`;
+  }
+})();
+(function(){
+  // Préremplissage depuis la fiche compte : une seule lecture, la clé est supprimée aussitôt.
+  try{
+    const raw=localStorage.getItem("esi_mandat_prefill"); if(!raw) return;
+    localStorage.removeItem("esi_mandat_prefill");
+    const p=JSON.parse(raw); if(!p||typeof p!=="object"||Date.now()-(p.t||0)>600000) return;
+    [["soc","soc"],["rep","rep"],["adr","adr"],["rcsv","rcsv"],["siret","siret"],["tva","tva"]].forEach(([k,id])=>{ if(p[k]&&g(id)) g(id).value=String(p[k]).slice(0,200); });
+    if(p.compte_id) window.__compte=String(p.compte_id).slice(0,80);
+  }catch(e){}
+})();
+
+rend();
+
+// Aperçu ajusté à la largeur de l'écran (téléphone, tablette) : la feuille A4 est réduite pour s'afficher en entier, sans défilement horizontal.
+(function(){
+  const cv=g("cv"), pp=cv.parentElement; let en=false;
+  function ajuster(){
+    if(en) return; en=true;
+    cv.style.transform=""; cv.style.marginBottom=""; cv.style.width="";
+    const page=cv.querySelector(".page"); if(!page){ en=false; return; }
+    const dispo=pp.clientWidth-parseFloat(getComputedStyle(pp).paddingLeft)-parseFloat(getComputedStyle(pp).paddingRight), l=page.offsetWidth;
+    const k=Math.min(1,dispo/l);
+    if(k<1){ cv.style.width=l+"px"; cv.style.transformOrigin="top left"; cv.style.transform="scale("+k+")"; cv.style.marginBottom=(-(cv.offsetHeight*(1-k)))+"px"; cv.style.marginRight=(-(l*(1-k)))+"px"; }
+    else { cv.style.marginRight=""; cv.style.transformOrigin=""; }
+    en=false;
+  }
+  new MutationObserver(()=>setTimeout(ajuster,0)).observe(cv,{childList:true});
+  window.addEventListener("resize",ajuster); window.addEventListener("orientationchange",()=>setTimeout(ajuster,200));
+  window.addEventListener("beforeprint",()=>{ cv.style.transform=""; cv.style.marginBottom=""; cv.style.marginRight=""; cv.style.width=""; });
+  window.addEventListener("afterprint",ajuster);
+  ajuster();
+})();
+</script>
+</body>
+</html>

@@ -40,6 +40,7 @@ window.VueDashboardManager = {
         SheetsAPI.lire('EMPOWER_MDB', 'PARAMS'),
       ]);
       this.state.d = this._calculer({ objectifs, visites, appels, prospects, comptes, params });
+      this._comptesEquipe = comptes;
       this.state.chargement = false;
       this.render();
     } catch(e) {
@@ -154,9 +155,9 @@ window.VueDashboardManager = {
       else if (s === 'ARCHIVE')                     cArchive++;
     });
     const compteurs = [
-      { id: 'TRAITER',  lbl: 'À traiter', n: cTraiter, coul: '#0050FF' },
-      { id: 'EN_COURS', lbl: 'En cours',  n: cEnCours, coul: '#f59e0b' },
-      { id: 'INTEGRE',  lbl: 'Intégré',   n: cIntegre, coul: '#00b27e' },
+      { id: 'TRAITER',  lbl: 'À traiter', n: cTraiter, coul: '#343F48' },
+      { id: 'EN_COURS', lbl: 'En cours',  n: cEnCours, coul: '#FF6D68' },
+      { id: 'INTEGRE',  lbl: 'Intégré',   n: cIntegre, coul: '#343F48' },
       { id: 'ARCHIVE',  lbl: 'Archivé',   n: cArchive, coul: '#626264' },
     ];
 
@@ -333,6 +334,7 @@ window.VueDashboardManager = {
       const visitesTransformeesQ = visitesRealiseesQ.filter(visiteTransformee);
       return {
         pin, nom: o.Nom_CDS, ca, obj, pct, caFY26,
+        atterr: window.Atterrissage ? Atterrissage.texte(ca, obj, quarter) : '',
         pace:       pct >= 100 ? 'ON_TRACK' : pct >= 80 ? 'WATCH' : 'AT_RISK',
         // Bug remonté (09/2026) — même correctif que VueDashboardCDS : semaine
         // calendaire lundi→dimanche (dates réelles), pas Semaine_ISO fiscal
@@ -381,8 +383,8 @@ window.VueDashboardManager = {
       COMPTE_CREE: 'Compte créé', INTEGRE: 'Intégrés',
     };
     const STAT_COULEURS = {
-      SAISIE: '#0050FF', ASSIGNE: '#4D9EFF', EN_COURS: '#f59e0b',
-      COMPTE_CREE: '#9333ea', INTEGRE: '#00b27e',
+      SAISIE: '#343F48', ASSIGNE: '#8C9BB8', EN_COURS: '#FF6D68',
+      COMPTE_CREE: '#6B7580', INTEGRE: '#343F48',
     };
     const pipelineStages = Object.entries(STAT_LABELS).map(([id, lbl]) => ({
       id, lbl, coul: STAT_COULEURS[id],
@@ -554,7 +556,7 @@ window.VueDashboardManager = {
     const W    = 290;
     const ROW  = 52;
     const H    = equipe.length * ROW + 4;
-    const PACE_COL = { ON_TRACK: '#00b27e', WATCH: '#f59e0b', AT_RISK: '#FA0000' };
+    const PACE_COL = { ON_TRACK: '#343F48', WATCH: '#6B7580', AT_RISK: '#FF6D68' };
     const bars = equipe.map((e, i) => {
       const wObj   = Math.max(4, Math.round(e.obj / maxVal * 210));
       const wCA    = e.ca > 0 ? Math.max(4, Math.round(e.ca / maxVal * 210)) : 0;
@@ -562,19 +564,20 @@ window.VueDashboardManager = {
       const y      = i * ROW + 2;
       const col    = PACE_COL[e.pace];
       const pctStr = `${e.pct}%`;
-      const xPct   = wObj + 6;
+      const xPct   = wObj + 10;
       const caInside = wCA > 40;
       const caX      = wCA > 20 ? wCA - 4 : xPct + pctStr.length * 6 + 6;
       const caAnchor = wCA > 20 ? 'end' : 'start';
       return `
         <text x="0" y="${y + 11}" font-size="11" font-weight="700" fill="var(--c-title)">${e.nom.toUpperCase()}</text>
-        <rect x="0" y="${y + 15}" width="${wObj}" height="12" fill="var(--c-border)" rx="3"/>
-        <rect x="0" y="${y + 15}" width="${wCA}"  height="12" fill="${col}"   rx="3" opacity=".88"/>
+        <g data-tip="${e.nom}\nRéalisé ${formatEUR(e.ca)} sur ${formatEUR(e.obj)} (${e.pct} %)${e.atterr ? '\n' + e.atterr : ''}" tabindex="0">
+        <rect x="0" y="${y + 15}" width="${wObj}" height="12" fill="#E6E9EC" rx="6"/>
+        <rect x="0" y="${y + 15}" width="${wCA}"  height="12" fill="${col}"   rx="6"/></g>
         <text x="${xPct}" y="${y + 25}" font-size="10" fill="var(--c-title)" font-weight="700">${pctStr}</text>
         <text x="${caX}" y="${y + 24}" font-size="9" fill="${caInside ? '#fff' : '#0E0D30'}" text-anchor="${caAnchor}">${formatEUR(e.ca)}</text>
         ${wFY26 > 0 ? `
-        <rect x="0" y="${y + 32}" width="${wFY26}" height="8" fill="none" stroke="#9333ea" stroke-width="1.5" stroke-dasharray="3 2" rx="2"/>
-        <text x="${wFY26 + 4}" y="${y + 40}" font-size="9" fill="#9333ea">FY26 ${formatEUR(e.caFY26)}</text>` : ''}
+        <rect x="0" y="${y + 32}" width="${wFY26}" height="8" fill="#B8BEC4" rx="4"/>
+        <text x="${wFY26 + 4}" y="${y + 40}" font-size="9" fill="#6B7580">FY26 ${formatEUR(e.caFY26)}</text>` : ''}
       `;
     }).join('');
     return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"
@@ -672,6 +675,8 @@ window.VueDashboardManager = {
                 <div class="stat-tuile-val" style="color:${c.coul}">${c.n}</div>
               </div>`).join('')}
           </div>
+
+          ${this._raw ? window.renderJaugeActivation(this._raw.comptes) : ''}
 
           <div class="bloc-fiche">
             <div class="bloc-titre">Pipeline onboarding</div>
@@ -812,12 +817,13 @@ window.VueDashboardManager = {
         <div class="dash-col-main">
         <p class="dash-date" style="color:var(--c-text-2);font-family:Montserrat,sans-serif;font-size:13px">${dateFr} · Suivi FY27</p>
 
-        ${section('Pipeline', '#9333ea', pipelineCorps)}
+        ${this._raw ? section('Activation Empower', '#FF6D68', window.renderJaugeActivation(this._raw.comptes, { sansCarte: true })) : ''}
+        ${section('Pipeline', '#6B7580', pipelineCorps)}
         <!-- Bloc E (07/2026) — grille 2 colonnes desktop (≥1200px) au lieu
              d'un empilement plein-largeur, pour désencombrer le Reporting. -->
         <div class="dash-grid-2col">
-          ${section('Performance par CDS', '#00b27e', performanceCorps)}
-          ${section('CA', '#0050FF', caCorps)}
+          ${section('Performance par CDS', '#343F48', performanceCorps)}
+          ${section('CA', '#343F48', caCorps)}
         </div>
         </div><!-- /dash-col-main -->
 
@@ -851,246 +857,8 @@ window.VueDashboardManager = {
       <header class="header-vue no-print">
         <button onclick="Router.retour()" class="btn-retour">←</button>
         <h1>Vue équipe</h1>
-        <button class="btn-retour" onclick="VueDashboardManager.exporterCOPIL()" title="Export COPIL PDF"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg></button>
       </header>
-
-      <div class="dash-body copil-print avec-nav">
-        <div class="dash-col-main">
-        <div class="print-only" style="display:none">
-          <h1>COPIL ESI, ${d.semaine} FY27</h1>
-          <p>${dateFr} · Empower Sales Intelligence · Norton France</p>
-        </div>
-        <p class="dash-date" style="color:var(--c-text-2);font-family:Montserrat,sans-serif;font-size:13px">${dateFr} · ${d.semaine} · ${d.quarter} FY27</p>
-
-        <!-- TUILES STATS -->
-        <div class="stat-tuiles">
-          <div class="stat-tuile" style="cursor:pointer" onclick="Router.aller('#/objectifs')">
-            <div class="stat-tuile-lbl">CA total ${d.quarter}</div>
-            <div class="stat-tuile-val">${formatEuro(d.caTotal)}</div>
-            <div style="font-size:11px;color:var(--c-text-2);margin-top:2px">/ ${formatEuro(d.objTotal)} obj. · <strong style="color:${d.pctTotal>=100?'var(--c-success)':d.pctTotal>=80?'var(--c-warning)':'var(--c-danger)'}">${d.pctTotal}%</strong></div>
-          </div>
-          ${d.caFY26Total > 0 ? `
-          <div class="stat-tuile" style="border-top:3px solid #9333ea">
-            <div class="stat-tuile-lbl" style="color:#9333ea">Réf. FY26/trim.</div>
-            <div class="stat-tuile-val" style="color:#9333ea">${formatEuro(d.caFY26Total)}</div>
-            <div style="font-size:11px;color:var(--c-text-2);margin-top:2px">CA annuel ÷ 4 équipe</div>
-          </div>` : ''}
-          <div class="stat-tuile bleu" style="cursor:pointer" onclick="Router.aller('#/empower-tracker')">
-            <div class="stat-tuile-lbl">Leads pipeline</div>
-            <div class="stat-tuile-val">${d.assignes}</div>
-            <div style="font-size:11px;color:#A8C8FF;margin-top:2px">${d.integres} intégrés · ${d.tauxIntegration}% taux</div>
-          </div>
-          <div class="stat-tuile ciel">
-            <div class="stat-tuile-lbl">Activité semaine</div>
-            <div class="stat-tuile-val">${d.equipe.reduce((s,e)=>s+e.visitesSem,0)}v · ${d.equipe.reduce((s,e)=>s+e.appelsSem,0)}a</div>
-            <div style="font-size:11px;margin-top:2px">visites · appels</div>
-          </div>
-        </div>
-
-        <!-- Section 10 cahier des charges : 4 sections thématiques cliquables, couleur distincte par KPI -->
-        <!-- Bloc E (07/2026) — grille 2 colonnes desktop (≥1200px) au lieu
-             d'un empilement plein-largeur, pour désencombrer le Reporting. -->
-        <div class="dash-grid-2col">
-        ${this._sectionThematique('CA', '#0050FF', `
-          <div class="bloc-fiche dash-pace" style="margin-bottom:12px">
-            <div class="bloc-titre">Équipe, Pace CA ${d.quarter}
-              <span class="pace-badge ${d.pctTotal >= 100 ? 'pace-ok' : d.pctTotal >= 80 ? 'pace-watch' : 'pace-risk'}">${d.pctTotal}%</span>
-            </div>
-            <div class="pace-chiffres">
-              <strong>${formatEuro(d.caTotal)}</strong><span>/ ${formatEuro(d.objTotal)}</span>
-            </div>
-            <div class="pace-barre"><div class="pace-barre-fill ${d.pctTotal >= 100 ? 'pace-ok' : d.pctTotal >= 80 ? 'pace-watch' : 'pace-risk'}" style="width:${Math.min(d.pctTotal, 100)}%"></div></div>
-          </div>
-          <div class="bloc-titre">CA réalisé vs objectif par CDS, ${d.quarter}</div>
-          ${this._svgCaEquipe(d.equipe)}
-          <div style="display:flex;gap:16px;font-size:11px;color:var(--c-text-2);margin-top:8px;flex-wrap:wrap">
-            <span><span style="display:inline-block;width:10px;height:10px;background:#E8E8ED;border-radius:2px;vertical-align:middle"></span> Objectif</span>
-            <span><span style="display:inline-block;width:10px;height:10px;background:#00b27e;border-radius:2px;vertical-align:middle"></span> On Track</span>
-            <span><span style="display:inline-block;width:10px;height:10px;background:#f59e0b;border-radius:2px;vertical-align:middle"></span> Watch</span>
-            <span><span style="display:inline-block;width:10px;height:10px;background:#FA0000;border-radius:2px;vertical-align:middle"></span> At Risk</span>
-            <span><span style="display:inline-block;width:10px;height:8px;border:1.5px dashed #9333ea;border-radius:2px;vertical-align:middle"></span> FY26 réf./trim.</span>
-          </div>
-        `)}
-
-        ${this._sectionThematique('Pipeline', '#9333ea', `
-          ${this._svgFunnel(d.pipelineStages)}
-          <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
-            <button class="btn-lien" onclick="Router.aller('#/empower-tracker')" style="font-size:12px">Voir le Tracker →</button>
-            <span style="font-size:11px;color:var(--c-text-2)">Taux intégration : <strong>${d.tauxIntegration}%</strong></span>
-          </div>
-        `)}
-        </div><!-- /dash-grid-2col CA+Pipeline -->
-
-        ${(() => {
-          const filtrePF = this.state.filtrePipelineFroidCDS || null;
-          const ligneCDS = filtrePF ? d.pipelineFroidParCDS.find(c => c.pin === filtrePF) : null;
-          const totalAffiche = ligneCDS || d.pipelineFroidTotal;
-          const LBL = { PROSPECTION_FROIDE: 'Prospection froide', SUIVI_ACTIF: 'Suivi actif', ONBOARDING_EMPOWER: 'Onboarding Empower' };
-          const COUL = { PROSPECTION_FROIDE: '#0EA5E9', SUIVI_ACTIF: '#f59e0b', ONBOARDING_EMPOWER: '#00b27e' };
-          const pfCorps = `
-            <p style="font-size:12px;color:var(--c-text-2);margin:0 0 10px">
-              Répartition des visites par type, cadre dédié au suivi terrain, distinct du CA/objectifs.
-            </p>
-            <select onchange="VueDashboardManager.filtrerPipelineFroid(this.value?Number(this.value):null)"
-                    style="padding:6px 8px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);font-size:12px;margin-bottom:12px">
-              <option value="">Toute l'équipe</option>
-              ${d.equipe.map(e => `<option value="${e.pin}" ${filtrePF === e.pin ? 'selected' : ''}>${e.nom}</option>`).join('')}
-            </select>
-            <div class="stat-tuiles">
-              ${Object.keys(LBL).map(t => `
-                <div class="stat-tuile" style="border-top:3px solid ${COUL[t]}">
-                  <div class="stat-tuile-lbl">${LBL[t]}</div>
-                  <div class="stat-tuile-val" style="color:${COUL[t]}">${totalAffiche[t] || 0}</div>
-                </div>`).join('')}
-            </div>
-            ${!filtrePF ? `
-            <div class="tableau-equipe" style="margin-top:12px">
-              <div class="te-ligne te-head" style="grid-template-columns:1.2fr 0.9fr 0.7fr 0.9fr">
-                <span>CDS</span><span>Froide</span><span>Actif</span><span>Onboarding</span>
-              </div>
-              ${d.pipelineFroidParCDS.map(c => `
-              <div class="te-ligne" style="cursor:pointer;grid-template-columns:1.2fr 0.9fr 0.7fr 0.9fr" onclick="VueDashboardManager.filtrerPipelineFroid(${c.pin})">
-                <span><strong>${c.nom}</strong></span>
-                <span>${c.PROSPECTION_FROIDE}</span>
-                <span>${c.SUIVI_ACTIF}</span>
-                <span>${c.ONBOARDING_EMPOWER}</span>
-              </div>`).join('')}
-            </div>` : ''}
-          `;
-          return this._sectionThematique('Pipeline froid', '#0EA5E9', pfCorps);
-        })()}
-
-        <div class="dash-grid-2col">
-        ${this._sectionThematique('Activité terrain', '#0EA5E9', `
-          <p style="font-size:13px;color:var(--c-text-2);margin:0 0 10px">
-            Cette semaine : <strong style="color:var(--c-text)">${d.equipe.reduce((s,e)=>s+e.visitesSem,0)} visite(s)</strong> ·
-            <strong style="color:var(--c-text)">${d.equipe.reduce((s,e)=>s+e.appelsSem,0)} appel(s)</strong>
-          </p>
-          <div class="bloc-titre">Activité équipe, 6 semaines</div>
-          ${this._svgActiviteEquipe(d.activiteEquipe)}
-        `)}
-
-        ${this._sectionThematique('Objectifs', '#f59e0b', `
-          <div class="tableau-equipe">
-            <div class="te-ligne te-head" style="grid-template-columns:1.2fr 1.4fr 0.6fr 0.8fr 0.4fr 0.4fr 0.4fr 0.6fr">
-              <span>CDS</span><span>CA / OBJ</span><span>%</span><span style="color:#9333ea">FY26/trim</span><span>Vis.</span><span>App.</span><span>Leads</span><span title="Visites réalisées transformées en intérêt/commande, ce trimestre">Transfo.</span>
-            </div>
-            ${d.equipe.map(e => `
-            <div class="te-ligne" style="cursor:pointer;grid-template-columns:1.2fr 1.4fr 0.6fr 0.8fr 0.4fr 0.4fr 0.4fr 0.6fr" onclick="Router.aller('#/comptes?cds=${e.pin}')">
-              <span style="display:flex;align-items:center;gap:8px">${avatarCDS(e.pin, 26)}<strong>${e.nom}</strong></span>
-              <span style="font-size:12px">${formatEuro(e.ca)} / ${formatEuro(e.obj)}</span>
-              <span class="pace-badge ${PACE[e.pace].cls}">${e.pct}%</span>
-              <span style="font-size:11px;color:#9333ea">${e.caFY26 > 0 ? formatEuro(e.caFY26) : 'n.c.'}</span>
-              <span>${e.visitesSem}</span>
-              <span>${e.appelsSem}</span>
-              <span>${e.leadsEnCours}</span>
-              <span style="font-size:12px;font-weight:700;color:${e.tauxTransfo === null ? 'var(--c-text-2)' : e.tauxTransfo >= 25 ? 'var(--c-success)' : e.tauxTransfo >= 10 ? 'var(--c-warning)' : 'var(--c-danger)'}" title="${e.visitesRealiseesQ} visite(s) réalisée(s) ${d.quarter}">${e.tauxTransfo === null ? 'n.c.' : e.tauxTransfo + '%'}</span>
-            </div>`).join('')}
-          </div>
-          <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">Vis. = visites ${d.semaine} · App. = appels ${d.semaine} · Leads = leads actifs · <span style="color:#9333ea">FY26/trim = CA FY26 annuel ÷ 4</span> · Transfo. = part des visites réalisées ${d.quarter} au résultat positif ou à statut EMPOWER avancé</p>
-          <div style="height:1px;background:var(--c-border);margin:14px 0"></div>
-          <div class="bloc-titre" style="padding:0">Saisie CA réalisé à date</div>
-          <p style="font-size:12px;color:var(--c-text-2);margin:6px 0 12px">Renseignez le CA terrain pour un CDS, la valeur remplace le sell-in du quarter sélectionné.</p>
-          <div style="display:grid;gap:10px">
-            <div style="display:flex;gap:10px;flex-wrap:wrap">
-              <label style="flex:1;min-width:120px;font-size:13px">CDS
-                <select id="saisie-ca-cds" style="width:100%;margin-top:4px;padding:8px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm)">
-                  ${d.equipe.map(e => `<option value="${e.pin}">${e.nom}</option>`).join('')}
-                </select>
-              </label>
-              <label style="flex:1;min-width:100px;font-size:13px">Quarter
-                <select id="saisie-ca-quarter" style="width:100%;margin-top:4px;padding:8px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm)">
-                  ${['Q1','Q2','Q3','Q4'].map(q => `<option value="${q}" ${q === d.quarter ? 'selected' : ''}>${q} FY27</option>`).join('')}
-                </select>
-              </label>
-            </div>
-            <label style="font-size:13px">CA réalisé (€)
-              <input id="saisie-ca-valeur" type="number" min="0" step="0.01" placeholder="ex : 18500"
-                     style="width:100%;margin-top:4px;padding:8px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm);font-size:15px"/>
-            </label>
-            <label style="font-size:13px">Commentaire (facultatif)
-              <input id="saisie-ca-note" type="text" placeholder="ex : Sell-in S24 confirmé"
-                     style="width:100%;margin-top:4px;padding:8px;border:1.5px solid var(--c-border);border-radius:var(--radius-sm)"/>
-            </label>
-            <button class="btn-primaire" onclick="VueDashboardManager.saisirCA()" style="padding:12px">
-              Enregistrer le CA
-            </button>
-            <div id="saisie-ca-feedback" style="font-size:13px;min-height:18px"></div>
-          </div>
-        `, false)}
-        </div><!-- /dash-grid-2col Activité+Objectifs -->
-        </div><!-- /dash-col-main -->
-
-        <div class="dash-col-side">
-        <!-- ALERTES ÉQUIPE -->
-        <div class="bloc-fiche">
-          <div class="bloc-titre">Alertes équipe</div>
-          <div class="dash-alertes">
-            ${d.equipe.filter(e => e.pace !== 'ON_TRACK').map(e => `
-              <div class="alerte-ligne">${PACE[e.pace].lbl} <strong>${e.nom}</strong>, ${e.pct}% de l'objectif ${d.quarter}</div>`).join('')}
-            ${d.leadsBloques.length ? `<div class="alerte-ligne no-print" onclick="Router.aller('#/empower-tracker')"><strong>${d.leadsBloques.length}</strong> lead(s) sans action > 7 jours</div>` : ''}
-            ${d.comptesRouges.length ? `<div class="alerte-ligne no-print" onclick="Router.aller('#/comptes')"><strong>${d.comptesRouges.length}</strong> compte(s) en retard d'action</div>` : ''}
-            ${d.visitesManquees.length ? `<div class="alerte-ligne no-print" onclick="Router.aller('#/visites')"><span class="material-symbols-outlined" aria-hidden="true">fiber_manual_record</span><strong>${d.visitesManquees.length}</strong> visite(s) planifiée(s) manquée(s)</div>` : ''}
-            ${d.comptesNonAttribues.length ? `<div class="alerte-ligne no-print" onclick="VueComptes.state.filtreStatut='SANS_CDS';Router.aller('#/comptes')"><span class="material-symbols-outlined" aria-hidden="true">apartment</span><strong>${d.comptesNonAttribues.length}</strong> compte(s) non attribué(s), dont Sell-In</div>` : ''}
-            <div id="ns-alerte">${window.NonSuivis ? NonSuivis.htmlAlerte() : ''}</div>
-            ${!d.leadsBloques.length && !d.comptesRouges.length && !d.visitesManquees.length && !d.comptesNonAttribues.length && d.equipe.every(e => e.pace === 'ON_TRACK') ? '<div class="pas-de-donnees">Aucune alerte active.</div>' : ''}
-          </div>
-        </div>
-
-        <!-- GEM-07 Synthèse hebdo équipe -->
-        <div class="bloc-fiche no-print">
-          <div class="bloc-titre">Assistant IA, Synthèse hebdo équipe</div>
-          <p style="font-size:12px;color:var(--c-text-2);margin-bottom:10px">Gemini analyse les KPIs de la semaine et génère un bilan, alertes, tendances et recommandations.</p>
-          <button id="btn-gem07" class="btn-secondaire" onclick="VueDashboardManager.syntheseHebdo()">Synthèse hebdo IA</button>
-          <div id="gem07-zone"
-               style="display:none;margin-top:12px;font-size:13px;line-height:1.7;
-                      white-space:pre-wrap;padding:12px;background:var(--c-bg);
-                      border-radius:var(--radius-sm);border:1px solid var(--c-border)"></div>
-        </div>
-
-        <!-- EX-5 : EXTRACTION & REPORTING -->
-        <div class="bloc-fiche no-print">
-          <div class="bloc-titre">Extraction & Reporting</div>
-          <p style="font-size:12px;color:var(--c-text-2);margin-bottom:12px">Sélectionnez une période et lancez l'export filtré.</p>
-          <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <button class="btn-secondaire" style="flex:1;min-width:120px;padding:14px 10px;text-align:center"
-                    onclick="Router.aller('#/visites')">
-              <div style="display:flex;justify-content:center;margin-bottom:4px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
-              <div style="font-size:12px;font-weight:700">Visites</div>
-              <div style="font-size:11px;color:var(--c-text-2)">Export CSV filtré</div>
-            </button>
-            <button class="btn-secondaire" style="flex:1;min-width:120px;padding:14px 10px;text-align:center"
-                    onclick="Router.aller('#/phoning')">
-              <div style="display:flex;justify-content:center;margin-bottom:4px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
-              <div style="font-size:12px;font-weight:700">Phoning</div>
-              <div style="font-size:11px;color:var(--c-text-2)">Journal des appels</div>
-            </button>
-            <button class="btn-secondaire" style="flex:1;min-width:120px;padding:14px 10px;text-align:center"
-                    onclick="Router.aller('#/admin')">
-              <div style="display:flex;justify-content:center;margin-bottom:4px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>
-              <div style="font-size:12px;font-weight:700">Exports CSV</div>
-              <div style="font-size:11px;color:var(--c-text-2)">7 exports thématiques</div>
-            </button>
-          </div>
-          <p style="font-size:11px;color:var(--c-text-2);margin-top:10px">
-            Dans Visites / Phoning, utilisez le bouton d'export en haut à droite pour filtrer par période.
-          </p>
-        </div>
-
-        <!-- RACCOURCIS MANAGER -->
-        <div class="dash-raccourcis no-print">
-          <button class="raccourci" onclick="Router.aller('#/empower-tracker')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg><span>Pipeline</span></button>
-          <button class="raccourci" onclick="Router.aller('#/comptes-historiques')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/></svg><span>Historiques</span></button>
-          <button class="raccourci" onclick="Router.aller('#/phoning')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 9a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg><span>Phoning</span></button>
-          <!-- BLOC 11 Partie B (09/2026) — même correctif que VueDashboardCDS : Mailing
-               (mobileNav:false) n'avait aucun accès mobile/Web App sans ce raccourci. -->
-          <button class="raccourci" onclick="Router.aller('#/mailing')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg><span>Mailing</span></button>
-          <button class="raccourci" onclick="Router.aller('#/objectifs')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg><span>Objectifs</span></button>
-          <button class="raccourci" onclick="Router.aller('#/admin')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>Exports</span></button>
-          <button class="raccourci" onclick="Router.aller('#/admin')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg><span>Admin</span></button>
-        </div>
-        </div><!-- /dash-col-side -->
-      </div>
+      <div class="copil-print avec-nav">${this._htmlEquipe(d)}<div style="padding:0 16px">${window.renderJaugeActivation(this._comptesEquipe || [])}</div></div>
       ${NavBar('reporting')}
       ${FusionTabs.accueil()}
     `;

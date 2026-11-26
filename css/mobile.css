@@ -1,0 +1,129 @@
+/* ═══ Mobile (téléphone) : outil de visite terrain ═══
+   Principe : l'essentiel d'abord, le détail à un toucher. Cartes compactes, fiches repliables, transitions de navigation façon iOS.
+   Sans traits ni liserés (fonds doux, ombres légères). Réservé aux écrans < 900 px : le bureau ne change pas. */
+@media (max-width: 899px) {
+  /* ── Liste des comptes : carte compacte (une ligne d'état, nom, lieu, une rangée d'actions) ── */
+  .carte-compte-v2 { padding: 12px 14px !important; gap: 6px !important; border-radius: 16px !important; }
+  .carte-compte-v2 .cc-pills { flex-wrap: nowrap; overflow: hidden; gap: 8px; }
+  .carte-compte-v2 .cc-pills > * { flex: none; white-space: nowrap; }
+  .carte-compte-v2 .cc-sec { display: none; }
+  .carte-compte-v2 .cc-ca { margin-left: auto; }
+  .carte-compte-v2 .cc-nom { font-size: 16px; line-height: 1.25; }
+  .carte-compte-v2 .cc-infos { gap: 4px 10px; }
+  .carte-compte-v2 .cc-actions { margin-top: 4px !important; gap: 8px !important; flex-wrap: nowrap !important; }
+  .carte-compte-v2 .cc-actions > * { min-height: 40px !important; padding-top: 0; padding-bottom: 0; }
+  .carte-compte-v2 .cc-actions .btn-tel-outline { flex: 0 0 52px; padding: 0; }
+  .carte-compte-v2 .btn-reprendre { flex: 1.3 1 0; }
+  .carte-compte-v2 .alerte-inactivite { margin: 0; }
+  /* Filtres : une seule rangée qui défile sur le côté plutôt qu'une pile */
+  .barre-filtres .cs-puces { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; margin-bottom: 6px; }
+  .barre-filtres .cs-puces::-webkit-scrollbar { display: none; }
+  .barre-filtres .cs-puce { flex: none; white-space: nowrap; }
+  .barre-filtres .filtres-vues { margin-top: 0; gap: 8px; }
+
+  /* ── Blocs repliables (jauges de la liste, blocs de la fiche) : titre + chevron, détail au toucher ── */
+  .mob-resume { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; margin: 0 0 10px; padding: 12px 14px; border: 0; border-radius: 14px; background: var(--cs-fond, #F1F3F4); color: var(--c-title, #1d2329); font: inherit; font-size: 13px; font-weight: 600; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .mob-resume::after, .mob-pliable > .bloc-titre::after { content: ''; flex: none; width: 8px; height: 8px; margin-left: auto; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); transition: transform .2s ease; opacity: .55; }
+  .mob-resume[aria-expanded=true]::after, .mob-pliable:not(.mob-replie) > .bloc-titre::after { transform: rotate(-135deg); }
+  .cs-jauges.mob-replie { display: none; }
+  .mob-pliable > .bloc-titre { display: flex; align-items: center; gap: 8px; margin-bottom: 0; min-height: 28px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .mob-pliable:not(.mob-replie) > .bloc-titre { margin-bottom: 10px; }
+  .mob-pliable.mob-replie > *:not(.bloc-titre) { display: none; }
+  .fiche-body .bloc-fiche.mob-pliable { padding-top: 14px; padding-bottom: 14px; }
+
+  /* ── Fiche compte : en-tête, chiffres et prochaine action plus compacts ── */
+  .cs-hero { padding: 14px !important; margin-bottom: 10px !important; }
+  .cs-hero .cs-avatar { width: 44px; height: 44px; font-size: 15px; border-radius: 12px; }
+  .cs-hero-top { gap: 12px; }
+  .cs-quick { margin-top: 8px; flex-wrap: nowrap; align-items: center; }
+  .cs-quick .vide { flex: 1; font-size: 13px; text-align: left; padding: 0; margin: 0; }
+  body:has(.barre-actions-fixe) .cs-quick button { display: none; }   /* la barre d'actions du bas porte déjà « Visite » */
+  .cs-kpis { display: flex !important; overflow-x: auto; gap: 8px; margin: 0 -16px 10px; padding: 0 16px 2px; scroll-snap-type: x proximity; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .cs-kpis::-webkit-scrollbar { display: none; }
+  .cs-kpi { flex: 0 0 136px; padding: 10px 12px; scroll-snap-align: start; }
+  .cs-kpi-v { font-size: 20px; margin-top: 2px; }
+  .cs-next { padding: 12px 14px; gap: 8px; flex-direction: column; align-items: stretch; margin-bottom: 10px; }
+  .cs-next span { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+  .cs-next button { align-self: flex-start; padding: 8px 14px; min-height: 36px; font-size: 13px; }
+  /* Le contenu ne passe jamais sous la barre d'actions fixe + la barre basse */
+  .fiche-body.avec-nav { padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px)); }
+
+  /* ── Défilement : pas de rebond parasite, accrochage doux ── */
+  html { scroll-behavior: auto; overscroll-behavior-y: none; }
+  body { -webkit-tap-highlight-color: transparent; }
+
+  /* ── Navigation façon iOS : l'écran entre par la droite, le retour le fait ressortir par la droite ; barres fixes immobiles ── */
+  .app-brand-bar { view-transition-name: esi-marque; }
+  .nav-principale { view-transition-name: esi-barre-basse; }
+  ::view-transition-group(esi-marque), ::view-transition-group(esi-barre-basse) { animation-duration: 0s; }
+  ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .3s; animation-timing-function: cubic-bezier(.22, .61, .36, 1); mix-blend-mode: normal; }
+  html[data-nav=avant]::view-transition-old(root) { animation-name: esi-sortie-gauche; }
+  html[data-nav=avant]::view-transition-new(root) { animation-name: esi-entree-droite; }
+  html[data-nav=retour]::view-transition-old(root) { animation-name: esi-sortie-droite; z-index: 2; }
+  html[data-nav=retour]::view-transition-new(root) { animation-name: esi-entree-gauche; }
+  html[data-nav=onglet]::view-transition-old(root) { animation: esi-fondu-sortie .14s ease-out both; }
+  html[data-nav=onglet]::view-transition-new(root) { animation: esi-fondu-entree .2s ease-out both; }
+}
+@keyframes esi-entree-droite { from { transform: translateX(32%); opacity: .6; } to { transform: none; opacity: 1; } }
+@keyframes esi-sortie-gauche { from { transform: none; opacity: 1; } to { transform: translateX(-18%); opacity: .5; } }
+@keyframes esi-entree-gauche { from { transform: translateX(-18%); opacity: .5; } to { transform: none; opacity: 1; } }
+@keyframes esi-sortie-droite { from { transform: none; opacity: 1; } to { transform: translateX(32%); opacity: .4; } }
+@keyframes esi-fondu-sortie { to { opacity: 0; } }
+@keyframes esi-fondu-entree { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none !important; }
+}
+
+/* ═══ Recherche de compte (Nouvelle visite, planification) ═══
+   Le champ gris-bleu sur fond crème se noyait : fond clair de surface, ombre douce,
+   pas de liseré ; la liste des comptes est visible dès l'ouverture, défilable. */
+.q-champs .q-input[placeholder^="Rechercher"],
+#visites-recherche-modal input {
+  background: #FFFFFF; color: var(--c-text);
+  box-shadow: 0 1px 2px rgba(20,30,50,.10), 0 4px 14px rgba(20,30,50,.06);
+  border-color: transparent; min-height: 46px; font-size: 16px;
+  padding-left: 40px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23697386' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: 13px center;
+}
+.q-champs .q-input[placeholder^="Rechercher"]:focus,
+#visites-recherche-modal input:focus { box-shadow: 0 0 0 3px rgba(4,0,245,.15), 0 4px 14px rgba(20,30,50,.08); }
+:root[data-theme="dark"] .q-champs .q-input[placeholder^="Rechercher"],
+:root[data-theme="dark"] #visites-recherche-modal input { background-color: #1E2A38; }
+.q-sugg-liste { max-height: 46vh; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 2px 2px 6px; }
+.q-sugg-liste .q-arbre-btn {
+  display: block; width: 100%; border: 0; background: #FFFFFF; color: var(--c-text);
+  box-shadow: 0 1px 2px rgba(20,30,50,.08); min-height: 48px;
+}
+:root[data-theme="dark"] .q-sugg-liste .q-arbre-btn { background: #1E2A38; }
+.q-sugg-liste .q-arbre-btn:active { background: var(--c-control); }
+.visites-compte-label { font-size: 14px; font-weight: 500; margin: 4px 0 6px; }
+.visites-compte-liste { max-height: 240px; margin-bottom: 8px; }
+.visites-compte-opt.sel { background: var(--c-primary-soft, #FDE9E7); box-shadow: 0 0 0 0 transparent, inset 4px 0 0 0 transparent; font-weight: 600; }
+.visites-compte-opt.sel strong { color: var(--c-primary); }
+#visites-recherche-modal > div:first-child { min-width: 0; }
+#visites-recherche-modal > div:first-child label { min-width: 0; }
+#visites-recherche-modal > div:first-child input { min-width: 0; }
+/* La recherche par département (champ court) garde un champ simple, et les rangées de la modale ne débordent plus */
+#visites-recherche-modal > div:first-child label:nth-child(2) input { padding-left: 12px; background-image: none; min-height: 46px; }
+.modal label, .modal input, .modal select { min-width: 0; max-width: 100%; }
+
+/* ═══ Filtres mobiles : pastilles douces (sans liseré), feuille de choix ═══ */
+@media (max-width: 899px) {
+  .fp { border: 0; background: var(--c-control, #E6ECFA); min-height: 40px; }
+  .fp.on { background: var(--ardoise, #2B3A4A); color: #fff; }
+  .fp .fp-l { opacity: .8; }
+  .barre-filtres .filtres-pastilles { margin: 0 -16px; padding: 2px 16px 6px; }
+  .ff-feuille { box-shadow: 0 -8px 30px rgba(14,17,20,.18); }
+  .ff-opt { border-bottom: 0; border-radius: 12px; }
+  .ff-opt.on { background: var(--c-control, #E6ECFA); }
+  .ff-vide { padding: 14px 12px; font-size: 14px; color: var(--c-text-2); }
+  .ff-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+  .ff-act { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; border: 0; border-radius: 14px; background: var(--c-primary, #E8605A); color: var(--on-primary, #fff); font: inherit; font-weight: 700; font-size: 15px; cursor: pointer; }
+  .ff-act-sec { background: var(--c-control, #E6ECFA); color: var(--c-text); font-weight: 600; }
+  /* Recherche du tracker et de la liste Comptes : fond clair, ombre douce, sans liseré */
+  .barre-filtres > input[type="search"] { background: #FFFFFF !important; border: 0 !important; box-shadow: 0 1px 2px rgba(20,30,50,.10), 0 4px 14px rgba(20,30,50,.06); min-height: 46px; font-size: 16px !important; padding-left: 40px !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23697386' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important; background-position: 13px center !important; }
+  :root[data-theme="dark"] .barre-filtres > input[type="search"] { background-color: #1E2A38 !important; }
+}

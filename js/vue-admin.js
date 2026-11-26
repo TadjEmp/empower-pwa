@@ -10,7 +10,13 @@ window.VueAdmin = {
   async init() {
     // Alexandra (CHANNEL_MANAGER) garde son espace exports/leads ;
     // seul ADMIN voit le bloc clés API (rendu dans la branche estManager ci-dessous).
-    if (!Session.estManager() && !Session.estChannel()) { Router.aller('#/dashboard'); return; }
+    // Autre profil (CDS, Externe) disposant du droit « Administration » : uniquement SES réglages.
+    if (!Session.estManager() && !Session.estChannel()) {
+      if (!window.Permissions || !Permissions.peut(Session.role, 'admin')) { Router.aller('#/dashboard'); return; }
+      this.state = { chargement: false, mesReglages: true, mdpMsg: '' };
+      this.render();
+      return;
+    }
     this.state = {
       chargement: true, objectifs: [], params: [], envoiEnCours: false,
       alexTab: 'exports',   // 'exports' | 'leads'
@@ -69,6 +75,7 @@ window.VueAdmin = {
 
   setAlexTab(tab) {
     this.state.alexTab = tab;
+    if ((tab === 'secteurs' || tab === 'equipe') && !AdminSecteurs.state.lignes) { AdminSecteurs.charger(); }
     if (tab === 'suivi' && !this.state.suivi.leads.length && !this.state.suivi.chargement) {
       this._chargerSuivi();
     } else {
@@ -79,6 +86,7 @@ window.VueAdmin = {
   // ── Bloc 8 refonte desktop : sous-navigation Administration ──
   setAdminTab(tab) {
     this.state.adminTab = tab;
+    if (tab === 'equipe' && !AdminSecteurs.state.lignes) AdminSecteurs.charger();
     if (tab === 'journal' && !this.state.journal.length && !this.state.journalChargement) {
       this._chargerJournal();
     } else if (tab === 'utilisateurs' && !this.state.usersState.liste.length && !this.state.usersState.chargement) {
@@ -146,11 +154,11 @@ window.VueAdmin = {
       } catch (_) { /* repli ci-dessous */ }
       if (!liste) {
         const { data, error } = await SheetsAPI._sb.from('utilisateurs')
-          .select('pin,nom,email,role,actif').order('pin');
+          .select('pin,nom,email,role,actif,droits').order('pin');
         if (error) throw new Error(error.message);
         liste = data;
       }
-      this.state.usersState.liste = liste || [];
+      this.state.usersState.liste = neutraliser(liste || []);
     } catch(e) { Toast.afficher('Erreur : ' + e.message, 'erreur'); }
     this.state.usersState.chargement = false;
     this.render();
@@ -279,6 +287,112 @@ window.VueAdmin = {
     } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
   },
 
+  // Lot 5 : suppression définitive d'un accès (ADMIN seul). Les comptes, leads, visites et appels rattachés au PIN restent.
+  supprimerUtilisateur(pin, nom) {
+    if (pin === Session.pin) { Toast.afficher('Impossible de supprimer son propre compte', 'warning'); return; }
+    const nomSafe = String(nom || '').replace(/[<>&"]/g, '');
+    ConfirmModal.demander({
+      titre: 'Supprimer cet accès ?',
+      message: `${nomSafe} (PIN ${pin}) ne pourra plus se connecter. Cette action est définitive.`,
+      detail: 'Ses comptes, leads, visites et appels restent dans l’application. Pour un retrait temporaire, préférez « Désactiver ».\nTape SUPPRIMER pour confirmer.',
+      labelConfirmer: 'Supprimer définitivement', danger: true,
+      champ: { placeholder: 'SUPPRIMER' },
+      onConfirm: (saisie) => {
+        if (String(saisie || '').trim().toUpperCase() !== 'SUPPRIMER') { Toast.afficher('Suppression annulée : confirmation incorrecte', 'warning'); return; }
+        this._supprimerUtilisateurConfirme(pin);
+      },
+    });
+  },
+
+  async _supprimerUtilisateurConfirme(pin) {
+    try {
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/admin-users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+        body: JSON.stringify({ action: 'delete', token: SheetsAPI.TOKEN, targetPin: pin, confirmation: true }),
+      });
+      const data = await r.json();
+      if (!data.ok) throw new Error(data.erreur || 'Suppression impossible (fonction non à jour ?)');
+      Toast.afficher('Accès supprimé', 'succes');
+      await this._chargerUtilisateurs();
+    } catch(e) { Toast.afficher('' + e.message, 'erreur'); }
+  },
+
+  // Nom et e-mail d'un accès existant (action serveur updateProfil).
+  ouvrirProfil(pin) {
+    const u = this.state.usersState.liste.find(x => x.pin === pin); if (!u) return;
+    this.state.usersState.profilEdit = { pin, nom: u.nom || '', email: u.email || '', envoi: false };
+    this.render();
+  },
+  fermerProfil() { this.state.usersState.profilEdit = null; this.render(); },
+  async enregistrerProfil() {
+    const d = this.state.usersState.profilEdit; if (!d || d.envoi) return;
+    const nom = (document.getElementById('profil-nom')?.value || '').trim();
+    const email = (document.getElementById('profil-email')?.value || '').trim();
+    if (!nom || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { Toast.afficher('Nom et e-mail valides requis', 'warning'); return; }
+    d.envoi = true;
+    try {
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/admin-users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+        body: JSON.stringify({ action: 'updateProfil', token: SheetsAPI.TOKEN, targetPin: d.pin, nom, email }),
+      });
+      const data = await r.json();
+      if (!data.ok) throw new Error(data.erreur || `HTTP ${r.status}`);
+      Toast.afficher('Profil mis à jour', 'succes');
+      this.state.usersState.profilEdit = null;
+      await this._chargerUtilisateurs();
+    } catch (e) { d.envoi = false; Toast.afficher('' + e.message, 'erreur'); }
+  },
+  _renderModalProfil() {
+    const d = this.state.usersState.profilEdit;
+    const a = v => String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    return `<div class="modal-overlay" onclick="if(event.target===this) VueAdmin.fermerProfil()"><div class="modal">
+      <h3>Modifier l'accès (PIN ${d.pin})</h3>
+      <label class="champ-label">Nom</label><input id="profil-nom" type="text" maxlength="120" value="${a(d.nom)}" autocomplete="off"/>
+      <label class="champ-label" style="margin-top:10px">E-mail</label><input id="profil-email" type="email" value="${a(d.email)}" autocomplete="off"/>
+      <div style="display:flex;gap:8px;margin-top:14px"><button type="button" class="btn-secondaire" onclick="VueAdmin.fermerProfil()">Annuler</button>
+      <button type="button" class="btn-primaire" onclick="VueAdmin.enregistrerProfil()">Enregistrer</button></div></div></div>`;
+  },
+
+  // Droits d'accès d'un utilisateur existant (action serveur updateDroits ; null = droits par défaut du rôle).
+  ouvrirDroits(pin) {
+    const u = this.state.usersState.liste.find(x => x.pin === pin); if (!u) return;
+    const defaut = Permissions.MATRICE[u.role] || [];
+    this.state.usersState.droitsEdit = { pin, nom: u.nom, role: u.role, droits: new Set(Array.isArray(u.droits) ? u.droits : defaut), envoi: false };
+    this.render();
+  },
+  basculerDroitEdition(tab, coche) { const d = this.state.usersState.droitsEdit; if (coche) d.droits.add(tab); else d.droits.delete(tab); },
+  fermerDroits() { this.state.usersState.droitsEdit = null; this.render(); },
+  async enregistrerDroits() {
+    const d = this.state.usersState.droitsEdit; if (!d || d.envoi) return;
+    if (d.droits.size === 0) { Toast.afficher('Cochez au moins une section', 'warning'); return; }
+    const defaut = Permissions.MATRICE[d.role] || [];
+    const identique = defaut.length === d.droits.size && defaut.every(t => d.droits.has(t));
+    d.envoi = true;
+    try {
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/admin-users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+        body: JSON.stringify({ action: 'updateDroits', token: SheetsAPI.TOKEN, targetPin: d.pin, droits: identique ? null : [...d.droits] }),
+      });
+      const data = await r.json();
+      if (!data.ok) throw new Error(data.erreur || `HTTP ${r.status}`);
+      Toast.afficher(`Droits mis à jour pour ${d.nom}`, 'succes');
+      this.state.usersState.droitsEdit = null;
+      await this._chargerUtilisateurs();
+    } catch (e) { d.envoi = false; Toast.afficher('' + e.message, 'erreur'); }
+  },
+  _renderModalDroits() {
+    const d = this.state.usersState.droitsEdit, sections = Object.keys(Permissions.LIBELLES);
+    return `<div class="modal-overlay" onclick="if(event.target===this) VueAdmin.fermerDroits()"><div class="modal">
+      <h3>Droits d'accès, ${d.nom}</h3>
+      <p style="font-size:12px;color:var(--c-text-2)">Rôle : ${({ ADMIN: 'Administrateur', CDS: 'Commercial', CHANNEL_MANAGER: 'Manager', EXTERNE: 'Fournisseur de leads' })[d.role] || d.role}. Les droits cochés remplacent ceux du rôle ; revenir aux droits du rôle les réinitialise.</p>
+      <fieldset class="admin-droits">${sections.map(t => `<label class="admin-droit"><input type="checkbox" ${d.droits.has(t) ? 'checked' : ''} onchange="VueAdmin.basculerDroitEdition('${t}', this.checked)"/><span>${Permissions.LIBELLES[t]}</span></label>`).join('')}</fieldset>
+      <div style="display:flex;gap:8px;margin-top:14px"><button type="button" class="btn-secondaire" onclick="VueAdmin.fermerDroits()">Annuler</button>
+      <button type="button" class="btn-primaire" onclick="VueAdmin.enregistrerDroits()">Enregistrer</button></div></div></div>`;
+  },
+
   ouvrirModalReset(pin, nom) {
     this.state.usersState.resetTarget = { pin, nom };
     this.state.usersState.resetMdp = '';
@@ -316,7 +430,7 @@ window.VueAdmin = {
           <button class="btn-secondaire" style="margin-left:auto;width:auto;padding:8px 14px" onclick="VueAdmin.ouvrirModalCreation()">Créer un accès</button>
         </div>
         <div class="desktop-table-wrap">
-          <table class="desktop-table-data-view">
+          <table class="desktop-table-data-view adm-users">
             <thead><tr><th>PIN</th><th>Nom</th><th>Email</th><th>Rôle</th><th>Statut</th><th>Actions</th></tr></thead>
             <tbody>
               ${us.liste.map(u => `
@@ -332,11 +446,16 @@ window.VueAdmin = {
                   <td>
                     <span class="v7-statut" style="font-size:12px;color:${u.actif ? 'var(--c-success,#1a9e5c)' : 'var(--c-danger)'}">${u.actif ? 'Actif' : 'Désactivé'}</span>
                   </td>
-                  <td style="white-space:nowrap">
-                    <button class="btn-lien" style="font-size:12px" onclick="VueAdmin.ouvrirModalReset(${u.pin}, '${(u.nom || '').replace(/'/g, "\\'")}')">Reset mdp</button>
+                  <td class="adm-actions">
+                    <button class="btn-lien" style="font-size:12px" onclick="VueAdmin.ouvrirProfil(${u.pin})">Modifier</button>
+                    <button class="btn-lien" style="font-size:12px" ${u.role === 'ADMIN' ? 'disabled title="Un administrateur a tous les droits"' : ''} onclick="VueAdmin.ouvrirDroits(${u.pin})">Droits</button>
+                    <button class="btn-lien" style="font-size:12px" onclick="VueAdmin.ouvrirModalReset(${u.pin}, '${jsq(u.nom)}')">Reset mdp</button>
                     <button class="btn-lien" style="font-size:12px;color:${u.actif ? 'var(--c-danger)' : 'var(--c-success,#1a9e5c)'}"
                             ${u.pin === Session.pin ? 'disabled title="Impossible de modifier son propre compte"' : ''}
                             onclick="VueAdmin.toggleActifUtilisateur(${u.pin}, ${u.actif})">${u.actif ? 'Désactiver' : 'Réactiver'}</button>
+                    <button class="btn-lien" style="font-size:12px;color:var(--c-danger)"
+                            ${u.pin === Session.pin ? 'disabled title="Impossible de supprimer son propre compte"' : ''}
+                            onclick="VueAdmin.supprimerUtilisateur(${u.pin}, '${jsq(u.nom)}')">Supprimer</button>
                   </td>
                 </tr>`).join('')}
             </tbody>
@@ -364,6 +483,8 @@ window.VueAdmin = {
 
       ${us.modalCreation ? this._renderModalCreation() : ''}
       ${us.modalReset ? this._renderModalReset() : ''}
+      ${us.droitsEdit ? this._renderModalDroits() : ''}
+      ${us.profilEdit ? this._renderModalProfil() : ''}
     `;
   },
 
@@ -727,7 +848,15 @@ window.VueAdmin = {
         created_by:        Session.nom,
       };
 
+      let attrib = null;
+      if (!f.cdsAssigne) {
+        attrib = await AttributionCP.decider(lead.Code_Postal);
+        if (attrib.resultat === 'ATTRIBUE' && attrib.pin) {
+          lead.PIN_CDS_Assigne = attrib.pin; lead.STATUT_EMPOWER = 'ASSIGNE'; lead.FLAG_ACTION = 'ASSIGNE';
+        }
+      }
       await SheetsAPI.ecrire('EMPOWER_MDB', 'LEADS', lead);
+      if (attrib) AttributionCP.appliquer(lead, attrib).catch(() => {});
       // Bloc 4 : si un CDS est assigné, déclencher l'action backend attribuerLead
       // → émet la notif J0 (LEAD_ASSIGNE) au CDS. Sans CDS, le lead reste "à traiter".
       if (f.cdsAssigne) {
@@ -908,6 +1037,31 @@ window.VueAdmin = {
   // blocages rencontrés en 09/2026 : API Drive inaccessible (mur IAM sur le
   // compte de service) et conversion Excel→Google Sheets qui perdait les
   // lignes du quarter le plus récent.
+  // Lot 6 / M4 — le serveur refuse une purge importante tant qu'elle n'est pas confirmée : on affiche le plan, puis on rappelle.
+  async _postSellIn(corps) {
+    const envoyer = async extra => {
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/sync-sellin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+        body: JSON.stringify({ ...corps, token: Session.token, ...extra }),
+      });
+      return { r, data: await r.json() };
+    };
+    let { r, data } = await envoyer({});
+    if (r.status === 409 && data?.purge_a_confirmer) {
+      const p = data.purge || {};
+      const ok = await new Promise(res => ConfirmModal.demander({
+        titre: 'Cet import va supprimer des données',
+        detail: `${p.sellin || 0} ligne(s) Sell-In (${Math.round(p.sellin_ca || 0).toLocaleString('fr-FR')} € de CA) et ${p.agregats || 0} revendeur(s) absents du fichier seront supprimés. Si le fichier est incomplet, annulez.`,
+        labelConfirmer: 'Supprimer et importer', labelAnnuler: 'Annuler', danger: true,
+        onConfirm: () => res(true), onAnnuler: () => res(false),
+      }));
+      if (!ok) throw new Error('Import annulé : aucune donnée supprimée');
+      ({ r, data } = await envoyer({ confirmer_purge: true }));
+    }
+    return { r, data };
+  },
+
   async importSellInFichier(file) {
     if (!file) return;
     if (this.state.syncSellInEnCours) return;
@@ -924,12 +1078,7 @@ window.VueAdmin = {
       const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
       if (!rows.length || rows.length < 2) throw new Error(`Onglet "${sheetName}" vide`);
 
-      const _r1 = await fetch(`${SUPABASE_URL}/functions/v1/sync-sellin`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
-        body: JSON.stringify({ rows, token: Session.token }),
-      });
-      const data = await _r1.json();
+      const { r: _r1, data } = await this._postSellIn({ rows });
       if (!_r1.ok || !data?.ok) throw new Error(data?.error || `HTTP ${_r1.status}`);
       const matched  = data.comptes_maj ?? '?';
       const crees    = data.comptes_crees ?? 0;
@@ -1067,11 +1216,34 @@ window.VueAdmin = {
       </div>`;
   },
 
+  // Base des comptes actifs : lit le Google Sheet, met à jour base_comptes et complète les champs VIDES des comptes (jamais d'écrasement).
+  syncBaseComptes() {
+    if (this.state.syncBaseEnCours) return;
+    ConfirmModal.demander({
+      titre: 'Synchroniser la base des comptes actifs ?',
+      detail: 'Lit le Google Sheet « BASE COMPTES ACTIFS » (lecture seule), met à jour la base et complète uniquement les champs vides des comptes. Aucune saisie existante n’est écrasée.',
+      labelConfirmer: 'Synchroniser',
+      onConfirm: () => this._syncBaseConfirme(),
+    });
+  },
+  async _syncBaseConfirme() {
+    this.state.syncBaseEnCours = true; this.state.syncBaseResultat = null; this.render();
+    try {
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/base-comptes-sync`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+        body: JSON.stringify({ token: Session.token, action: 'lire' }) });
+      const d = await r.json();
+      if (!r.ok || !d.ok) throw new Error(d.error || `HTTP ${r.status}`);
+      this.state.syncBaseResultat = { ok: true, ...d };
+      Toast.afficher(`Base synchronisée : ${d.total_base} comptes, ${d.comptes_enrichis} fiche(s) complétée(s)`, 'succes');
+    } catch (e) { this.state.syncBaseResultat = { ok: false, message: e.message || String(e) }; Toast.afficher('Synchronisation de la base impossible : ' + (e.message || e), 'erreur'); }
+    this.state.syncBaseEnCours = false; this.render();
+  },
+
   syncSellIn() {
     if (this.state.syncSellInEnCours) return;
     ConfirmModal.demander({
-      titre: 'Synchroniser les données Sell-In depuis Google Drive ?',
-      detail: 'Cela met à jour les CA (FY25, FY26, Q1FY27) et les statuts dans Comptes.',
+      titre: 'Synchroniser le Sell-In depuis le Google Sheet ?',
+      detail: 'Lit le Sheet Sell-In (partagé par lien) et met à jour les CA par compte, les objectifs et le signal « dernière semaine de commande ». Même contrôle que l’import de fichier : une purge importante demande confirmation.',
       labelConfirmer: 'Synchroniser',
       onConfirm: () => this._syncSellInConfirme(),
     });
@@ -1083,13 +1255,22 @@ window.VueAdmin = {
     this.state.syncSellInNonMatcher = [];
     this.render();
     try {
-      const _r1 = await fetch(`${SUPABASE_URL}/functions/v1/sync-sellin`, {
+      // Lecture du Google Sheet partagé par lien (fonction sellin-drive-lire), puis import par les mêmes fonctions que le fichier .xlsx.
+      const lu = await fetch(`${SUPABASE_URL}/functions/v1/sellin-drive-lire`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
         body: JSON.stringify({ token: Session.token }),
       });
-      const data = await _r1.json();
+      const sheet = await lu.json();
+      if (!lu.ok || !sheet?.ok) throw new Error(sheet?.error || `Lecture du Google Sheet impossible (HTTP ${lu.status})`);
+      const { r: _r1, data } = await this._postSellIn({ rows: sheet.data });
       if (!_r1.ok || !data?.ok) throw new Error(data?.error || `HTTP ${_r1.status}`);
+      // Signal par semaine : onglets « REVENDEURS AU DETAIL Qn » du même Sheet (non bloquant, comme pour le fichier)
+      if (sheet.detail && sheet.detail.length) {
+        const wb = { SheetNames: sheet.detail.map(d => d.onglet), Sheets: {} };
+        sheet.detail.forEach(d => { wb.Sheets[d.onglet] = XLSX.utils.aoa_to_sheet(d.rows); });
+        await this._importerSemaines(wb, 'Google Sheet Sell In');
+      }
       // Bloc C (07/2026) — les noms de champs ci-dessous ne correspondaient à
       // rien dans la réponse réelle de l'edge function (comptesMisAJour/
       // sellinLignes/timestamp n'ont jamais existé côté serveur) : "matched"
@@ -1113,6 +1294,7 @@ window.VueAdmin = {
       // seul 🏢_COMPTES était invalidé ici, laissant le Reporting figé jusqu'à
       // 30 min (TTL cache IndexedDB) après une synchro.
       await Promise.all([
+        SheetsAPI.viderCache('EMPOWER_MDB', 'SELLIN_SEMAINES'),
         SheetsAPI.viderCache('EMPOWER_MDB', 'COMPTES'),
         SheetsAPI.viderCache('EMPOWER_MDB', 'OBJECTIFS_PRIMES'),
         SheetsAPI.viderCache('EMPOWER_MDB', 'COMPTES_HISTORIQUES'),
@@ -1256,10 +1438,10 @@ window.VueAdmin = {
     const btn = document.getElementById(`btn-purge-${cible}`);
     if (btn) { btn.disabled = true; btn.textContent = 'Purge…'; }
     try {
-      const r = await fetch(SheetsAPI.BASE_URL, {
-        method: 'POST', redirect: 'follow',
-        // Pas de Content-Type → requête simple, évite le préflight CORS (Apps Script ne gère pas OPTIONS)
-        body: JSON.stringify({ action: 'purgerDonnees', token: SheetsAPI.TOKEN, pinCDS: cible }),
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/admin-users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+        body: JSON.stringify({ action: 'purgerDonnees', token: SheetsAPI.TOKEN, pinCDS: Number(cible), confirmation: true }),
       });
       const data = await r.json();
       if (!data.ok) throw new Error(data.erreur);
@@ -1279,7 +1461,7 @@ window.VueAdmin = {
     if (!rows || !rows.length) return '';
     const headers = Object.keys(rows[0]);
     const esc = v => {
-      const s = v === null || v === undefined ? '' : String(v);
+      const s = v === null || v === undefined ? '' : denaturer(String(v));
       return s.includes(';') || s.includes('"') || s.includes('\n') || s.includes('\r')
         ? '"' + s.replace(/"/g, '""') + '"' : s;
     };
@@ -1361,6 +1543,10 @@ window.VueAdmin = {
           const t = new Date(r[exp.dateChamp] || 0).getTime();
           return t >= de && t <= au;
         });
+      }
+      // Lot 4 — le Channel ne voit jamais les primes : colonnes Prime_* et bonus retirées de l'export
+      if (Session.estChannel() && id === 'objectifs') {
+        data = data.map(r => Object.fromEntries(Object.entries(r).filter(([k]) => !/prime|bonus/i.test(k))));
       }
       const rows = this._aplatirExport(id, data);
       const csv  = this._toCSV(rows);
@@ -1490,6 +1676,83 @@ window.VueAdmin = {
     }
   },
 
+  // ── Export complet de la base : un seul classeur Excel propre (Synthèse, Comptes, Tracker, Base comptes actifs) ──
+  async exporterBaseComplete() {
+    const btn = document.getElementById('btn-export-base-complete');
+    if (btn) { btn.disabled = true; btn.textContent = 'Préparation…'; }
+    try {
+      if (typeof XLSX === 'undefined') throw new Error('Bibliothèque Excel non chargée (réseau ?)');
+      const L = (t, o) => SheetsAPI.lire('EMPOWER_MDB', t, o || {});
+      const [comptes0, leads0, base0] = await Promise.all([L('COMPTES', { nocache: true }), L('LEADS', { nocache: true }), L('base_comptes', { nocache: true }).catch(() => [])]);
+      const v = x => (x === null || x === undefined) ? '' : denaturer(String(x)).replace(/\s+/g, ' ').trim();
+      const d10 = x => String(x || '').slice(0, 10);
+      const non = r => String(r.deleted || r.Flag_traite || '').toUpperCase() !== 'TRUE' && String(r.Flag_traite || '').toUpperCase() !== 'DELETED';
+      const comptes = (comptes0 || []).filter(non), leads = (leads0 || []).filter(non), base = Array.isArray(base0) ? base0 : [];
+      const parCompte = {}; base.forEach(b => { if (b.compte_id) parCompte[String(b.compte_id)] = b; });
+      const oui = b => b ? 'Oui' : 'Non';
+      const rowsComptes = comptes.map(c => {
+        const e = ContactsObjectif.etat(c), b = parCompte[String(c._uuid)], emp = !!window.estEmpower(c);
+        return {
+          'Commercial': v(resolveCDS(c.PIN_CDS_Assigne)), 'Société': v(c.Nom_Compte), 'Canal': v(c.CANAL), 'Empower': oui(emp),
+          'Empower activé (1re commande)': oui(emp && window.FlagsCanal.active(c)), 'Palier': emp ? v(window.Paliers.palier(c).lib) : '',
+          'Adresse': v(c.Adresse), 'Code postal': v(c.Code_Postal), 'Ville': v(c.Ville), 'Département': v(c.Departement),
+          'Interlocuteur': v(c.Contact_Nom), 'Fonction': v(c.Contact_Fonction), 'Téléphone': v(c.Tel), 'E-mail': v(c.Email), 'Site web': v(c.Site_Web),
+          'Contact renseigné': oui(e.contact), 'Fiche complète': oui(e.complet), 'Fiche remplie (%)': e.pct,
+          'Dans la base comptes actifs': oui(!!b), 'Statut base': b ? (b.statut === 'ENRICHI' ? 'Enrichi' : 'À compléter') : '',
+          'CA FY26 (€)': Math.round(CACanal.valeur(c, 'FY26', 'TOUS') || 0), 'CA Q1 FY27 (€)': Math.round(CACanal.valeur(c, 'Q1FY27', 'TOUS') || 0),
+          'CA Q2 FY27 (€)': Math.round(CACanal.valeur(c, 'Q2FY27', 'TOUS') || 0), 'CA Q3 FY27 (€)': Math.round(CACanal.valeur(c, 'Q3FY27', 'TOUS') || 0),
+          'CA Q4 FY27 (€)': Math.round(CACanal.valeur(c, 'Q4FY27', 'TOUS') || 0), 'Dernière action': d10(c.Date_Derniere_Action),
+        };
+      }).sort((a, b) => a['Commercial'].localeCompare(b['Commercial']) || a['Société'].localeCompare(b['Société']));
+      const lib = { SAISIE: 'À traiter', ASSIGNE: 'Assigné', EN_COURS: 'En cours', COMPTE_CREE: 'Compte créé', INTEGRE: 'Activé Empower', ARCHIVE: 'Archivé' };
+      const rowsLeads = leads.map(p => ({
+        'Société': v(p.Nom_Compte), 'Statut': lib[String(p.STATUT_EMPOWER || '').toUpperCase()] || v(p.STATUT_EMPOWER), 'Commercial': v(resolveCDS(p.PIN_CDS_Assigne || p.Nom_CDS)),
+        'Potentiel': v(p.POTENTIEL), 'Origine / fournisseur': v(p.ORIGINE), 'Saisi par': v(p.Nom_Channel), 'Date de saisie': d10(p.Date_Import || p.Timestamp),
+        'Prochaine action': d10(p.Date_prochaine_action), 'Dernière action': d10(p.Date_Derniere_Action), 'Date d’activation': d10(p.Date_Integration),
+        'Welcome Pack': d10(p.Welcome_Pack_Date), 'Canal': v(p.CANAL), 'Adresse': v(p.Adresse), 'Code postal': v(p.Code_Postal), 'Ville': v(p.Ville), 'Département': v(p.Departement),
+        'Interlocuteur': v(p.Interlocuteur || p.Contact_Nom), 'Téléphone': v(p.Tel), 'E-mail': v(p.Email), 'Produits potentiels': v(p.Produits_Potentiels), 'Note': v(p.Note_initiale),
+        'Source': v(p.Source_Import),
+      })).sort((a, b) => b['Date de saisie'].localeCompare(a['Date de saisie']));
+      const nomCompte = {}; comptes.forEach(c => { nomCompte[String(c._uuid)] = c.Nom_Compte; });
+      const rowsBase = base.map(b => ({
+        'Commercial': v(b.commercial), 'Société': v(b.nom), 'Type': v(b.type_compte), 'Adresse': v(b.adresse), 'Code postal': v(b.code_postal), 'Ville': v(b.ville),
+        'Téléphone': v(b.tel), 'E-mail': v(b.email), 'Site web': v(b.site_web), 'Contact principal': v(b.contact_principal),
+        'Statut': b.statut === 'ENRICHI' ? 'Enrichi' : 'À compléter', 'Compte dans l’appli': v(nomCompte[String(b.compte_id)] || ''),
+      })).sort((a, b) => a['Commercial'].localeCompare(b['Commercial']) || a['Société'].localeCompare(b['Société']));
+      // Synthèse
+      const cnt = (arr, f) => arr.filter(f).length;
+      const syn = [['EXPORT COMPLET DE LA BASE ESI'], ['Date', new Date().toLocaleString('fr-FR')], ['Exporté par', v(Session.nom)], [],
+        ['COMPTES'], ['Comptes dans l’appli', rowsComptes.length], ['Dans la base comptes actifs', cnt(rowsComptes, r => r['Dans la base comptes actifs'] === 'Oui')],
+        ['Contact renseigné', cnt(rowsComptes, r => r['Contact renseigné'] === 'Oui')], ['Fiche complète', cnt(rowsComptes, r => r['Fiche complète'] === 'Oui')],
+        ['Empower activés', cnt(rowsComptes, r => r['Empower activé (1re commande)'] === 'Oui')], [],
+        ['BASE COMPTES ACTIFS'], ['Lignes', rowsBase.length], ['Enrichies', cnt(rowsBase, r => r['Statut'] === 'Enrichi')], ['À compléter', cnt(rowsBase, r => r['Statut'] === 'À compléter')], [],
+        ['TRACKER (LEADS)'], ['Leads', rowsLeads.length], ...Object.values(lib).map(l => [l, cnt(rowsLeads, r => r['Statut'] === l)]), [],
+        ['PAR COMMERCIAL', 'Comptes', 'Contact renseigné', 'Leads']];
+      [...new Set(rowsComptes.map(r => r['Commercial']).concat(rowsLeads.map(r => r['Commercial'])))].filter(Boolean).sort().forEach(n =>
+        syn.push([n, cnt(rowsComptes, r => r['Commercial'] === n), cnt(rowsComptes, r => r['Commercial'] === n && r['Contact renseigné'] === 'Oui'), cnt(rowsLeads, r => r['Commercial'] === n)]));
+      const feuille = rows => {
+        const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{ 'Aucune donnée': '' }]);
+        const cles = Object.keys(rows[0] || { x: 1 });
+        ws['!cols'] = cles.map(k => ({ wch: Math.min(40, Math.max(k.length + 2, ...rows.slice(0, 200).map(r => String(r[k] ?? '').length + 2))) }));
+        if (rows.length) ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length, c: cles.length - 1 } }) };
+        return ws;
+      };
+      const wb = XLSX.utils.book_new();
+      const wsS = XLSX.utils.aoa_to_sheet(syn); wsS['!cols'] = [{ wch: 34 }, { wch: 22 }, { wch: 18 }, { wch: 10 }];
+      XLSX.utils.book_append_sheet(wb, wsS, 'Synthèse');
+      XLSX.utils.book_append_sheet(wb, feuille(rowsComptes), 'Comptes');
+      XLSX.utils.book_append_sheet(wb, feuille(rowsLeads), 'Tracker');
+      XLSX.utils.book_append_sheet(wb, feuille(rowsBase), 'Base comptes actifs');
+      XLSX.writeFile(wb, `ESI_BASE_COMPLETE_${dateISOLocale()}.xlsx`);
+      await this._logExport('BASE_COMPLETE', rowsComptes.length + rowsLeads.length + rowsBase.length);
+      Toast.afficher(`Export complet : ${rowsComptes.length} comptes, ${rowsLeads.length} leads, ${rowsBase.length} lignes de base`, 'succes');
+    } catch (e) {
+      Toast.afficher('Export complet : ' + (e.message || e), 'erreur');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Excel'; }
+    }
+  },
+
   _renderExports() {
     const de = this.state.filtrePickupDe || '';
     const au = this.state.filtrePickupA  || '';
@@ -1526,7 +1789,27 @@ window.VueAdmin = {
                   onclick="VueAdmin.exporterTracker()">CSV</button>
         </div>
       </div>`;
-    return filtrePickupHtml + trackerExportHtml + this.EXPORT_GROUPES.map(groupe => `
+    const completHtml = `
+      <div style="margin-bottom:18px;padding:12px;border-radius:var(--radius-sm);background:var(--c-bg);border:1px solid var(--c-border)">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:700">Export complet de la base (Excel)</div>
+            <div style="font-size:11px;color:var(--c-text-2);margin-top:2px">Un seul classeur propre : Synthèse, Comptes (coordonnées, contact, CA, présence dans la base), Tracker (tous les leads) et Base comptes actifs. Colonnes lisibles, filtres activés. Sans filtre de dates.</div>
+          </div>
+          <button id="btn-export-base-complete" class="btn-secondaire" style="padding:8px 14px;width:auto;flex-shrink:0" onclick="VueAdmin.exporterBaseComplete()">Excel</button>
+        </div>
+      </div>`;
+    const exportColonnesHtml = `
+      <div style="margin-bottom:18px;padding:12px;border-radius:var(--radius-sm);background:var(--c-bg);border:1px solid var(--c-border)">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:700">Export Base comptes / Base Tracker (choix des colonnes)</div>
+            <div style="font-size:11px;color:var(--c-text-2);margin-top:2px">Choisissez la base, cochez les colonnes voulues, téléchargez en Excel.</div>
+          </div>
+          <button class="btn-secondaire" style="padding:8px 14px;width:auto;flex-shrink:0" onclick="Router.aller('#/export')">Ouvrir</button>
+        </div>
+      </div>`;
+    return exportColonnesHtml + completHtml + filtrePickupHtml + trackerExportHtml + this.EXPORT_GROUPES.map(groupe => `
       <div style="margin-bottom:18px">
         <div style="font-size:12px;font-weight:700;color:var(--c-title);letter-spacing:.04em;margin-bottom:8px;padding-bottom:6px;">${groupe.titre}</div>
         ${groupe.exports.map(e => `
@@ -1541,12 +1824,39 @@ window.VueAdmin = {
       </div>`).join('');
   },
 
+  // Réglages personnels : aucun accès aux onglets d'administration (utilisateurs, objectifs, prix…).
+  _renderMesReglages() {
+    const app = document.getElementById('app');
+    const E = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+    const role = ({ ADMIN: 'Administrateur', CDS: 'Commercial', CHANNEL_MANAGER: 'Manager', EXTERNE: 'Fournisseur de leads' })[Session.role] || Session.role;
+    app.innerHTML = `
+      <header class="header-vue">
+        <button onclick="Router.retour()" class="btn-retour">←</button>
+        <h1>Mes réglages</h1>
+      </header>
+      <div class="dash-body avec-nav"><div class="dash-col-main">
+        <div class="bloc-fiche">
+          <div class="bloc-titre">Mon profil</div>
+          <p style="font-size:14px"><strong>${E(Session.nom)}</strong></p>
+          <p style="font-size:12px;color:var(--c-text-2)">${E(Session.email)} · ${E(role)}</p>
+        </div>
+        <div class="bloc-fiche">
+          <div class="bloc-titre">Mot de passe</div>
+          <p style="font-size:12px;color:var(--c-text-2);margin-bottom:10px">Pour changer votre mot de passe, envoyez une demande depuis Aide &amp; Suggestions : l'administrateur le réinitialise.</p>
+          <button class="btn-secondaire" onclick="Router.aller('#/aide')">Ouvrir Aide &amp; Suggestions</button>
+        </div>
+      </div></div>
+      ${typeof NavBar === 'function' ? NavBar('admin') : ''}`;
+  },
+
   render() {
     const app = document.getElementById('app');
     if (!this.state || this.state.chargement) {
       app.innerHTML = skeletonListe(6);
       return;
     }
+
+    if (this.state.mesReglages) { this._renderMesReglages(); return; }
 
     // Alexandra (CHANNEL_MANAGER) : exports + création de leads
     if (Session.estChannel()) {
@@ -1556,9 +1866,10 @@ window.VueAdmin = {
           <button onclick="Router.retour()" class="btn-retour">←</button>
           <h1>Espace Alexandra</h1>
         </header>
+        ${FusionTabs.administration()}
         <!-- Onglets -->
         <div style="display:flex;border-bottom:2px solid var(--c-border);background:var(--c-surface)">
-          ${[['exports','Exports'],['leads','Leads'],['suivi','Suivi']].map(([t, l]) => `
+          ${[['exports','Exports'],['leads','Leads'],['suivi','Suivi'],['secteurs','Secteurs CP'],['prix','Prix'],['equipe','Équipe']].map(([t, l]) => `
             <button onclick="VueAdmin.setAlexTab('${t}')"
                     style="flex:1;padding:12px 6px;border:none;border-bottom:${tab===t?'3px solid var(--c-primary)':'3px solid transparent'};
                            background:transparent;font-weight:${tab===t?'700':'400'};font-size:13px;
@@ -1567,6 +1878,9 @@ window.VueAdmin = {
         <div class="dash-body avec-nav">
           <div class="dash-col-main">
           ${tab === 'suivi' ? this._renderSuivi()
+          : tab === 'secteurs' ? AdminSecteurs.html()
+          : tab === 'prix' ? AdminPrix.html() + (window.AdminCoach ? AdminCoach.html() : '')
+          : tab === 'equipe' ? EquipeContacts.html()
           : tab === 'exports' ? `
             <div class="bloc-fiche">
               <div class="bloc-titre">Exports CSV, Reporting thématique</div>
@@ -1577,7 +1891,7 @@ window.VueAdmin = {
             </div>` : this._renderFormLead()}
           </div>
         </div>
-        ${NavBar('home')}`;
+        ${NavBar('admin')}`;
       return;
     }
 
@@ -1590,6 +1904,9 @@ window.VueAdmin = {
       ['exports',      'Exports'],
       ['rgpd',         'RGPD'],
       ['journal',      'Journal'],
+      ['equipe',       'Équipe et contacts'],
+      ['secteurs',     'Secteurs CP'],
+      ['prix',         'Prix et cotations'],
       ['maintenance',  'Maintenance'],
     ];
 
@@ -1597,7 +1914,7 @@ window.VueAdmin = {
     // via un marqueur lu par Topbar (utils.js) pour compléter le fil d'Ariane
     // (Admin › Administration › Journal) — la nav par tabs était jusque-là
     // invisible du fil d'Ariane global (audit UX desktop § "Administration").
-    const adminTabLabel = (ADMIN_TABS.find(([t]) => t === adminTab) || [null, ''])[1].replace(/^\S+\s/, '');
+    const adminTabLabel = (ADMIN_TABS.find(([t]) => t === adminTab) || [null, ''])[1].replace(/^[^\p{L}\p{N}]+/u, '');
 
     app.innerHTML = `
       <header class="header-vue">
@@ -1606,6 +1923,7 @@ window.VueAdmin = {
         <span class="js-tab-label" hidden>${adminTabLabel}</span>
       </header>
 
+      ${FusionTabs.administration()}
       <!-- Bloc 8 refonte desktop : sous-navigation par onglets au lieu d'un scroll unique -->
       <div class="tabs-premium" style="padding:10px 12px;background:var(--c-surface);overflow-x:auto">
         ${ADMIN_TABS.map(([t, l]) => `
@@ -1806,11 +2124,18 @@ window.VueAdmin = {
                   style="padding:8px 16px;width:100%"
                   ${this.state.syncSellInEnCours ? 'disabled' : ''}
                   onclick="VueAdmin.syncSellIn()">
-            ${this.state.syncSellInEnCours ? 'Synchronisation en cours…' : 'Repli : synchroniser depuis Google Drive'}
+            ${this.state.syncSellInEnCours ? 'Synchronisation en cours…' : 'Synchroniser depuis le Google Sheet'}
           </button>
           <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">
-            Repli : Google Sheet fixe (ID en dur côté serveur, pas de secret <code>SELLIN_SHEET_ID</code> à jour) · Edge Function <code>sync-sellin</code>
+            Lit directement le Google Sheet Sell-In (partagé par lien, lecture seule) : onglet DATA et onglets « REVENDEURS AU DETAIL ». Aucune clé Google requise · Edge Function <code>sellin-drive-lire</code>
           </p>
+          <button class="btn-secondaire" style="padding:8px 16px;width:100%;margin-top:16px" ${this.state.syncBaseEnCours ? 'disabled' : ''} onclick="VueAdmin.syncBaseComptes()">
+            ${this.state.syncBaseEnCours ? 'Synchronisation en cours…' : 'Synchroniser la base des comptes actifs'}
+          </button>
+          <p style="font-size:11px;color:var(--c-text-2);margin-top:8px">
+            Lit le Google Sheet « BASE COMPTES ACTIFS - MATCHES ET ENRICHIS » (lecture seule) et complète les champs vides des comptes. Les nouveaux leads y sont ajoutés automatiquement à leur création · Edge Function <code>base-comptes-sync</code>
+          </p>
+          ${this.state.syncBaseResultat ? `<p style="font-size:12px;margin-top:6px">${this.state.syncBaseResultat.ok ? `${this.state.syncBaseResultat.total_base} comptes dans la base · ${this.state.syncBaseResultat.ajoutees} ajouté(s), ${this.state.syncBaseResultat.modifiees} modifié(s), ${this.state.syncBaseResultat.rattachees} rattaché(s), ${this.state.syncBaseResultat.comptes_enrichis} fiche(s) complétée(s)` : 'Échec : ' + this.state.syncBaseResultat.message}</p>` : ''}
         </div>` : ''}
 
         ${adminTab === 'rgpd' ? `
@@ -1830,7 +2155,7 @@ window.VueAdmin = {
               </div>
               <button id="btn-purge-${o.PIN_CDS}" class="btn-secondaire"
                       style="padding:8px 14px;width:auto;color:var(--c-danger);border-color:var(--c-danger)"
-                      onclick="VueAdmin.confirmerPurgeCDS('${o.PIN_CDS}', '${(o.Nom_CDS || '').replace(/'/g, "\\'")}')">
+                      onclick="VueAdmin.confirmerPurgeCDS('${o.PIN_CDS}', '${jsq(o.Nom_CDS)}')">
                 Purger
               </button>
             </div>`).join('')}
@@ -1839,6 +2164,10 @@ window.VueAdmin = {
         ${adminTab === 'utilisateurs' ? this._renderUtilisateurs() : ''}
 
         ${adminTab === 'journal' ? this._renderJournal() : ''}
+
+        ${adminTab === 'equipe' ? EquipeContacts.html() : ''}
+        ${adminTab === 'secteurs' ? AdminSecteurs.html() : ''}
+        ${adminTab === 'prix' ? AdminPrix.html() + (window.AdminCoach ? AdminCoach.html() : '') : ''}
 
         ${adminTab === 'maintenance' ? `
         <!-- MAINTENANCE -->

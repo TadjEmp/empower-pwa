@@ -80,7 +80,7 @@ window.VueDashboardCDS = {
     // BLOC 02 §4 — les blocs analytiques déplacés depuis l'Accueil (top 5,
     // base prospects, comptes à réactiver, primes) vivent ici, dans Analyse.
     const d = this.state.donnees || {};
-    const potCoul = { Fort: '#00b27e', Moyen: '#f59e0b', Faible: '#626264' };
+    const potCoul = { Fort: '#343F48', Moyen: '#FF6D68', Faible: '#626264' };
 
     app.innerHTML = `
       <header class="dash-page-header">
@@ -429,7 +429,7 @@ window.VueDashboardCDS = {
       AT_RISK:  { lbl: 'AT RISK',  cls: 'pace-risk' },
     }[d.pace];
     const nbAlertes = d.comptesRouges.length + d.nextStepsDepasses.length + d.leadsATraiter.length;
-    const potCoul   = { Fort: '#00b27e', Moyen: '#f59e0b', Faible: '#626264' };
+    const potCoul   = { Fort: '#343F48', Moyen: '#FF6D68', Faible: '#626264' };
 
     // ── Delta vs semaine précédente (Bloc 2 refonte desktop — audit UX §
     //    "Home / cockpit") : activiteSemaines couvre déjà 6 semaines glissantes,
@@ -510,6 +510,7 @@ window.VueDashboardCDS = {
             <div class="hero-tuile-val">${fmtEUR(d.caRealise)} <span style="font-size:12px;font-weight:400;color:var(--c-text-2)">/ ${fmtEUR(d.caObjectif)}</span></div>
             <div class="hero-barre"><div class="hero-barre-fill" style="width:${Math.min(d.pct, 100)}%"></div></div>
             <div class="hero-tuile-sous" style="color:${PACE.cls === 'pace-risk' ? 'var(--c-danger)' : PACE.cls === 'pace-watch' ? 'var(--c-warning)' : 'var(--sync-online)'}">${PACE.lbl} · ${d.pct}% atteinte · PACE annuel ${d.pctAnnuel}%</div>
+            ${window.Atterrissage ? Atterrissage.html(d.caRealise, d.caObjectif, d.quarter, { compact: true }) : ''}
             <!-- BLOC 5 — CA FY26 référence + objectif annuel FY27 -->
             <div style="margin-top:6px;font-size:11px;color:var(--c-text-2);display:flex;gap:12px">
               <span>Réf. FY26 : <strong style="color:var(--c-title)">${fmtEUR(d.caFY26Q)}/trim.</strong></span>

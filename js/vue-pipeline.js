@@ -60,12 +60,37 @@ window.VuePipeline = {
 
   // ── Droits (Bloc 4) ──
   // Voir tous les leads : ADMIN + CHANNEL_MANAGER (Alexandra). CDS : ses propres leads. EXTERNE (Flavie) : saisie.
-  _voitTous()    { return Session.voitTout(); },
+  // EXTERNE (fournisseur de leads) : voit tous les leads, comme le Channel (décision du 3 nov. 2026).
+  _voitTous()    { return Session.voitTout() || Session.estExterne(); },
+  // Fournisseur de leads (EXTERNE) : ses leads = ceux qu'il a saisis (PIN_Channel) ou, pour l'historique
+  // sans PIN_Channel, ceux dont l'ORIGINE porte son prénom (ex. « Flavie »).
+  _estLeadExterne(l) {
+    if (!Session.estExterne()) return false;
+    if (Number(l.PIN_Channel) === Number(Session.pin)) return true;
+    const prenom = String(Session.nom || '').trim().split(/\s+/)[0].toLowerCase();
+    return !!prenom && String(l.ORIGINE || '').trim().toLowerCase() === prenom;
+  },
+  // Indicateur « contacté » pour le fournisseur : une action enregistrée ou un statut au-delà de « À traiter ».
+  _contacte(l) {
+    const st = String(l._statut || l.STATUT_EMPOWER || '').toUpperCase();
+    const date = String(l.Date_Derniere_Action || '').slice(0, 10);
+    return { oui: !!date || !['', 'SAISIE'].includes(st), date };
+  },
   // Attribuer / avancer / éditer un lead : ADMIN + CHANNEL_MANAGER (Alexandra a un niveau
   // proche de l'admin sur le Tracker, pas une simple lecture seule).
-  _peutAssigner(){ return Session.estManager() || Session.estChannel(); },
+  // Le fournisseur de leads attribue le lead au commercial dès la saisie, selon le besoin.
+  _peutAssigner(){ return Session.estManager() || Session.estChannel() || Session.estExterne(); },
   // Saisir un nouveau lead : ADMIN + CHANNEL_MANAGER (Alexandra) + CDS (commercial terrain).
   _peutSaisir()  { return Session.estManager() || Session.estChannel() || Session.estCDS() || Session.estExterne(); },
+
+  // Ajoute le lead à la base des comptes actifs (table base_comptes + Google Sheet si le webhook est configuré). Échec silencieux : la création du lead prime.
+  async _ajouterABase(idProspect) {
+    try {
+      await fetch(`${SUPABASE_URL}/functions/v1/base-comptes-sync`, { method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SUPABASE_ANON}` },
+        body: JSON.stringify({ token: Session.token, action: 'ajouter_lead', lead_id: idProspect }) });
+    } catch (e) { /* non bloquant */ }
+  },
 
   async init() {
     // BLOC — audit retour arrière : même défaut que VuePhoning — le routeur
@@ -78,6 +103,7 @@ window.VuePipeline = {
       recherche: ancien?.recherche || '', filtreCDS: ancien?.filtreCDS || 'TOUS', filtrePotentiel: ancien?.filtrePotentiel || 'TOUS',
       filtreStatut: ancien?.filtreStatut || 'TOUS', filtreAlerte: ancien?.filtreAlerte || 'TOUS', filtreOrigine: ancien?.filtreOrigine || 'TOUS',
       filtreChannel: ancien?.filtreChannel || 'TOUS', // BLOC 7
+      filtreTemp: ancien?.filtreTemp || 'TOUS', // Lot 8
       colonnesEtendues: ancien?.colonnesEtendues || {},
       modal: null,
       exportOuvert: false,
@@ -95,6 +121,8 @@ window.VuePipeline = {
     };
     this._ecouterContacts(); // Bloc 6 — Kanban live (abonnement idempotent)
     this.render();
+    // Lot 8 : champs température / structures affichés seulement si la migration est appliquée
+    if (window.CT) CT.sonder().then(ok => { if (ok && this.state && !this.state.chargement) this.render(); });
     try {
       const [raw, params, objectifs, cdsApi, sellin, vuesFiltres, phoning, comptesSI] = await Promise.all([
         // nocache : 📋_PROSPECTS est alimenté en continu par plusieurs profils
@@ -182,7 +210,7 @@ window.VuePipeline = {
                   && String(p.deleted   || '').toUpperCase() !== 'TRUE')
         // BLOC 5 : exclure les comptes déjà convertis (Flag_converti=TRUE) pour CDS/CHANNEL_MANAGER
         .filter(p => {
-          if (Session.estManager()) return true; // ADMIN voit tout
+          if (Session.estManager() || Session.estExterne()) return true; // ADMIN et EXTERNE voient tout, y compris les leads convertis
           return String(p.Flag_converti || '').toUpperCase() !== 'TRUE';
         })
         // Bug audit (clic carte X ouvre le lead Y) — 8 leads en base ont
@@ -201,10 +229,17 @@ window.VuePipeline = {
             _activationSellIn: exact, _activationSellInFlou: flou,
           };
         })
-        // BLOC 5 : dédoublonnage par Nom_Compte normalisé — garde le premier (ordre source)
+        // BLOC 5 : dédoublonnage par Nom_Compte normalisé. On garde le lead au statut le plus
+        // avancé (INTEGRE > COMPTE_CREE > EN_COURS > A_VISITER > ASSIGNE > SAISIE > ARCHIVE) ;
+        // à égalité, le premier de l'ordre source. Garder « le premier » faisait afficher un
+        // statut en retard quand un doublon plus récent était déjà Intégré (IMICRO, Ocecam).
         .filter((p, _i, arr) => {
+          const RANG = { ARCHIVE: 0, SAISIE: 1, ASSIGNE: 2, A_VISITER: 3, EN_COURS: 4, COMPTE_CREE: 5, INTEGRE: 6 };
+          const rang = x => (RANG[x._statut] !== undefined ? RANG[x._statut] : 1);
           const k = normaliserNom(p.Nom_Compte);
-          return arr.findIndex(x => normaliserNom(x.Nom_Compte) === k) === _i;
+          const meilleur = arr.reduce((best, x) =>
+            (normaliserNom(x.Nom_Compte) === k && (!best || rang(x) > rang(best))) ? x : best, null);
+          return meilleur === p;
         })
         // ADMIN + CHANNEL_MANAGER : tous les leads (y compris INTEGRE/ARCHIVE,
         // cf. Bloc D1 07/2026 — CHANNEL_MANAGER doit voir les comptes intégrés/
@@ -214,6 +249,7 @@ window.VuePipeline = {
         .filter(p => this._voitTous() || Number(p.PIN_CDS_Assigne) === Session.pin);
       this.state.chargement = false;
       this.render();
+      this._escalader48h().catch(() => {});
       // BLOC — ouverture différée d'un lead depuis le Journal Phoning (aperçu
       // coordonnées → "Voir dans le Tracker →"), même convention que
       // window._suiviActionOrigine (visite → phoning) déjà utilisée ailleurs :
@@ -275,6 +311,7 @@ window.VuePipeline = {
     );
     if (this.state.filtreCDS !== 'TOUS') l = l.filter(p => String(p.PIN_CDS_Assigne) === String(this.state.filtreCDS));
     if (this.state.filtrePotentiel !== 'TOUS') l = l.filter(p => String(p.POTENTIEL || '').toLowerCase() === String(this.state.filtrePotentiel).toLowerCase());
+    if (this.state.filtreTemp && this.state.filtreTemp !== 'TOUS') l = l.filter(p => (window.CT ? CT.tempOf(p) : '') === this.state.filtreTemp);
     if (this.state.filtreStatut !== 'TOUS') l = l.filter(p => p._statut === this.state.filtreStatut);
     if (this.state.filtreOrigine !== 'TOUS') l = l.filter(p => String(p.ORIGINE || '').toLowerCase() === String(this.state.filtreOrigine).toLowerCase());
     if (this.state.filtreAlerte === 'WP_RETARD') l = l.filter(p => this._retardWelcomePack(p));
@@ -369,7 +406,12 @@ window.VuePipeline = {
     this.render();
   },
   ouvrirSaisie() { this.state.modal = { type: 'saisie' }; this.render(); },
-  fermerModal()  { this.state.modal = null; this.render(); },
+  // Lot 8 : température modifiable depuis la fiche (ADMIN et CDS propriétaire ; le serveur applique les mêmes droits)
+  async _changerTemp(idProspect, valeur) {
+    const l = this.state.leads.find(x => x.ID_Prospect === idProspect); if (!l) return;
+    await CT.changerTemperature('LEADS', idProspect, valeur, v => { l.Temperature = v || null; this.render(); });
+  },
+  fermerModal()  { if (window.CT) CT.vider(); this.state.modal = null; this.render(); },
 
   // BLOC 04 §4 — raccourci "Planifier visite" depuis une card du Tracker,
   // même mécanisme de variable de transit que VueVisites.planifierSuiviAppel()
@@ -532,7 +574,7 @@ window.VuePipeline = {
       adresse: v('nl-adresse'), ville: v('nl-ville'), cp: v('nl-cp'), tel: v('nl-tel'), email: v('nl-email'),
       canal: v('nl-canal'), note: v('nl-note'), dateAction: v('nl-date-action'),
       potentiel: v('nl-potentiel'), origine: v('nl-origine'),
-      contact: v('nl-contact'), fonction: v('nl-fonction'),
+      contact: v('nl-contact'), fonction: v('nl-fonction'), temperature: v('nl-temperature'),
       cdsSelect: v('nl-cds-assigne'), statutSelect: v('nl-statut'),
     };
 
@@ -579,17 +621,40 @@ window.VuePipeline = {
       Date_Import: dateISOLocale(),
       Timestamp: new Date().toISOString(),
       STATUT_EMPOWER: statutInit, POTENTIEL: vals.potentiel,
-      ORIGINE: vals.origine, CONTACT_NOM: vals.contact, CONTACT_FONCTION: vals.fonction,
+      ORIGINE: Session.estExterne() ? String(Session.nom || '').trim().split(/\s+/)[0] : vals.origine,   // un fournisseur est lui-même la source de ses leads
+      CONTACT_NOM: vals.contact, CONTACT_FONCTION: vals.fonction,
+      ...(vals.temperature ? { Temperature: vals.temperature } : {}),
+      // Traçabilité de la saisie (colonnes pin_channel / nom_channel déjà en base) : permet à un fournisseur de retrouver ses leads
+      ...((Session.estExterne() || Session.estChannel()) ? { PIN_Channel: Number(Session.pin), Nom_Channel: Session.nom || '' } : {}),
     };
 
     this.state.envoiEnCours = true;
     this.render();
 
     try {
+      // Attribution automatique par code postal quand personne n'est choisi
+      let attrib = null;
+      if (!cdsAssignePin) {
+        const d = await AttributionCP.decider(lead.Code_Postal);
+        if (d.resultat === 'ATTRIBUE' && d.pin) {
+          lead.PIN_CDS_Assigne = d.pin; lead.FLAG_ACTION = 'ASSIGNE'; lead.STATUT_EMPOWER = 'ASSIGNE';
+        }
+        attrib = d;
+      }
       await SheetsAPI.ecrire('EMPOWER_MDB', 'LEADS', lead);
-      this.state.leads.unshift({ ...lead, _statut: statutInit });
+      // Lot 8 : siège (adresse + contact du formulaire) et structures supplémentaires. Le lead est créé quoi qu'il arrive.
+      if (window.CT && CT.actif()) {
+        const r = await CT.enregistrer('lead', lead.ID_Prospect,
+          { adresse: vals.adresse, ville: vals.ville, cp: vals.cp, dep: String(vals.cp || '').slice(0, 2) },
+          { nom: vals.contact, fonction: vals.fonction, tel: vals.tel, email: vals.email });
+        if (r && r.erreurs && r.erreurs.length) Toast.afficher('Lead créé ; structures ou contacts non enregistrés (' + r.erreurs[0] + ')', 'warning', 6000);
+      }
+      // Base des comptes actifs (Google Sheet) : le lead y est ajouté, une fois l'attribution appliquée (non bloquant).
+      Promise.resolve(attrib ? AttributionCP.appliquer(lead, attrib).catch(() => {}) : null).then(() => this._ajouterABase(lead.ID_Prospect));
+      this.state.leads.unshift({ ...lead, _statut: lead.FLAG_ACTION });
       // BLOC 4.3 — notif in-app au CDS assigné
-      if (cdsAssignePin) {
+      // Lead saisi par un externe : les alertes (commercial assigné, admin, channel) sont émises par la base (déclencheur leads_alerte_externe), pas par ce poste.
+      if (cdsAssignePin && !Session.estExterne()) {
         SheetsAPI.ecrire('EMPOWER_MDB', 'NOTIFS', {
           ID_Notif:         genId('NOTIF'),
           PIN_Destinataire: Number(cdsAssignePin),
@@ -601,7 +666,9 @@ window.VuePipeline = {
         }).catch(() => {}); // non bloquant
       }
       this.state.modal = null;
-      Toast.afficher(`Lead créé${cdsAssignePin ? ' → ' + this._nomCDS(cdsAssignePin) : ''} : ` + lead.Nom_Compte, 'succes');
+      const pinFinal = cdsAssignePin || (attrib && attrib.pin && attrib.resultat === 'ATTRIBUE' ? attrib.pin : '');
+      const aConfirmer = attrib && !pinFinal ? ` (${AttributionCP._libelle[attrib.resultat]}, file ADMIN)` : '';
+      Toast.afficher(`Lead créé${pinFinal ? ' → ' + this._nomCDS(String(pinFinal)) : ''} : ` + lead.Nom_Compte + aConfirmer, 'succes');
 
       // GEM-T01 — Enrichissement automatique post-création (asynchrone, non bloquant)
       GeminiAPI.gemT01_enrichirLead(lead).then(raw => {
@@ -799,6 +866,60 @@ window.VuePipeline = {
   }, 250),
 
   // ── RENDER ──
+  // ── Mobile : les 6 sélecteurs deviennent une rangée de pastilles qui défile ; le choix se fait dans une feuille ──
+  _defsFiltres(cdsList, voitTous) {
+    const s = this.state;
+    const defs = [
+      { cle: 'Statut', lib: 'Statut', val: s.filtreStatut, choix: [['TOUS', 'Tous statuts']].concat(this.STATUTS.map(x => [x.id, x.lbl])) },
+      { cle: 'Potentiel', lib: 'Potentiel', val: s.filtrePotentiel, choix: [['TOUS', 'Tout potentiel'], ['Fort', 'Fort'], ['Moyen', 'Moyen'], ['Faible', 'Faible']] },
+      { cle: 'Alerte', lib: 'Alerte', val: s.filtreAlerte, choix: [['TOUS', 'Toutes alertes'], ['WP_RETARD', 'WP J+14 dépassé'], ['WP_ENVOYE', 'Welcome Pack envoyé'], ['ACTION_DUE', 'Action en retard'], ['ALERTE_48H', 'À rappeler sous 48 h'], ['CONTACT_45J', 'Sans contact +45j'], ['SELLIN_ACTIF', 'A commandé (Sell-In ou déclaré)']] },
+    ];
+    if (voitTous) {
+      defs.push({ cle: 'CDS', lib: 'Commercial', val: String(s.filtreCDS), choix: [['TOUS', 'Tous']].concat(cdsList.map(c => [String(c.pin), this._nomCDS(c.pin)])) });
+      defs.push({ cle: 'Origine', lib: 'Origine', val: s.filtreOrigine, choix: [['TOUS', 'Toutes origines']].concat(this._originesDistinctes().map(o => [o, o])) });
+    }
+    if (this.CHANNELS.length > 1) defs.push({ cle: 'Channel', lib: 'Canal', val: s.filtreChannel, choix: [['TOUS', 'Tous canaux']].concat(this.CHANNELS.map(c => [c, c])) });
+    return defs;
+  },
+  _renderPastilles(cdsList, voitTous) {
+    const esc = x => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    const defs = this._defsFiltres(cdsList, voitTous);
+    const actifs = defs.filter(d => String(d.val) !== 'TOUS').length;
+    const pastilles = defs.map(d => {
+      const on = String(d.val) !== 'TOUS';
+      const v = (d.choix.find(x => String(x[0]).toLowerCase() === String(d.val).toLowerCase()) || [0, 'Tous'])[1];
+      return `<button class="fp ${on ? 'on' : ''}" onclick="VuePipeline.ouvrirFeuilleFiltre('${d.cle}')"><span class="fp-l">${d.lib}</span><span class="fp-v">${esc(v)}</span><span class="material-symbols-outlined" aria-hidden="true">expand_more</span></button>`;
+    }).join('');
+    const vues = `<button class="fp ${this.state.vueFiltreActive ? 'on' : ''}" onclick="FeuilleVues.ouvrir('VuePipeline')"><span class="material-symbols-outlined" aria-hidden="true">bookmark</span><span class="fp-v">Vues</span></button>`;
+    const raz = actifs ? `<button class="fp fp-raz" onclick="VuePipeline.reinitialiserFiltres()" title="Réinitialiser" aria-label="Réinitialiser les filtres"><span class="material-symbols-outlined" aria-hidden="true">filter_alt_off</span></button>` : '';
+    return `<div class="filtres-pastilles">${pastilles}${vues}${raz}</div>`;
+  },
+  ouvrirFeuilleFiltre(cle) {
+    const cdsList = this.CDS.length ? this.CDS : this.CDS_FALLBACK;
+    const d = this._defsFiltres(cdsList, this._voitTous()).find(x => x.cle === cle);
+    if (!d) return;
+    const esc = x => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    this.fermerFeuilleFiltre();
+    const el = document.createElement('div');
+    el.id = 'feuille-filtre';
+    el.innerHTML = `<div class="ff-fond" onclick="VuePipeline.fermerFeuilleFiltre()"></div>
+      <div class="ff-feuille" role="dialog" aria-label="${d.lib}">
+        <div class="ff-poignee"></div><h3>${d.lib}</h3>
+        <div class="ff-choix">${d.choix.map(([v, l]) => { const on = String(v).toLowerCase() === String(d.val).toLowerCase(); return `<button class="ff-opt ${on ? 'on' : ''}" data-v="${esc(v)}" onclick="VuePipeline.choisirFiltre('${cle}', this.dataset.v)">${esc(l)}${on ? '<span class="material-symbols-outlined" aria-hidden="true">check</span>' : ''}</button>`; }).join('')}</div>
+      </div>`;
+    document.body.appendChild(el);
+  },
+  fermerFeuilleFiltre() { const e = document.getElementById('feuille-filtre'); if (e) e.remove(); },
+  choisirFiltre(cle, v) {
+    this.fermerFeuilleFiltre();
+    this.state['filtre' + cle] = v;
+    this.render();
+  },
+  reinitialiserFiltres() {
+    Object.assign(this.state, { filtreTemp: 'TOUS', filtreCDS: 'TOUS', filtrePotentiel: 'TOUS', filtreStatut: 'TOUS', filtreAlerte: 'TOUS', filtreOrigine: 'TOUS', filtreChannel: 'TOUS', vueFiltreActive: null });
+    this.render();
+  },
+
   render() {
     const app = document.getElementById('app');
     if (!this.state || this.state.chargement) {
@@ -816,6 +937,10 @@ window.VuePipeline = {
         <button onclick="Router.retour()" class="btn-retour">←</button>
         <h1>EMPOWER TRACKER</h1>
         <span class="badge-compteur" id="tracker-compteur-header">${leads.length} leads</span>
+        ${(Session.estManager() || Session.estChannel() || Session.estExterne()) ? `
+        <span style="margin-left:auto;display:flex;gap:8px">
+          <button class="btn-import-tracker" onclick="TrackerExcel.ouvrir('import')" title="Importer des leads depuis un fichier Excel">Importer Excel</button>
+        </span>` : ''}
       </header>
 
       <!-- Toggle Kanban / Table — tabs premium -->
@@ -836,7 +961,8 @@ window.VuePipeline = {
         <input type="search" placeholder="Nom, ville, contact, tél, email, notes…" value="${this.state.recherche}"
                style="border:1.5px solid var(--c-border);border-radius:var(--radius-sm);padding:8px 12px;font-size:14px;width:100%"
                oninput="VuePipeline.setRecherche(this.value)"/>
-        <div class="filtres-statut">
+        <div class="filtres-mobile">${this._renderPastilles(cdsList, voitTous)}</div>
+        <div class="filtres-statut filtres-desktop">
           ${voitTous ? `
           <select onchange="VuePipeline.state.filtreCDS=this.value;VuePipeline.render()">
             <option value="TOUS">Tous CDS</option>
@@ -846,6 +972,10 @@ window.VuePipeline = {
             <option value="TOUS">Tous statuts</option>
             ${this.STATUTS.map(s => `<option value="${s.id}" ${this.state.filtreStatut === s.id ? 'selected' : ''}>${s.lbl}</option>`).join('')}
           </select>
+          ${window.CT && CT.actif() ? `<select onchange="VuePipeline.state.filtreTemp=this.value;VuePipeline.render()" aria-label="Température">
+            <option value="TOUS">Toute température</option>
+            ${CT.TEMPS.map(([v, lb]) => `<option value="${v}" ${this.state.filtreTemp === v ? 'selected' : ''}>${lb}</option>`).join('')}
+          </select>` : ''}
           <select onchange="VuePipeline.state.filtrePotentiel=this.value;VuePipeline.render()">
             <option value="TOUS">Tout potentiel</option>
             ${['Fort', 'Moyen', 'Faible'].map(p => `<option ${this.state.filtrePotentiel === p ? 'selected' : ''}>${p}</option>`).join('')}
@@ -871,7 +1001,7 @@ window.VuePipeline = {
           </select>` : ''}
         </div>
         <!-- Feuille de route Phase 2 — vues de filtre sauvegardées -->
-        <div class="filtres-statut">
+        <div class="filtres-statut filtres-desktop">
           <select onchange="VuePipeline.appliquerVueFiltre(this.value)">
             <option value="">Vues sauvegardées…</option>
             ${this.state.vuesFiltres.map(v => `<option value="${v.id}" ${this.state.vueFiltreActive === v.id ? 'selected' : ''}>${v.nom}</option>`).join('')}
@@ -884,8 +1014,8 @@ window.VuePipeline = {
       <div id="tracker-resultats-zone">${this._renderResultatsZone(leads, voitTous)}</div>
 
       ${peutSaisir ? '<button class="fab" onclick="VuePipeline.ouvrirSaisie()" title="Nouveau lead">＋</button>' : ''}
-      ${(Session.estManager() || Session.estChannel()) ? `<button class="fab fab-export" onclick="VuePipeline.ouvrirExport()" title="Export Excel" style="background:var(--c-success);font-size:18px"><span class="material-symbols-outlined" aria-hidden="true">download</span></button>` : ''}
       ${NavBar('tracker')}
+      ${FusionTabs.portefeuille()}
       ${this._renderModal()}
       ${this._renderPanneauExport()}
     `;
@@ -915,7 +1045,7 @@ window.VuePipeline = {
         </div>` : ''}
 
       <div class="kanban">
-        ${this.STATUTS.map(st => {
+        ${this.STATUTS.filter(st => this.state.filtreStatut === 'TOUS' || st.id === this.state.filtreStatut).map(st => {
           const col = leads
             .filter(l => l._statut === st.id)
             .sort((a, b) => {
@@ -961,7 +1091,7 @@ window.VuePipeline = {
               <div class="kanban-carte ${this._retardWelcomePack(l) ? 'kanban-alerte' : ''} ${this._estFournisseur(l) ? 'kanban-fournisseur' : ''}" data-id="${l.ID_Prospect}"
                    onclick="VuePipeline.ouvrirLead('${l.ID_Prospect}')">
                 <div class="kanban-carte-nom" style="display:flex;align-items:baseline;justify-content:space-between;gap:6px">
-                  <span>${l.Nom_Compte}</span>
+                  <span>${l.Nom_Compte}${window.CT ? ' ' + CT.pill(CT.tempOf(l)) : ''}</span>
                   ${st.id !== 'ARCHIVE' ? this._badgeAge(l) : ''}
                 </div>
                 <div class="kanban-carte-meta">
@@ -984,6 +1114,7 @@ window.VuePipeline = {
                   const note = da?.Note || l.Note_initiale;
                   return note ? `<div class="kanban-carte-note">${da?.Note ? '' : ''}${String(note).slice(0, 60)}</div>` : '';
                 })()}
+                ${l._activationSellIn || l.Commande_Manuelle ? `<div style="margin-top:6px"><span class="flag flag-act" title="Commande détectée">${window.FlagsCanal.ICO.ok}Activé</span></div>` : ''}
                 ${l._activationSellIn || l._activationSellInFlou || l.Commande_Manuelle ? `<div class="kanban-carte-note" style="color:var(--c-success);font-weight:700">${
                   l._activationSellIn && l.Commande_Manuelle ? `Commande (Sell-In + déclarée)${this._sellInFraicheur()}`
                   : l._activationSellIn ? `Commande détectée (Sell-In)${this._sellInFraicheur()}`
@@ -1079,8 +1210,6 @@ window.VuePipeline = {
     return `
       <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin:12px 12px 0;position:relative">
         <span style="font-size:12px;color:var(--c-text-2)">${leads.length} lead(s)</span>
-        ${(Session.estManager() || Session.estChannel()) ? `
-        <button class="btn-secondaire tracker-export-inline" style="width:auto;padding:6px 12px;font-size:12px" onclick="VuePipeline.ouvrirExport()">Export Excel</button>` : ''}
         <button class="btn-secondaire" style="width:auto;padding:6px 12px;font-size:12px" onclick="VuePipeline.ouvrirColonnesMenu()">Colonnes</button>
         ${this.state.colonnesMenuOuvert ? `
         <div style="position:absolute;top:100%;right:0;z-index:50;margin-top:4px;padding:10px;background:var(--bg-warm-white);border:1.5px solid var(--c-border);border-radius:var(--radius-sm);box-shadow:var(--shadow-modal);min-width:180px">
@@ -1269,6 +1398,7 @@ window.VuePipeline = {
                 <input id="nl-email" type="email" placeholder="contact@…"/></label>
             </div>
 
+            ${window.CT ? CT.blocSaisie() : ''}
             <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.05em;margin:10px 0 6px">QUALIFICATION</div>
             <div style="display:flex;gap:10px">
               <label style="flex:1">Potentiel estimé
@@ -1281,7 +1411,10 @@ window.VuePipeline = {
               <label style="flex:1">Prochaine action
                 <input type="date" id="nl-date-action"/></label>
             </div>
-            <label>Source du lead
+            ${window.CT && CT.actif() ? `<label>Température du prospect
+              ${CT.selectTemp('nl-temperature', '')}
+            </label>` : ''}
+            ${Session.estExterne() ? '' : `<label>Source du lead
               <select id="nl-origine">
                 <option value="Alexandra">Alexandra, saisie directe</option>
                 <option value="FDV">FDV, force de vente terrain</option>
@@ -1290,7 +1423,7 @@ window.VuePipeline = {
                 <option value="Salon">Salon / Événement</option>
                 <option value="Autre">Autre</option>
               </select>
-            </label>
+            </label>`}
             ${/* BLOC 4.1, attribution directe à la création */ this._peutAssigner() ? `
             <label>Attribuer à un CDS (optionnel)
               <select id="nl-cds-assigne">
@@ -1323,7 +1456,7 @@ window.VuePipeline = {
     if (!l) return '';
     // Droits Bloc 4 : ADMIN gère tout ; CDS édite/avance SES leads ; Alexandra (CHANNEL_MANAGER) = lecture seule ; EXTERNE = saisie seule.
     const peutAssigner = this._peutAssigner();   // attribution CDS → ADMIN uniquement
-    const peutEditer = Session.estManager() || Session.estChannel() || (Session.estCDS() && Number(l.PIN_CDS_Assigne) === Session.pin); // suivi + avancement
+    const peutEditer = Session.estManager() || Session.estChannel() || (Session.estCDS() && Number(l.PIN_CDS_Assigne) === Session.pin) || this._estLeadExterne(l); // suivi + avancement
     const cdsList = this.CDS.length ? this.CDS : this.CDS_FALLBACK;
     const statut = this.STATUTS.find(s => s.id === l._statut);
     const FLAGS = ['SAISIE','A_RELANCER','EN_COURS','A_RAPPELER','INTERESSE','WELCOME_PACK_ENVOYE','NON_INTERESSE','PERDU'];
@@ -1342,6 +1475,7 @@ window.VuePipeline = {
                     display:flex;align-items:flex-start;gap:10px">
           <div style="flex:1;min-width:0">
             <h3 style="margin:0 0 4px">${l.Nom_Compte}</h3>
+            ${Session.estExterne() ? (() => { const c = this._contacte(l); return `<div class="badge-contacte" style="font-size:12px;font-weight:600;color:${c.oui ? 'var(--c-success)' : 'var(--c-text-2)'}">${c.oui ? 'Contacté' + (c.date ? ' le ' + c.date : '') : 'Pas encore contacté'}</div>`; })() : ''}
             <div style="display:flex;gap:6px;flex-wrap:wrap">
               <span class="status-badge status-${(l._statut||'').toLowerCase()}">${statut?.lbl||l._statut}</span>
               ${l.POTENTIEL ? `<span class="pot-pill pot-${(l.POTENTIEL||'').toLowerCase()}">${l.POTENTIEL}</span>` : ''}
@@ -1354,6 +1488,7 @@ window.VuePipeline = {
         <!-- Infos lead complètes -->
         <div class="q-recap" style="margin-bottom:12px">
           <div class="q-recap-ligne"><span>CDS assigné</span><strong>${this._nomCDS(l.PIN_CDS_Assigne)}</strong></div>
+          ${window.CT && CT.actif() ? `<div class="q-recap-ligne"><span>Température</span><strong>${CT.selectTemp('lead-temp', CT.tempOf(l), `onchange="VuePipeline._changerTemp('${jsq(l.ID_Prospect)}',this.value)"`)}</strong></div>` : ''}
           ${l._activationSellIn ? `<div class="q-recap-ligne"><span>Sell-In</span><strong style="color:var(--c-success)">Commande détectée (FY27)${this._sellInFraicheur()}</strong></div>`
             : l._activationSellInFlou ? `<div class="q-recap-ligne"><span>Sell-In</span><strong style="color:var(--c-warning)" title="Rapprochement approximatif, à confirmer">Probable, "${l._activationSellInFlou.nom}" (${l._activationSellInFlou.score}%)${this._sellInFraicheur()}</strong></div>` : ''}
           ${l.Commande_Manuelle ? `<div class="q-recap-ligne"><span>Déclaration</span><strong style="color:var(--c-success)">Commande déclarée${l.Date_Commande_Manuelle ? ' le ' + new Date(l.Date_Commande_Manuelle).toLocaleDateString('fr-FR') : ''}</strong></div>` : ''}
@@ -1370,6 +1505,7 @@ window.VuePipeline = {
           ${l.Motif_Archive ? `<div class="q-recap-ligne"><span>Motif de perte</span><strong style="color:var(--c-danger)">${(this.MOTIFS_ARCHIVE.find(m => m.id === l.Motif_Archive)?.lbl || l.Motif_Archive)}${l.Motif_Archive_Detail ? ', ' + l.Motif_Archive_Detail : ''}</strong></div>` : ''}
           <div class="q-recap-ligne"><span>Créé le</span><strong>${l.Date_Import ? dateRelative(l.Date_Import) : 'n.c.'}</strong></div>
         </div>
+        ${window.CT ? CT.slot('lead', l.ID_Prospect) : ''}
 
         <!-- Mise à jour suivi (édition réservée : ADMIN ou CDS propriétaire) -->
         ${peutEditer ? `
@@ -1447,6 +1583,17 @@ window.VuePipeline = {
                   onclick="VuePipeline.mettreAJourLead('${l.ID_Prospect}')">Enregistrer la mise à jour</button>
         </div>` : ''}
 
+        <!-- Externe : coordonnées modifiables sur tous les leads (décision du 3 nov. 2026) -->
+        ${(!peutEditer && Session.estExterne()) ? `
+        <div style="margin-bottom:12px;padding:12px;background:var(--c-bg);border-radius:var(--radius-sm);border:1px solid var(--c-border)">
+          <div style="font-size:11px;font-weight:700;color:var(--c-primary);letter-spacing:.04em;margin-bottom:8px">COORDONNÉES</div>
+          ${[['ct-contact','Interlocuteur',l.CONTACT_NOM],['ct-fonction','Fonction',l.CONTACT_FONCTION],['ct-tel','Téléphone',l.Tel],['ct-email','Email',l.Email],['ct-adresse','Adresse',l.Adresse],['ct-ville','Ville',l.Ville],['ct-cp','Code postal',l.Code_Postal]].map(([id,lb,v]) => `
+          <label style="font-size:12px;color:var(--c-text-2);display:block;margin-bottom:8px">${lb}
+            <input class="q-input" id="${id}" style="margin-top:3px" value="${String(v || '').replace(/"/g,'&quot;')}"/>
+          </label>`).join('')}
+          <button class="btn-primaire" style="width:100%;font-size:13px" onclick="VuePipeline.modifierContactLead('${l.ID_Prospect}')">Enregistrer les coordonnées</button>
+        </div>` : ''}
+
         <!-- Dernier appel réel (Journal, live) — cf. demande utilisateur : la
              fiche lead n'affichait jamais la note du dernier appel passé,
              seulement Note_initiale (la note de création, jamais mise à jour). -->
@@ -1515,6 +1662,33 @@ window.VuePipeline = {
         </div>
       </div>
     </div>`;
+  },
+
+  async modifierContactLead(id) {
+    const lead = this.state.leads.find(l => String(l.ID_Prospect) === String(id));
+    if (!lead) return;
+    const v = k => (document.getElementById(k)?.value || '').trim();
+    const nouv = { CONTACT_NOM: v('ct-contact'), CONTACT_FONCTION: v('ct-fonction'), Tel: v('ct-tel'), Email: v('ct-email'),
+                   Adresse: v('ct-adresse'), Ville: v('ct-ville'), Code_Postal: v('ct-cp') };
+    const champs = {};
+    for (const k of Object.keys(nouv)) if (nouv[k] !== String(lead[k] || '')) champs[k] = nouv[k];
+    if (!Object.keys(champs).length) { Toast.afficher('Aucune modification', 'info'); return; }
+    try {
+      await SheetsAPI.mettreAJour('EMPOWER_MDB', 'LEADS', id, champs);
+      Object.assign(lead, champs);
+      // CP modifié sur un lead non attribué : on relance l'attribution par secteur
+      if (champs.Code_Postal !== undefined && !lead.PIN_CDS_Assigne) {
+        const d = await AttributionCP.decider(lead.Code_Postal);
+        if (d.resultat === 'ATTRIBUE' && d.pin) {
+          const m = { PIN_CDS_Assigne: d.pin, FLAG_ACTION: 'ASSIGNE', STATUT_EMPOWER: 'ASSIGNE' };
+          await SheetsAPI.mettreAJour('EMPOWER_MDB', 'LEADS', id, m);
+          Object.assign(lead, m); lead._statut = 'ASSIGNE';
+        }
+        AttributionCP.appliquer(lead, d).catch(() => {});
+      }
+      Toast.afficher('Coordonnées mises à jour', 'succes');
+      this.render();
+    } catch (e) { Toast.afficher('' + (e.message || e), 'erreur'); }
   },
 
   async mettreAJourLead(id) {
@@ -1655,6 +1829,8 @@ window.VuePipeline = {
     await SheetsAPI.ecrire('EMPOWER_MDB', 'COMPTES', {
       ID_Compte:       idCompte,
       Nom_Compte:      lead.Nom_Compte || '',
+      // Bug : l'adresse du lead n'était pas reprise à la conversion en compte.
+      Adresse:         lead.Adresse || '',
       Ville:           lead.Ville || '',
       Code_Postal:     lead.Code_Postal || '',
       Departement:     lead.Departement || '',
@@ -1760,6 +1936,26 @@ window.VuePipeline = {
     if (h >= 24) return { niveau: 'orange', h };
     return null;
   },
+  // Escalade : un lead resté sans contact au-delà de 48 h prévient l'ADMIN (et le CDS assigné), une seule fois par lead.
+  // Exécutée à l'ouverture du Tracker par un ADMIN ; l'anti-doublon lit les notifications déjà émises.
+  async _escalader48h() {
+    if (!Session.estManager()) return;
+    const rouges = this.state.leads.filter(l => { const a = this._alerte48h(l); return a && a.niveau === 'rouge' && a.h <= 21 * 24; });   // au-delà de 21 jours : badge seulement
+    if (!rouges.length) return;
+    const deja = new Set((await SheetsAPI.lire('EMPOWER_MDB', 'NOTIFS', { nocache: true }).catch(() => []))
+      .filter(n => String(n.Type_Notif) === 'ALERTE_48H').map(n => String(n.ID_Cible)));
+    for (const l of rouges.filter(x => !deja.has(String(x.ID_Prospect))).slice(0, 20)) {
+      const dests = new Set([1000, 5000]);
+      if (Number(l.PIN_CDS_Assigne)) dests.add(Number(l.PIN_CDS_Assigne));
+      const msg = `Premier contact en retard (plus de 48 h) : ${l.Nom_Compte}${l.Ville ? ', ' + l.Ville : ''}`;
+      for (const pin of dests) {
+        SheetsAPI.ecrire('EMPOWER_MDB', 'NOTIFS', {
+          ID_Notif: genId('NOTIF'), PIN_Destinataire: pin, Type_Notif: 'ALERTE_48H', Message: msg,
+          ID_Cible: l.ID_Prospect, Statut_Lu: false, Date_Envoi: new Date().toISOString(),
+        }).catch(() => {});
+      }
+    }
+  },
   _badge48h(l) {
     const a = this._alerte48h(l);
     if (!a) return '';
@@ -1849,7 +2045,7 @@ window.VuePipeline = {
       });
     });
 
-    const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+    const ws = XLSX.utils.aoa_to_sheet(denaturer([header, ...rows]));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Leads');
     const today = new Date().toISOString().slice(0,10);

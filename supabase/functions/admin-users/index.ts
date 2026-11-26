@@ -12,13 +12,9 @@ const ROLES = ['ADMIN', 'CDS', 'CHANNEL_MANAGER', 'EXTERNE']
 const SECTIONS = [
   'home', 'tracker', 'historiques', 'phoning', 'visites', 'visites_fdv',
   'objectifs', 'primes', 'comptes', 'manager', 'reporting', 'reporting_cds',
-  'admin', 'questionnaire', 'photos', 'mailing', 'a_contacter',
+  'admin', 'questionnaire', 'photos', 'mailing', 'a_contacter', 'territoires',
+  'admin_primes', 'admin_baremes', 'admin_reporting', 'coach', 'kit',
 ]
-
-async function sha256(str) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str))
-  return Array.from(new Uint8Array(buf)).map(b => ('0' + b.toString(16)).slice(-2)).join('')
-}
 
 // Hachage des mots de passe : PBKDF2-SHA256 (210 000 itérations), format « pbkdf2$<itérations>$<hex> ».
 // Les anciens hachages (SHA-256 simple, 64 caractères hexa) restent acceptés et sont remplacés à la connexion suivante.
@@ -30,12 +26,6 @@ async function pbkdf2(motdepasse, salt, iter = PBKDF2_ITER) {
 }
 async function hasherMotdepasse(motdepasse, salt) {
   return `pbkdf2$${PBKDF2_ITER}$${await pbkdf2(motdepasse, salt)}`
-}
-function egal(a, b) {
-  if (a.length !== b.length) return false
-  let r = 0
-  for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i)
-  return r === 0
 }
 
 function randomHex() {
@@ -77,6 +67,18 @@ Deno.serve(async (req) => {
     if (u.role !== 'ADMIN') return { ok: false, erreur: 'Accès réservé aux administrateurs' }
     return { ok: true, pin: u.pin }
   }
+
+  // Lot 5 : il doit toujours rester au moins un ADMIN actif (hors l'utilisateur ciblé).
+  async function autresAdminsActifs(pinExclu) {
+    const { data } = await sb.from('utilisateurs').select('pin').eq('role', 'ADMIN').eq('actif', true).neq('pin', pinExclu)
+    return (data || []).length
+  }
+  async function tracer(type, auteurPin, resume) {
+    try {
+      await sb.from('actions').insert({ type_action: type, source: 'ESI_ADMIN', pin_cds: auteurPin, nom_compte: resume })
+    } catch { /* trace non bloquante */ }
+  }
+  const refus = (msg, status = 400) => Response.json({ ok: false, erreur: msg }, { headers: CORS, status })
 
   try {
     const auth = await verifierAdmin()
@@ -129,6 +131,12 @@ Deno.serve(async (req) => {
       const { targetPin, role } = body
       if (!targetPin || !role) return Response.json({ ok: false, erreur: 'Paramètres manquants' }, { headers: CORS, status: 400 })
       if (!ROLES.includes(role)) return Response.json({ ok: false, erreur: 'Rôle inconnu' }, { headers: CORS, status: 400 })
+      const { data: cibleRole } = await sb.from('utilisateurs').select('role,actif').eq('pin', targetPin).limit(1)
+      if (!cibleRole || cibleRole.length === 0) return refus('Utilisateur introuvable', 404)
+      if (cibleRole[0].role === 'ADMIN' && role !== 'ADMIN') {
+        if (targetPin === auth.pin) return refus('Impossible de retirer son propre rôle administrateur')
+        if (cibleRole[0].actif && await autresAdminsActifs(targetPin) === 0) return refus('Dernier administrateur actif : son rôle ne peut pas être modifié')
+      }
       // Changer de rôle repart des droits par défaut du nouveau rôle.
       const { error } = await sb.from('utilisateurs').update({ role, droits: null }).eq('pin', targetPin)
       if (error) return Response.json({ ok: false, erreur: error.message }, { headers: CORS, status: 500 })
@@ -139,8 +147,51 @@ Deno.serve(async (req) => {
       const { targetPin, actif } = body
       if (!targetPin || typeof actif !== 'boolean') return Response.json({ ok: false, erreur: 'Paramètres manquants' }, { headers: CORS, status: 400 })
       if (targetPin === auth.pin) return Response.json({ ok: false, erreur: 'Impossible de désactiver son propre compte' }, { headers: CORS, status: 400 })
+      if (actif === false) {
+        const { data: cibleAct } = await sb.from('utilisateurs').select('role,actif').eq('pin', targetPin).limit(1)
+        if (cibleAct && cibleAct[0] && cibleAct[0].role === 'ADMIN' && cibleAct[0].actif && await autresAdminsActifs(targetPin) === 0)
+          return refus('Dernier administrateur actif : impossible de le désactiver')
+      }
       const { error } = await sb.from('utilisateurs').update({ actif }).eq('pin', targetPin)
       if (error) return Response.json({ ok: false, erreur: error.message }, { headers: CORS, status: 500 })
+      return Response.json({ ok: true }, { headers: CORS })
+    }
+
+    // Lot 5 : suppression définitive d'un accès (ADMIN seul ; jamais soi-même ni le dernier administrateur actif).
+    // Les comptes, leads, visites et appels rattachés au PIN ne sont pas supprimés : seul l'accès à l'application disparaît.
+    if (action === 'delete') {
+      const { targetPin } = body
+      if (!targetPin) return refus('Paramètres manquants')
+      if (body.confirmation !== true) return refus('Confirmation requise')
+      if (targetPin === auth.pin) return refus('Impossible de supprimer son propre compte')
+      const { data: cibleSup } = await sb.from('utilisateurs').select('pin,nom,email,role,actif').eq('pin', targetPin).limit(1)
+      if (!cibleSup || cibleSup.length === 0) return refus('Utilisateur introuvable', 404)
+      const c = cibleSup[0]
+      if (c.role === 'ADMIN' && c.actif && await autresAdminsActifs(targetPin) === 0)
+        return refus('Dernier administrateur actif : impossible de le supprimer')
+      const { error } = await sb.from('utilisateurs').delete().eq('pin', targetPin)
+      if (error) {
+        if (error.code === '23503') return refus('Cet utilisateur a modifié des barèmes de primes : désactivez son accès plutôt que de le supprimer', 409)
+        return refus(error.message, 500)
+      }
+      await tracer('USER_SUPPRIME', auth.pin, `${c.nom} (${c.role}, PIN ${c.pin}) supprimé`)
+      return Response.json({ ok: true }, { headers: CORS })
+    }
+
+    // Modification du nom et de l'e-mail d'un accès existant (ADMIN seul). Le PIN et le rôle ne changent pas ici.
+    if (action === 'updateProfil') {
+      const { targetPin } = body
+      const nom = String(body.nom ?? '').trim()
+      const email = String(body.email ?? '').trim().toLowerCase()
+      if (!targetPin || !nom || !email) return refus('Nom et e-mail requis')
+      if (nom.length > 120 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return refus('Nom ou e-mail invalide')
+      const { data: cibleP } = await sb.from('utilisateurs').select('pin').eq('pin', targetPin).limit(1)
+      if (!cibleP || cibleP.length === 0) return refus('Utilisateur introuvable', 404)
+      const { data: pris } = await sb.from('utilisateurs').select('pin').eq('email', email).neq('pin', targetPin).limit(1)
+      if (pris && pris.length > 0) return refus('Cet e-mail est déjà utilisé', 409)
+      const { error } = await sb.from('utilisateurs').update({ nom, email }).eq('pin', targetPin)
+      if (error) return refus(error.message, 500)
+      await tracer('USER_MODIFIE', auth.pin, `PIN ${targetPin} : nom et e-mail mis à jour`)
       return Response.json({ ok: true }, { headers: CORS })
     }
 
@@ -153,15 +204,47 @@ Deno.serve(async (req) => {
       const hash = await hasherMotdepasse(nouveauMotdepasse, salt)
       const { error } = await sb.from('utilisateurs').update({ hash, salt }).eq('pin', targetPin)
       if (error) return Response.json({ ok: false, erreur: error.message }, { headers: CORS, status: 500 })
+      // Les sessions ouvertes avec l'ancien mot de passe sont fermées (sauf celles de l'administrateur qui agit sur son propre compte).
+      if (targetPin !== auth.pin) await sb.from('sessions').delete().eq('pin', targetPin)
+      await tracer('MDP_REINITIALISE', auth.pin, `PIN ${targetPin} : mot de passe réinitialisé`)
       return Response.json({ ok: true }, { headers: CORS })
+    }
+
+    // Purge RGPD : supprime les appels et visites d'un commercial (ADMIN seul, confirmation explicite, action tracée).
+    if (action === 'purgerDonnees') {
+      const pin = Number(body.pinCDS)
+      if (!Number.isInteger(pin) || pin <= 0) return refus('Commercial invalide')
+      if (body.confirmation !== true) return refus('Confirmation requise')
+      const { data: cible } = await sb.from('utilisateurs').select('pin,nom').eq('pin', pin).limit(1)
+      if (!cible || cible.length === 0) return refus('Utilisateur introuvable', 404)
+      const ph = await sb.from('phoning').delete({ count: 'exact' }).eq('pin_cds', pin)
+      if (ph.error) return refus(ph.error.message, 500)
+      const vi = await sb.from('visites').delete({ count: 'exact' }).eq('pin_cds', pin)
+      if (vi.error) return refus(vi.error.message, 500)
+      const n = (ph.count ?? 0) + (vi.count ?? 0)
+      await tracer('PURGE_RGPD', auth.pin, `${cible[0].nom} (PIN ${pin}) : ${ph.count ?? 0} appels et ${vi.count ?? 0} visites supprimés`)
+      return Response.json({ ok: true, lignesSupprimees: n }, { headers: CORS })
     }
 
     // Réglages partagés modifiables par l'admin (liste blanche : jamais les clés d'API ni les PIN).
     if (action === 'setParam') {
-      const REGLAGES = { AFFICHER_LECLERC: 'Afficher les magasins Leclerc dans les comptes (true/false)' }
-      const { cle, valeur } = body
-      if (!REGLAGES[cle] || !['true', 'false'].includes(String(valeur)))
+      const REGLAGES: Record<string, string> = {
+        AFFICHER_LECLERC: 'Afficher les magasins Leclerc dans les comptes (true/false)',
+        COACH_EXTERNE_COMPTES: 'Coach : recherche de comptes pour le profil Externe (JSON : actif, champs)',
+      }
+      const CHAMPS_EXTERNE = ['id', 'nom_compte', 'ville', 'code_postal', 'departement', 'canal', 'secteur', 'has_empower', 'statut_compte', 'nom_cds', 'tel', 'email', 'contact_nom', 'contact_fonction', 'adresse']
+      const { cle } = body
+      let { valeur } = body
+      if (!REGLAGES[cle]) return Response.json({ ok: false, erreur: 'Réglage inconnu ou valeur invalide' }, { headers: CORS, status: 400 })
+      if (cle === 'COACH_EXTERNE_COMPTES') {
+        let v: any = null
+        try { v = typeof valeur === 'string' ? JSON.parse(valeur) : valeur } catch { /* refus ci-dessous */ }
+        if (!v || typeof v.actif !== 'boolean' || !Array.isArray(v.champs) || v.champs.some((c: unknown) => !CHAMPS_EXTERNE.includes(c as string)))
+          return Response.json({ ok: false, erreur: 'Réglage inconnu ou valeur invalide' }, { headers: CORS, status: 400 })
+        valeur = JSON.stringify({ actif: v.actif, champs: [...new Set(v.champs)] })
+      } else if (!['true', 'false'].includes(String(valeur))) {
         return Response.json({ ok: false, erreur: 'Réglage inconnu ou valeur invalide' }, { headers: CORS, status: 400 })
+      }
       const { error } = await sb.from('params').upsert({ parametre: cle, valeur: String(valeur), description: REGLAGES[cle] }, { onConflict: 'parametre' })
       if (error) return Response.json({ ok: false, erreur: error.message }, { headers: CORS, status: 500 })
       return Response.json({ ok: true }, { headers: CORS })

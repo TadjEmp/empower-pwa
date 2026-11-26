@@ -281,7 +281,7 @@ function generateCSV(data, filename) {
   const lines   = [headers.join(';')];
   data.forEach(row => {
     lines.push(headers.map(h => {
-      const v = String(row[h] ?? '').replace(/"/g, '""');
+      const v = denaturer(String(row[h] ?? '')).replace(/"/g, '""');
       return (v.includes(';') || v.includes('\n') || v.includes('"')) ? `"${v}"` : v;
     }).join(';'));
   });
@@ -329,12 +329,20 @@ function NavBar(actif) {
   // ── Catalogue complet des items de navigation ──
   const TOUS = [
     // CRM (mobile bottom nav + desktop sidebar)
-    { id: 'home',        hash: '#/dashboard',           mobileNav: true,  lbl: 'Accueil',
+    { id: 'home',        hash: '#/pilotage',            mobileNav: true,  lbl: 'Pilotage',
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>' },
     { id: 'tracker',     hash: '#/empower-tracker',     mobileNav: true,  lbl: 'Tracker',
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/></svg>' },
-    { id: 'comptes',     hash: '#/comptes',             mobileNav: true,  lbl: 'Comptes',
+    { id: 'comptes',     hash: '#/comptes',             mobileNav: true,  lbl: 'Portefeuille', any: ['tracker', 'comptes'],
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v8h4"/><path d="M18 9h2a2 2 0 0 1 2 2v11h-4"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>' },
+    { id: 'analyse',     hash: '#/analyse',             mobileNav: false, lbl: 'Reporting', any: ['reporting', 'reporting_cds'],
+      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>' },
+    { id: 'coach',       hash: '#/coach',               mobileNav: false, lbl: 'Coach',
+      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></svg>' },
+    { id: 'kit',         hash: '#/kit',                 mobileNav: false, lbl: 'Kit commercial',
+      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/></svg>' },
+    { id: 'territoires', hash: '#/territoires',         mobileNav: false, lbl: 'Territoires',
+      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>' },
     { id: 'reporting',   hash: '#/manager',             mobileNav: false, lbl: 'Reporting',
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="4" height="12" x="2" y="6" rx="1"/><rect width="4" height="16" x="9" y="2" rx="1"/><rect width="4" height="8" x="16" y="10" rx="1"/></svg>' },
     // Bloc 2 §1 — Reporting personnel CDS (tabId distinct de 'reporting' car
@@ -354,6 +362,9 @@ function NavBar(actif) {
     // leads Tracker, cf. vue-mailing.js).
     { id: 'mailing',     hash: '#/mailing',             mobileNav: false, lbl: 'Mailing',
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>' },
+    // Lot 9 — onglet Campagne : avancement, Go/No Go, signalements et retours d'une campagne fournisseur (lecture seule pour EXTERNE)
+    { id: 'campagne',    hash: '#/campagne',            mobileNav: false, lbl: 'Campagne',
+      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>' },
     { id: 'photos',      hash: '#/photos',              mobileNav: false, lbl: 'Mes Photos',
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>' },
     // Section 9 cahier des charges — vue consolidée Channel (lecture seule FDV)
@@ -367,8 +378,11 @@ function NavBar(actif) {
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>' },
     { id: 'primes',      hash: '#/primes',              mobileNav: false, lbl: 'Mes Primes',
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>' },
+    // Aide & Suggestions : ouvert à tous les rôles connectés
+    { id: 'aide',        hash: '#/aide',                mobileNav: false, lbl: 'Aide & Suggestions',
+      icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>' },
     // Admin
-    { id: 'admin',       hash: '#/admin',               mobileNav: false, lbl: 'Administration',
+    { id: 'admin',       hash: '#/admin',               mobileNav: false, lbl: 'Administration', any: ['admin', 'admin_primes', 'admin_reporting', 'primes', 'reporting', 'reporting_cds', 'export'],
       icone: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>' },
   ];
 
@@ -382,33 +396,59 @@ function NavBar(actif) {
   //   F2/F4 reporting_cds + reporting (#/manager) → onglets de l'Accueil
   //   F3 photos → onglet de Mon Planning · F5 visites_fdv → idem (CHANNEL)
   // Les routes fusionnées restent valides (rétro-compat) mais sortent de la nav.
+  // Navigation fusionnée (validée 2 nov. 2026) : Pilotage (Accueil, Équipe/Analyse, Objectifs, Primes, Barèmes),
+  // Portefeuille (Pipeline, Comptes, Historique CA, Territoires), Activité, Reporting ; Administration en bas.
   const SECTIONS = [
-    { lbl: null,        ids: ['home', 'tracker', 'comptes'] },
-    { lbl: 'Activité',  ids: ['a_contacter', 'visites', 'phoning', 'mailing'] },
-    { lbl: 'Données',   ids: ['objectifs'] },
-    { lbl: 'Admin',     ids: ['admin'] },
+    { lbl: null,        ids: ['home', 'coach', 'comptes', 'territoires', 'kit'] },
+    { lbl: 'Activité',  ids: ['a_contacter', 'visites', 'phoning', 'mailing', 'campagne'] },
+    { lbl: 'Reporting', ids: ['analyse'] },
   ];
+  const SECTION_BAS = { lbl: null, ids: ['aide', 'admin'] };
+  // Lot 4 — Reporting déplacé dans Administration pour ADMIN/Channel
+  if (typeof Session !== 'undefined' && (Session.estManager() || Session.estChannel() || Session.estCDS())) {
+    const i = SECTIONS.findIndex(x => x.lbl === 'Reporting'); if (i >= 0) SECTIONS.splice(i, 1);
+  }
 
   // Route fusionnée → entrée de nav à montrer active
   const ALIAS_ACTIF = {
-    reporting: 'home', reporting_cds: 'home',
-    historiques: 'comptes',
+    reporting: 'home', reporting_cds: 'home', manager: 'home',
+    objectifs: 'home', primes: 'home', parametres_primes: 'home',
+    tracker: 'comptes', historiques: 'comptes',
     photos: 'visites', visites_fdv: 'visites',
-    primes: 'objectifs',
   };
+  // Externe : Tracker et Base comptes sont deux entrées distinctes du volet.
+  const _externe = (typeof Session !== 'undefined' && Session.estExterne && Session.estExterne());
+  {
+    // Tous profils : Tracker et Base comptes sont deux entrées distinctes du volet.
+    delete ALIAS_ACTIF.tracker;
+    if (_externe) TOUS.find(i => i.id === 'admin').hash = '#/export';
+    SECTIONS[0] = { lbl: null, ids: _externe ? ['tracker', 'comptes', 'campagne', 'territoires', 'kit'] : ['home', 'coach', 'tracker', 'comptes', 'territoires', 'kit'] };
+    // L'EXTERNE a Campagne dans le premier volet : on la retire du volet Activité pour éviter un doublon.
+    if (_externe) SECTIONS[1] = { ...SECTIONS[1], ids: SECTIONS[1].ids.filter(id => id !== 'campagne') };
+    const ic = TOUS.find(i => i.id === 'comptes');
+    ic.lbl = 'Base comptes';
+    ic.icone = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>';
+  }
   actif = ALIAS_ACTIF[actif] || actif;
 
   const role = (typeof Session !== 'undefined') ? Session.role : null;
   const autorises = (role && typeof window.Permissions !== 'undefined')
     ? window.Permissions.onglets(role) : [];
   const itemMap = Object.fromEntries(TOUS.map(i => [i.id, i]));
+  // Le commercial n'a pas la page Administration : l'entrée ouvre ses Primes et son Reporting
+  if (typeof Session !== 'undefined' && Session.estCDS() && itemMap.admin) itemMap.admin = { ...itemMap.admin, hash: '#/primes' };
 
   const nomUser  = (typeof Session !== 'undefined') ? (Session.nom || '') : '';
+  const libelleRole = ({ ADMIN: 'Administrateur', CDS: 'Commercial', CHANNEL_MANAGER: 'Manager', EXTERNE: 'Fournisseur de leads' })[role] || role || '';
   const initiale = nomUser ? nomUser.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : '?';
 
   // ── Rendu d'un item nav ──
   // mobileNav:true  → pas de nav-sidebar-only → visible mobile bottom nav + sidebar desktop
   // mobileNav:false → nav-sidebar-only → caché mobile, visible uniquement sidebar desktop
+  // Pictogrammes Marvesting (blancs, pour fond ardoise) ; repli sur le SVG d'origine si absent
+  const PICTO = window.PICTOS_MARVESTING = window.PICTOS_MARVESTING || { home: 'ordinateur', tracker: 'relance', a_contacter: 'relance', comptes: 'magasin', coach: 'etiquette_prix', territoires: 'localisation', visites: 'horloge', visites_fdv: 'horloge', reporting: 'bouclier_valide', reporting_cds: 'bouclier_valide', analyse: 'bouclier_valide', primes: 'etiquette_prix', photos: 'mobile', admin: 'equipe' };
+  PICTO.comptes = null;
+  const imgPicto = id => `<img class="mi-ico" src="img/icones/${PICTO[id]}.png" alt="" width="22" height="22">`;
   function _itemHtml(i) {
     const cls = [
       'nav-item',
@@ -416,7 +456,7 @@ function NavBar(actif) {
       actif === i.id ? 'actif' : '',
     ].filter(Boolean).join(' ');
     return `<a class="${cls}" href="${String(i.hash).replace(/^#/, '')}" data-id="${i.id}" data-lbl="${i.lbl}">
-      <span class="nav-icone">${i.icone}</span>
+      <span class="nav-icone">${PICTO[i.id] ? imgPicto(i.id) : i.icone}</span>
       <span class="nav-lbl">${i.lbl}</span>
       ${(() => { const n = (i.id === 'a_contacter' && window.AContacter) ? AContacter.nb() : 0;
         return `<span class="nav-badge${n > 0 ? ' visible' : ''}" id="nav-badge-${i.id}">${n > 0 ? (n > 99 ? '99+' : n) : ''}</span>`; })()}
@@ -427,7 +467,7 @@ function NavBar(actif) {
   function _sectionHtml(sec) {
     const visibles = sec.ids
       .map(id => itemMap[id])
-      .filter(i => i && autorises.indexOf(i.id) !== -1);
+      .filter(i => i && (i.id === 'aide' || (i.any ? i.any.some(t => autorises.indexOf(t) !== -1) : autorises.indexOf(i.id) !== -1)));
     if (!visibles.length) return '';
     return `<div class="nav-section">
       ${sec.lbl ? `<span class="nav-section-lbl">${sec.lbl}</span>` : ''}
@@ -437,6 +477,7 @@ function NavBar(actif) {
 
   // ── Toutes les sections (mobile + desktop) ──
   const sidebarSections = role ? SECTIONS.map(_sectionHtml).join('') : '';
+  const sectionBas = role ? _sectionHtml(SECTION_BAS) : '';
 
   // SVG icônes footer
   const ICO_SYNC = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>';
@@ -447,11 +488,8 @@ function NavBar(actif) {
     <!-- Barre mobile top -->
     <div class="app-brand-bar">
       <div class="app-brand-logo">
-        ${NORTON_SVG}
-        <span class="brand-norton-txt">norton</span><sup class="brand-tm">™</sup>
+        <img class="logo-reseller" src="img/norton-empower-reseller-dark.png" alt="Norton Empower Reseller Program" height="30">
       </div>
-      <span class="app-brand-sep">|</span>
-      <span class="app-brand-esi">EMPOWER SALES INTELLIGENCE</span>
       <button class="brand-hamburger" onclick="DrawerMenu.ouvrir()" aria-label="Menu">
         <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
           <line x1="2" y1="5.5" x2="20" y2="5.5"/>
@@ -467,8 +505,7 @@ function NavBar(actif) {
       <div class="nav-logo">
         ${NORTON_SVG}
         <div class="nav-logo-textes">
-          <span class="nav-logo-norton">norton<sup>™</sup></span>
-          <span class="nav-logo-esi">EMPOWER SALES INTELLIGENCE</span>
+          <img class="logo-reseller" src="img/norton-empower-reseller-dark.png" alt="Norton Empower Reseller Program" height="28">
         </div>
         <button class="nav-toggle-btn" onclick="SidebarToggle.toggle()" title="Réduire / Développer le menu" aria-label="Toggle sidebar">
           ${ICO_CHEV}
@@ -478,26 +515,12 @@ function NavBar(actif) {
       <!-- Sections : transparent (display:contents) sur mobile → bottom nav ; colonnes groupées sur desktop -->
       ${sidebarSections}
 
-      <!-- Footer : utilisateur + actions -->
+      <!-- Footer : Administration (en bas) + utilisateur + actions -->
       <div class="nav-sidebar-footer">
-        <div class="nav-sidebar-user" title="${nomUser} · ${role || ''}">
-          <div class="nav-sidebar-avatar">${initiale}</div>
-          <div class="nav-sidebar-user-info">
-            <div class="nav-sidebar-nom">${nomUser}</div>
-            <div class="nav-sidebar-role">${role || ''}</div>
-          </div>
-        </div>
+        ${sectionBas}
         <button class="nav-item nav-sidebar-action" data-lbl="Apparence" onclick="Theme.suivant()" title="Apparence : automatique, clair ou sombre">
           <span class="nav-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></span>
           <span class="nav-lbl">Apparence : <span data-theme-libelle>${(window.Theme && Theme.LIBELLES[Theme.lire()]) || ''}</span></span>
-        </button>
-        <label class="nav-item nav-sidebar-action" data-lbl="Canal" title="Filtrer toutes les vues par canal de vente">
-          <span class="nav-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></span>
-          <select data-canal-select class="nav-lbl" aria-label="Canal de vente" onchange="Canaux.choisir(this.value)" style="background:transparent;border:0;color:inherit;font:inherit;max-width:130px">${window.Canaux ? Canaux.optionsHTML() : ''}</select>
-        </label>
-        <button class="nav-item nav-sidebar-action" data-lbl="CA par canal" onclick="CACanal.suivant()" title="CA affiché : tous les canaux, Empower ou Grossiste">
-          <span class="nav-icone"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></span>
-          <span class="nav-lbl">CA : <span data-caCanal-libelle>${(window.CACanal && CACanal.libelleCourant()) || ''}</span></span>
         </button>
         <button class="nav-item nav-sidebar-action" data-lbl="Synchroniser" onclick="DrawerMenu._synchro()">
           <span class="nav-icone">${ICO_SYNC}</span>
@@ -507,7 +530,15 @@ function NavBar(actif) {
           <span class="nav-icone">${ICO_OUT}</span>
           <span class="nav-lbl">Déconnexion</span>
         </button>
+        <div class="nav-sidebar-user" title="${nomUser} · ${libelleRole}">
+          <div class="nav-sidebar-avatar">${initiale}</div>
+          <div class="nav-sidebar-user-info">
+            <div class="nav-sidebar-nom">${nomUser}</div>
+            <div class="nav-sidebar-role">${libelleRole}</div>
+          </div>
+        </div>
       </div>
+      <div class="nav-marque"><img src="img/marvesting-group-cream.png" alt="Marvesting Group" height="20"></div>
     </nav>`;
 }
 
@@ -533,16 +564,43 @@ function FusionTabs(defs) {
       ${visibles.map(d => `
         <button class="tab-btn-premium ${hashActuel === d.hash ? 'actif' : ''}"
                 onclick="Router.aller('${d.hash}')">${d.lbl}</button>`).join('')}
+      ${window.Canaux ? `<span class="fusion-filtres">
+        <select data-canal-select class="filtre-select" aria-label="Canal de vente" onchange="Canaux.choisir(this.value)">${Canaux.optionsHTML()}</select>
+        <select class="filtre-select" aria-label="CA par canal de commande" onchange="CACanal.choisir(this.value)">${['TOUS','EMPOWER','GROSSISTE'].map(v => `<option value="${v}" ${CACanal.lire()===v?'selected':''}>CA : ${({TOUS:'tous canaux',EMPOWER:'Empower',GROSSISTE:'Grossiste'})[v]}</option>`).join('')}</select>
+      </span>` : ''}
     </div>`;
 }
 
 // Groupes de fusion (source unique — utilisée par les vues concernées)
-FusionTabs.accueil = () => FusionTabs([
+// Regroupement validé 2 nov. 2026 — « Pilotage » = Accueil + Analyse/Équipe + Objectifs + Primes
+// (une seule barre, partagée par les anciens groupes accueil et performance).
+const _peutTab = t => typeof Session !== 'undefined' && window.Permissions && Permissions.peut(Session.role, t);
+FusionTabs.pilotage = () => FusionTabs([
+  { hash: '#/pilotage',      lbl: 'Synthèse' },
   { hash: '#/dashboard',     lbl: 'Accueil' },
   { hash: '#/reporting-cds', lbl: 'Analyse',
     si: typeof Session !== 'undefined' && Session.estCDS() },
   { hash: '#/manager',       lbl: 'Équipe',
     si: typeof Session !== 'undefined' && Session.voitTout() },
+  { hash: '#/objectifs',     lbl: 'Objectifs', si: _peutTab('objectifs') },
+  // Lot 4 — Primes, Reporting et Barèmes vivent dans Administration pour ADMIN/Channel ; le CDS garde ses propres Primes et son Reporting ici.
+]);
+// Lot 4 — Administration : accueil de l'administration + sous-sections à droits distincts
+// (Primes et Barèmes : ADMIN seul ; Reporting : ADMIN et Channel ; jamais de primes pour le Channel).
+FusionTabs.administration = () => FusionTabs([
+  { hash: '#/admin',             lbl: 'Administration', si: _peutTab('admin') },
+  { hash: '#/primes',            lbl: 'Primes',         si: _peutTab('admin_primes') || (typeof Session !== 'undefined' && Session.estCDS() && _peutTab('primes')) },
+  { hash: '#/parametres-primes', lbl: 'Barèmes',        si: _peutTab('admin_baremes') },
+  { hash: '#/analyse',           lbl: 'Reporting',      si: _peutTab('admin_reporting') || (typeof Session !== 'undefined' && Session.estCDS() && (_peutTab('reporting') || _peutTab('reporting_cds'))) },
+]);
+// Vrai quand la vue courante (Primes, Barèmes, Reporting) est hébergée par Administration pour le rôle connecté
+window.hebergeParAdmin = () => typeof Session !== 'undefined' && (Session.estManager() || Session.estChannel() || Session.estCDS());
+FusionTabs.accueil = FusionTabs.pilotage;
+// « Portefeuille » = Tracker (pipeline) + Comptes + Historique CA + Territoires
+FusionTabs.portefeuille = () => FusionTabs([
+  { hash: '#/empower-tracker',      lbl: 'Pipeline',    si: _peutTab('tracker') },
+  { hash: '#/comptes',              lbl: 'Comptes',     si: _peutTab('comptes') },
+  { hash: '#/comptes-historiques',  lbl: 'Historique CA', si: _peutTab('historiques') },
 ]);
 FusionTabs.planning = () => FusionTabs([
   { hash: '#/visites',     lbl: 'Planning' },
@@ -550,11 +608,7 @@ FusionTabs.planning = () => FusionTabs([
   { hash: '#/visites-fdv', lbl: 'Visites FDV',
     si: typeof Session !== 'undefined' && Session.estChannel() },
 ]);
-FusionTabs.performance = () => FusionTabs([
-  { hash: '#/objectifs', lbl: 'Objectifs' },
-  { hash: '#/primes',    lbl: 'Primes',
-    si: typeof Session !== 'undefined' && !Session.estChannel() },
-]);
+FusionTabs.performance = FusionTabs.pilotage;
 
 // ═══════════════════════════════════════
 //  avatarCDS — BLOC 02 §7 : avatar d'identité commercial (V7 §1/§4).
@@ -616,44 +670,49 @@ const DrawerMenu = (function () {
     // raccourci sur l'Accueil n'en tient pas lieu — l'utilisateur veut le
     // même volet que sur Web Desktop). Mêmes rôles que permissions.js.
     { id: 'mailing',     hash: '#/mailing',              ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>', lbl: 'Mailing',          roles: ['ADMIN','CDS','CHANNEL_MANAGER'] },
+    { id: 'campagne',    hash: '#/campagne',             ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>', lbl: 'Campagne',         roles: ['ADMIN','CDS','CHANNEL_MANAGER','EXTERNE'] },
     { id: 'visites_fdv', hash: '#/visites-fdv',          ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>', lbl: 'Visites FDV',       roles: ['CHANNEL_MANAGER'] },
     { id: 'photos',      hash: '#/photos',               ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>', lbl: 'Mes Photos',        roles: ['ADMIN','CDS','CHANNEL_MANAGER'] },
     { id: 'historiques', hash: '#/comptes-historiques',  ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>', lbl: 'Historique CA',   roles: ['ADMIN','CDS','CHANNEL_MANAGER'] },
     { id: 'objectifs',   hash: '#/objectifs',            ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>', lbl: 'Mes Objectifs',    roles: ['ADMIN','CDS'] },
-    { id: 'primes',      hash: '#/primes',               ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>', lbl: 'Mes Primes',        roles: ['ADMIN','CDS'] },
-    { id: 'admin',       hash: '#/admin',                ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>', lbl: 'Administration', roles: ['ADMIN'] },
+    { id: 'primes',      hash: '#/primes',               ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>', lbl: 'Mes Primes',        roles: [] },  // déplacé dans Administration (tous rôles)
+    { id: 'admin',       hash: '#/admin',                ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>', lbl: 'Administration', roles: ['ADMIN','CHANNEL_MANAGER','CDS'] },
+    { id: 'aide',        hash: '#/aide',                 ico: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>', lbl: 'Aide & Suggestions', roles: ['ADMIN','CDS','CHANNEL_MANAGER','EXTERNE'] },
   ];
 
   function _roleLabel(role) {
-    return { ADMIN: 'Admin', CDS: 'Commercial', CHANNEL_MANAGER: 'Manager', EXTERNE: 'Fournisseur de leads' }[role] || role || '';
+    return { ADMIN: 'Administrateur', CDS: 'Commercial', CHANNEL_MANAGER: 'Manager', EXTERNE: 'Fournisseur de leads' }[role] || role || '';
   }
 
   function _html() {
     const role    = (typeof Session !== 'undefined') ? Session.role : null;
     const nom     = (typeof Session !== 'undefined') ? (Session.nom || '') : '';
     const initiale = nom ? nom.charAt(0).toUpperCase() : '?';
-    const items   = ITEMS.filter(i => !role || i.roles.includes(role));
+    // Ordre unique (identique à la barre latérale) : navigation métier, puis Administration, puis profil, puis réglages
+    const ORDRE = ['home', 'comptes', 'a_contacter', 'visites', 'phoning', 'mailing', 'campagne', 'photos', 'visites_fdv', 'historiques', 'objectifs', 'primes', 'aide', 'admin'];
+    const tous    = ITEMS.filter(i => !role || i.roles.includes(role)).sort((x, y) => ORDRE.indexOf(x.id) - ORDRE.indexOf(y.id));
+    const items   = tous.filter(i => i.id !== 'admin');
+    // Le commercial n'a pas la page Administration : son entrée ouvre ses Primes et son Reporting
+    const admin   = (a => a && role === 'CDS' ? { ...a, hash: '#/primes' } : a)(tous.find(i => i.id === 'admin'));
+    const ligne   = i => `
+          <a class="drawer-item${((Router.hashCourant()||'').split('?')[0]===i.hash)?' actif':''}" href="${String(i.hash).replace(/^#/, '')}" onclick="DrawerMenu.fermer()">
+            <div class="drawer-item-ico">${(window.PICTOS_MARVESTING || {})[i.id] ? `<img class="mi-ico" src="img/icones/${window.PICTOS_MARVESTING[i.id]}.png" alt="" width="22" height="22">` : i.ico}</div>
+            ${i.lbl}
+            ${(i.id === 'a_contacter' && window.AContacter && AContacter.nb() > 0) ? `<span class="drawer-badge">${AContacter.nb() > 99 ? '99+' : AContacter.nb()}</span>` : ''}
+          </a>`;
 
     return `
     <div id="drawer-overlay" class="drawer-overlay" onclick="DrawerMenu.fermer()"></div>
     <div id="drawer-panneau" class="drawer-panneau" role="dialog" aria-modal="true" aria-label="Menu navigation">
       <div class="drawer-header">
-        <div class="drawer-header-avatar">${initiale}</div>
-        <div class="drawer-header-info">
-          <div class="drawer-header-nom">${nom || 'EMPOWER'}</div>
-          <div class="drawer-header-role">${_roleLabel(role)}</div>
-        </div>
-        <button class="drawer-close" onclick="DrawerMenu.fermer()" aria-label="Fermer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        <div class="drawer-header-info"><div class="drawer-header-nom">Menu</div></div>
+        <button class="drawer-close" onclick="DrawerMenu.fermer()" aria-label="Fermer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
       </div>
 
       <nav class="drawer-nav">
         <div class="drawer-section-lbl">Navigation</div>
-        ${items.map(i => `
-          <a class="drawer-item" href="${String(i.hash).replace(/^#/, '')}" onclick="DrawerMenu.fermer()">
-            <div class="drawer-item-ico">${i.ico}</div>
-            ${i.lbl}
-            ${(i.id === 'a_contacter' && window.AContacter && AContacter.nb() > 0) ? `<span class="drawer-badge">${AContacter.nb() > 99 ? '99+' : AContacter.nb()}</span>` : ''}
-          </a>`).join('')}
+        ${items.map(ligne).join('')}
+        ${admin ? `<div class="drawer-sep"></div>${ligne(admin)}` : ''}
 
         <div class="drawer-sep"></div>
         <div class="drawer-footer">
@@ -665,14 +724,6 @@ const DrawerMenu = (function () {
             <div class="drawer-item-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></div>
             Apparence : <span data-theme-libelle>${(window.Theme && Theme.LIBELLES[Theme.lire()]) || ''}</span>
           </button>
-          <label class="drawer-item">
-            <div class="drawer-item-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></div>
-            <select data-canal-select aria-label="Canal de vente" onchange="Canaux.choisir(this.value)" style="background:transparent;border:0;color:inherit;font:inherit">${window.Canaux ? Canaux.optionsHTML() : ''}</select>
-          </label>
-          <button class="drawer-item" onclick="CACanal.suivant()">
-            <div class="drawer-item-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></div>
-            CA : <span data-caCanal-libelle>${(window.CACanal && CACanal.libelleCourant()) || ''}</span>
-          </button>
           <button class="drawer-item" onclick="DrawerMenu._synchro()">
             <div class="drawer-item-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg></div>
             Synchroniser
@@ -682,7 +733,16 @@ const DrawerMenu = (function () {
             Déconnexion
           </button>
         </div>
+        <div class="drawer-sep"></div>
+        <div class="drawer-profil">
+          <div class="drawer-header-avatar">${initiale}</div>
+          <div class="drawer-header-info">
+            <div class="drawer-header-nom">${nom || 'EMPOWER'}</div>
+            <div class="drawer-header-role">${_roleLabel(role)}</div>
+          </div>
+        </div>
       </nav>
+      <div class="drawer-marque"><img src="img/marvesting-group-cream.png" alt="Marvesting Group" height="20"></div>
     </div>`;
   }
 
@@ -939,6 +999,7 @@ const PaletteCommandes = (function () {
     { id: 'home',        hash: '#/dashboard',           titre: 'Accueil' },
     { id: 'tracker',     hash: '#/empower-tracker',      titre: 'Tracker' },
     { id: 'comptes',     hash: '#/comptes',              titre: 'Comptes' },
+    { id: 'territoires', hash: '#/territoires',          titre: 'Territoires (carte)' },
     { id: 'visites',     hash: '#/visites',              titre: 'Mon Planning' },
     { id: 'phoning',     hash: '#/phoning',               titre: 'Phoning' },
     { id: 'photos',      hash: '#/photos',                titre: 'Mes Photos' },
@@ -1216,6 +1277,35 @@ window.Topbar = Topbar;
     return ['Q1', 'Q2', 'Q3', 'Q4'].reduce((s, q) => s + (parseCA(c[`CA_${q}FY27`]) || 0), 0);
   }
 
+  // Suivi du CA (11/2026) : cumul FY27 (Q1 à Q4) depuis un compte (forme « comptes ») ou une ligne sellin_agregats (forme « sellin »).
+  function caFY27Cumul(obj, forme) {
+    if (!obj) return null;
+    let total = 0, vu = false;
+    for (const q of ['Q1', 'Q2', 'Q3', 'Q4']) {
+      const v = parseCA(obj[forme === 'sellin' ? `CA ${q}FY27 €` : `CA_${q}FY27`]);
+      if (v !== null) { total += v; vu = true; }
+    }
+    return vu ? total : null;
+  }
+  // Détail par trimestre FY27 : [['Q1', 1234], ['Q2', 0], ...] (valeurs absentes ignorées).
+  function caFY27Detail(obj, forme) {
+    return ['Q1', 'Q2', 'Q3', 'Q4'].map(q => [q, obj ? parseCA(obj[forme === 'sellin' ? `CA ${q}FY27 €` : `CA_${q}FY27`]) : null]).filter(x => x[1] !== null);
+  }
+  // Comparaison à période égale : trimestres FY27 complets (avant le trimestre actif) contre les mêmes trimestres de FY26.
+  function caPeriodeEgale(c, quarterActif) {
+    const n = /^Q([1-4])$/.test(quarterActif) ? Number(quarterActif[1]) : 1;
+    if (n < 2 || !c) return null;
+    let fy27 = 0, fy26 = 0, ok26 = false;
+    for (let i = 1; i < n; i++) {
+      fy27 += parseCA(c[`CA_Q${i}FY27`]) || 0;
+      const v = parseCA(c[`CA_Q${i}FY26`]); if (v !== null) { fy26 += v; ok26 = true; }
+    }
+    return ok26 ? { fy27, fy26, trimestres: n === 2 ? 'Q1' : `Q1 à Q${n - 1}` } : null;
+  }
+
+  window.caFY27Cumul = caFY27Cumul;
+  window.caFY27Detail = caFY27Detail;
+  window.caPeriodeEgale = caPeriodeEgale;
   window.parseCA = parseCA;
   window.fmtCA   = fmtCA;
   window.caQuarterActifCle = caQuarterActifCle;
@@ -1283,7 +1373,7 @@ function svgDonut(segments, opts = {}) {
     const pct = Math.round(part * 100);
     const clic = s.onclick ? ` style="cursor:pointer" onclick="${s.onclick}"` : '';
     const html = `<path d="M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${grandArc} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}"
-      fill="none" stroke="${s.color}" stroke-width="${ep}"${clic}><title>${s.label} · ${pct}% (${s.value})</title></path>`;
+      fill="none" stroke="${s.color}" stroke-width="${ep}" tabindex="0" data-tip="${String(s.label).replace(/"/g, '&quot;')}\n${s.value} (${pct} %)"${clic}></path>`;
     angleDebut = angleFin;
     return html;
   }).join('');
@@ -1291,7 +1381,7 @@ function svgDonut(segments, opts = {}) {
   const centreLabel  = opts.centreLabel  || '';
   const centreValeur = opts.centreValeur ?? total;
 
-  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
+  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" data-tipzone>
     ${arcs}
     <text x="${cx}" y="${cy - (centreLabel ? 6 : 0)}" text-anchor="middle" dominant-baseline="middle" font-size="18" font-weight="700" fill="var(--c-title)">${centreValeur}</text>
     ${centreLabel ? `<text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="9" fill="var(--c-text-2)">${centreLabel}</text>` : ''}
@@ -1338,3 +1428,7 @@ function kpiCard(opts = {}) {
     ${pillsHtml ? `<div class="kpi-pills">${pillsHtml}</div>` : ''}
   </div>`;
 }
+
+// Exposés sur window (voir session.js) : app.js et vue-a-contacter.js testent `window.SidebarToggle` / `window.DrawerMenu`.
+window.SidebarToggle = SidebarToggle;
+window.DrawerMenu = DrawerMenu;
