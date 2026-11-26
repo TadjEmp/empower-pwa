@@ -7,6 +7,7 @@
 //    ADMIN / CHANNEL_MANAGER : tout voir, tout modifier (Go/No Go, motif, signalement, version d'email)
 //    CDS (commercial)        : voit et met à jour ses comptes (Go/No Go, motif, signalement)
 //    EXTERNE (fournisseur)   : lecture seule de toute la campagne
+//  Onglet Propositions : ADMIN / CHANNEL_MANAGER / CDS valident ou rejettent les emails trouvés (enrichissement_propositions)
 //  Lecture directe via SheetsAPI._sb : les valeurs ne passent pas par neutraliser(), tout est échappé ici (E).
 // ═══════════════════════════════════════
 
@@ -29,8 +30,8 @@ window.VueCampagne = {
   _etatInitial() {
     return {
       chargement: true, erreur: null,
-      campagnes: [], campagneId: null, lignes: [], exclusions: [], utilisateurs: [],
-      onglet: 'synthese',                // synthese | comptes | exclusions
+      campagnes: [], campagneId: null, lignes: [], exclusions: [], utilisateurs: [], propositions: [], comptesProp: {}, filtreProp: 'proposee', traitement: null,
+      onglet: 'synthese',                // synthese | comptes | exclusions | propositions
       filtreStatut: 'TOUS',              // TOUS | A_TRAITER | GO | NO_GO | SIGNALES
       filtreCds: 'TOUS', filtreVersion: 'TOUS', recherche: '', limite: this.PAGE,
     };
@@ -57,6 +58,7 @@ window.VueCampagne = {
       s.lignes = lig.data || [];
       s.exclusions = exc.data || [];
       s.utilisateurs = Array.isArray(users) ? users : [];
+      await this._chargerPropositions();
       if (!s.campagneId || !s.campagnes.some(c => c.id === s.campagneId)) {
         const active = s.campagnes.find(c => c.statut !== 'cloturee') || s.campagnes[0];
         s.campagneId = active ? active.id : null;
@@ -311,6 +313,95 @@ window.VueCampagne = {
       </div>`;
   },
 
+
+  // ── Propositions d'enrichissement (validation) ──
+  _peutValider() { return ['ADMIN', 'CHANNEL_MANAGER', 'CDS'].includes(Session.role); },
+  CHAMPS: { email: 'Email', tel: 'Téléphone', site_web: 'Site web', contact_nom: 'Contact', contact_fonction: 'Fonction' },
+  CONFIANCE: { haute: 'Confiance haute', moyenne: 'Confiance moyenne', faible: 'Confiance faible' },
+
+  async _chargerPropositions() {
+    const s = this.state; s.propositions = []; s.comptesProp = {};
+    if (!this._peutValider()) return;
+    try {
+      const sb = SheetsAPI._sb;
+      const p = await sb.from('enrichissement_propositions').select('*').order('created_at', { ascending: false });
+      if (p.error) throw new Error(p.error.message);
+      s.propositions = p.data || [];
+      const ids = [...new Set(s.propositions.map(x => x.compte_id))];
+      if (ids.length) {
+        const c = await sb.from('comptes').select('id,id_compte_gas,nom_compte,email,site_web').in('id', ids);
+        if (c.error) throw new Error(c.error.message);
+        for (const r of (c.data || [])) s.comptesProp[r.id] = r;
+      }
+    } catch (e) { s.erreurProp = e.message || String(e); }
+  },
+
+  setFiltreProp(v) { this.state.filtreProp = v; this.render(); },
+
+  async decider(id, decision) {
+    const s = this.state, p = s.propositions.find(x => x.id === id);
+    if (!p || !this._peutValider() || s.traitement) return;
+    const compte = s.comptesProp[p.compte_id];
+    s.traitement = id; this.render();
+    try {
+      const sb = SheetsAPI._sb, maintenant = new Date().toISOString();
+      if (decision === 'appliquee') {
+        if (p.champ !== 'email') throw new Error("Seul l'email peut être appliqué pour l'instant");
+        if (compte && String(compte.email || '').trim()) throw new Error('Ce compte a déjà un email : proposition à rejeter');
+        const r = await sb.from('comptes').update({ email: p.valeur_proposee }).eq('id', p.compte_id).select('id');
+        if (r.error) throw new Error(r.error.message);
+        if (!r.data || !r.data.length) throw new Error("Modification refusée (ce compte n'est pas dans votre périmètre)");
+        // Cible de la campagne : réservé aux gestionnaires (garde base), un refus n'est pas bloquant
+        if (Session.voitTout()) await sb.from('campagne_comptes').update({ email_cible: p.valeur_proposee }).eq('compte_id', p.compte_id);
+        if (compte) compte.email = p.valeur_proposee;
+      }
+      const u = await sb.from('enrichissement_propositions').update({ statut: decision, valide_par_pin: Session.pin, date_decision: maintenant }).eq('id', id).select('*');
+      if (u.error) throw new Error(u.error.message);
+      if (!u.data || !u.data.length) throw new Error('Décision refusée');
+      Object.assign(p, u.data[0]);
+      Toast.afficher(decision === 'appliquee' ? 'Email appliqué à la fiche compte' : 'Proposition rejetée', 'succes');
+    } catch (e) {
+      Toast.afficher(e.message || 'Enregistrement impossible', 'erreur');
+    }
+    s.traitement = null; this.render();
+  },
+
+  _htmlPropositions() {
+    const s = this.state, E = this.E.bind(this);
+    if (s.erreurProp) return `<div class="erreur">Erreur : ${E(s.erreurProp)}</div>`;
+    const tout = s.propositions;
+    const nb = k => tout.filter(p => k === 'TOUTES' || p.statut === k).length;
+    const chip = (k, lbl) => `<button class="btn-filtre ${s.filtreProp === k ? 'actif' : ''}" onclick="VueCampagne.setFiltreProp('${k}')">${lbl} (${nb(k)})</button>`;
+    const liste = tout.filter(p => s.filtreProp === 'TOUTES' || p.statut === s.filtreProp);
+    const carte = p => {
+      const c = s.comptesProp[p.compte_id] || {}, ctl = p.controles_json || {};
+      const url = /^https?:\/\//i.test(p.source_url || '') ? p.source_url : '';
+      const occupe = s.traitement === p.id;
+      const dejaEmail = String(c.email || '').trim() !== '';
+      const actions = p.statut === 'proposee'
+        ? `<div class="cmp-l2">
+             <button class="cmp-b cmp-b-go" ${occupe || dejaEmail ? 'disabled' : ''} onclick="VueCampagne.decider('${E(p.id)}','appliquee')">Valider et appliquer</button>
+             <button class="cmp-b" ${occupe ? 'disabled' : ''} onclick="VueCampagne.decider('${E(p.id)}','rejetee')">Rejeter</button>
+             ${dejaEmail ? '<span class="cmp-pastille cmp-orange">La fiche a déjà un email</span>' : ''}
+           </div>`
+        : `<div class="cmp-l2"><span class="cmp-pastille ${p.statut === 'appliquee' ? 'cmp-vert-p' : 'cmp-rouge'}">${p.statut === 'appliquee' ? 'Appliquée' : 'Rejetée'}</span>${p.date_decision ? `<span class="cmp-sous">${E(new Date(p.date_decision).toLocaleDateString('fr-FR'))}</span>` : ''}</div>`;
+      return `<div class="cmp-ligne">
+        <div class="cmp-l1">
+          <div><span class="cmp-nom">${E(c.nom_compte || 'Compte')}</span> <span class="cmp-sous">${E(c.id_compte_gas || '')}</span></div>
+          <span class="cmp-pastille ${p.confiance === 'haute' ? 'cmp-vert-p' : p.confiance === 'faible' ? 'cmp-orange' : ''}">${E(this.CONFIANCE[p.confiance] || p.confiance)}</span>
+        </div>
+        <div style="margin-top:6px"><span class="cmp-sous">${E(this.CHAMPS[p.champ] || p.champ)} proposé :</span> <b>${E(p.valeur_proposee)}</b></div>
+        ${ctl.note ? `<div class="cmp-sous">${E(ctl.note)}</div>` : ''}
+        ${url ? `<div class="cmp-sous">Source : <a href="${E(url)}" target="_blank" rel="noopener noreferrer">${E(url)}</a></div>` : ''}
+        ${actions}
+      </div>`;
+    };
+    return `
+      <div class="cmp-carte"><div class="cmp-sous">Adresses trouvées sur les sites officiels des comptes. Rien n'est écrit dans la fiche compte tant que vous ne validez pas. Vérifiez la source avant de valider.</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${chip('proposee', 'À valider')}${chip('appliquee', 'Appliquées')}${chip('rejetee', 'Rejetées')}${chip('TOUTES', 'Toutes')}</div></div>
+      ${liste.length ? liste.map(carte).join('') : '<div class="cmp-vide">Aucune proposition dans cette liste.</div>'}`;
+  },
+
   _css() {
     return `<style>
       .cmp-carte{background:var(--c-surface,#fff);border:1px solid var(--c-border,#e3e3e8);border-radius:12px;padding:12px 14px;margin-bottom:12px}
@@ -350,8 +441,8 @@ window.VueCampagne = {
       const onglet = (k, lbl) => `<button class="btn-filtre ${s.onglet === k ? 'actif' : ''}" onclick="VueCampagne.setOnglet('${k}')">${lbl}</button>`;
       corps = `
         ${this._htmlEntete()}
-        <div class="cmp-onglets">${onglet('synthese', 'Synthèse')}${onglet('comptes', `Comptes (${this._lignes().length})`)}${onglet('exclusions', `Exclusions (${this._exclusions().length})`)}</div>
-        ${s.onglet === 'synthese' ? `<div id="cmp-synthese-zone">${this._htmlSynthese()}</div>` : s.onglet === 'comptes' ? this._htmlComptes() : this._htmlExclusions()}`;
+        <div class="cmp-onglets">${onglet('synthese', 'Synthèse')}${onglet('comptes', `Comptes (${this._lignes().length})`)}${onglet('exclusions', `Exclusions (${this._exclusions().length})`)}${this._peutValider() ? onglet('propositions', `Propositions (${s.propositions.filter(p => p.statut === 'proposee').length})`) : ''}</div>
+        ${s.onglet === 'synthese' ? `<div id="cmp-synthese-zone">${this._htmlSynthese()}</div>` : s.onglet === 'comptes' ? this._htmlComptes() : s.onglet === 'propositions' ? this._htmlPropositions() : this._htmlExclusions()}`;
     }
     app.innerHTML = `
       ${this._css()}
