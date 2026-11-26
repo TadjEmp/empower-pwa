@@ -345,7 +345,7 @@ window.VueCampagne = {
           <span class="cmp-pastille ${l.go_no_go === 'go' ? 'cmp-vert-p' : l.go_no_go === 'no_go' ? 'cmp-rouge' : ''}">${l.go_no_go === 'go' ? 'Go' : l.go_no_go === 'no_go' ? 'No Go' : 'À traiter'}</span></div>
           <div class="cmp-sous">${c.adresse ? E(c.adresse) + ', ' : ''}${lieu ? E(lieu) : 'Ville inconnue'}</div>
           <div class="cmp-sous">${c.tel ? 'Tél. ' + E(c.tel) : 'Pas de téléphone'}${c.contact_nom ? ' · Contact : ' + E(c.contact_nom) + (c.contact_fonction ? ' (' + E(c.contact_fonction) + ')' : '') : ''}</div>
-          <div class="cmp-sous">${site ? site : 'Pas de site connu'} · ${E(c.canal || '')}${c.statut_compte ? ' · ' + E(c.statut_compte) : ''}${Number(c.ca_fy26) ? ' · CA FY26 ' + E(Math.round(Number(c.ca_fy26)).toLocaleString('fr-FR')) + ' €' : ''} · Version : ${E(this.VERSIONS[l.version_email] || l.version_email)}</div></div>`;
+          <div class="cmp-sous">${site ? site : 'Pas de site connu'} · ${E(c.canal || '')}${!Session.estExterne() && c.statut_compte ? ' · ' + E(c.statut_compte) : ''}${!Session.estExterne() && Number(c.ca_fy26) ? ' · CA FY26 ' + E(Math.round(Number(c.ca_fy26)).toLocaleString('fr-FR')) + ' €' : ''} · Version : ${E(this.VERSIONS[l.version_email] || l.version_email)}</div></div>`;
       }).join('')}</div>` : '';
       return `<div class="cmp-carte">
         <button class="cmp-tuile" style="width:100%;flex-direction:row;justify-content:space-between;align-items:center;padding:10px 12px" aria-expanded="${ouvert}" onclick="VueCampagne.basculerManq('${E(k)}')">
